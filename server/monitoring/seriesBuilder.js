@@ -112,14 +112,33 @@ export function buildSeries(points, { expectedIntervalSeconds = null } = {}) {
       });
     }
     const series = grouped.get(key);
-    series.points.push({
+    // Emit only the fields this point actually carries.
+    //
+    // A 24-hour history request returns the 20,000-point cap spread over ~69
+    // series, and for gauge families every point had four fields that were
+    // always null or always the default — about 2.7 MB on the wire, most of it
+    // `"numerator":null,"denominator":null,"sampleCount":null`. Consumers already
+    // guard with `Number.isFinite(...)`, for which an absent field behaves
+    // exactly like an explicit null, and nothing reads `qualityState` off a
+    // history point. Ratio families still send numerator/denominator, which is
+    // what weighted re-aggregation needs.
+    const emitted = {
       observedAt: new Date(point.observedAt).toISOString(),
       value: point.numericValue,
-      numerator: point.numerator ?? null,
-      denominator: point.denominator ?? null,
-      sampleCount: point.sampleCount ?? null,
-      qualityState: point.qualityState ?? 'observed',
-    });
+    };
+    if (point.numerator !== null && point.numerator !== undefined) {
+      emitted.numerator = point.numerator;
+    }
+    if (point.denominator !== null && point.denominator !== undefined) {
+      emitted.denominator = point.denominator;
+    }
+    if (point.sampleCount !== null && point.sampleCount !== undefined) {
+      emitted.sampleCount = point.sampleCount;
+    }
+    if (point.qualityState && point.qualityState !== 'observed') {
+      emitted.qualityState = point.qualityState;
+    }
+    series.points.push(emitted);
   }
 
   return [...grouped.values()].map((series) => {

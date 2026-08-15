@@ -1,5 +1,20 @@
 import { cacheService, CACHE_TTL } from './cache';
 import { logger } from './logger';
+
+/**
+ * How long a completed GET stays replayable.
+ *
+ * Sized to a navigation burst, not to data freshness. Measured on Integration,
+ * clicking Dashboard → Devices → Clients → Dashboard → Devices at demo speed
+ * issued the same `/v1/aps/query` nine times and `/v1/stations` six times inside
+ * ~7 seconds. Two seconds collapses that to one call each while remaining far
+ * shorter than any polling interval in the app (the fastest is 30s), so no
+ * component ever observes data older than it would have anyway.
+ */
+const BURST_TTL_MS = 2000;
+
+/** Hard ceiling on burst-cache entries, so a long session cannot grow it without bound. */
+const MAX_BURST_ENTRIES = 120;
 import {
   isNetworkError,
   isServerError,
@@ -156,10 +171,30 @@ class ApiService {
   private rateLimitedUntil: number = 0;
   private inflightRequests = new Map<string, Promise<Response>>();
 
+  /**
+   * Freshly-completed GET responses, kept for a very short window.
+   *
+   * This is a *burst* cache, not a data cache. It exists because navigating
+   * between pages remounts components that each independently ask for the same
+   * fleet-wide resource (`/v1/aps/query`, `/v1/stations`), and a demo operator
+   * clicking quickly can request the same endpoint five or six times in a couple
+   * of seconds. In-flight dedup alone does not catch that: by the time the
+   * second component mounts, the first request has already resolved, so there is
+   * nothing in flight to join.
+   *
+   * The window is deliberately short (see BURST_TTL_MS) — long enough to
+   * collapse a navigation burst, short enough that it can never be the reason a
+   * user sees stale state. Anything needing real freshness semantics still
+   * refetches on its own cadence, and writes clear the cache outright.
+   */
+  private burstCache = new Map<string, { body: string; status: number; statusText: string; at: number }>();
+
   // Developer mode API logging
   private apiCallLogs: ApiCallLog[] = [];
   private apiLogSubscribers = new Set<(log: ApiCallLog) => void>();
   private maxLogs = 500; // Maximum number of logs to keep
+  /** Opt-in: record full response bodies in the API log. Off unless the dev panel is open. */
+  private captureApiLogBodies = false;
 
   constructor() {
     // Load tokens from localStorage on initialization.
@@ -434,6 +469,10 @@ class ApiService {
     // Cancel all pending requests first
     this.cancelAllRequests();
 
+    // One session's responses must never be replayable into the next.
+    this.burstCache.clear();
+    this.inflightRequests.clear();
+
     if (this.accessToken) {
       try {
         await fetch(`${getBaseUrl()}/v1/oauth2/token/${this.accessToken}`, {
@@ -470,20 +509,90 @@ class ApiService {
       throw new Error('RATE_LIMITED: Controller is rate-limiting requests, backing off');
     }
 
-    // Deduplicate concurrent identical GET requests — collapse burst from multiple mounts
     const isGet = !options.method || options.method.toUpperCase() === 'GET';
-    if (isGet) {
-      const inflightKey = endpoint;
-      const existing = this.inflightRequests.get(inflightKey);
-      if (existing) return existing;
-
-      const promise = this._executeAuthenticatedRequest(endpoint, options, timeoutMs);
-      this.inflightRequests.set(inflightKey, promise);
-      promise.finally(() => this.inflightRequests.delete(inflightKey));
-      return promise;
+    if (!isGet) {
+      // Any write invalidates the burst cache wholesale. It is small and cheap
+      // to refill, and a user who just changed something must never be shown a
+      // pre-write response because a 2-second window had not elapsed.
+      this.burstCache.clear();
+      return this._executeAuthenticatedRequest(endpoint, options, timeoutMs);
     }
 
-    return this._executeAuthenticatedRequest(endpoint, options, timeoutMs);
+    const key = endpoint;
+
+    // 1. Served from a just-completed identical GET, if one is fresh enough.
+    const cached = this.burstCache.get(key);
+    if (cached) {
+      if (Date.now() - cached.at <= BURST_TTL_MS) {
+        return this.responseFromCache(cached);
+      }
+      this.burstCache.delete(key);
+    }
+
+    // 2. Joined to an identical GET that is already in flight.
+    //
+    // Each caller MUST get its own Response. A Response body is a one-shot
+    // stream, so handing the same instance to two awaiting callers makes the
+    // second one throw "Body has already been read" — which surfaced as tables
+    // that loaded or came up empty depending on component mount order.
+    const existing = this.inflightRequests.get(key);
+    if (existing) return existing.then((r) => r.clone());
+
+    const promise = this._executeAuthenticatedRequest(endpoint, options, timeoutMs).then(
+      async (response) => {
+        // Only successful JSON responses are worth replaying; errors and
+        // redirects must re-hit the controller so transient failures recover.
+        if (response.ok) {
+          try {
+            const body = await response.clone().text();
+            this.burstCache.set(key, {
+              body,
+              status: response.status,
+              statusText: response.statusText,
+              at: Date.now(),
+            });
+            if (this.burstCache.size > MAX_BURST_ENTRIES) {
+              const oldest = this.burstCache.keys().next().value;
+              if (oldest !== undefined) this.burstCache.delete(oldest);
+            }
+          } catch {
+            // Unreadable body — just don't cache it.
+          }
+        }
+        return response;
+      }
+    );
+
+    this.inflightRequests.set(key, promise);
+    promise.finally(() => this.inflightRequests.delete(key)).catch(() => {});
+    // The originating caller gets a clone too, so the cached copy above and
+    // every joined caller read from independent streams.
+    return promise.then((r) => r.clone());
+  }
+
+  /** Rebuild a real Response from a burst-cache entry. */
+  private responseFromCache(entry: {
+    body: string;
+    status: number;
+    statusText: string;
+  }): Promise<Response> {
+    return Promise.resolve(
+      new Response(entry.body, {
+        status: entry.status,
+        statusText: entry.statusText,
+        headers: { 'Content-Type': 'application/json', 'X-AURA-Cache': 'burst' },
+      })
+    );
+  }
+
+  /**
+   * Drop replayable GET responses.
+   *
+   * Called after a mutation lands so the next read reflects it, and on logout so
+   * one session's data can never be replayed into the next.
+   */
+  clearBurstCache(): void {
+    this.burstCache.clear();
   }
 
   private async _executeAuthenticatedRequest(
@@ -558,14 +667,25 @@ class ApiService {
         logger.log(`[Request ${requestId}] Completed: ${endpoint} (${response.status})`);
       }
 
-      // Clone response to read body without consuming it
-      const responseClone = response.clone();
+      // Capture the response body for the developer-mode API log — but only
+      // when someone is actually looking at it.
+      //
+      // This used to run unconditionally on every request: clone the response,
+      // read the whole body to text, then JSON.parse it, purely to populate a
+      // panel that is hidden by default. On `/v3/profiles` that is a second
+      // full read and parse of a 248 KB payload on the main thread, per call,
+      // for nobody. Subscriber count is not the right gate — the connection
+      // indicator subscribes for the whole session and only reads `status` — so
+      // body capture is opt-in via setApiLogBodyCapture(), which the developer
+      // API panel turns on while it is open.
       let responseBody: any = undefined;
-      try {
-        const text = await responseClone.text();
-        responseBody = this.safeParseJSON(text);
-      } catch (e) {
-        // Ignore errors reading response body for logging
+      if (this.captureApiLogBodies) {
+        try {
+          const text = await response.clone().text();
+          responseBody = this.safeParseJSON(text);
+        } catch {
+          // Ignore errors reading response body for logging
+        }
       }
 
       // Update API log with response
@@ -1067,6 +1187,17 @@ class ApiService {
     return () => {
       this.apiLogSubscribers.delete(callback);
     };
+  }
+
+  /**
+   * Turn full response-body capture in the API log on or off.
+   *
+   * The developer API panel enables this while it is mounted. Leaving it off is
+   * what keeps a hidden diagnostic from costing an extra read+parse of every
+   * payload on the main thread.
+   */
+  setApiLogBodyCapture(enabled: boolean): void {
+    this.captureApiLogBodies = enabled;
   }
 
   getApiLogs(): ApiCallLog[] {

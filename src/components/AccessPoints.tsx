@@ -444,6 +444,39 @@ function analyzeCableHealth(ap: AccessPoint, allAPs: AccessPoint[]): CableHealth
   };
 }
 
+/**
+ * Ceiling on the per-AP metric fallback.
+ *
+ * Above this many APs the supplementary CPU/memory columns are not worth one
+ * controller round-trip each; the grid is fully functional without them.
+ */
+const AP_DETAIL_FALLBACK_LIMIT = 40;
+
+/** How many per-AP detail calls may be in flight at once. */
+const AP_DETAIL_CONCURRENCY = 6;
+
+/**
+ * `Promise.all(items.map(fn))` with a ceiling on how many run at once.
+ *
+ * Order of results matches the input, so callers can zip them back together.
+ */
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const index = next++;
+      results[index] = await fn(items[index]);
+    }
+  });
+  await Promise.all(workers);
+  return results;
+}
+
 // Wi-Fi generation model prefix mapping (order matters — longer/more-specific prefixes first)
 type WifiGen = 'Wi-Fi 7' | 'Wi-Fi 6E' | 'Wi-Fi 6' | 'Wi-Fi 5' | 'Unknown';
 const WIFI_GEN_PREFIXES: Array<{ prefix: string; gen: WifiGen }> = [
@@ -976,8 +1009,31 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
         }
       }
 
-      // Fallback: Load metrics from individual AP details in parallel
-      const promises = aps.map(async (ap) => {
+      // Fallback: per-AP detail calls, because the bulk endpoint is unavailable.
+      //
+      // `/v1/aps/ifstats` answers 500 on this controller build, so this path is
+      // not a rare fallback — it is what runs on every load and every refresh.
+      // Two guards keep that from becoming a request storm:
+      //
+      //   * Above a threshold the fallback is abandoned entirely. CPU/memory are
+      //     supplementary columns; issuing one request per AP across a large
+      //     fleet would cost far more than the columns are worth, and the grid
+      //     renders correctly without them.
+      //   * Below it, requests run at bounded concurrency instead of an
+      //     unbounded `Promise.all`, so a slow controller sees a steady trickle
+      //     rather than N simultaneous connections.
+      if (aps.length > AP_DETAIL_FALLBACK_LIMIT) {
+        console.warn(
+          `[AccessPoints] Bulk AP metrics unavailable and fleet is ${aps.length} APs — ` +
+            `skipping per-AP metric fetch (limit ${AP_DETAIL_FALLBACK_LIMIT}). ` +
+            'CPU/memory columns will be blank.'
+        );
+        setApMetrics({});
+        setIsLoadingMetrics(false);
+        return;
+      }
+
+      const fetchOne = async (ap: AccessPoint) => {
         try {
           const details = await apiService.getAccessPointDetails(ap.serialNumber);
           // Log first AP details to see available fields
@@ -997,9 +1053,9 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
         } catch {
           return { serialNumber: ap.serialNumber, cpuUsage: undefined, memoryUsage: undefined };
         }
-      });
+      };
 
-      const results = await Promise.all(promises);
+      const results = await mapWithConcurrency(aps, AP_DETAIL_CONCURRENCY, fetchOne);
 
       results.forEach(({ serialNumber, cpuUsage, memoryUsage }) => {
         if (cpuUsage !== undefined || memoryUsage !== undefined) {

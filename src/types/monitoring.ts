@@ -43,11 +43,19 @@ export interface SeriesPoint {
   /** UTC ISO-8601. */
   observedAt: string;
   value: number | null;
-  /** Present for ratios/percentages so aggregates can be recomputed correctly. */
-  numerator: number | null;
-  denominator: number | null;
-  sampleCount: number | null;
-  qualityState: QualityState;
+  /**
+   * Present for ratios/percentages so aggregates can be recomputed correctly.
+   *
+   * Omitted entirely when the point does not carry one — the wire format drops
+   * null-valued and default-valued fields, because on a full-window history
+   * response they were the bulk of the payload. Treat absent as null; the
+   * `Number.isFinite` guards every consumer already uses handle both.
+   */
+  numerator?: number | null;
+  denominator?: number | null;
+  sampleCount?: number | null;
+  /** Omitted when 'observed' (the default). */
+  qualityState?: QualityState;
 }
 
 /**

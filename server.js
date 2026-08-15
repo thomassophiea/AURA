@@ -1745,6 +1745,50 @@ function getControllerUrl(req) {
   return DEFAULT_CONTROLLER_URL;
 }
 
+/**
+ * Per-request proxy tracing.
+ *
+ * The proxy sat on four unconditional `console.log`s per request (path rewrite,
+ * outbound, inbound, plus a pre-middleware line). On the service that carries
+ * every gateway call the UI makes, that is a formatted string and a synchronous
+ * stdout write per hop, and it buried real failures. Enable with PROXY_TRACE=1
+ * when debugging a routing problem.
+ */
+const PROXY_TRACE = process.env.PROXY_TRACE === '1';
+const proxyTrace = (message) => {
+  if (PROXY_TRACE) console.log(`[Proxy] ${message}`);
+};
+
+/**
+ * Connection pool for the upstream Campus Controller.
+ *
+ * http-proxy sets `outgoing.agent = options.agent || false`, and `agent: false`
+ * means "no agent" — a brand-new socket per request. Every proxied gateway call
+ * was therefore paying a full TCP handshake plus a TLS negotiation to the
+ * controller, on top of the controller's own work. A pooled keep-alive agent
+ * amortises that across the whole session.
+ *
+ * `rejectUnauthorized: false` mirrors the existing `secure: false` option — the
+ * controller presents a self-signed certificate — and is not a new relaxation
+ * of trust, just the same one expressed on the agent that now owns the socket.
+ */
+const controllerAgent = new https.Agent({
+  keepAlive: true,
+  keepAliveMsecs: 15000,
+  maxSockets: 64,
+  maxFreeSockets: 16,
+  timeout: 60000,
+  rejectUnauthorized: false,
+});
+
+const controllerAgentHttp = new http.Agent({
+  keepAlive: true,
+  keepAliveMsecs: 15000,
+  maxSockets: 64,
+  maxFreeSockets: 16,
+  timeout: 60000,
+});
+
 // Dynamic proxy middleware using http-proxy-middleware router option
 const proxyOptions = {
   router: (req) => {
@@ -1757,7 +1801,9 @@ const proxyOptions = {
   changeOrigin: true,
   secure: false, // Accept self-signed certificates
   followRedirects: true,
-  logLevel: 'debug',
+  // 'debug' logged a line per request per hook on a service that proxies every
+  // gateway call the UI makes; 'warn' keeps failures visible without the noise.
+  logLevel: process.env.PROXY_LOG_LEVEL || 'warn',
   timeout: 60000, // 60 second timeout for incoming requests
   proxyTimeout: 60000, // 60 second timeout for outgoing proxy requests
   pathRewrite: (path, req) => {
@@ -1765,19 +1811,17 @@ const proxyOptions = {
     // /management/platformmanager/v2/... -> /platformmanager/v2/...
     if (path.includes('/platformmanager/')) {
       const rewritten = path.replace(/^\/management\/platformmanager/, '/platformmanager');
-      console.log(`[Proxy] Path rewrite (platformmanager): ${path} -> ${rewritten}`);
+      proxyTrace(`path rewrite (platformmanager): ${path} -> ${rewritten}`);
       return rewritten;
     }
     // All other paths keep /management prefix
     // /management/v1/services -> /management/v1/services
-    console.log(`[Proxy] Path preserved: ${path}`);
+    proxyTrace(`path preserved: ${path}`);
     return path;
   },
 
   onProxyReq: (proxyReq, req, res) => {
-    // Get target URL for logging
-    const targetUrl = getControllerUrl(req);
-    console.log(`[Proxy] ${req.method} ${req.url} -> ${targetUrl}${req.url}`);
+    if (PROXY_TRACE) proxyTrace(`${req.method} ${req.url} -> ${getControllerUrl(req)}${req.url}`);
 
     // Forward original headers
     if (req.headers.authorization) {
@@ -1789,8 +1833,10 @@ const proxyOptions = {
   },
 
   onProxyRes: (proxyRes, req, _res) => {
-    // Log response status
-    console.log(`[Proxy] ${req.method} ${req.url} <- ${proxyRes.statusCode}`);
+    // Slow and failing upstream calls stay visible; the rest are traced only on demand.
+    if (PROXY_TRACE || proxyRes.statusCode >= 500) {
+      console.log(`[Proxy] ${req.method} ${req.url} <- ${proxyRes.statusCode}`);
+    }
 
     // Override CORS headers from the upstream controller so they respect our
     // ALLOWED_ORIGINS whitelist instead of blindly reflecting any origin.
@@ -2249,15 +2295,27 @@ app.post('/api/cortex/config/commit', requireAuth, jsonParser, (_req, res) => {
 
 // Proxy all /api/* requests to Campus Controller (with dynamic routing support)
 console.log('[Proxy Server] Setting up /api/* proxy middleware with dynamic routing');
-app.use(
-  '/api',
-  (req, res, next) => {
-    const target = getControllerUrl(req);
-    console.log(`[Proxy Middleware] Received: ${req.method} ${req.url} (target: ${target})`);
-    next();
-  },
-  createProxyMiddleware(proxyOptions)
-);
+
+/**
+ * One proxy per upstream protocol, so each can carry a pooled keep-alive agent.
+ *
+ * The agent has to match the scheme: http-proxy hands `options.agent` straight
+ * to `http.request` or `https.request` depending on the target, and giving an
+ * `https.Agent` to an http request throws "Protocol 'http:' not supported".
+ * `getControllerUrl` accepts either scheme from `X-Controller-URL`, so the
+ * dispatcher below picks the matching one per request rather than assuming TLS.
+ */
+const httpsControllerProxy = createProxyMiddleware({ ...proxyOptions, agent: controllerAgent });
+const httpControllerProxy = createProxyMiddleware({
+  ...proxyOptions,
+  agent: controllerAgentHttp,
+});
+
+app.use('/api', (req, res, next) => {
+  const target = getControllerUrl(req);
+  const proxy = target.startsWith('http://') ? httpControllerProxy : httpsControllerProxy;
+  return proxy(req, res, next);
+});
 
 // Serve static files from the build directory with cache control
 const buildPath = path.join(__dirname, 'build');

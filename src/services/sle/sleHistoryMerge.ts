@@ -34,7 +34,7 @@ function toTimeSeriesPoint(point: MetricSeries['points'][number]): SLETimeSeries
     // than guessed.
     totalClients: point.denominator ?? 0,
     affectedClients:
-      point.denominator !== null && point.numerator !== null
+      point.denominator != null && point.numerator != null
         ? point.denominator - point.numerator
         : 0,
   };
@@ -68,7 +68,8 @@ export function mergeSleHistory(sles: SLEMetric[], series: MetricSeries[]): SleH
     const byTimestamp = new Map<number, { numerator: number; denominator: number }>();
     for (const entry of entries) {
       for (const point of entry.points) {
-        if (point.numerator === null || point.denominator === null) continue;
+        // `!= null` covers both an explicit null and an omitted field.
+        if (point.numerator == null || point.denominator == null) continue;
         const timestamp = new Date(point.observedAt).getTime();
         const existing = byTimestamp.get(timestamp) ?? { numerator: 0, denominator: 0 };
         existing.numerator += point.numerator;

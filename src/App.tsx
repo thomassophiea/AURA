@@ -377,6 +377,28 @@ export default function App() {
   );
   const [apiLogs, setApiLogs] = useState<ApiCallLog[]>([]);
   const [devPanelHeight, setDevPanelHeight] = useState(0);
+
+  /**
+   * Mirror the API log into React state only while the developer panel is open.
+   *
+   * This subscription used to be unconditional, which meant every single API
+   * call ran `setApiLogs(...)` on the App root and re-rendered the whole
+   * application tree — 14 to 31 times on a single Devices load — to feed a panel
+   * that is closed the overwhelming majority of the time. Body capture is
+   * enabled alongside it for the same reason.
+   */
+  useEffect(() => {
+    if (!isDevModeOpen) return;
+    apiService.setApiLogBodyCapture(true);
+    setApiLogs(apiService.getApiLogs());
+    const unsubscribe = apiService.subscribeToApiLogs(() => {
+      setApiLogs(apiService.getApiLogs());
+    });
+    return () => {
+      unsubscribe();
+      apiService.setApiLogBodyCapture(false);
+    };
+  }, [isDevModeOpen]);
   const [siteName, setSiteName] = useState<string>('');
   const [pendingTemplateType, setPendingTemplateType] = useState<GlobalElementType | null>(null);
 
@@ -456,15 +478,6 @@ export default function App() {
 
     initializeTheme();
     initializeAuth();
-
-    // Subscribe to API logs for developer mode
-    const unsubscribe = apiService.subscribeToApiLogs(() => {
-      // Update logs whenever there's a new log entry
-      setApiLogs(apiService.getApiLogs());
-    });
-
-    // Initialize with current logs
-    setApiLogs(apiService.getApiLogs());
 
     // Periodically check authentication status (very infrequently)
     // Only check if tokens are present - rely on API errors for actual session validation
@@ -935,8 +948,6 @@ export default function App() {
       clearInterval(authCheckInterval);
       // Cancel any pending requests on cleanup
       apiService.cancelAllRequests();
-      // Unsubscribe from API logs
-      unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

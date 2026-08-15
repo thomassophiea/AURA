@@ -106,12 +106,14 @@ function totalsByTick(series: MetricSeries[], metricName: string): Map<number, T
         hasValue: false,
       };
 
-      if (point.numerator !== null && Number.isFinite(point.numerator)) {
-        tick.numerator += point.numerator;
+      // Absent and null mean the same thing: this family does not carry the
+      // part. The wire format omits null-valued fields to keep the payload down.
+      if (Number.isFinite(point.numerator)) {
+        tick.numerator += point.numerator as number;
         tick.hasNumerator = true;
       }
-      if (point.denominator !== null && Number.isFinite(point.denominator)) {
-        tick.denominator += point.denominator;
+      if (Number.isFinite(point.denominator)) {
+        tick.denominator += point.denominator as number;
         tick.hasDenominator = true;
       }
       if (point.value !== null && Number.isFinite(point.value)) {
