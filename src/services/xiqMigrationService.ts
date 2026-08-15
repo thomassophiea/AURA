@@ -22,8 +22,19 @@
  *   - RADIUS:    GET /radius-servers or /radius-servers/external
  */
 
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+/**
+ * jsPDF is loaded on demand, not at module scope.
+ *
+ * A static import here put jspdf + jspdf-autotable + html2canvas (~131 KB
+ * gzipped) into the entry graph, which made Vite `modulepreload` the whole PDF
+ * vendor chunk on the *login page* — downloaded before authentication, on every
+ * session, for an export button most sessions never press. Type-only imports
+ * stay static because they cost nothing at runtime.
+ */
+import type jsPDFType from 'jspdf';
+
+type JsPDFModule = typeof import('jspdf');
+type AutoTableModule = typeof import('jspdf-autotable');
 import { type XIQStoredToken } from './xiqService';
 import { apiService } from './api';
 
@@ -900,7 +911,7 @@ const BRAND_DARK = [30, 30, 46] as [number, number, number];
 const WARN_AMBER = [234, 179, 8] as [number, number, number];
 const FAIL_RED = [239, 68, 68] as [number, number, number];
 
-function addSectionHeader(doc: jsPDF, title: string, y: number): number {
+function addSectionHeader(doc: jsPDFType, title: string, y: number): number {
   doc.setFillColor(...BRAND_PURPLE);
   doc.rect(14, y, 182, 8, 'F');
   doc.setTextColor(255, 255, 255);
@@ -911,7 +922,7 @@ function addSectionHeader(doc: jsPDF, title: string, y: number): number {
   return y + 12;
 }
 
-function checkPageBreak(doc: jsPDF, y: number, needed = 20): number {
+function checkPageBreak(doc: jsPDFType, y: number, needed = 20): number {
   if (y + needed > 275) {
     doc.addPage();
     return 20;
@@ -919,11 +930,17 @@ function checkPageBreak(doc: jsPDF, y: number, needed = 20): number {
   return y;
 }
 
-export function downloadMigrationReport(
+export async function downloadMigrationReport(
   data: XIQMigrationData,
   result?: MigrationResult,
   selectedSsidIds?: Set<string>
-): void {
+): Promise<void> {
+  // Pulls the PDF vendor chunk only when a report is actually requested.
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+    import('jspdf') as Promise<JsPDFModule>,
+    import('jspdf-autotable') as Promise<AutoTableModule>,
+  ]);
+
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const now = new Date();
   const timestamp = now.toISOString().slice(0, 19).replace('T', ' ');
@@ -989,7 +1006,7 @@ export function downloadMigrationReport(
       styles: { fontSize: 9 },
       margin: { left: 14, right: 14 },
     });
-    y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
+    y = (doc as jsPDFType & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
 
     // Failed services
     if (result.services.failed.length > 0) {
@@ -1003,7 +1020,7 @@ export function downloadMigrationReport(
         styles: { fontSize: 8 },
         margin: { left: 14, right: 14 },
       });
-      y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
+      y = (doc as jsPDFType & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
     }
   }
 
@@ -1043,7 +1060,7 @@ export function downloadMigrationReport(
       styles: { fontSize: 8 },
       margin: { left: 14, right: 14 },
     });
-    y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
+    y = (doc as jsPDFType & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
   }
 
   // ── VLANs / Topologies ────────────────────────────────────────────────────
@@ -1058,7 +1075,7 @@ export function downloadMigrationReport(
       styles: { fontSize: 8 },
       margin: { left: 14, right: 14 },
     });
-    y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
+    y = (doc as jsPDFType & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
   }
 
   // ── RADIUS Servers ────────────────────────────────────────────────────────
@@ -1086,7 +1103,7 @@ export function downloadMigrationReport(
       styles: { fontSize: 8 },
       margin: { left: 14, right: 14 },
     });
-    y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
+    y = (doc as jsPDFType & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
 
     // RADIUS secret warning box
     const radiusNoSecret = data.radius.filter((r) => !r.secret);
@@ -1132,7 +1149,7 @@ export function downloadMigrationReport(
       styles: { fontSize: 8 },
       margin: { left: 14, right: 14 },
     });
-    y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
+    y = (doc as jsPDFType & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
   }
 
   // ── PSK placeholder notice ────────────────────────────────────────────────

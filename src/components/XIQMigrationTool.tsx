@@ -140,6 +140,25 @@ export function XIQMigrationTool() {
   const [dryRun, setDryRun] = useState(false);
   const [enableAfterMigration, setEnableAfterMigration] = useState(false);
   const [skipExisting, setSkipExisting] = useState(true);
+
+  /**
+   * Generate the PDF report.
+   *
+   * `downloadMigrationReport` now loads jsPDF on demand, so it is async and can
+   * fail if that chunk cannot be fetched. Report that rather than letting the
+   * button silently do nothing.
+   */
+  const generateReport = (
+    data: Parameters<typeof downloadMigrationReport>[0],
+    result?: Parameters<typeof downloadMigrationReport>[1],
+    ssids?: Parameters<typeof downloadMigrationReport>[2]
+  ) => {
+    downloadMigrationReport(data, result, ssids).catch(() => {
+      toast.error('Could not generate the PDF report', {
+        description: 'The report module failed to load. Check your connection and try again.',
+      });
+    });
+  };
   const [downloadReportAfter, setDownloadReportAfter] = useState(true);
   const [migrating, setMigrating] = useState(false);
   const [migrationResult, setMigrationResult] = useState<MigrationResult | null>(null);
@@ -349,7 +368,7 @@ export function XIQMigrationTool() {
       else if (skipped > 0 && config.services.length === 0)
         toast.info(`Nothing to migrate — all ${skipped} SSID(s) already on controller`);
       else toast.error('Migration failed');
-      if (downloadReportAfter) downloadMigrationReport(xiqData, result, ssidSel);
+      if (downloadReportAfter) generateReport(xiqData, result, ssidSel);
     } catch (err) {
       addLog(err instanceof Error ? err.message : 'Migration error', 'error');
       toast.error('Migration error');
@@ -590,7 +609,7 @@ export function XIQMigrationTool() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => downloadMigrationReport(xiqData, undefined, ssidSel)}
+              onClick={() => generateReport(xiqData, undefined, ssidSel)}
             >
               <Download className="h-4 w-4 mr-1" />
               Download PDF Report
@@ -970,7 +989,7 @@ export function XIQMigrationTool() {
                     variant="outline"
                     size="sm"
                     onClick={() =>
-                      xiqData && downloadMigrationReport(xiqData, migrationResult, ssidSel)
+                      xiqData && generateReport(xiqData, migrationResult, ssidSel)
                     }
                   >
                     <Download className="h-4 w-4 mr-1" />

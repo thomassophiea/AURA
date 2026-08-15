@@ -163,7 +163,12 @@ export default defineConfig(({ mode }) => ({
           'vendor-icons': ['lucide-react'],
           // Feature-specific vendors — only loaded when the relevant section is used
           'vendor-aggrid': ['ag-grid-community', 'ag-grid-react'],
-          'vendor-pdf': ['jspdf', 'jspdf-autotable'],
+          // jspdf is deliberately NOT forced into a named chunk. Its only import
+          // is dynamic (see xiqMigrationService), and the object form of
+          // manualChunks hoists a forced chunk into the entry's *static* import
+          // list even when every source reference is dynamic — which put ~131 KB
+          // gzipped of PDF machinery behind a modulepreload on the login page.
+          // Left unforced, Rollup keeps it in the dynamic graph where it belongs.
           'vendor-crypto': ['tweetnacl', 'tweetnacl-sealedbox-js'],
           'vendor-carousel': ['embla-carousel-react'],
           'vendor-qr': ['qrcode.react'],
