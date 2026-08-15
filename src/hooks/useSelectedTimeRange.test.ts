@@ -7,6 +7,25 @@ import { localDateKey, localDayAtOffset } from '../lib/timeRange';
 import { monitoringHistory } from '../services/monitoringHistory';
 import type { CoverageResponse } from '../types/monitoring';
 
+// The policy is storage-backed and Node's experimental `localStorage` global
+// shadows jsdom's in this runtime, so drive it directly instead of through
+// storage — these tests are about the clock, not about persistence.
+const { autoRefreshState } = vi.hoisted(() => ({ autoRefreshState: { enabled: false } }));
+vi.mock('../lib/autoRefresh', () => ({
+  isAutoRefreshEnabled: () => autoRefreshState.enabled,
+  setAutoRefreshEnabled: (v: boolean) => {
+    autoRefreshState.enabled = v;
+  },
+  whenAutoRefresh:
+    <T extends (...a: never[]) => unknown>(cb: T) =>
+    (...a: Parameters<T>) =>
+      autoRefreshState.enabled ? cb(...a) : undefined,
+}));
+const setAutoRefreshEnabled = (v: boolean) => {
+  autoRefreshState.enabled = v;
+};
+
+
 const NOW = new Date(2026, 7, 6, 15, 50, 0, 0);
 const dateOf = (offset: number) => localDateKey(localDayAtOffset(offset, NOW));
 
@@ -119,7 +138,26 @@ describe('useSelectedTimeRange — persistence across views', () => {
 });
 
 describe('useSelectedTimeRange — the clock', () => {
-  it('advances a live window as time passes', () => {
+  it('holds a live window still while auto-refresh is off', () => {
+    // A live window's `end` advancing every  was the dashboard's de-facto
+    // refresh trigger: new bounds meant a new range identity and a refetch in
+    // every consumer. With timer refresh off that is exactly the page reloading
+    // itself under an idle viewer, so the window stays put until the user
+    // navigates or presses Refresh.
+    setAutoRefreshEnabled(false);
+    const { result } = renderHook(() => useSelectedTimeRange({ withCoverage: false }));
+    const before = result.current.range.endIso;
+
+    act(() => {
+      vi.setSystemTime(new Date(NOW.getTime() + 5 * 61_000));
+      vi.advanceTimersByTime(5 * 61_000);
+    });
+
+    expect(result.current.range.endIso).toBe(before);
+  });
+
+  it('advances a live window as time passes when auto-refresh is on', () => {
+    setAutoRefreshEnabled(true);
     const { result } = renderHook(() => useSelectedTimeRange({ withCoverage: false }));
     const before = result.current.range.endIso;
 
@@ -129,6 +167,24 @@ describe('useSelectedTimeRange — the clock', () => {
     });
 
     expect(result.current.range.endIso).not.toBe(before);
+    setAutoRefreshEnabled(false);
+  });
+
+  it('still follows the calendar across midnight with auto-refresh off', () => {
+    // The window must not advance minute to minute, but "Yesterday" genuinely
+    // means a different day once the date rolls over.
+    setAutoRefreshEnabled(false);
+    setGlobalFilters({ timeRange: 'day-1' });
+    vi.advanceTimersByTime(400);
+    const { result } = renderHook(() => useSelectedTimeRange({ withCoverage: false }));
+    const before = result.current.range.startIso;
+
+    act(() => {
+      vi.setSystemTime(new Date(NOW.getTime() + 36 * 60 * 60 * 1000));
+      vi.advanceTimersByTime(61_000);
+    });
+
+    expect(result.current.range.startIso).not.toBe(before);
   });
 
   it('holds a finished day perfectly still, so consumers do not refetch it', () => {

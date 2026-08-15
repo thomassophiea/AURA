@@ -7,17 +7,20 @@
  *
  * Two behaviours here are deliberate:
  *
- *  - **A live window re-resolves on a timer, not on every render.** `end` for a
- *    rolling window is "now", which changes continuously; recomputing it inline
- *    would give every consumer a new `startIso`/`endIso` on each render and
- *    restart their fetches forever. Ticking on an interval keeps the bounds
- *    stable between ticks, which is what makes them usable as query keys.
+ *  - **A live window is resolved once and held still.** `end` for a rolling
+ *    window is "now", which changes continuously; recomputing it inline would
+ *    give every consumer a new `startIso`/`endIso` on each render and restart
+ *    their fetches forever. It used to advance on a minute timer, which was the
+ *    dashboard's de-facto refresh trigger — and therefore a page reloading
+ *    itself under an idle viewer. The bounds now hold until the user navigates
+ *    or refreshes, unless auto-refresh is switched on.
  *  - **A historical window never ticks at all.** A finished calendar day does not
  *    change, so re-resolving it, re-fetching it, or polling a gateway for it is
  *    pure waste. `range.isLive` is what callers gate their polling on.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { isAutoRefreshEnabled } from '../lib/autoRefresh';
 
 import { useGlobalFilters } from './useGlobalFilters';
 import { monitoringHistory } from '../services/monitoringHistory';
@@ -38,7 +41,7 @@ import {
 } from '../lib/timeRangeAvailability';
 import type { CoverageResponse } from '../types/monitoring';
 
-/** How often a live window's `end` advances. Matches the dashboard refresh cadence. */
+/** How often the clock is re-examined. Bounds only move on a calendar rollover, or under auto-refresh. */
 const LIVE_TICK_MS = 60_000;
 
 /**
@@ -135,8 +138,25 @@ export function useSelectedTimeRange(
   // The timer always runs: a selection of "Yesterday" still has to follow the
   // calendar across midnight. What it must NOT do is hand consumers a new window
   // every minute for a window that has not moved — see the memo below.
+  //
+  // With timer refresh off, that restriction now extends to *live* windows too.
+  // A live window's `end` genuinely advances each minute, which produces new
+  // bounds, a new resolved-range identity, and a refetch in every consumer —
+  // this was the dashboard's real refresh mechanism, and left alone it was the
+  // last thing still reloading a page the user was only looking at. Holding
+  // `now` steady keeps the window fixed until the user navigates or refreshes.
+  //
+  // The calendar rollover is preserved regardless: after midnight "Yesterday"
+  // means a different day, and returning the previous Date object unchanged
+  // means React skips the re-render entirely on every other tick.
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), LIVE_TICK_MS);
+    const timer = setInterval(() => {
+      setNow((previous) => {
+        const next = new Date();
+        if (isAutoRefreshEnabled()) return next;
+        return next.toDateString() === previous.toDateString() ? previous : next;
+      });
+    }, LIVE_TICK_MS);
     return () => clearInterval(timer);
   }, []);
 
