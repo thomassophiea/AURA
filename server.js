@@ -28,6 +28,7 @@ import { createSentinelRouter } from './server/sentinel/sentinelRouter.js';
 import { createMonitoringRouter } from './server/monitoring/monitoringRouter.js';
 import { createGuestsRouter } from './server/guests/guestsRouter.js';
 import { createSystemRouter } from './server/system/systemRouter.js';
+import { createServicesSummaryRouter } from './server/services/servicesSummaryRouter.js';
 import { describeEnvironment } from './server/system/environment.js';
 import { assertDatabaseEnvironment } from './server/db/environmentGuard.js';
 import { loadCwpConfig } from './server/guests/cwpClient.js';
@@ -2106,6 +2107,19 @@ if (monitoringConfig) {
 // reported as variable names and presence only, never values.
 app.use('/api', createSystemRouter({ config: monitoringConfig, dirname: __dirname }));
 console.log('[Proxy Server] ✓ System API mounted at /api/v1/system/*');
+
+// ==================== Aggregated resource routes ====================
+// Roll-ups that would otherwise be assembled by the browser out of many gateway
+// calls. Mounted before the catch-all controller proxy so they are served here
+// rather than forwarded upstream.
+app.use(
+  '/api',
+  createServicesSummaryRouter({
+    resolveControllerUrl: getControllerUrl,
+    agent: controllerAgent,
+  })
+);
+console.log('[Proxy Server] ✓ Services summary mounted at /api/v1/services/summary');
 
 // ==================== Guest Management Routes ====================
 // Guest records live in the captive portal's own database and are reached

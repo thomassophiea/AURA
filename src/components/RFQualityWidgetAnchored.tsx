@@ -13,6 +13,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
+import { whenVisible } from '../lib/pollingGuard';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -92,7 +93,7 @@ export function RFQualityWidgetAnchored() {
 
   useEffect(() => {
     loadRFQIData();
-    const interval = setInterval(() => loadRFQIData(true), 60000); // Refresh every minute for real-time feel
+    const interval = setInterval(whenVisible(() => loadRFQIData(true)), 60000); // Refresh every minute for real-time feel
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveSiteId, ctx.timeRange]);

@@ -19,6 +19,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { whenVisible } from '../lib/pollingGuard';
 import { useGlobalFilters } from './useGlobalFilters';
 import { apiService, AccessPoint, Station, Service } from '../services/api';
 
@@ -211,7 +212,7 @@ export function useContextScopedData(
     fetchScopedData();
 
     if (refreshInterval) {
-      const interval = setInterval(fetchScopedData, refreshInterval);
+      const interval = setInterval(whenVisible(fetchScopedData), refreshInterval);
       return () => clearInterval(interval);
     }
     return undefined;

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { whenVisible } from '../lib/pollingGuard';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -70,7 +71,7 @@ export function OSOneWidget({
   useEffect(() => {
     loadOSOneInfo();
     // Auto-refresh every 60 seconds
-    const interval = setInterval(loadOSOneInfo, 60000);
+    const interval = setInterval(whenVisible(loadOSOneInfo), 60000);
     return () => clearInterval(interval);
   }, [siteId]);
 

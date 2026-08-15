@@ -2,7 +2,22 @@ import https from 'node:https';
 
 import { sanitizeMessage } from '../monitoring/errorSanitizer.js';
 
-const insecureAgent = new https.Agent({ rejectUnauthorized: false });
+/**
+ * Default agent for controller calls.
+ *
+ * Pooled and keep-alive: the collector, the sentinel checks and the aggregate
+ * routes all call the controller repeatedly, and without an agent each call paid
+ * a fresh TCP handshake and TLS negotiation. `rejectUnauthorized: false` is
+ * unchanged behaviour — the controller presents a self-signed certificate and
+ * every AURA path to it has always accepted that.
+ */
+const insecureAgent = new https.Agent({
+  rejectUnauthorized: false,
+  keepAlive: true,
+  keepAliveMsecs: 15000,
+  maxSockets: 32,
+  maxFreeSockets: 8,
+});
 
 /**
  * Low-level XCC request.

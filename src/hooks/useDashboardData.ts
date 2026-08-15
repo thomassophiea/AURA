@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Dashboard API responses from Campus Controller are untyped JSON
 import { useState, useEffect, useCallback } from 'react';
+import { whenVisible } from '../lib/pollingGuard';
 import { toast } from 'sonner';
 import { apiService } from '../services/api';
 import { throughputService, ThroughputSnapshot } from '../services/throughput';
@@ -1098,6 +1099,51 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
     const poor: Service[] = [];
     const servicesToFetch = svcs.slice(0, 10);
 
+    /** Classify a WLAN as poor from its report figures. Shared by both paths. */
+    const classify = (service: Service, reportData: ServiceReport) => {
+      const reliability = (reportData as any).metrics?.reliability ?? service.reliability;
+      const uptime = (reportData as any).metrics?.uptime ?? service.uptime;
+      const reliabilityKnown = Number.isFinite(reliability);
+      const uptimeKnown = Number.isFinite(uptime);
+      if (
+        (reliabilityKnown && (reliability as number) < 95) ||
+        (uptimeKnown && (uptime as number) < 95)
+      ) {
+        poor.push(service);
+      }
+    };
+
+    // Preferred path: one aggregated request.
+    //
+    // The per-WLAN fan-out below issues two gateway calls per service, and the
+    // browser will only run six at a time against one origin — measured as the
+    // largest single contributor to Dashboard load. `/api/v1/services/summary`
+    // performs the same fan-out server-side over pooled connections and returns
+    // it in one response. The fan-out is kept as a fallback so a deployment
+    // whose backend predates the endpoint still renders.
+    try {
+      const summaryResponse = await fetch('/api/v1/services/summary', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('access_token') ?? ''}` },
+      });
+      if (summaryResponse.ok) {
+        const summary = await summaryResponse.json();
+        for (const service of servicesToFetch) {
+          const reportData = summary.reports?.[service.id];
+          if (reportData) {
+            reports.set(service.id, reportData);
+            classify(service, reportData);
+          }
+          const count = summary.stationCounts?.[service.id];
+          if (typeof count === 'number') service.clientCount = count;
+        }
+        setServiceReports(reports);
+        setPoorServices(poor);
+        return;
+      }
+    } catch {
+      // Fall through to the per-service path below.
+    }
+
     const servicePromises = servicesToFetch.map(async (service) => {
       try {
         const [reportResponse, stationsResponse] = await Promise.all([
@@ -1260,9 +1306,12 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
     // refresh still works.
     const interval = isHistorical
       ? null
-      : setInterval(() => {
-          loadDashboardData(true);
-        }, 60000);
+      : setInterval(
+          whenVisible(() => {
+            loadDashboardData(true);
+          }),
+          60000
+        );
 
     return () => {
       if (interval) clearInterval(interval);
@@ -1277,9 +1326,12 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
     loadHistoricalThroughput();
     if (isHistorical) return undefined;
 
-    const historyInterval = setInterval(() => {
-      loadHistoricalThroughput();
-    }, 300000);
+    const historyInterval = setInterval(
+      whenVisible(() => {
+        loadHistoricalThroughput();
+      }),
+      300000
+    );
     return () => clearInterval(historyInterval);
   }, [loadHistoricalThroughput, isHistorical]);
 

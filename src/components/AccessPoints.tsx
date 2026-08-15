@@ -66,6 +66,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
 import { apiService, AccessPoint, APDetails, APStation, APQueryColumn } from '../services/api';
+import { readSnapshot, writeSnapshot, SNAPSHOT_KEYS } from '../lib/viewSnapshot';
 import { ExportButton } from './ExportButton';
 import { toast } from 'sonner';
 import { SaveToWorkspace } from './SaveToWorkspace';
@@ -569,12 +570,18 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
   const { navigationScope, siteGroups, orgSiteGroupFilter } = useAppContext();
   const { agGridEnabled } = useGridMode();
   const { setWirelessContext } = useCortexContext();
-  const [accessPoints, setAccessPoints] = useState<AccessPoint[]>([]);
+  // Seed from the last-known list so returning to Devices paints immediately
+  // instead of replacing the grid with a full-page skeleton. A real load is
+  // always kicked off below regardless, so this changes when content appears,
+  // never what it eventually shows.
+  const [accessPoints, setAccessPoints] = useState<AccessPoint[]>(
+    () => readSnapshot<AccessPoint[]>(SNAPSHOT_KEYS.accessPoints) ?? []
+  );
   const [clientCounts, setClientCounts] = useState<Record<string, number>>({});
   const [apMetrics, setApMetrics] = useState<
     Record<string, { cpuUsage?: number; memoryUsage?: number }>
   >({});
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(() => readSnapshot(SNAPSHOT_KEYS.accessPoints) === null);
   const [isLoadingClients, setIsLoadingClients] = useState(false);
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
   const [meshRoles, setMeshRoles] = useState<Map<string, 'BASE' | 'RELAY'>>(new Map());
@@ -816,6 +823,11 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
     const isFirstLoad = accessPoints.length === 0;
     if (!opts.silent && isFirstLoad) {
       setIsLoading(true);
+    } else if (!opts.silent) {
+      // We already have rows on screen (live or restored from the snapshot).
+      // Refresh them in place and show the quiet refreshing affordance rather
+      // than tearing the grid down.
+      setIsAutoRefreshing(true);
     }
     setError('');
 
@@ -898,6 +910,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
       }
 
       setAccessPoints(apsWithLight);
+      writeSnapshot(SNAPSHOT_KEYS.accessPoints, apsWithLight);
 
       // Update last refresh time on successful load
       setLastRefreshTime(new Date());
@@ -921,6 +934,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
       }
     } finally {
       setIsLoading(false);
+      setIsAutoRefreshing(false);
     }
   };
 

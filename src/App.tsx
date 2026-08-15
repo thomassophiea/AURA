@@ -151,6 +151,7 @@ const PerformanceAnalytics = lazy(() =>
   import('./components/PerformanceAnalytics').then((m) => ({ default: m.PerformanceAnalytics }))
 );
 import { apiService, ApiCallLog } from './services/api';
+import { clearSnapshots } from '@/lib/viewSnapshot';
 // reportConfigPersistence imported by SharedReportViewer directly
 import { AppContextProvider } from './contexts/AppContext';
 import type { NavigationScope } from './config/navigationScopes';
@@ -498,6 +499,7 @@ export default function App() {
 
     // Listen for session expiration errors
     const handleSessionExpired = () => {
+      clearSnapshots();
       setIsAuthenticated(false);
       setAdminRole(null);
       setCurrentPage('workspace');
@@ -1069,6 +1071,8 @@ export default function App() {
     sleDataCollectionService.stopCollection();
 
     await apiService.logout();
+    // One session's rows must never paint into the next one's view.
+    clearSnapshots();
     devMode.lock();
     setIsAuthenticated(false);
     setAdminRole(null);
