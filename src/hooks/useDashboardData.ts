@@ -111,6 +111,24 @@ export interface ServiceReport {
   }>;
 }
 
+/**
+ * Response of `GET /api/v1/services/summary` — the per-WLAN report and station
+ * fan-out, rolled up server-side into one payload.
+ */
+export interface ServicesSummary {
+  services: Service[];
+  reports: Record<string, ServiceReport>;
+  stationCounts: Record<string, number>;
+  meta: {
+    serviceCount: number;
+    expandedCount: number;
+    truncated: boolean;
+    /** WLANs whose sub-resources failed; the rest of the summary is still valid. */
+    failures: Array<{ id: string; error: string }>;
+    assembledAt: string;
+  };
+}
+
 export interface Notification {
   id: string;
   type: string;
@@ -1093,11 +1111,29 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
     [performVendorLookups, storeThroughputSnapshot, loadHistoricalThroughput]
   );
 
-  const processServices = useCallback(async (svcs: Service[]) => {
-    setServices(svcs);
-    const reports = new Map<string, ServiceReport>();
-    const poor: Service[] = [];
-    const servicesToFetch = svcs.slice(0, 10);
+  /**
+   * Fetch the aggregated WLAN summary.
+   *
+   * Resolves to null rather than throwing, so a backend that predates the
+   * endpoint simply falls through to the per-service fan-out.
+   */
+  const fetchServicesSummary = useCallback(async (): Promise<ServicesSummary | null> => {
+    try {
+      const response = await fetch('/api/v1/services/summary', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('access_token') ?? ''}` },
+      });
+      return response.ok ? ((await response.json()) as ServicesSummary) : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const processServices = useCallback(
+    async (svcs: Service[], summaryPromise?: Promise<ServicesSummary | null>) => {
+      setServices(svcs);
+      const reports = new Map<string, ServiceReport>();
+      const poor: Service[] = [];
+      const servicesToFetch = svcs.slice(0, 10);
 
     /** Classify a WLAN as poor from its report figures. Shared by both paths. */
     const classify = (service: Service, reportData: ServiceReport) => {
@@ -1113,20 +1149,16 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
       }
     };
 
-    // Preferred path: one aggregated request.
-    //
-    // The per-WLAN fan-out below issues two gateway calls per service, and the
-    // browser will only run six at a time against one origin — measured as the
-    // largest single contributor to Dashboard load. `/api/v1/services/summary`
-    // performs the same fan-out server-side over pooled connections and returns
-    // it in one response. The fan-out is kept as a fallback so a deployment
-    // whose backend predates the endpoint still renders.
-    try {
-      const summaryResponse = await fetch('/api/v1/services/summary', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('access_token') ?? ''}` },
-      });
-      if (summaryResponse.ok) {
-        const summary = await summaryResponse.json();
+      // Preferred path: one aggregated request, already in flight.
+      //
+      // The per-WLAN fan-out below issues two gateway calls per service, and the
+      // browser will only run six at a time against one origin — measured as the
+      // largest single contributor to Dashboard load. `/api/v1/services/summary`
+      // performs the same fan-out server-side over pooled connections and
+      // returns it in one response. The fan-out is kept as a fallback so a
+      // deployment whose backend predates the endpoint still renders.
+      const summary = summaryPromise ? await summaryPromise : null;
+      if (summary) {
         for (const service of servicesToFetch) {
           const reportData = summary.reports?.[service.id];
           if (reportData) {
@@ -1140,58 +1172,46 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
         setPoorServices(poor);
         return;
       }
-    } catch {
-      // Fall through to the per-service path below.
-    }
 
-    const servicePromises = servicesToFetch.map(async (service) => {
-      try {
-        const [reportResponse, stationsResponse] = await Promise.all([
-          apiService.makeAuthenticatedRequest(
-            `/v1/services/${service.id}/report`,
-            { method: 'GET' },
-            8000
-          ),
-          apiService.makeAuthenticatedRequest(
-            `/v1/services/${service.id}/stations`,
-            { method: 'GET' },
-            8000
-          ),
-        ]);
+      const servicePromises = servicesToFetch.map(async (service) => {
+        try {
+          const [reportResponse, stationsResponse] = await Promise.all([
+            apiService.makeAuthenticatedRequest(
+              `/v1/services/${service.id}/report`,
+              { method: 'GET' },
+              8000
+            ),
+            apiService.makeAuthenticatedRequest(
+              `/v1/services/${service.id}/stations`,
+              { method: 'GET' },
+              8000
+            ),
+          ]);
 
-        if (reportResponse.ok) {
-          const reportData = await reportResponse.json();
-          reports.set(service.id, reportData);
-
-          const reliability = reportData.metrics?.reliability ?? service.reliability;
-          const uptime = reportData.metrics?.uptime ?? service.uptime;
-          const reliabilityKnown = Number.isFinite(reliability);
-          const uptimeKnown = Number.isFinite(uptime);
-
-          if (
-            (reliabilityKnown && (reliability as number) < 95) ||
-            (uptimeKnown && (uptime as number) < 95)
-          ) {
-            poor.push(service);
+          if (reportResponse.ok) {
+            const reportData = await reportResponse.json();
+            reports.set(service.id, reportData);
+            classify(service, reportData);
           }
-        }
 
-        if (stationsResponse.ok) {
-          const stationsData = await stationsResponse.json();
-          const stationList = Array.isArray(stationsData)
-            ? stationsData
-            : (stationsData ?? {}).stations || [];
-          service.clientCount = stationList.length;
+          if (stationsResponse.ok) {
+            const stationsData = await stationsResponse.json();
+            const stationList = Array.isArray(stationsData)
+              ? stationsData
+              : (stationsData ?? {}).stations || [];
+            service.clientCount = stationList.length;
+          }
+        } catch {
+          /* station fetch failed, skip */
         }
-      } catch {
-        /* station fetch failed, skip */
-      }
-    });
+      });
 
-    await Promise.allSettled(servicePromises);
-    setServiceReports(reports);
-    setPoorServices(poor);
-  }, []);
+      await Promise.allSettled(servicePromises);
+      setServiceReports(reports);
+      setPoorServices(poor);
+    },
+    []
+  );
 
   const processNotifications = useCallback((notifs: Notification[]) => {
     const oneDayAgo = Date.now() - 86400000;
@@ -1232,6 +1252,14 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
           setLoading(true);
         }
 
+        // The WLAN summary does not depend on this page's own /v1/services call
+        // — it resolves the collection server-side — so it starts here, in
+        // parallel with everything else, rather than after `fetchServices()`
+        // resolves. Awaiting it inside `processServices` made the two the
+        // dashboard's critical path back to back (~212ms then ~981ms) when they
+        // could overlap.
+        const summaryPromise = fetchServicesSummary();
+
         const [apsResult, stationsResult, servicesResult] = await Promise.allSettled([
           fetchAccessPoints(),
           fetchStations(),
@@ -1241,7 +1269,10 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
         let servicesData: Service[] = [];
         if (servicesResult.status === 'fulfilled' && servicesResult.value) {
           servicesData = servicesResult.value;
-          await processServices(servicesData);
+          await processServices(servicesData, summaryPromise);
+        } else {
+          // Nothing will consume it; make sure a rejection cannot go unhandled.
+          void summaryPromise.catch(() => null);
         }
 
         if (apsResult.status === 'fulfilled' && apsResult.value) {
@@ -1285,6 +1316,7 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
       fetchAccessPoints,
       fetchStations,
       fetchServices,
+      fetchServicesSummary,
       processServices,
       processAccessPoints,
       processStations,
