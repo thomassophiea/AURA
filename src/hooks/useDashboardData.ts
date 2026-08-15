@@ -1248,6 +1248,9 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
       try {
         if (isRefresh) {
           setRefreshing(true);
+          // A deliberate refresh must reach the controller rather than replay
+          // the burst cache, which exists to collapse navigation storms.
+          apiService.clearBurstCache();
         } else {
           setLoading(true);
         }

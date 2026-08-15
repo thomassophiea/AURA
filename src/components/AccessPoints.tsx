@@ -2444,6 +2444,11 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
           />
           <Button
             onClick={() => {
+              // A deliberate refresh must reach the controller. The burst cache
+              // replays GETs completed in the last couple of seconds, which is
+              // right for a navigation storm and wrong here — pressing Refresh
+              // just after the page loaded would otherwise do nothing at all.
+              apiService.clearBurstCache();
               // Refresh APs, client counts, and AP metrics together.
               loadData();
               setIsAutoRefreshing(true);

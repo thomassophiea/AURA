@@ -1,4 +1,5 @@
 import { apiService } from './api';
+import { whenAutoRefresh } from '../lib/autoRefresh';
 
 /**
  * Service Level Experience (SLE) Data Collection Service
@@ -82,10 +83,21 @@ class SLEDataCollectionService {
     // Collect immediately on start
     this.collectData();
 
-    // Then collect every minute
-    this.collectionInterval = window.setInterval(() => {
-      this.collectData();
-    }, this.COLLECTION_INTERVAL_MS);
+    // Then collect every minute — but only under the auto-refresh policy.
+    //
+    // This is a client-side store feeding the SLE views, separate from the
+    // authoritative 7-day history that the server-side collector writes to
+    // Postgres (which is unaffected and keeps running). Left ungated it was a
+    // /v1/stations fetch every 60s from whatever page happened to be open,
+    // including one the user was only reading. The immediate collection above
+    // still runs on start and whenever the SLE dashboard opens, so looking at
+    // SLE always takes a fresh sample.
+    this.collectionInterval = window.setInterval(
+      whenAutoRefresh(() => {
+        this.collectData();
+      }),
+      this.COLLECTION_INTERVAL_MS
+    );
   }
 
   /**

@@ -5,6 +5,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useCallback } from 'react';
+import { apiService } from '../../services/api';
 import { whenAutoRefresh } from '../../lib/autoRefresh';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -348,8 +349,12 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
   const loadData = useCallback(
     async (isRefresh = false) => {
       try {
-        if (isRefresh) setRefreshing(true);
-        else setLoading(true);
+        if (isRefresh) {
+          setRefreshing(true);
+          // A deliberate refresh must reach the controller, not replay the
+          // short-lived burst cache.
+          apiService.clearBurstCache();
+        } else setLoading(true);
 
         const siteName =
           selectedSite !== 'all'

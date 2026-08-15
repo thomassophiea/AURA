@@ -122,7 +122,22 @@ describe('getVendor — caching behaviour', () => {
         text: () => Promise.resolve('boom'),
       })
     );
-    expect(await getVendor('AA:BB:CC:DD:EE:FF')).toBe('Unknown Vendor');
+    // Globally-administered OUI (0x00 has the locally-administered bit clear),
+    // so this genuinely reaches the API. An 0xAA-prefixed address would be
+    // answered locally as a randomized MAC and never exercise this path.
+    expect(await getVendor('00:1A:2B:DD:EE:FF')).toBe('Unknown Vendor');
+  });
+
+  it('answers a randomized MAC locally, without any network call', async () => {
+    // Modern phones rotate a locally-administered address per network. There is
+    // no manufacturer to look up, and because each one is a distinct OUI they
+    // would each miss the cache — one request per client, per dashboard load,
+    // all returning nothing useful.
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+    expect(await getVendor('4A:9F:63:E2:C2:D6')).toBe('Randomized MAC');
+    expect(await getVendor('82:57:D8:5D:6E:7A')).toBe('Randomized MAC');
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it('returns "Unknown Vendor" when the network call rejects', async () => {

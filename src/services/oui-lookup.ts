@@ -1,3 +1,4 @@
+import { isRandomizedMac } from './macAddressUtils';
 // OUI (Organizationally Unique Identifier) Lookup Service
 // Maps MAC addresses to device manufacturers via backend server
 
@@ -71,6 +72,16 @@ export async function getVendor(mac: string): Promise<string> {
 
   const oui = extractOUI(mac);
   if (!oui) return 'Unknown Vendor';
+
+  // A locally-administered (randomized) MAC has no manufacturer to look up —
+  // the address was invented by the device for privacy. Asking the OUI service
+  // is guaranteed to miss, and because every randomized address is a distinct
+  // OUI it also defeats the cache below: on a floor full of modern phones that
+  // was one HTTP request per client, on every dashboard load, forever returning
+  // 'Unknown Vendor'. Answer it locally instead.
+  if (isRandomizedMac(mac)) {
+    return 'Randomized MAC';
+  }
 
   // Check cache first
   if (vendorCache[oui]) {
