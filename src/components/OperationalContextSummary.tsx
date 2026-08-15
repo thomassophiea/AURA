@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useState, memo } from 'react';
-import { whenVisible } from '../lib/pollingGuard';
+import { whenAutoRefresh } from '../lib/autoRefresh';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -105,7 +105,7 @@ function OperationalContextSummaryComponent() {
     loadContextMetrics();
 
     // Refresh every 2 minutes
-    const interval = setInterval(whenVisible(loadContextMetrics), 120000);
+    const interval = setInterval(whenAutoRefresh(loadContextMetrics), 120000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.site, filters.timeRange]);

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // AP details and metrics from Campus Controller have no TypeScript interfaces
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { RelativeTime } from './ui/RelativeTime';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -729,7 +730,6 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
     syncInterval: 60,
     lastSync: null as Date | null,
   });
-  const [, setTimeUpdateCounter] = useState(0);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
@@ -791,14 +791,6 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
 
   // No visibility-change auto-reload — user can manually refresh.
 
-  // Refresh "time ago" labels every 60s (was 10s — too disruptive to grid interactions)
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      setTimeUpdateCounter((prev) => prev + 1);
-    }, 60000);
-
-    return () => clearInterval(intervalId);
-  }, []);
 
   const loadData = async () => {
     setError('');
@@ -1686,24 +1678,6 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredAccessPoints, clientCounts]);
 
-  // Helper function to format time ago
-  const getTimeAgo = () => {
-    if (!lastRefreshTime) return 'Never';
-
-    const seconds = Math.floor((new Date().getTime() - lastRefreshTime.getTime()) / 1000);
-
-    if (seconds < 10) return 'Just now';
-    if (seconds < 60) return `${seconds}s ago`;
-
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-
-    const days = Math.floor(hours / 24);
-    return `${days}d ago`;
-  };
 
   // Helper function to format uptime from seconds
   const formatUptime = (seconds: number): string => {
@@ -2450,7 +2424,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
           </p>
           {lastRefreshTime && (
             <p className="text-xs text-muted-foreground mt-1">
-              Last updated: {getTimeAgo()}
+              Last updated: <RelativeTime date={lastRefreshTime} />
               {isAutoRefreshing && (
                 <span className="ml-2 inline-flex items-center">
                   <RefreshCw className="h-3 w-3 animate-spin mr-1" />

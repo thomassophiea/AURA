@@ -183,6 +183,8 @@ export function MobileHome({
   useEffect(() => {
     if (!lastUpdated) return;
     setCacheAge(Date.now() - lastUpdated.getTime());
+    // Local label only ("cached 3m ago") — no fetch, so this is not a data
+    // refresh and is not gated by the auto-refresh policy.
     const interval = setInterval(() => {
       setCacheAge(Date.now() - lastUpdated.getTime());
     }, 60000);

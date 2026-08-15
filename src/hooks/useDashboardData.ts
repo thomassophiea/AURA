@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Dashboard API responses from Campus Controller are untyped JSON
 import { useState, useEffect, useCallback } from 'react';
-import { whenVisible } from '../lib/pollingGuard';
+import { whenAutoRefresh } from '../lib/autoRefresh';
 import { toast } from 'sonner';
 import { apiService } from '../services/api';
 import { throughputService, ThroughputSnapshot } from '../services/throughput';
@@ -1339,7 +1339,7 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
     const interval = isHistorical
       ? null
       : setInterval(
-          whenVisible(() => {
+          whenAutoRefresh(() => {
             loadDashboardData(true);
           }),
           60000
@@ -1359,7 +1359,7 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
     if (isHistorical) return undefined;
 
     const historyInterval = setInterval(
-      whenVisible(() => {
+      whenAutoRefresh(() => {
         loadHistoricalThroughput();
       }),
       300000

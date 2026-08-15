@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { whenVisible } from '../../lib/pollingGuard';
+import { whenAutoRefresh } from '../../lib/autoRefresh';
 import {
   X,
   Minus,
@@ -179,7 +179,7 @@ export function AgentWorkspace({
 
   useEffect(() => {
     fetchDriftAlerts();
-    const id = setInterval(whenVisible(fetchDriftAlerts), 30_000);
+    const id = setInterval(whenAutoRefresh(fetchDriftAlerts), 30_000);
     return () => clearInterval(id);
   }, [fetchDriftAlerts]);
 

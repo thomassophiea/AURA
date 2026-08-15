@@ -10,6 +10,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { whenAutoRefresh } from '../lib/autoRefresh';
 
 import { monitoringHistory, rangeFromPreset } from '../services/monitoringHistory';
 import type { HistoryQuery } from '../services/monitoringHistory';
@@ -180,7 +181,7 @@ export function useMonitoringHistory(
 
   useEffect(() => {
     if (!enabled || refreshIntervalMs <= 0) return undefined;
-    const timer = setInterval(load, refreshIntervalMs);
+    const timer = setInterval(whenAutoRefresh(load), refreshIntervalMs);
     return () => clearInterval(timer);
   }, [enabled, refreshIntervalMs, load]);
 

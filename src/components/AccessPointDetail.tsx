@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Campus Controller API responses are untyped JSON; any is pervasive throughout this component
 import { useState, useEffect } from 'react';
+import { RelativeTime } from './ui/RelativeTime';
+import { whenAutoRefresh } from '../lib/autoRefresh';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -368,7 +370,6 @@ export function AccessPointDetail({ serialNumber, apData }: AccessPointDetailPro
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
-  const [, setTimeUpdateCounter] = useState(0);
   const [eventDuration, setEventDuration] = useState<number>(14);
   const [expandedEventId, setExpandedEventId] = useState<string | null>(null);
   const [showEvents, setShowEvents] = useState(false);
@@ -479,15 +480,15 @@ export function AccessPointDetail({ serialNumber, apData }: AccessPointDetailPro
   useEffect(() => {
     const REFRESH_INTERVAL = 60000; // 60 seconds
 
-    const intervalId = setInterval(() => {
-      // Only auto-refresh if the page is visible
-      if (document.visibilityState === 'visible') {
+    const intervalId = setInterval(
+      whenAutoRefresh(() => {
         setIsAutoRefreshing(true);
         loadApDetails().finally(() => {
           setIsAutoRefreshing(false);
         });
-      }
-    }, REFRESH_INTERVAL);
+      }),
+      REFRESH_INTERVAL
+    );
 
     // Cleanup interval on unmount
     return () => clearInterval(intervalId);
@@ -496,11 +497,13 @@ export function AccessPointDetail({ serialNumber, apData }: AccessPointDetailPro
 
   // Pause polling when tab becomes inactive, resume when active
   useEffect(() => {
-    const handleVisibilityChange = () => {
+    // Returning to the tab is not a request for fresh data — it re-rendered a
+    // page the user was already reading. Under timer refresh it still catches up.
+    const handleVisibilityChange = whenAutoRefresh(() => {
       if (document.visibilityState === 'visible') {
         loadApDetails();
       }
-    };
+    });
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
@@ -510,33 +513,7 @@ export function AccessPointDetail({ serialNumber, apData }: AccessPointDetailPro
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serialNumber]);
 
-  // Force re-render every 10 seconds to update "time ago" text
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      setTimeUpdateCounter((prev) => prev + 1);
-    }, 10000);
 
-    return () => clearInterval(intervalId);
-  }, []);
-
-  // Helper function to format time ago
-  const getTimeAgo = () => {
-    if (!lastRefreshTime) return 'Never';
-
-    const seconds = Math.floor((new Date().getTime() - lastRefreshTime.getTime()) / 1000);
-
-    if (seconds < 10) return 'Just now';
-    if (seconds < 60) return `${seconds}s ago`;
-
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-
-    const days = Math.floor(hours / 24);
-    return `${days}d ago`;
-  };
 
   // Helper function to format uptime from seconds
   const formatUptime = (seconds: number): string => {
@@ -645,7 +622,7 @@ export function AccessPointDetail({ serialNumber, apData }: AccessPointDetailPro
           </div>
           {lastRefreshTime && (
             <p className="text-xs text-muted-foreground mt-1 ml-7">
-              Last updated: {getTimeAgo()}
+              Last updated: <RelativeTime date={lastRefreshTime} />
               {isAutoRefreshing && (
                 <span className="ml-2 inline-flex items-center">
                   <RefreshCw className="h-3 w-3 animate-spin mr-1" />

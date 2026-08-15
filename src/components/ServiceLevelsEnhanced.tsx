@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { whenAutoRefresh } from '../lib/autoRefresh';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -215,13 +216,16 @@ export function ServiceLevelsEnhanced() {
     loadSites();
 
     // Auto-refresh every 30 seconds
-    const interval = setInterval(() => {
-      if (selectedService) {
-        loadServiceDetails(selectedService, true);
-      } else {
-        loadServices(true);
-      }
-    }, 30000);
+    const interval = setInterval(
+      whenAutoRefresh(() => {
+        if (selectedService) {
+          loadServiceDetails(selectedService, true);
+        } else {
+          loadServices(true);
+        }
+      }),
+      30000
+    );
 
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps

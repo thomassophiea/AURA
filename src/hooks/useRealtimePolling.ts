@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { whenAutoRefresh } from '../lib/autoRefresh';
 
 interface BatteryManager {
   level: number;
@@ -151,7 +152,7 @@ export function useRealtimePolling<T>(
     const interval = getCurrentInterval();
     if (interval === null) return;
 
-    intervalRef.current = setInterval(fetchData, interval);
+    intervalRef.current = setInterval(whenAutoRefresh(fetchData), interval);
   }, [enabled, getCurrentInterval, fetchData]);
 
   useEffect(() => {

@@ -5,7 +5,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useCallback } from 'react';
-import { whenVisible } from '../../lib/pollingGuard';
+import { whenAutoRefresh } from '../../lib/autoRefresh';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import {
@@ -261,7 +261,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
       }
     };
     fetchBadge();
-    const timer = setInterval(whenVisible(fetchBadge), 30_000);
+    const timer = setInterval(whenAutoRefresh(fetchBadge), 30_000);
     return () => clearInterval(timer);
   }, []);
 
@@ -412,7 +412,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
   useEffect(() => {
     loadData();
     if (!selectedRange.isLive) return undefined;
-    const interval = setInterval(whenVisible(() => loadData(true)), 60000);
+    const interval = setInterval(whenAutoRefresh(() => loadData(true)), 60000);
     return () => clearInterval(interval);
   }, [loadData, selectedRange.isLive]);
 

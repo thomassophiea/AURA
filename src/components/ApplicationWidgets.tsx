@@ -2,6 +2,7 @@
 // Campus Controller API responses are untyped JSON; any is pervasive throughout this component
 
 import { useState, useEffect } from 'react';
+import { whenAutoRefresh } from '../lib/autoRefresh';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -49,9 +50,12 @@ export function ApplicationWidgets({
     loadApplications();
 
     // Auto-refresh every 60 seconds
-    const interval = setInterval(() => {
-      loadApplications(true);
-    }, 60000);
+    const interval = setInterval(
+      whenAutoRefresh(() => {
+        loadApplications(true);
+      }),
+      60000
+    );
 
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -1,4 +1,5 @@
 import { useState, useEffect, lazy, Suspense, useMemo, useCallback, startTransition } from 'react';
+import { whenAutoRefresh } from './lib/autoRefresh';
 import { useGlobalFilters } from './hooks/useGlobalFilters';
 import { AgentCoworker } from './components/AgentCoworker';
 import { CortexContextProvider } from './contexts/CortexContext';
@@ -966,7 +967,7 @@ export default function App() {
       }
     };
     poll();
-    const timer = setInterval(poll, 30_000);
+    const timer = setInterval(whenAutoRefresh(poll), 30_000);
     return () => clearInterval(timer);
   }, [isAuthenticated]);
 

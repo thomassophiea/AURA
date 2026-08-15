@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // API response shapes from Campus Controller are untyped JSON; any is required for widget data
 import { useState, useEffect } from 'react';
-import { whenVisible } from '../lib/pollingGuard';
+import { whenAutoRefresh } from '../lib/autoRefresh';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -519,7 +519,7 @@ export function ReportWidgets() {
     loadWidgets();
 
     // Set up auto-refresh every 30 seconds
-    const interval = setInterval(whenVisible(loadWidgets), 30000);
+    const interval = setInterval(whenAutoRefresh(loadWidgets), 30000);
     return () => clearInterval(interval);
   }, [navigationScope, siteGroups.length]); // eslint-disable-line react-hooks/exhaustive-deps
 

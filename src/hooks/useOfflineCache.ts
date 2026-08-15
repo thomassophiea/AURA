@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { whenAutoRefresh } from '../lib/autoRefresh';
 import { offlineStorage, CURRENT_SCHEMA_VERSION, DEFAULT_TTL } from '@/services/offlineStorage';
 
 interface CacheConfig {
@@ -163,7 +164,7 @@ export function useOfflineCache<T>(
 
     let interval: NodeJS.Timeout | undefined;
     if (refreshInterval > 0) {
-      interval = setInterval(() => fetchData(false), refreshInterval); // Refresh doesn't blank screen
+      interval = setInterval(whenAutoRefresh(() => fetchData(false)), refreshInterval);
     }
 
     return () => {
