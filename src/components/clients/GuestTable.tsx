@@ -78,10 +78,10 @@ function TimeCell({ value, field }: { value: string | null; field: string }) {
  */
 function SecureOnboardingCell({ guest }: { guest: Guest }) {
   const onboarding = guest.secureOnboarding;
-  if (!onboarding) return <span className="text-xs text-muted-foreground">\u2014</span>;
+  if (!onboarding) return <span className="text-xs text-muted-foreground">&mdash;</span>;
 
   const presentation = secureOnboardingPresentation(onboarding.status);
-  if (!presentation) return <span className="text-xs text-muted-foreground">\u2014</span>;
+  if (!presentation) return <span className="text-xs text-muted-foreground">&mdash;</span>;
 
   const when = formatTime(onboarding.completedAt ?? onboarding.startedAt);
   return (
