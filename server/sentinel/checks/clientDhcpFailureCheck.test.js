@@ -17,7 +17,7 @@ describe('clientDhcpFailureCheck', () => {
       ],
     });
 
-    const alerts = await runClientDhcpFailureCheck({ authToken: 'x', controllerUrl: 'http://test' });
+    const { alerts } = await runClientDhcpFailureCheck({ authToken: 'x', controllerUrl: 'http://test' });
     expect(alerts).toEqual([]);
   });
 
@@ -28,7 +28,7 @@ describe('clientDhcpFailureCheck', () => {
     }
 
     fetchXcc.mockResolvedValue({ data: clients });
-    const alerts = await runClientDhcpFailureCheck({ authToken: 'x', controllerUrl: 'http://test' });
+    const { alerts } = await runClientDhcpFailureCheck({ authToken: 'x', controllerUrl: 'http://test' });
 
     expect(alerts).toHaveLength(1);
     expect(alerts[0].severity).toBe('warning');
@@ -44,7 +44,7 @@ describe('clientDhcpFailureCheck', () => {
     }
 
     fetchXcc.mockResolvedValue({ data: clients });
-    const alerts = await runClientDhcpFailureCheck({ authToken: 'x', controllerUrl: 'http://test' });
+    const { alerts } = await runClientDhcpFailureCheck({ authToken: 'x', controllerUrl: 'http://test' });
 
     expect(alerts).toHaveLength(1);
     expect(alerts[0].severity).toBe('critical');
@@ -56,13 +56,42 @@ describe('clientDhcpFailureCheck', () => {
       data: [{ ssid: 'Lonely', ipAddress: null }],
     });
 
-    const alerts = await runClientDhcpFailureCheck({ authToken: 'x', controllerUrl: 'http://test' });
+    const { alerts } = await runClientDhcpFailureCheck({ authToken: 'x', controllerUrl: 'http://test' });
     expect(alerts).toEqual([]);
   });
 
   it('handles empty station list', async () => {
     fetchXcc.mockResolvedValue({ data: [] });
-    const alerts = await runClientDhcpFailureCheck({ authToken: 'x', controllerUrl: 'http://test' });
+    const { alerts } = await runClientDhcpFailureCheck({ authToken: 'x', controllerUrl: 'http://test' });
     expect(alerts).toEqual([]);
+  });
+
+  // The engine persists `evidence` alongside the alerts, so a check that stopped
+  // reporting it would leave every stored result unexplained without failing
+  // anything above — these tests only ever looked at the alerts.
+  it('reports evidence describing what was examined, alerts or not', async () => {
+    const clients = [];
+    for (let i = 0; i < 20; i++) {
+      clients.push({ ssid: 'Guest', ipAddress: i < 18 ? `10.0.0.${i + 1}` : null });
+    }
+
+    fetchXcc.mockResolvedValue({ data: clients });
+    const { evidence } = await runClientDhcpFailureCheck({ authToken: 'x', controllerUrl: 'http://test' });
+
+    expect(evidence.totalClients).toBe(20);
+    expect(evidence.ssidsFound).toBe(1);
+    expect(evidence.ssidBreakdown).toHaveLength(1);
+    expect(evidence.ssidBreakdown[0].ssid).toBe('Guest');
+    expect(evidence.thresholds).toEqual({ warning: '5%', critical: '15%' });
+    expect(evidence.summary).toContain('20 client(s)');
+  });
+
+  it('still reports evidence when there is nothing to examine', async () => {
+    fetchXcc.mockResolvedValue({ data: [] });
+    const { evidence } = await runClientDhcpFailureCheck({ authToken: 'x', controllerUrl: 'http://test' });
+
+    expect(evidence.totalClients).toBe(0);
+    expect(evidence.ssidBreakdown).toEqual([]);
+    expect(evidence.summary).toBe('No connected clients found.');
   });
 });

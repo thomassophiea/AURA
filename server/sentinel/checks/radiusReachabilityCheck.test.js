@@ -31,13 +31,13 @@ import { runRadiusReachabilityCheck } from './radiusReachabilityCheck.js';
 describe('radiusReachabilityCheck', () => {
   it('returns no alerts when no AAA policies exist', async () => {
     fetchXcc.mockResolvedValue({ data: [] });
-    const alerts = await runRadiusReachabilityCheck({ authToken: 'x', controllerUrl: 'http://test' });
+    const { alerts } = await runRadiusReachabilityCheck({ authToken: 'x', controllerUrl: 'http://test' });
     expect(alerts).toEqual([]);
   });
 
   it('returns no alerts when policies have no radius servers', async () => {
     fetchXcc.mockResolvedValue({ data: [{ name: 'policy1' }] });
-    const alerts = await runRadiusReachabilityCheck({ authToken: 'x', controllerUrl: 'http://test' });
+    const { alerts } = await runRadiusReachabilityCheck({ authToken: 'x', controllerUrl: 'http://test' });
     expect(alerts).toEqual([]);
   });
 
@@ -51,12 +51,17 @@ describe('radiusReachabilityCheck', () => {
       ],
     });
 
-    const alerts = await runRadiusReachabilityCheck({ authToken: 'x', controllerUrl: 'http://test' });
+    const { alerts } = await runRadiusReachabilityCheck({ authToken: 'x', controllerUrl: 'http://test' });
 
     expect(alerts.length).toBe(1);
     expect(alerts[0].severity).toBe('critical');
     expect(alerts[0].checkName).toBe('radius_reachability');
-    expect(alerts[0].target).toBe('192.168.255.254:1812');
+    // `target` is the display host; the port stays in context, and the alert id
+    // is what carries host:port uniqueness (one host can appear twice, once for
+    // auth on 1812 and once for accounting on 1813).
+    expect(alerts[0].target).toBe('192.168.255.254');
+    expect(alerts[0].context.port).toBe(1812);
+    expect(alerts[0].id).toBe('radius_reachability:192.168.255.254:1812');
     expect(alerts[0].context.policyNames).toContain('Corp-AAA');
   }, 10000);
 
@@ -68,7 +73,7 @@ describe('radiusReachabilityCheck', () => {
       ],
     });
 
-    const alerts = await runRadiusReachabilityCheck({ authToken: 'x', controllerUrl: 'http://test' });
+    const { alerts } = await runRadiusReachabilityCheck({ authToken: 'x', controllerUrl: 'http://test' });
 
     expect(alerts.length).toBe(1);
     expect(alerts[0].context.policyNames).toEqual(['Policy-A', 'Policy-B']);

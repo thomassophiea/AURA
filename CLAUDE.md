@@ -178,8 +178,12 @@ npm run type-check       # TypeScript type checking
 
 - **Framework:** Vitest + React Testing Library + jsdom
 - **Coverage provider:** v8
-- ~1,800 unit tests across ~160 files. Real server baseline is 2 failing files
-  (`sentinel/checks/clientDhcpFailureCheck`, `radiusReachabilityCheck`)
+- ~3,200 unit tests across ~270 files. The baseline is green — a failure is a
+  real signal, not background noise
+- Node 25 defines a built-in `localStorage` global that shadows jsdom's and has
+  none of the Storage methods. `src/test/setup.ts` installs a working one when
+  the ambient global is unusable; the runtime image is node:22-alpine, which is
+  unaffected
 - `.claude/worktrees/**` is excluded in `vitest.config.ts` -- collecting it runs
   every suite three or four extra times against stale branches
 - When adding features or fixing bugs, write tests
