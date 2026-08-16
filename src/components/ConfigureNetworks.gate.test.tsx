@@ -1,36 +1,29 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import type { useAppContext } from '@/contexts/AppContext';
+import type { SiteGroup } from '@/types/domain';
 
-// localStorage shim — must land before any module imports that touch it (api singleton)
-const { } = vi.hoisted(() => {
-  const store: Record<string, string> = {};
-  const mock = {
-    getItem: (key: string) => store[key] ?? null,
-    setItem: (key: string, value: string) => { store[key] = value; },
-    removeItem: (key: string) => { delete store[key]; },
-    clear: () => { Object.keys(store).forEach(k => delete store[k]); },
-    length: 0,
-    key: (_i: number) => null,
-  };
-  Object.defineProperty(globalThis, 'localStorage', { value: mock, writable: true, configurable: true });
-  // sessionStorage shim too
-  const sstore: Record<string, string> = {};
-  const smock = {
-    getItem: (key: string) => sstore[key] ?? null,
-    setItem: (key: string, value: string) => { sstore[key] = value; },
-    removeItem: (key: string) => { delete sstore[key]; },
-    clear: () => { Object.keys(sstore).forEach(k => delete sstore[k]); },
-    length: 0,
-    key: (_i: number) => null,
-  };
-  Object.defineProperty(globalThis, 'sessionStorage', { value: smock, writable: true, configurable: true });
-  return {};
-});
+// The api singleton reads storage at module load, so a working localStorage has
+// to exist before this file's imports run. src/test/setup.ts installs one and
+// runs first, which is why the hand-rolled shim that used to sit here is gone.
+type AppContextValue = ReturnType<typeof useAppContext>;
 
-function makeCtx(overrides: Record<string, any> = {}): any {
+/** A complete SiteGroup, so fixtures stay honest about the shape components see. */
+function siteGroup(id: string, name: string, controllerUrl: string): SiteGroup {
+  return {
+    id,
+    org_id: 'org1',
+    name,
+    controller_url: controllerUrl,
+    connection_status: 'connected',
+    is_default: false,
+  };
+}
+
+function makeCtx(overrides: Partial<AppContextValue> = {}): AppContextValue {
   return {
     navigationScope: 'global',
-    siteGroups: [{ id: 'sg1', name: 'SouthEast', controller_url: 'https://1.2.3.4' }],
+    siteGroups: [siteGroup('sg1', 'SouthEast', 'https://1.2.3.4')],
     orgSiteGroupFilter: null,
     setOrgSiteGroupFilter: vi.fn(),
     navigateToTemplateCreation: vi.fn(),
@@ -38,11 +31,13 @@ function makeCtx(overrides: Record<string, any> = {}): any {
     refreshControllerIdentity: vi.fn(),
     siteGroup: null,
     ...overrides,
-  };
+    // Only the fields this component reads are stubbed; the gate does not touch
+    // the rest of the context, and listing them would just be noise to maintain.
+  } as unknown as AppContextValue;
 }
 
 // Mutable, per-test context. The mock reads the *current* value at render time.
-let ctx: any = makeCtx();
+let ctx: AppContextValue = makeCtx();
 
 vi.mock('@/contexts/AppContext', () => ({ useAppContext: () => ctx }));
 
@@ -112,8 +107,8 @@ describe('ConfigureNetworks org-scope gate', () => {
   it('shows the empty-state prompt when multiple Site Groups exist and none is chosen', () => {
     ctx = makeCtx({
       siteGroups: [
-        { id: 'sg1', name: 'SouthEast', controller_url: 'https://1.2.3.4' },
-        { id: 'sg2', name: 'NorthWest', controller_url: 'https://5.6.7.8' },
+        siteGroup('sg1', 'SouthEast', 'https://1.2.3.4'),
+        siteGroup('sg2', 'NorthWest', 'https://5.6.7.8'),
       ],
       orgSiteGroupFilter: null,
     });
@@ -125,7 +120,7 @@ describe('ConfigureNetworks org-scope gate', () => {
 
   it('auto-selects the sole Site Group at org scope (no empty-state prompt)', () => {
     ctx = makeCtx({
-      siteGroups: [{ id: 'sg1', name: 'SouthEast', controller_url: 'https://1.2.3.4' }],
+      siteGroups: [siteGroup('sg1', 'SouthEast', 'https://1.2.3.4')],
       orgSiteGroupFilter: null,
     });
     render(<ConfigureNetworks />);
