@@ -54,6 +54,7 @@ import {
 import { apiService } from '../services/api';
 import { useSourceSites } from '../hooks/useSourceSites';
 import { SourceSiteSelector } from './SourceSiteSelector';
+import { useStickySiteSelection } from '../hooks/useStickySiteSelection';
 import { SystemSiteNotice } from './SystemSiteNotice';
 import { isSystemSiteKey, systemSiteLabel } from '../services/siteCatalog';
 import { parseXiqSiteValue } from '../services/siteContextService';
@@ -202,7 +203,9 @@ export function AppInsights({ api }: AppInsightsProps) {
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   // Source-aware site list (OS-ONE + XIQ) for the shared grouped selector.
   const { sites, xiqSites } = useSourceSites();
-  const [selectedSite, setSelectedSite] = useState<string>('all');
+  // Remembered per page so the site context survives navigation; see
+  // useStickySiteSelection for why this is not one global value.
+  const [selectedSite, setSelectedSite] = useStickySiteSelection('app-insights');
 
   // Merge two AppInsightsData by summing distributionStats values per id
   const mergeInsights = (a: AppInsightsData, b: AppInsightsData): AppInsightsData => {

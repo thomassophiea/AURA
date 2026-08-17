@@ -20,6 +20,7 @@ import { apiService } from '../services/api';
 import { useAppContext } from '@/contexts/AppContext';
 import { useSourceSites } from '../hooks/useSourceSites';
 import { SourceSiteSelector } from './SourceSiteSelector';
+import { useStickySiteSelection } from '../hooks/useStickySiteSelection';
 import { SystemSiteNotice } from './SystemSiteNotice';
 import { isSystemSiteKey, systemSiteLabel } from '../services/siteCatalog';
 import { parseXiqSiteValue } from '../services/siteContextService';
@@ -39,7 +40,9 @@ const RANGE_MS: Record<string, number> = {
 export function AuditLogs() {
   const { navigationScope, siteGroups } = useAppContext();
   const { sites, xiqSites } = useSourceSites();
-  const [selectedSite, setSelectedSite] = useState<string>('all');
+  // Remembered per page so the site context survives navigation; see
+  // useStickySiteSelection for why this is not one global value.
+  const [selectedSite, setSelectedSite] = useStickySiteSelection('audit-logs');
   // Audit/event data is sparse and historical, so default to a wide window.
   const [timeRange, setTimeRange] = useState<string>('30d');
   // The dedicated local service account — its entries are flagged "Local" and
@@ -56,6 +59,10 @@ export function AuditLogs() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  // Refresh used to be `setSelectedSite(s => s)`, which React bails out of when
+  // the value is unchanged — so the button did nothing. An explicit tick in the
+  // loader's deps actually re-fetches.
+  const [refreshTick, setRefreshTick] = useState(0);
 
   const xiqSel = parseXiqSiteValue(selectedSite);
   const isXiq = !!xiqSel;
@@ -119,7 +126,7 @@ export function AuditLogs() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSite, timeRange, navigationScope, siteGroups, xiqSites]);
+  }, [selectedSite, timeRange, navigationScope, siteGroups, xiqSites, refreshTick]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -172,7 +179,7 @@ export function AuditLogs() {
           </Select>
           <Button
             variant="outline"
-            onClick={() => setSelectedSite((s) => s)}
+            onClick={() => setRefreshTick((t) => t + 1)}
             disabled={loading}
             title="Refresh"
           >

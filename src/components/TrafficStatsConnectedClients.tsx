@@ -26,6 +26,7 @@ import { apiService, Station } from '../services/api';
 import { trafficService } from '../services/traffic';
 import { useSourceSites } from '../hooks/useSourceSites';
 import { SourceSiteSelector } from './SourceSiteSelector';
+import { useStickySiteSelection } from '../hooks/useStickySiteSelection';
 import { parseXiqSiteValue } from '../services/siteContextService';
 import { isXiqDefaultSiteValue, resolveOs1DeviceSiteKey } from '../services/siteCatalog';
 import { loadXiqClients } from '../services/xiqInventory';
@@ -65,7 +66,9 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
   const [stations, setStations] = useState<Station[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
-  const [selectedSite, setSelectedSite] = useState<string>('all');
+  // Remembered per page so the site context survives navigation; see
+  // useStickySiteSelection for why this is not one global value.
+  const [selectedSite, setSelectedSite] = useStickySiteSelection('clients');
   // Source-aware site list (OS-ONE + XIQ) for the grouped selector.
   const { sites, xiqSites } = useSourceSites();
   // XIQ clients (loaded when an XIQ site is selected); separate from controller stations.

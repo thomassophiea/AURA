@@ -13,6 +13,7 @@ import { useCompoundSearch } from '../hooks/useCompoundSearch';
 import { useSourceSites } from '../hooks/useSourceSites';
 import { dedupeAccessPointsBySerial } from '../lib/dedupeAccessPoints';
 import { SourceSiteSelector } from './SourceSiteSelector';
+import { useStickySiteSelection } from '../hooks/useStickySiteSelection';
 import { parseXiqSiteValue } from '../services/siteContextService';
 import {
   getDeviceSiteValue,
@@ -577,7 +578,9 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
   const [isLoadingMeshRoles, setIsLoadingMeshRoles] = useState(false);
   const [apStates, setApStates] = useState<Record<string, string>>({});
   const [error, setError] = useState<string>('');
-  const [selectedSite, setSelectedSite] = useState<string>('all');
+  // Remembered per page so the site context survives navigation; see
+  // useStickySiteSelection for why this is not one global value.
+  const [selectedSite, setSelectedSite] = useStickySiteSelection('access-points');
   // Source-aware site list (OS-ONE + XIQ) + XIQ access points when an XIQ site is selected.
   const { sites: srcSites, xiqSites } = useSourceSites();
   const [xiqRows, setXiqRows] = useState<AccessPoint[]>([]);
