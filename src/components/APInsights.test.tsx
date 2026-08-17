@@ -22,6 +22,44 @@ const timelineState = {
   isLocked: false,
 };
 
+// These tests exercise the *controller-served* path: the fixture is a controller
+// report payload. The app's default window is 24 hours, which the Gateway cannot
+// serve (see `controllerCanServeApReport`) and which therefore routes to stored
+// history instead — so the window is pinned here to one the Gateway does answer.
+vi.mock('../hooks/useSelectedTimeRange', () => ({
+  useSelectedTimeRange: () => {
+    const end = new Date('2026-08-17T12:00:00.000Z');
+    const start = new Date(end.getTime() - 60 * 60 * 1000);
+    return {
+      token: '1h',
+      range: {
+        token: '1h',
+        kind: 'rolling',
+        start,
+        end,
+        startIso: start.toISOString(),
+        endIso: end.toISOString(),
+        dayOffset: null,
+        localDate: null,
+        label: 'Last hour',
+        rangeLabel: 'Last hour',
+        isLive: true,
+        bucketMinutes: 15,
+        durationMs: 60 * 60 * 1000,
+      },
+      setToken: vi.fn(),
+      optionGroups: [],
+      dayStatuses: [],
+      selectedCoverage: null,
+      retentionDays: 30,
+      neverCollected: false,
+      coverageLoading: false,
+      coverageError: null,
+      refreshCoverage: vi.fn(),
+    };
+  },
+}));
+
 vi.mock('../hooks/useTimelineNavigation', () => ({
   useTimelineNavigation: () => ({
     currentTime: timelineState.currentTime,

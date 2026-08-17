@@ -3319,7 +3319,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
         onClose={() => setIsModalOpen(false)}
         title={`Access Point Details${selectedAP?.status ? ` - ${selectedAP.status}` : ''}`}
         description={getAPName(selectedAP)}
-        width="xl"
+        width="2xl"
       >
         <div className="space-y-4">
           {isLoadingDetails ? (
@@ -3337,7 +3337,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
               </TabsList>
 
               <TabsContent value="overview" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 @lg:grid-cols-2 gap-4">
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-base">Basic Information</CardTitle>

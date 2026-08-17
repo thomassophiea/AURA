@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 
 import {
   AP_REPORT_FAMILY,
+  controllerCanServeApReport,
   buildInsightsFromHistory,
   hasHistoricalInsights,
   splitMetricName,
@@ -208,5 +209,30 @@ describe('hasHistoricalInsights', () => {
   it('is false for null and for an envelope with no series', () => {
     expect(hasHistoricalInsights(null)).toBe(false);
     expect(hasHistoricalInsights(build([]))).toBe(false);
+  });
+});
+
+describe('controllerCanServeApReport', () => {
+  it('accepts the windows the Gateway actually answers', () => {
+    // Measured 2026-08-17: these return 200 in under a second on every AP.
+    expect(controllerCanServeApReport('15M')).toBe(true);
+    expect(controllerCanServeApReport('1H')).toBe(true);
+    expect(controllerCanServeApReport('3H')).toBe(true);
+  });
+
+  it('rejects the windows that 500 after ~31 seconds', () => {
+    // The default AP Insights window is 24H, which is why the page never loaded.
+    expect(controllerCanServeApReport('24H')).toBe(false);
+    expect(controllerCanServeApReport('3D')).toBe(false);
+    expect(controllerCanServeApReport('7D')).toBe(false);
+  });
+
+  it('treats a historical window as never the controller’s to answer', () => {
+    expect(controllerCanServeApReport(null)).toBe(false);
+  });
+
+  it('is case-insensitive, so a lowercase token is not silently sent to the Gateway', () => {
+    expect(controllerCanServeApReport('3h')).toBe(true);
+    expect(controllerCanServeApReport('24h')).toBe(false);
   });
 });

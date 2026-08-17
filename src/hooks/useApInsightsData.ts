@@ -2,14 +2,22 @@
  * AP Insights data for whatever window is selected, from whichever source can
  * actually answer for it.
  *
- *   live window       → the controller's `/v1/report/aps/{serial}` (as before)
- *   past calendar day → AURA's persisted `ap_report` history, rebuilt into the
- *                       same response shape by `apInsightsHistory`
+ *   live window ≤ 3H  → the controller's `/v1/report/aps/{serial}` (as before)
+ *   live window > 3H  → AURA's persisted `ap_report` history: the Gateway
+ *                       cannot serve those windows at all (see
+ *                       `controllerCanServeApReport`)
+ *   past calendar day → the same persisted history, rebuilt into the controller's
+ *                       response shape by `apInsightsHistory`
  *
  * The routing exists because the controller's report API takes a *duration back
  * from now*: it cannot be asked about a finished day at all. Rather than showing
  * the last 3 hours under yesterday's date, a historical window is served from
  * PostgreSQL — which also means it needs no controller connection.
+ *
+ * The >3H case was added after the default 24-hour view was found to fail every
+ * time: the Gateway spends ~31 seconds on such a request and then 500s. Asking
+ * it and waiting for that is strictly worse than reading the history we already
+ * have, so the ceiling is checked before the call rather than discovered by it.
  *
  * Both branches return an `APInsightsResponse`, so every chart downstream is
  * unchanged and there is only one rendering path to keep correct.
@@ -22,6 +30,7 @@ import { monitoringHistory } from '../services/monitoringHistory';
 import {
   AP_REPORT_FAMILY,
   buildInsightsFromHistory,
+  controllerCanServeApReport,
   hasHistoricalInsights,
 } from '../services/apInsightsHistory';
 import { controllerDurationFor, type ResolvedTimeRange } from '../lib/timeRange';
@@ -63,41 +72,50 @@ export function useApInsightsData(
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [nonce, setNonce] = useState(0);
 
-  const servedFromHistory = !range.isLive;
   const cancelledRef = useRef(false);
 
   const { startIso, endIso, bucketMinutes } = range;
   const controllerDuration = controllerDurationFor(range);
+  /** True when the Gateway can answer for this window at all. */
+  const fromController = controllerCanServeApReport(controllerDuration);
+  /** Set when a controller window we expected to work fell back to history. */
+  const [servedFromHistoryFallback, setServedFromHistoryFallback] = useState(false);
+  const servedFromHistory = !fromController || servedFromHistoryFallback;
 
   useEffect(() => {
     if (!enabled || !serialNumber) return undefined;
 
     cancelledRef.current = false;
     setIsLoading(true);
+    setServedFromHistoryFallback(false);
 
     (async () => {
-      try {
-        if (controllerDuration === null) {
-          // Historical: PostgreSQL only. The controller is deliberately not
-          // consulted — it could not answer for this window anyway, and this
-          // path has to keep working while the gateway is unreachable.
-          const response = await monitoringHistory.getHistory({
-            start: startIso,
-            end: endIso,
-            deviceId: serialNumber,
-            metricFamily: AP_REPORT_FAMILY,
-            resolutionMinutes: bucketMinutes,
-          });
+      /** Read the window out of AURA's own store. Used for every case the
+       *  Gateway cannot serve, and as the fallback when it fails unexpectedly. */
+      const loadFromHistory = async () => {
+        const response = await monitoringHistory.getHistory({
+          start: startIso,
+          end: endIso,
+          deviceId: serialNumber,
+          metricFamily: AP_REPORT_FAMILY,
+          resolutionMinutes: bucketMinutes,
+        });
+        const rebuilt = buildInsightsFromHistory(response.series, {
+          serialNumber,
+          start: new Date(startIso),
+          end: new Date(endIso),
+        });
+        return { rebuilt, usable: hasHistoricalInsights(rebuilt) };
+      };
 
+      try {
+        if (!fromController) {
+          // Either a finished calendar day, or a live window longer than the
+          // Gateway's AP-report ceiling. Both are ours to answer, and both keep
+          // working while the Gateway is unreachable.
+          const { rebuilt, usable } = await loadFromHistory();
           if (cancelledRef.current) return;
 
-          const rebuilt = buildInsightsFromHistory(response.series, {
-            serialNumber,
-            start: new Date(startIso),
-            end: new Date(endIso),
-          });
-
-          const usable = hasHistoricalInsights(rebuilt);
           setInsights(usable ? rebuilt : null);
           setUnavailableReason(usable ? null : 'no_stored_history');
           setErrorMessage(null);
@@ -106,7 +124,7 @@ export function useApInsightsData(
 
         const data = await apiService.getAccessPointInsights(
           serialNumber,
-          controllerDuration,
+          controllerDuration as string,
           bucketMinutes
         );
         if (cancelledRef.current) return;
@@ -114,6 +132,26 @@ export function useApInsightsData(
         setUnavailableReason(null);
         setErrorMessage(null);
       } catch (error) {
+        if (cancelledRef.current) return;
+        console.warn('[APInsights] Controller report failed, trying stored history:', error);
+
+        // The Gateway failed on a window it was supposed to be able to serve.
+        // We very likely hold the same data, so try it before showing an error —
+        // a transient Gateway fault should not blank a chart we can still draw.
+        try {
+          const { rebuilt, usable } = await loadFromHistory();
+          if (cancelledRef.current) return;
+          if (usable) {
+            setInsights(rebuilt);
+            setServedFromHistoryFallback(true);
+            setUnavailableReason(null);
+            setErrorMessage(null);
+            return;
+          }
+        } catch (historyError) {
+          console.warn('[APInsights] Stored history unavailable too:', historyError);
+        }
+
         if (cancelledRef.current) return;
         console.error('[APInsights] Failed to load insights:', error);
         // Cleared rather than left showing the previous window's data under this
@@ -131,7 +169,7 @@ export function useApInsightsData(
     return () => {
       cancelledRef.current = true;
     };
-  }, [enabled, serialNumber, startIso, endIso, bucketMinutes, controllerDuration, nonce]);
+  }, [enabled, serialNumber, startIso, endIso, bucketMinutes, controllerDuration, fromController, nonce]);
 
   const reload = useCallback(() => setNonce((value) => value + 1), []);
 
