@@ -20,6 +20,8 @@ import { apiService } from '../services/api';
 import { useAppContext } from '@/contexts/AppContext';
 import { useSourceSites } from '../hooks/useSourceSites';
 import { SourceSiteSelector } from './SourceSiteSelector';
+import { SystemSiteNotice } from './SystemSiteNotice';
+import { isSystemSiteKey, systemSiteLabel } from '../services/siteCatalog';
 import { parseXiqSiteValue } from '../services/siteContextService';
 import {
   loadXiqAuditLogs,
@@ -65,6 +67,16 @@ export function AuditLogs() {
       setLoading(true);
       const end = Date.now();
       const start = end - (RANGE_MS[timeRange] ?? RANGE_MS['7d']);
+      // A system site has no site id either source system would recognise, so
+      // asking for its audit trail would silently return the whole account's.
+      if (isSystemSiteKey(selectedSite)) {
+        if (!cancelled) {
+          setLogs([]);
+          setLastUpdate(new Date());
+          setLoading(false);
+        }
+        return;
+      }
       try {
         let rows: NormalizedAuditLog[] = [];
         if (xiqSel) {
@@ -168,6 +180,16 @@ export function AuditLogs() {
           </Button>
         </div>
       </div>
+
+      {/* Staging / Default Site are offered here so the hierarchy reads
+          correctly, but an audit trail is recorded per Site — there is none for
+          devices that are not in one. */}
+      {isSystemSiteKey(selectedSite) && (
+        <SystemSiteNotice
+          siteName={systemSiteLabel(selectedSite) || 'this site'}
+          detail="Audit activity is recorded per Site. Devices here are not yet assigned to a Site, so there is no site-scoped audit trail to show."
+        />
+      )}
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">

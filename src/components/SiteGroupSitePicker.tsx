@@ -12,6 +12,8 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { useAppContext } from '@/contexts/AppContext';
+import { gatewayModeLabel, deriveGatewayMode, pinSystemSitesLast } from '@/services/siteCatalog';
+import { OS1_STAGING_LABEL, SYSTEM_SITE_SORT_PRIORITY, NORMAL_SITE_SORT_PRIORITY } from '@/types/siteCatalog';
 import type { SiteGroup } from '@/types/domain';
 
 export interface SiteGroupSitePickerProps {
@@ -26,6 +28,31 @@ function controllerLabel(sg: SiteGroup): string {
   return sg.locking_id ? `${name} · ${sg.locking_id}` : name;
 }
 
+/**
+ * Site ordering for this picker.
+ *
+ * This is a *configuration target* picker — the selection decides which
+ * Gateway and Site a network is written to. Staging is not a configuration
+ * target (you do not push a WLAN to the unassigned pool), so no synthetic
+ * Staging row is injected here; that belongs on the monitoring and device-list
+ * surfaces. The system-site ordering rule is still applied, so a Site that is
+ * genuinely named Staging cannot land in the middle of the list.
+ */
+const orderSiteNames = pinSystemSitesLast<{ name: string; sortPriority: number }>((a, b) =>
+  a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+);
+
+function sortSiteNames(names: string[]): string[] {
+  return names
+    .map((name) => ({
+      name,
+      sortPriority:
+        name === OS1_STAGING_LABEL ? SYSTEM_SITE_SORT_PRIORITY : NORMAL_SITE_SORT_PRIORITY,
+    }))
+    .sort(orderSiteNames)
+    .map((entry) => entry.name);
+}
+
 export function SiteGroupSitePicker({
   sites,
   selectedSite,
@@ -34,6 +61,7 @@ export function SiteGroupSitePicker({
 }: SiteGroupSitePickerProps): React.ReactElement {
   const { siteGroups, orgSiteGroupFilter, setOrgSiteGroupFilter } = useAppContext();
   const [open, setOpen] = React.useState(false);
+  const orderedSites = React.useMemo(() => sortSiteNames(sites), [sites]);
 
   const selectedSiteGroup = siteGroups.find((sg) => sg.id === orgSiteGroupFilter) ?? null;
 
@@ -83,7 +111,14 @@ export function SiteGroupSitePicker({
                       className={cn('mt-0.5 h-4 w-4 shrink-0', isSelected ? 'opacity-100' : 'opacity-0')}
                     />
                     <div className="flex flex-col min-w-0">
-                      <span className="font-semibold truncate">{sg.name}</span>
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <span className="truncate font-semibold">{sg.name}</span>
+                        {/* A Site Group is one Gateway or a Gateway/HA pair —
+                            the boundary this configuration is written to. */}
+                        <span className="shrink-0 rounded-sm border border-border px-1 text-[9px] uppercase leading-4 tracking-wide text-muted-foreground">
+                          {gatewayModeLabel(deriveGatewayMode(sg))}
+                        </span>
+                      </span>
                       {(sg.hostname || sg.locking_id) && (
                         <span className="text-xs text-muted-foreground truncate">
                           {[sg.hostname, sg.locking_id].filter(Boolean).join(' · ')}
@@ -97,7 +132,7 @@ export function SiteGroupSitePicker({
 
             {/* Sites group */}
             <CommandGroup heading="Sites">
-              {sites.length === 0 ? (
+              {orderedSites.length === 0 ? (
                 <CommandItem disabled value="__no-sites__" className="text-muted-foreground italic">
                   No sites loaded — select a gateway
                 </CommandItem>
@@ -119,7 +154,7 @@ export function SiteGroupSitePicker({
                     />
                     All Sites
                   </CommandItem>
-                  {sites.map((site) => (
+                  {orderedSites.map((site) => (
                     <CommandItem
                       key={site}
                       value={site}

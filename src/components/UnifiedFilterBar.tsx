@@ -34,8 +34,10 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from './ui/utils';
-import { apiService, Site } from '../services/api';
-import { getSiteDisplayName } from '../contexts/SiteContext';
+import { apiService } from '../services/api';
+import { buildOs1Catalog, flattenOs1Catalog } from '../services/siteCatalog';
+import { OS1_STAGING_DESCRIPTION } from '../types/siteCatalog';
+import { useAppContext } from '@/contexts/AppContext';
 import { ContextConfigModal } from './ContextConfigModal';
 import { TimeRangeSelector } from './TimeRangeSelector';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
@@ -64,6 +66,8 @@ interface SelectorItem {
   vendor?: string;
   macAddress?: string;
   band?: string;
+  /** OS1 Staging / XIQ Default Site — marked so it reads as a system location. */
+  isSystemSite?: boolean;
 }
 
 export interface UnifiedFilterBarProps {
@@ -177,6 +181,8 @@ export function UnifiedFilterBar({
 }: UnifiedFilterBarProps) {
   // Global state hooks
   const { filters, updateFilter, resetFilters, hasActiveFilters } = useGlobalFilters();
+  // Site Groups are the OS1 Gateway boundaries the site list is grouped by.
+  const { siteGroups } = useAppContext();
   const { setMode, selectSite, selectAP, selectClient } = useOperationalContext();
   // The time selection is global, so it is read here rather than owned here —
   // switching pages must not reset it. Coverage is scoped to the active site so
@@ -234,15 +240,25 @@ export function UnifiedFilterBar({
 
         case 'site': {
           const sites = await apiService.getSites();
+          // Sites are presented under the Gateway boundary that owns them, and
+          // the OS1 Staging site closes the list. Both the grouping and the
+          // ordering come from the catalog so this list cannot disagree with the
+          // pickers on Access Points or Service Levels.
+          const catalog = buildOs1Catalog({ siteGroups, sites, osSiteValue: 'id' });
           const siteItems: SelectorItem[] = [
             { id: 'all', name: 'All Sites', subtitle: `${sites.length} sites` },
           ];
-          sites.forEach((site: Site) => {
+          flattenOs1Catalog(catalog).forEach((site) => {
             siteItems.push({
-              id: site.id,
-              name: getSiteDisplayName(site),
-              subtitle: site.siteGroup || undefined,
+              id: site.key,
+              name: site.name,
+              subtitle: site.systemKind
+                ? OS1_STAGING_DESCRIPTION
+                : site.siteGroupName
+                  ? `Site Group: ${site.siteGroupName}`
+                  : undefined,
               status: 'online' as const,
+              isSystemSite: Boolean(site.systemKind),
             });
           });
           setItems(siteItems);
@@ -559,8 +575,9 @@ export function UnifiedFilterBar({
                           selectedItemId === item.id && 'bg-primary/5'
                         )}
                       >
-                        {/* Status indicator */}
-                        {item.id !== 'all' && (
+                        {/* Status indicator. A system location has no
+                            reachability of its own, so it gets no dot. */}
+                        {item.id !== 'all' && !item.isSystemSite && (
                           <div className="pt-1">
                             <span
                               className={cn(
@@ -576,6 +593,14 @@ export function UnifiedFilterBar({
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-sm truncate">{item.name}</span>
+                            {item.isSystemSite && (
+                              <Badge
+                                variant="outline"
+                                className="text-[9px] px-1 py-0 h-4 font-normal text-muted-foreground"
+                              >
+                                System
+                              </Badge>
+                            )}
                             {item.band && (
                               <Badge
                                 variant="outline"

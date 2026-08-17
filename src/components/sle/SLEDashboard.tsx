@@ -9,16 +9,6 @@ import { apiService } from '../../services/api';
 import { whenAutoRefresh } from '../../lib/autoRefresh';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  SelectGroup,
-  SelectLabel,
-  SelectSeparator,
-} from '../ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
 import {
   Dialog,
@@ -33,7 +23,6 @@ import { Label } from '../ui/label';
 import { Slider } from '../ui/slider';
 import {
   RefreshCw,
-  Building,
   Target,
   Wifi,
   ShieldCheck,
@@ -50,16 +39,14 @@ import { SelectedRangeLabel } from '../SelectedRangeLabel';
 import { useAppContext } from '@/contexts/AppContext';
 import { useDevModeUnlock } from '../../hooks/useDevModeUnlock';
 import { sleDataCollectionService } from '../../services/sleDataCollection';
-import {
-  resolveSiteContext,
-  buildXiqSiteValue,
-  buildXiqAllSitesValue,
-} from '../../services/siteContextService';
+import { resolveSiteContext, buildXiqSiteValue } from '../../services/siteContextService';
 import { getSleProvider } from '../../services/sle/sleProviderFactory';
 import { mergeSleHistory, SLE_METRIC_FAMILY } from '../../services/sle/sleHistoryMerge';
 import { useMonitoringHistory } from '../../hooks/useMonitoringHistory';
 import { DataFreshnessBadge } from '../monitoring/DataFreshnessBadge';
 import { useSourceSites } from '../../hooks/useSourceSites';
+import { SourceSiteSelector } from '../SourceSiteSelector';
+import { isSystemSiteKey, systemSiteLabel } from '../../services/siteCatalog';
 import { buildXiqRootCause } from './xiqRootCause';
 import type { SLESourceSystem } from '../../types/sleContext';
 import { SLERadialMap } from './SLERadialMap';
@@ -338,7 +325,9 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
     const siteName =
       selectedSite === 'all'
         ? 'All Sites'
-        : sites.find((s) => s.id === selectedSite)?.name || selectedSite;
+        : systemSiteLabel(selectedSite) ||
+          sites.find((s) => s.id === selectedSite)?.name ||
+          selectedSite;
     toast.success(`${config.label} threshold updated for ${siteName}`);
 
     // Reload data with new thresholds
@@ -356,9 +345,31 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
           apiService.clearBurstCache();
         } else setLoading(true);
 
+        // A system site (Staging / Default Site) has no site id the Gateway or
+        // XIQ would recognise. Handing its sentinel to a provider would either
+        // return nothing or, worse, quietly return the whole estate as if it
+        // were this site's numbers — so short-circuit and say why.
+        if (isSystemSiteKey(selectedSite)) {
+          setStations([]);
+          setAps([]);
+          setWirelessSLEs([]);
+          setWarnings([
+            `Service levels are measured per Site. Devices in ${
+              systemSiteLabel(selectedSite) || 'this system site'
+            } are not yet assigned to a Site, so there are no service levels to report.`,
+          ]);
+          setLastUpdate(new Date());
+          setLoading(false);
+          setRefreshing(false);
+          return;
+        }
+
         const siteName =
           selectedSite !== 'all'
-            ? sites.find((s) => s.id === selectedSite)?.name ||
+            ? // A system site has no entry in either loaded list, so resolve it
+              // first — otherwise the fallback would surface its sentinel key.
+              systemSiteLabel(selectedSite) ||
+              sites.find((s) => s.id === selectedSite)?.name ||
               sites.find((s) => s.id === selectedSite)?.siteName ||
               xiqSites.find((s) => buildXiqSiteValue(s.siteGroupId, s.id) === selectedSite)?.name ||
               null
@@ -500,48 +511,18 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
           />
         </div>
         <div className="flex items-center gap-2">
-          <Select value={selectedSite} onValueChange={setSelectedSite}>
-            <SelectTrigger className="w-48">
-              <Building className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Select Site" />
-            </SelectTrigger>
-            <SelectContent>
-              {/* OS-ONE and XIQ are separate aggregates — their metrics differ,
-                  so there is no single combined "All Sites". */}
-              <SelectGroup>
-                <SelectLabel className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-violet-500">
-                  <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
-                  OS-ONE
-                </SelectLabel>
-                <SelectItem value="all">All OS-ONE Sites</SelectItem>
-                {sites.map((site) => (
-                  <SelectItem key={site.id} value={site.id}>
-                    {site.name || site.siteName || site.id}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-              {xiqSites.length > 0 && <SelectSeparator />}
-              {xiqSites.length > 0 && (
-                <SelectGroup>
-                  <SelectLabel className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-cyan-500">
-                    <span className="h-1.5 w-1.5 rounded-full bg-cyan-500" />
-                    XIQ
-                  </SelectLabel>
-                  <SelectItem value={buildXiqAllSitesValue(xiqSites[0].siteGroupId)}>
-                    All XIQ Sites
-                  </SelectItem>
-                  {xiqSites.map((site) => {
-                    const value = buildXiqSiteValue(site.siteGroupId, site.id);
-                    return (
-                      <SelectItem key={value} value={value}>
-                        {site.name}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectGroup>
-              )}
-            </SelectContent>
-          </Select>
+          {/* OS1 and XIQ are separate aggregates — their metrics differ, so
+              there is no single combined "All Sites". This page used to carry
+              its own copy of the grouped dropdown; it now shares the one picker
+              so the Site Group hierarchy and the system sites cannot drift
+              between here and Access Points. */}
+          <SourceSiteSelector
+            value={selectedSite}
+            onValueChange={setSelectedSite}
+            sites={sites}
+            xiqSites={xiqSites}
+            osSiteValue="id"
+          />
 
           <TimeRangeSelector
             value={timeRange}
@@ -765,7 +746,9 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
                 Site:{' '}
                 {selectedSite === 'all'
                   ? 'All Sites'
-                  : sites.find((s) => s.id === selectedSite)?.name || selectedSite}
+                  : systemSiteLabel(selectedSite) ||
+                    sites.find((s) => s.id === selectedSite)?.name ||
+                    selectedSite}
               </span>
             </DialogDescription>
           </DialogHeader>

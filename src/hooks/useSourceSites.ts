@@ -39,11 +39,21 @@ export function useSourceSites(): SourceSites {
       if (cached.length > 0) setSites(cached);
 
       const isOrgScope = navigationScope === 'global' && siteGroups.length > 0;
+      // Which Gateway a site came from is the whole point of the OS1 Site Group
+      // hierarchy, and it is only knowable here — at the moment of the fetch.
+      // Tag it on the way through rather than guessing downstream.
+      const defaultGroupId =
+        siteGroup?.id ??
+        siteGroups.find((sg) => sg.is_default)?.id ??
+        (siteGroups.length === 1 ? siteGroups[0].id : undefined);
+      const tag = (s: Site, ownerId: string | undefined): Site =>
+        ownerId && !s.site_group_id ? { ...s, site_group_id: ownerId } : s;
+
       try {
         const byId = new Map<string, Site>();
         try {
           const active = await apiService.getSites();
-          for (const s of active) if (s?.id) byId.set(s.id, s);
+          for (const s of active) if (s?.id) byId.set(s.id, tag(s, defaultGroupId));
         } catch (err) {
           console.warn('[useSourceSites] active getSites failed:', err);
         }
@@ -54,7 +64,7 @@ export function useSourceSites(): SourceSites {
             try {
               apiService.setBaseUrl(`${sg.controller_url}/management`);
               const sgSites = await apiService.getSites();
-              for (const s of sgSites) if (s?.id && !byId.has(s.id)) byId.set(s.id, s);
+              for (const s of sgSites) if (s?.id && !byId.has(s.id)) byId.set(s.id, tag(s, sg.id));
             } catch (err) {
               console.warn(`[useSourceSites] sites from ${sg.name} failed:`, err);
             }

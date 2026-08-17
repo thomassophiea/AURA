@@ -13,6 +13,8 @@
  * routed through the SiteGroup's controller_url.
  */
 
+import type { SystemSiteKind } from './siteCatalog';
+
 export interface Organization {
   id: string;
   name: string;
@@ -84,6 +86,18 @@ export interface Site {
   siteName?: string;
   /** @deprecated Use name instead */
   displayName?: string;
+  /**
+   * Set when this row represents a site the system owns rather than the
+   * operator — OS1 Staging, or the XIQ Default Site. Absent on real sites, so
+   * `systemKind !== undefined` is the test for "is this special".
+   */
+  systemKind?: SystemSiteKind;
+  /**
+   * Ordering weight. System sites carry SYSTEM_SITE_SORT_PRIORITY so they sink
+   * to the bottom of any list, in either sort direction — see
+   * `pinSystemSitesLast` in `services/siteCatalog`.
+   */
+  sortPriority?: number;
 }
 
 export interface Device {

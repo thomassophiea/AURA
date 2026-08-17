@@ -27,6 +27,7 @@ import { trafficService } from '../services/traffic';
 import { useSourceSites } from '../hooks/useSourceSites';
 import { SourceSiteSelector } from './SourceSiteSelector';
 import { parseXiqSiteValue } from '../services/siteContextService';
+import { isXiqDefaultSiteValue, resolveOs1DeviceSiteKey } from '../services/siteCatalog';
 import { loadXiqClients } from '../services/xiqInventory';
 import { isRandomizedMac } from '../services/macAddressUtils';
 import { toast } from 'sonner';
@@ -150,6 +151,13 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
   useEffect(() => {
     let cancelled = false;
     if (!xiqSel) {
+      setXiqRows([]);
+      return;
+    }
+    // Default Site is a system location with no XIQ location id behind it.
+    // Passing its sentinel as a filter would return every XIQ client instead of
+    // the Default Site's own contents, so report it honestly as empty.
+    if (isXiqDefaultSiteValue(selectedSite)) {
       setXiqRows([]);
       return;
     }
@@ -278,9 +286,12 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
     !isXiq && orgSiteGroupFilter
       ? baseStations.filter((s: any) => s._siteGroupId === orgSiteGroupFilter) // eslint-disable-line @typescript-eslint/no-explicit-any
       : baseStations;
+  // Selecting Staging selects the clients on devices the Gateway has not placed
+  // in a Site. resolveOs1DeviceSiteKey performs that translation, so this stays
+  // a plain key comparison rather than a special case.
   const siteFiltered =
     !isXiq && selectedSite !== 'all'
-      ? siteGroupFiltered.filter((s) => s.siteName === selectedSite)
+      ? siteGroupFiltered.filter((s) => resolveOs1DeviceSiteKey(s) === selectedSite)
       : siteGroupFiltered;
   // Use site-filtered stations for all stat calculations
   const effectiveStations = siteFiltered;

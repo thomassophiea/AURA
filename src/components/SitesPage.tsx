@@ -35,6 +35,13 @@ import { ColumnCustomizationDialog } from './ui/ColumnCustomizationDialog';
 import { ExportButton } from './ExportButton';
 import { useAppContext } from '@/contexts/AppContext';
 import { apiService } from '../services/api';
+import {
+  buildStagingSite,
+  getDeviceSiteValue,
+  isGatewayUnassigned,
+  pinSystemSitesLast,
+} from '../services/siteCatalog';
+import { OS1_STAGING_DESCRIPTION } from '../types/siteCatalog';
 
 // Session storage key for cross-page filter persistence
 const FILTER_SESSION_KEY = 'sites-group-filter';
@@ -133,7 +140,33 @@ export function SitesPage({ siteGroupFilter, onClearFilter, onShowDetail }: Site
         } satisfies Site;
       });
 
-      setSites(mapped);
+      // Staging closes the OS1 site list. It is a real system location — the
+      // OS1 name for the Gateway's Unassigned pool — so it is listed even when
+      // nothing is in it, and a failure to count devices must not hide it.
+      let unassignedCount = 0;
+      try {
+        const aps = await apiService.getAccessPoints();
+        unassignedCount = (aps as unknown[]).filter((ap) =>
+          isGatewayUnassigned(getDeviceSiteValue(ap))
+        ).length;
+      } catch (err) {
+        console.warn('[SitesPage] Could not count unassigned devices for Staging:', err);
+      }
+
+      const staging = buildStagingSite(unassignedCount);
+      const stagingRow: Site = {
+        id: staging.id,
+        name: staging.name,
+        site_group_id: '',
+        site_group_name: '',
+        description: OS1_STAGING_DESCRIPTION,
+        ap_count: unassignedCount,
+        client_count: 0,
+        systemKind: staging.systemKind,
+        sortPriority: staging.sortPriority,
+      };
+
+      setSites([...mapped, stagingRow]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load sites');
     } finally {
@@ -161,19 +194,27 @@ export function SitesPage({ siteGroupFilter, onClearFilter, onShowDetail }: Site
   // Cross-page pre-filter (applied before compound search)
   const preFilteredSites = useMemo(() => {
     if (!siteGroupFilter) return sites;
-    return sites.filter((s) => s.site_group_id === siteGroupFilter.id);
+    // Staging survives a Site Group filter: it is org-wide, and a user looking
+    // at one Gateway's Sites still needs to see that an unassigned pool exists.
+    return sites.filter((s) => s.systemKind || s.site_group_id === siteGroupFilter.id);
   }, [sites, siteGroupFilter]);
 
   const filteredSites = useMemo(() => filterRows(preFilteredSites), [filterRows, preFilteredSites]);
 
   const sortedSites = useMemo(() => {
     const sorted = [...filteredSites];
-    sorted.sort((a, b) => {
-      const aVal = (a as any)[sortField] ?? '';
-      const bVal = (b as any)[sortField] ?? '';
-      const cmp = String(aVal).localeCompare(String(bVal), undefined, { numeric: true });
-      return sortDirection === 'asc' ? cmp : -cmp;
-    });
+    // pinSystemSitesLast wraps the comparator the list actually sorts with —
+    // direction already applied. Wrapping the un-flipped comparator and
+    // negating afterwards would negate the priority too, floating Staging to
+    // the top on a descending sort, which is exactly what must not happen.
+    sorted.sort(
+      pinSystemSitesLast<Site>((a, b) => {
+        const aVal = (a as any)[sortField] ?? '';
+        const bVal = (b as any)[sortField] ?? '';
+        const cmp = String(aVal).localeCompare(String(bVal), undefined, { numeric: true });
+        return sortDirection === 'asc' ? cmp : -cmp;
+      })
+    );
     return sorted;
   }, [filteredSites, sortField, sortDirection]);
 
@@ -187,14 +228,17 @@ export function SitesPage({ siteGroupFilter, onClearFilter, onShowDetail }: Site
     setCurrentPage(1);
   }, [query, sortField, sortDirection, siteGroupFilter]);
 
-  // Metric card values
+  // Metric card values. Staging is a system location, not a site an operator
+  // provisioned, so counting it as "active" or "inactive" would misreport the
+  // estate — it is excluded from the counts while still listed in the table.
+  const operatorSites = useMemo(() => filteredSites.filter((s) => !s.systemKind), [filteredSites]);
   const activeSiteCount = useMemo(
-    () => filteredSites.filter((s) => s.status === 'active').length,
-    [filteredSites]
+    () => operatorSites.filter((s) => s.status === 'active').length,
+    [operatorSites]
   );
   const inactiveSiteCount = useMemo(
-    () => filteredSites.filter((s) => s.status !== 'active').length,
-    [filteredSites]
+    () => operatorSites.filter((s) => s.status !== 'active').length,
+    [operatorSites]
   );
   const totalAPs = useMemo(
     () => filteredSites.reduce((sum, s) => sum + (s.ap_count ?? 0), 0),
@@ -224,7 +268,10 @@ export function SitesPage({ siteGroupFilter, onClearFilter, onShowDetail }: Site
   };
 
   const handleSelectAll = (checked: boolean) => {
-    setSelectedSites(checked ? new Set(paginatedSites.map((s) => s.id)) : new Set());
+    // Select-all means "every site an operator owns" — never a system location.
+    setSelectedSites(
+      checked ? new Set(paginatedSites.filter((s) => !s.systemKind).map((s) => s.id)) : new Set()
+    );
   };
 
   const handleSelectRow = (id: string, checked: boolean) => {
@@ -456,14 +503,24 @@ export function SitesPage({ siteGroupFilter, onClearFilter, onShowDetail }: Site
                   </TableHeader>
                   <TableBody>
                     {paginatedSites.map((site) => (
+                      // A system location has no site-detail page and cannot be
+                      // the target of a bulk site action, so its row does not
+                      // open and its checkbox is disabled. It is still listed —
+                      // muted, not warned about; Staging is expected, not wrong.
                       <TableRow
                         key={site.id}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => handleRowClick(site)}
+                        className={
+                          site.systemKind
+                            ? 'bg-muted/20 hover:bg-muted/30'
+                            : 'cursor-pointer hover:bg-muted/50'
+                        }
+                        onClick={site.systemKind ? undefined : () => handleRowClick(site)}
                       >
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <Checkbox
                             checked={selectedSites.has(site.id)}
+                            disabled={Boolean(site.systemKind)}
+                            aria-label={site.systemKind ? `${site.name} (system site)` : undefined}
                             onCheckedChange={(checked) => handleSelectRow(site.id, !!checked)}
                           />
                         </TableCell>

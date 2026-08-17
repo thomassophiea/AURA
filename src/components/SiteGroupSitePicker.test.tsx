@@ -164,3 +164,40 @@ describe('SiteGroupSitePicker — site selection', () => {
     expect(onSelectSite).toHaveBeenCalledWith('Site Alpha');
   });
 });
+
+// ── Test 4 ──────────────────────────────────────────────────────────────────
+describe('SiteGroupSitePicker — Gateway boundary', () => {
+  it('labels each Site Group as a single Gateway or a Gateway pair', () => {
+    setupContext({
+      orgSiteGroupFilter: null,
+      siteGroups: [SITE_GROUPS[0], { ...SITE_GROUPS[1], secondary_controller: 'prod-ctrl-02' }],
+    });
+
+    renderAndOpen({ sites: [], selectedSite: 'all', onSelectSite: vi.fn() });
+
+    // A Site Group is the Gateway boundary — one Gateway, or an HA pair.
+    expect(screen.getByText('Standalone')).toBeInTheDocument();
+    expect(screen.getByText('Gateway Pair')).toBeInTheDocument();
+  });
+});
+
+// ── Test 5 ──────────────────────────────────────────────────────────────────
+describe('SiteGroupSitePicker — site ordering', () => {
+  it('keeps a Site named Staging at the bottom of the list', () => {
+    setupContext({ orgSiteGroupFilter: 'sg-1' });
+
+    renderAndOpen({
+      sites: ['zzz Depot', 'Staging', 'AAA Depot'],
+      selectedSite: 'all',
+      onSelectSite: vi.fn(),
+    });
+
+    const names = ['AAA Depot', 'zzz Depot', 'Staging'];
+    const order = Array.from(document.querySelectorAll('[cmdk-item]'))
+      .map((el) => el.textContent?.trim() ?? '')
+      .filter((t) => names.includes(t));
+    // Staging sits after both real sites, even though 'zzz Depot' sorts after
+    // it alphabetically.
+    expect(order).toEqual(['AAA Depot', 'zzz Depot', 'Staging']);
+  });
+});

@@ -54,6 +54,8 @@ import {
 import { apiService } from '../services/api';
 import { useSourceSites } from '../hooks/useSourceSites';
 import { SourceSiteSelector } from './SourceSiteSelector';
+import { SystemSiteNotice } from './SystemSiteNotice';
+import { isSystemSiteKey, systemSiteLabel } from '../services/siteCatalog';
 import { parseXiqSiteValue } from '../services/siteContextService';
 import { loadXiqAppInsights } from '../services/xiqInsights';
 import { PageHeader } from './PageHeader';
@@ -258,6 +260,17 @@ export function AppInsights({ api }: AppInsightsProps) {
         const start = end - (durMs[duration] ?? durMs['14D']);
         const xiqData = await loadXiqAppInsights(xiqSel.siteGroupId, start, end);
         setData(xiqData as unknown as AppInsightsData);
+        setLastRefresh(new Date());
+        setLoading(false);
+        return;
+      }
+
+      // A system site (Staging / Default Site) has no site id the Gateway or
+      // XIQ would recognise. Sending its sentinel as a site filter returns
+      // either nothing or everything, so skip the request and let the page say
+      // plainly that there is nothing to report.
+      if (isSystemSiteKey(selectedSite)) {
+        setData(null);
         setLastRefresh(new Date());
         setLoading(false);
         return;
@@ -583,7 +596,7 @@ export function AppInsights({ api }: AppInsightsProps) {
       {/* Header */}
       <PageHeader
         title="App Insights"
-        subtitle={`Application visibility and traffic analytics${selectedSite !== 'all' ? ` • ${sites.find((s) => s.id === selectedSite)?.name || selectedSite}` : ''}`}
+        subtitle={`Application visibility and traffic analytics${selectedSite !== 'all' ? ` • ${systemSiteLabel(selectedSite) || sites.find((s) => s.id === selectedSite)?.name || selectedSite}` : ''}`}
         icon={AppWindow}
         onRefresh={fetchData}
         refreshing={loading}
@@ -612,6 +625,16 @@ export function AppInsights({ api }: AppInsightsProps) {
           </>
         }
       />
+
+      {/* A system site is selectable here so the hierarchy reads correctly, but
+          neither the Gateway nor XIQ reports per-application data for devices
+          that are not in a Site. Say so instead of rendering empty charts. */}
+      {isSystemSiteKey(selectedSite) && (
+        <SystemSiteNotice
+          siteName={systemSiteLabel(selectedSite) || 'this site'}
+          detail="Application analytics are reported per Site. Devices here are not yet assigned to a Site, so there is no application data to show."
+        />
+      )}
 
       {/* Summary Cards */}
       {stats && (

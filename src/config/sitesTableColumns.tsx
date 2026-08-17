@@ -52,8 +52,23 @@ export const SITES_TABLE_COLUMNS: ColumnConfig<Site>[] = [
     sortable: true,
     defaultWidth: 220,
     renderCell: (site: Site) => (
-      <div className="text-xs font-medium text-foreground truncate" title={site.name}>
-        {site.name || site.siteName || site.displayName || 'Unnamed Site'}
+      <div
+        className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-foreground"
+        title={site.systemKind ? site.description : site.name}
+      >
+        <span className="truncate">
+          {site.name || site.siteName || site.displayName || 'Unnamed Site'}
+        </span>
+        {/* Staging / Default Site are expected system locations, so the marker
+            is neutral — no status hue, no warning tone. */}
+        {site.systemKind && (
+          <Badge
+            variant="outline"
+            className="h-4 shrink-0 px-1 py-0 text-[9px] font-normal text-muted-foreground"
+          >
+            System
+          </Badge>
+        )}
       </div>
     ),
     tooltip: 'Site name',

@@ -14,6 +14,13 @@ import { useSourceSites } from '../hooks/useSourceSites';
 import { dedupeAccessPointsBySerial } from '../lib/dedupeAccessPoints';
 import { SourceSiteSelector } from './SourceSiteSelector';
 import { parseXiqSiteValue } from '../services/siteContextService';
+import {
+  getDeviceSiteValue,
+  isGatewayUnassigned,
+  isXiqDefaultSiteValue,
+  resolveOs1DeviceSiteKey,
+  resolveOs1SiteLabel,
+} from '../services/siteCatalog';
 import { loadXiqAccessPoints } from '../services/xiqInventory';
 import { DetailSlideOut } from './DetailSlideOut';
 import {
@@ -519,32 +526,13 @@ function getWifiGeneration(model?: string): WifiGen {
   return 'Unknown';
 }
 
-// Helper function to get site/location name for an AP (pure — no component state)
+/**
+ * Site/location name for an AP, as the Gateway reports it — '' when the Gateway
+ * reports none. The field-precedence list lives in `services/siteCatalog` so the
+ * site picker and this grid can never disagree about which site a device is in.
+ */
 function getAPSite(ap: AccessPoint): string {
-  const locationFields = [
-    'hostSite',
-    'location',
-    'locationName',
-    'apLocation',
-    'ap_location',
-    'site',
-    'siteName',
-    'site_name',
-    'campus',
-    'building',
-    'siteId',
-    'site_id',
-    'place',
-    'area',
-    'zone',
-  ];
-  for (const field of locationFields) {
-    const value = (ap as any)[field];
-    if (typeof value === 'string' && value.trim().length > 0) {
-      return value.trim();
-    }
-  }
-  return '';
+  return getDeviceSiteValue(ap);
 }
 
 interface AccessPointsProps {
@@ -1196,6 +1184,13 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
       setXiqRows([]);
       return;
     }
+    // Default Site is a system location with no XIQ location id behind it.
+    // Passing its sentinel as a filter would return every XIQ AP instead of the
+    // Default Site's own contents, so report it honestly as empty.
+    if (isXiqDefaultSiteValue(selectedSite)) {
+      setXiqRows([]);
+      return;
+    }
     const siteName = xiqSites.find((s) => s.id === xiqSel.locationId)?.name ?? null;
     loadXiqAccessPoints(xiqSel.siteGroupId, siteName)
       .then((rows) => {
@@ -1213,6 +1208,13 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSite, xiqSites]);
 
+  // Devices the Gateway has adopted but not placed in a Site — the population
+  // Staging represents, and what a future adoption rule would act on.
+  const unassignedApCount = useMemo(
+    () => accessPoints.filter((ap) => isGatewayUnassigned(getDeviceSiteValue(ap))).length,
+    [accessPoints]
+  );
+
   // Apply org-level site group filter, then site filter, then search. XIQ rows
   // are already scoped to the selected XIQ site, so skip the controller filters.
   const filteredAccessPoints = useMemo(() => {
@@ -1221,9 +1223,12 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
       !isXiq && orgSiteGroupFilter
         ? base.filter((ap: any) => ap._siteGroupId === orgSiteGroupFilter)
         : base;
+    // Selecting Staging selects the devices the Gateway reports as Unassigned;
+    // resolveOs1DeviceSiteKey performs that translation so this stays a plain
+    // key comparison rather than a special case.
     const siteFiltered =
       !isXiq && selectedSite !== 'all'
-        ? siteGroupFiltered.filter((ap) => getAPSite(ap) === selectedSite)
+        ? siteGroupFiltered.filter((ap) => resolveOs1DeviceSiteKey(ap) === selectedSite)
         : siteGroupFiltered;
     return filterBySearch(siteFiltered);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1789,10 +1794,12 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
       case 'serialNumber':
         return <span className="font-mono text-sm">{ap.serialNumber}</span>;
       case 'hostSite':
+        // An AP the Gateway has not placed yet reads as Staging — the OS1 name
+        // for that state — rather than blank or "Unknown Location".
         return (
           <div className="flex items-center space-x-1">
             <MapPin className="h-3 w-3 text-muted-foreground" />
-            <span className="text-sm">{ap.hostSite || 'Unknown Location'}</span>
+            <span className="text-sm">{resolveOs1SiteLabel(ap)}</span>
           </div>
         );
       case 'model':
@@ -2281,7 +2288,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
           if (isContextClickable) {
             const rawValue =
               columnKey === 'hostSite'
-                ? params.data.hostSite || params.data.siteName || ''
+                ? resolveOs1SiteLabel(params.data)
                 : columnKey === 'model'
                   ? params.data.model || params.data.hardwareType || ''
                   : params.data.ipAddress || '';
@@ -2440,6 +2447,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
             onValueChange={setSelectedSite}
             sites={srcSites}
             xiqSites={xiqSites}
+            unassignedDeviceCount={unassignedApCount}
             triggerClassName="w-[180px] h-8 text-xs"
           />
           <Button
@@ -3128,7 +3136,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
           const { type, value } = contextSlideOut;
           const siteAPs =
             type === 'site'
-              ? sortedAccessPoints.filter((ap) => (ap.hostSite || ap.siteName) === value)
+              ? sortedAccessPoints.filter((ap) => resolveOs1SiteLabel(ap) === value)
               : [];
           const modelAPs =
             type === 'model'
@@ -3215,12 +3223,8 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
                       <p className="text-muted-foreground text-xs uppercase tracking-wide mb-2">
                         Deployed At
                       </p>
-                      {Array.from(
-                        new Set(modelAPs.map((ap) => ap.hostSite || ap.siteName || 'Unknown'))
-                      ).map((site) => {
-                        const count = modelAPs.filter(
-                          (ap) => (ap.hostSite || ap.siteName || 'Unknown') === site
-                        ).length;
+                      {Array.from(new Set(modelAPs.map((ap) => resolveOs1SiteLabel(ap)))).map((site) => {
+                        const count = modelAPs.filter((ap) => resolveOs1SiteLabel(ap) === site).length;
                         return (
                           <div
                             key={site}
@@ -3275,7 +3279,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
                       { label: 'Model', val: ipAP.model || ipAP.hardwareType || '—' },
                       { label: 'IP Address', val: ipAP.ipAddress || '—' },
                       { label: 'MAC Address', val: (ipAP as any).macAddress || '—' },
-                      { label: 'Site', val: ipAP.hostSite || ipAP.siteName || '—' },
+                      { label: 'Site', val: resolveOs1SiteLabel(ipAP) },
                       { label: 'Status', val: ipAP.status || '—' },
                       { label: 'Uptime', val: (ipAP as any).uptime || '—' },
                     ].map(({ label, val }) => (
