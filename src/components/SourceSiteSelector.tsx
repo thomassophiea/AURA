@@ -126,9 +126,9 @@ function GatewayBoundaryLabel({ group }: { group: CatalogSiteGroup }) {
         Site Group
       </span>
       <span className="truncate font-semibold text-foreground">{group.name}</span>
-      {group.lockingId && (
+      {group.gatewayIdentity && (
         <span className="truncate font-mono text-[10px] text-muted-foreground/80">
-          {group.lockingId}
+          {group.gatewayIdentity}
         </span>
       )}
       <span className="shrink-0 rounded-sm border border-border px-1 text-[9px] uppercase leading-4 tracking-wide text-muted-foreground">

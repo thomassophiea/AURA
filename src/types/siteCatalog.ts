@@ -109,8 +109,14 @@ export interface CatalogSiteGroup {
   gatewayMode: GatewayMode;
   /** Gateway host name, when known. */
   hostname: string | null;
-  /** Gateway Locking ID — the stable license identity shown next to the name. */
+  /** Gateway Locking ID — the stable license identity, when it has been cached. */
   lockingId: string | null;
+  /**
+   * How this Gateway is identified beside the Site Group name: Locking ID when
+   * known, else host name, else the host in the Gateway URL. Always names a real
+   * Gateway so the boundary's owner is never left implicit.
+   */
+  gatewayIdentity: string | null;
   /** Sites owned by this Gateway boundary, already ordered. */
   sites: CatalogSite[];
 }

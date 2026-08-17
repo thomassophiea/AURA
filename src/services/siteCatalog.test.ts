@@ -9,6 +9,7 @@ import {
   deriveGatewayMode,
   flattenOs1Catalog,
   flattenXiqCatalog,
+  gatewayIdentity,
   gatewayModeLabel,
   getDeviceSiteValue,
   isGatewayUnassigned,
@@ -319,5 +320,48 @@ describe('buildXiqCatalog', () => {
     const catalog = buildXiqCatalog({ xiqSites: [{ id: '4207', name: 'North', siteGroupId: 'sg-1' }] });
     expect(catalog.sites[0].key).toBe('xiq:sg-1:4207');
     expect(catalog.sites[0].systemKind).toBeUndefined();
+  });
+});
+
+// ── Gateway identity ───────────────────────────────────────────────────────
+
+describe('gatewayIdentity', () => {
+  it('prefers the Locking ID, the stable license identity', () => {
+    expect(
+      gatewayIdentity({
+        locking_id: '2624E-C7BE5',
+        hostname: 'gw-a',
+        controller_url: 'https://gw.example.test:443',
+      })
+    ).toBe('2624E-C7BE5');
+  });
+
+  it('falls back to the host name before the URL', () => {
+    expect(
+      gatewayIdentity({ locking_id: '  ', hostname: 'gw-a', controller_url: 'https://x.test:443' })
+    ).toBe('gw-a');
+  });
+
+  it('falls back to the Gateway URL host — the org-scope case, where no identity is cached', () => {
+    expect(gatewayIdentity({ controller_url: 'https://tsophiea.ddns.net:443' })).toBe(
+      'tsophiea.ddns.net'
+    );
+  });
+
+  it('still extracts a host from an unparseable URL rather than showing nothing', () => {
+    expect(gatewayIdentity({ controller_url: '192.168.100.12:5825' })).toBe('192.168.100.12');
+  });
+
+  it('is null only when there is genuinely nothing to name', () => {
+    expect(gatewayIdentity({})).toBeNull();
+    expect(gatewayIdentity({ controller_url: '' })).toBeNull();
+  });
+
+  it('is carried onto every Site Group the catalog builds', () => {
+    const catalog = buildOs1Catalog({
+      siteGroups: [siteGroup({ id: 'sg-1', name: 'SouthEast', controller_url: 'https://gw.test:443' })],
+      sites: [],
+    });
+    expect(catalog.groups[0].gatewayIdentity).toBe('gw.test');
   });
 });

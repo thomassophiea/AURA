@@ -186,6 +186,33 @@ export function gatewayModeLabel(mode: GatewayMode): string {
   return mode === 'paired' ? 'Gateway Pair' : 'Standalone';
 }
 
+/**
+ * How the Gateway behind a Site Group is identified next to its name.
+ *
+ * The Locking ID is the stable license identity and the design's first choice,
+ * but it is only cached onto a Site Group after that group has been entered —
+ * so in org scope it is usually absent. Falling back to the host name, then to
+ * the host in the Gateway URL, means the boundary always names a real Gateway
+ * rather than showing the Site Group name alone, which would leave the user
+ * unable to tell which Gateway owns those Sites.
+ */
+export function gatewayIdentity(
+  siteGroup: Partial<Pick<SiteGroup, 'locking_id' | 'hostname' | 'controller_url'>>
+): string | null {
+  const lockingId = siteGroup.locking_id?.trim();
+  if (lockingId) return lockingId;
+  const hostname = siteGroup.hostname?.trim();
+  if (hostname) return hostname;
+  const url = siteGroup.controller_url?.trim();
+  if (!url) return null;
+  try {
+    return new URL(url).hostname || null;
+  } catch {
+    // Not a parseable URL — strip any scheme/port rather than showing nothing.
+    return url.replace(/^\w+:\/\//, '').split('/')[0].split(':')[0] || null;
+  }
+}
+
 function siteDisplayName(site: Site): string {
   return site.name || site.siteName || site.displayName || site.id;
 }
@@ -288,6 +315,7 @@ export function buildOs1Catalog(input: BuildOs1CatalogInput): Os1Catalog {
     gatewayMode: deriveGatewayMode(sg),
     hostname: sg.hostname ?? null,
     lockingId: sg.locking_id ?? null,
+    gatewayIdentity: gatewayIdentity(sg),
     sites: sortCatalogSites(byGroupId.get(sg.id) ?? []),
   }));
 
@@ -299,6 +327,7 @@ export function buildOs1Catalog(input: BuildOs1CatalogInput): Os1Catalog {
       gatewayMode: 'standalone',
       hostname: null,
       lockingId: null,
+      gatewayIdentity: null,
       sites: sortCatalogSites(orphans),
     });
   }
