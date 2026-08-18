@@ -7,7 +7,14 @@ import {
 } from './useEnergyData';
 
 vi.mock('./useGlobalFilters', () => ({
-  useGlobalFilters: () => ({ site: 'all', timeRange: '24h', environment: 'all' }),
+  useGlobalFilters: () => ({
+    filters: { site: 'all', timeRange: '24h', environment: 'all' },
+    updateFilter: () => {},
+    updateFilters: () => {},
+    resetFilters: () => {},
+    resetFilter: () => {},
+    hasActiveFilters: false,
+  }),
 }));
 
 const getEnergyOverview = vi.fn();

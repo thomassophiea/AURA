@@ -40,7 +40,8 @@ function useEnergyResource<T>(
   ) => Promise<T>,
   enabled = true
 ): AsyncState<T> {
-  const { site, timeRange } = useGlobalFilters();
+  const { filters } = useGlobalFilters();
+  const { site, timeRange } = filters;
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState<boolean>(enabled);
   const [error, setError] = useState<string | null>(null);

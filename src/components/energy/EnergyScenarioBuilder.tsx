@@ -10,7 +10,8 @@ import type { EnergyScenarioPolicy, EnergyScenarioResult } from '@/types/energy'
 const OVERNIGHT_HOURS = [0, 1, 2, 3, 4, 5];
 
 export function EnergyScenarioBuilder() {
-  const { site } = useGlobalFilters();
+  const { filters } = useGlobalFilters();
+  const { site } = filters;
   const [disable6Ghz, setDisable6Ghz] = useState(true);
   const [disableLowUtil, setDisableLowUtil] = useState(false);
   const [reduceTxPower, setReduceTxPower] = useState(false);

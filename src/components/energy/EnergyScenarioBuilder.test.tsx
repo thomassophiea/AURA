@@ -3,7 +3,14 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { EnergyScenarioBuilder } from './EnergyScenarioBuilder';
 
 vi.mock('@/hooks/useGlobalFilters', () => ({
-  useGlobalFilters: () => ({ site: 'all', timeRange: '24h', environment: 'all' }),
+  useGlobalFilters: () => ({
+    filters: { site: 'all', timeRange: '24h', environment: 'all' },
+    updateFilter: () => {},
+    updateFilters: () => {},
+    resetFilters: () => {},
+    resetFilter: () => {},
+    hasActiveFilters: false,
+  }),
 }));
 
 const postEnergyScenario = vi.fn();
