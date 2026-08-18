@@ -40,8 +40,24 @@ export function normalizeApList(payload) {
     .map((row) => ({
       serial: row?.serialNumber ?? row?.serial ?? row?.apSerialNumber ?? null,
       siteId: row?.siteId ?? row?.site?.id ?? null,
+      // XCC's AP query exposes the site as a NAME (`hostSite`), not an id. The
+      // real site id is resolved from the site list so samples carry the same
+      // site_id the UI filters on — without it, per-site energy/SLE views on a
+      // specific site read blank.
+      hostSite: row?.hostSite ?? row?.site?.name ?? null,
     }))
     .filter((ap) => ap.serial);
+}
+
+/** Map site name → id from the controller's site list, to resolve AP `hostSite` names. */
+export function buildSiteNameToIdMap(payload) {
+  const map = new Map();
+  for (const site of extractRows(payload, ['sites'])) {
+    const id = site?.id ?? site?.siteId ?? null;
+    const name = site?.name ?? site?.siteName ?? null;
+    if (id && name) map.set(name, id);
+  }
+  return map;
 }
 
 export async function collectApReports({
@@ -75,6 +91,18 @@ export async function collectApReports({
   }
 
   const allAps = normalizeApList(apsResponse.data);
+
+  // Resolve hostSite names to the site ids the UI filters on. Best-effort: a
+  // missing site list leaves samples untagged rather than failing the run.
+  let siteMap = new Map();
+  const sitesResponse = await session.get('/v3/sites');
+  endpointsTried += 1;
+  if (sitesResponse.ok) {
+    siteMap = buildSiteNameToIdMap(sitesResponse.data);
+  } else {
+    notes.push('Site list unavailable; AP report samples were not site-tagged this run.');
+  }
+
   const aps = allAps.slice(0, maxAps);
   if (allAps.length > aps.length) {
     // Never let a cap look like full coverage.
@@ -111,7 +139,7 @@ export async function collectApReports({
       metricFamily: METRIC_FAMILIES.AP_REPORT,
       orgId: source.orgId,
       siteGroupId: source.siteGroupId,
-      siteId: ap.siteId,
+      siteId: ap.siteId ?? siteMap.get(ap.hostSite) ?? null,
       deviceExternalId: ap.serial,
       collectedAt: now,
       retentionDays: config.retentionDays,
