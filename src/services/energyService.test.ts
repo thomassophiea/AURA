@@ -44,7 +44,7 @@ describe('energyService', () => {
       status: 400,
       json: async () => ({ error: 'bad range' }),
     });
-    await expect(getEnergyOverview({ site: 'all', timeRange: '24h' })).rejects.toThrow();
+    await expect(getEnergyOverview({ site: 'all', timeRange: '24h' })).rejects.toThrow('bad range');
   });
 
   it('PUT preferences posts a JSON body', async () => {
