@@ -26,6 +26,7 @@ import { registerResolver } from './server/cortex/toolDispatcher.js';
 import { sentinelEngine } from './server/sentinel/sentinelEngine.js';
 import { createSentinelRouter } from './server/sentinel/sentinelRouter.js';
 import { createMonitoringRouter } from './server/monitoring/monitoringRouter.js';
+import { createEnergyRouter } from './server/energy/energyRouter.js';
 import { createGuestsRouter } from './server/guests/guestsRouter.js';
 import { createSystemRouter } from './server/system/systemRouter.js';
 import { createServicesSummaryRouter } from './server/services/servicesSummaryRouter.js';
@@ -2099,6 +2100,17 @@ app.use('/api', createSentinelRouter());
 if (monitoringConfig) {
   app.use('/api', createMonitoringRouter({ config: monitoringConfig }));
   console.log('[Proxy Server] ✓ Monitoring history API mounted at /api/monitoring/*');
+  app.use(
+    '/api',
+    createEnergyRouter({
+      config: {
+        retentionDays: monitoringConfig.retentionDays,
+        authGraceSeconds: monitoringConfig.authGraceSeconds,
+        maxGapSeconds: 2 * 60 * 60,
+      },
+    })
+  );
+  console.log('[Proxy Server] ✓ Energy API mounted at /api/energy/*');
 }
 
 // ==================== System Introspection Routes ====================
