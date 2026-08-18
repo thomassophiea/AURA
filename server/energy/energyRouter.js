@@ -142,8 +142,17 @@ export function createEnergyRouter(options = {}) {
         meta: {
           dataWindowDays: days,
           earliestSampleAt: earliest,
+          // Only a caveat about the selected window, not a "no data" warning
+          // (the empty state covers that). Firing it with zero data made it
+          // read as missing data on the default short-range view.
           limitationsNotes:
-            days !== null && days < 3 ? ['Limited data — projections are an extrapolation.'] : [],
+            agg.apWithDataCount > 0 && days !== null && days < 3
+              ? [
+                  `Annualized projections are extrapolated from ${
+                    days < 1 ? 'under a day' : `${Math.round(days)} day${Math.round(days) === 1 ? '' : 's'}`
+                  } of data — widen the time range for higher confidence.`,
+                ]
+              : [],
         },
       });
     } catch (error) {
