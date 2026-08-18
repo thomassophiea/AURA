@@ -62,6 +62,7 @@ describe('GET /api/energy/overview', () => {
   it('rejects an invalid range with 400', async () => {
     const res = await call(buildApp(), 'get', '/api/energy/overview?start=bad&end=also-bad');
     expect(res.status).toBe(400);
+    expect(res.body.error).toBe('invalid range');
   });
 });
 
@@ -72,6 +73,7 @@ describe('PUT /api/energy/preferences', () => {
       ratePerKwh: 0.2,
     });
     expect(res.status).toBe(400);
+    expect(res.body.error).toBe('unsupported currency');
   });
 
   it('upserts valid preferences', async () => {

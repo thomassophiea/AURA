@@ -72,7 +72,7 @@ export function EnergyPreferencesPanel({ onSaved }: EnergyPreferencesPanelProps)
           <input
             type="number"
             step="0.01"
-            min="0"
+            min="0.001"
             value={rate}
             onChange={(e) => setRate(e.target.value)}
             className="w-28 rounded-md border border-border bg-background px-2 py-1 text-sm"

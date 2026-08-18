@@ -67,6 +67,12 @@ export function createEnergyRouter(options = {}) {
   router.use('/energy', scopeMiddleware);
 
   function fail(res, error, status = 500) {
+    // Client-input validation (4xx) carries a safe, developer-authored message —
+    // surface it so callers see "unsupported currency", not the generic upstream
+    // label. 5xx may wrap DB/controller internals, so those stay sanitized.
+    if (status >= 400 && status < 500) {
+      return res.status(status).json({ error: error.message, errorClass: 'validation' });
+    }
     const { errorClass } = sanitizeError(error);
     return res.status(status).json({
       error: ERROR_CLASS_LABELS[errorClass] ?? 'Request failed',

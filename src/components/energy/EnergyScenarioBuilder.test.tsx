@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { EnergyScenarioBuilder } from './EnergyScenarioBuilder';
 
@@ -23,6 +23,8 @@ describe('EnergyScenarioBuilder', () => {
     postEnergyScenario.mockReset();
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
+
+  afterEach(() => vi.restoreAllMocks());
 
   it('runs a scenario and displays savings', async () => {
     postEnergyScenario.mockResolvedValue({
