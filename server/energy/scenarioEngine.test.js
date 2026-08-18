@@ -69,4 +69,25 @@ describe('replayScenario', () => {
     const out = replayScenario({ samples, policy: {}, maxGapSeconds: 7200 });
     expect(out.baselineKwh).toBe(0); // the only interval exceeds the clamp
   });
+
+  it('does not count APs with only a single sample (no forward edge)', () => {
+    const samples = [
+      at('2026-08-10T12:00:00Z', 10, { deviceExternalId: 'AP-single' }),
+    ];
+    const out = replayScenario({ samples, policy: {}, maxGapSeconds: 7200 });
+    expect(out.apWithDataCount).toBe(0);
+    expect(out.baselineKwh).toBe(0);
+  });
+
+  it('counts only APs with usable intervals when some are excluded by gap filter', () => {
+    const samples = [
+      at('2026-08-10T00:00:00Z', 10, { deviceExternalId: 'AP-good' }),
+      at('2026-08-10T01:00:00Z', 10, { deviceExternalId: 'AP-good' }),
+      at('2026-08-10T00:00:00Z', 5, { deviceExternalId: 'AP-excluded' }),
+      at('2026-08-11T00:00:00Z', 5, { deviceExternalId: 'AP-excluded' }), // 24h gap
+    ];
+    const out = replayScenario({ samples, policy: {}, maxGapSeconds: 7200 });
+    expect(out.apWithDataCount).toBe(1); // only AP-good has a usable interval
+    expect(out.baselineKwh).toBeGreaterThan(0); // AP-good contributes
+  });
 });

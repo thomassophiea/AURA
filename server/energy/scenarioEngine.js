@@ -63,12 +63,14 @@ export function replayScenario({ samples, policy, maxGapSeconds }) {
 
   let baselineKwh = 0;
   let simulatedKwh = 0;
+  const apsWithData = new Set();
 
-  for (const rows of byAp.values()) {
+  for (const [deviceExternalId, rows] of byAp.entries()) {
     rows.sort((a, b) => new Date(a.observedAt) - new Date(b.observedAt));
     for (let i = 0; i < rows.length - 1; i += 1) {
       const elapsed = (new Date(rows[i + 1].observedAt) - new Date(rows[i].observedAt)) / 1000;
       if (!(elapsed > 0) || elapsed > maxGapSeconds) continue;
+      apsWithData.add(deviceExternalId);
       baselineKwh += kwhFromWattSeconds(rows[i].watts, elapsed) ?? 0;
       simulatedKwh += kwhFromWattSeconds(simulatedWattsForSample(rows[i], policy), elapsed) ?? 0;
     }
@@ -80,6 +82,6 @@ export function replayScenario({ samples, policy, maxGapSeconds }) {
     simulatedKwh,
     savingsKwh,
     savingsPercent: savingsPercent(baselineKwh, simulatedKwh),
-    apWithDataCount: byAp.size,
+    apWithDataCount: apsWithData.size,
   };
 }
