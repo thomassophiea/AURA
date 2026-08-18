@@ -56,4 +56,39 @@ describe('buildRecommendations', () => {
     });
     expect(recs.find((r) => r.type === 'low_utilization_6ghz')).toBeUndefined();
   });
+
+  it('ignores low-util 2.4 GHz samples; only 6 GHz counts', () => {
+    // AP with busy 6 GHz (utilization 60%) but idle 2.4 GHz (utilization 1%).
+    // Must NOT qualify: low 2.4 GHz samples must not count toward the 6 GHz signal.
+    const startMs = Date.parse('2026-08-10T00:00:00Z');
+    const sixGhzBusy = [];
+    const twoFourGhzIdle = [];
+
+    for (let h = 0; h < 7 * 24; h += 1) {
+      const timestamp = new Date(startMs + h * 3600_000).toISOString();
+      sixGhzBusy.push({
+        deviceExternalId: 'AP-1',
+        watts: 10,
+        observedAt: timestamp,
+        band: '6',
+        channelUtilization: 60, // busy 6 GHz
+      });
+      twoFourGhzIdle.push({
+        deviceExternalId: 'AP-1',
+        watts: 10,
+        observedAt: new Date(startMs + h * 3600_000 + 30_000).toISOString(),
+        band: '2_4', // explicitly 2.4 GHz
+        channelUtilization: 1, // idle 2.4 GHz
+      });
+    }
+
+    const mixed = [...sixGhzBusy, ...twoFourGhzIdle];
+    const recs = buildRecommendations({
+      samples: mixed,
+      windowDays: 7,
+      ratePerKwh: 0.14,
+      maxGapSeconds: 7200,
+    });
+    expect(recs.find((r) => r.type === 'low_utilization_6ghz')).toBeUndefined();
+  });
 });

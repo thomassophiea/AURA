@@ -9,14 +9,28 @@ import { randomUUID } from 'node:crypto';
 import { dataQualityForDays, estimateCost, projectDaily, projectAnnual } from './energyCalculator.js';
 import { replayScenario, SIX_GHZ_BAND_SHARE } from './scenarioEngine.js';
 
-/** Share of samples for an AP whose 6 GHz utilization sits under `threshold`. */
+/**
+ * Share of samples for an AP whose 6 GHz utilization sits under `threshold`.
+ * Restricts consideration to 6 GHz band samples (or untagged); explicitly excludes
+ * non-6GHz bands (2.4, 5) to prevent 2.4/5 GHz idle samples from inflating the signal.
+ */
 function lowUtilFraction(rows, threshold) {
-  const withUtil = rows.filter((r) => Number.isFinite(r.channelUtilization));
+  const band6Only = rows.filter(
+    (r) => r.band == null || String(r.band) === '6'
+  );
+  const withUtil = band6Only.filter((r) => Number.isFinite(r.channelUtilization));
   if (withUtil.length === 0) return 0;
   const low = withUtil.filter((r) => r.channelUtilization < threshold).length;
   return low / withUtil.length;
 }
 
+/**
+ * Projects a period's energy to annual consumption.
+ * Divides total observed seconds by AP count to compute a per-AP-equivalent duration,
+ * which is an APPROXIMATION that distorts the projection when qualifying APs have
+ * unequal sample density; acceptable for Phase 3 (single-AP-dominant), to be refined
+ * per-AP in a later phase.
+ */
 function annualize(periodKwh, samples, maxGapSeconds) {
   // Total observed seconds across the window, capped per interval, for projection.
   let seconds = 0;
