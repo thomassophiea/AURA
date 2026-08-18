@@ -10,6 +10,7 @@
 
 import { query } from '../db/pool.js';
 
+// Uses $1 sourceIds, $2 start, $3 end. INTEGRATED_CTE extends it with $4 siteId, $5 maxGapSeconds; fetchPowerSamples adds $4 siteId only. Do not add $5 here.
 const POWER_FILTER = `
   metric_family = 'ap_report'
   AND metric_name = 'power_consumption'
@@ -164,7 +165,7 @@ export async function getRatePreferences(sourceId) {
   return {
     currencyCode: r.currency_code,
     currencySymbol: r.currency_symbol,
-    ratePerKwh: r.rate_per_kwh,
+    ratePerKwh: Number(r.rate_per_kwh),
   };
 }
 
@@ -185,7 +186,7 @@ export async function upsertRatePreferences({ sourceId, currencyCode, currencySy
   return {
     currencyCode: r.currency_code,
     currencySymbol: r.currency_symbol,
-    ratePerKwh: r.rate_per_kwh,
+    ratePerKwh: Number(r.rate_per_kwh),
   };
 }
 
