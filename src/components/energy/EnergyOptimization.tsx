@@ -15,9 +15,28 @@ import { EnergyPreferencesPanel } from './EnergyPreferencesPanel';
 import { useGlobalFilters } from '@/hooks/useGlobalFilters';
 import { useSelectedTimeRange } from '@/hooks/useSelectedTimeRange';
 import { TimeRangeSelector } from '@/components/TimeRangeSelector';
+import { SourceSiteSelector } from '@/components/SourceSiteSelector';
+import { useSourceSites } from '@/hooks/useSourceSites';
+import { parseXiqSiteValue } from '@/services/siteContextService';
 
 export function EnergyOptimization() {
   const { filters, updateFilter } = useGlobalFilters();
+  const { sites: os1Sites, xiqSites } = useSourceSites();
+  // Picker value tracks the global site filter ('all' or an OS-ONE site id).
+  // XIQ selections carry an `xiq:` value and are gated below — the energy store
+  // holds only OS-ONE / controller telemetry.
+  const [selectedSite, setSelectedSite] = useState<string>(filters.site);
+  const isXiqSite = parseXiqSiteValue(selectedSite) !== null;
+
+  const handleSiteChange = (value: string) => {
+    setSelectedSite(value);
+    // OS-ONE selections (a site id, or 'all') drive the energy queries through
+    // the global filter. XIQ selections leave the filter untouched and gate.
+    if (parseXiqSiteValue(value) === null) {
+      updateFilter('site', value);
+    }
+  };
+
   const {
     token: timeRangeToken,
     setToken: setTimeRangeToken,
@@ -36,15 +55,22 @@ export function EnergyOptimization() {
 
   const noData = overview.data !== null && overview.data.apWithDataCount === 0;
 
-  return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold text-foreground">Energy Optimization</h1>
-          <p className="text-sm text-muted-foreground">
-            Fleet energy use, cost, and savings from AP power telemetry
-          </p>
-        </div>
+  const header = (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h1 className="text-lg font-semibold text-foreground">Energy Optimization</h1>
+        <p className="text-sm text-muted-foreground">
+          Fleet energy use, cost, and savings from AP power telemetry
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <SourceSiteSelector
+          value={selectedSite}
+          onValueChange={handleSiteChange}
+          sites={os1Sites}
+          xiqSites={xiqSites}
+          osSiteValue="id"
+        />
         <TimeRangeSelector
           value={timeRangeToken}
           onChange={setTimeRangeToken}
@@ -54,6 +80,21 @@ export function EnergyOptimization() {
           neverCollected={neverCollected}
         />
       </div>
+    </div>
+  );
+
+  if (isXiqSite) {
+    return (
+      <div className="space-y-6 p-6">
+        {header}
+        <EnergyEmptyState reason="xiq-unsupported" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 p-6">
+      {header}
 
       {overview.data?.meta.limitationsNotes.map((note) => (
         <div
