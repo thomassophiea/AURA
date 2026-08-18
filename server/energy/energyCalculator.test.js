@@ -22,6 +22,9 @@ describe('kwhFromWattSeconds', () => {
     expect(kwhFromWattSeconds(Number.NaN, 3600)).toBeNull();
     expect(kwhFromWattSeconds(1000, -5)).toBeNull();
   });
+  it('returns null on negative watts', () => {
+    expect(kwhFromWattSeconds(-100, 3600)).toBeNull();
+  });
 });
 
 describe('projectDaily', () => {
@@ -53,6 +56,9 @@ describe('estimateCost', () => {
     expect(estimateCost(100, 0)).toBeNull();
     expect(estimateCost(100, null)).toBeNull();
   });
+  it('returns null on negative kwh', () => {
+    expect(estimateCost(-50, 0.14)).toBeNull();
+  });
 });
 
 describe('savingsPercent', () => {
@@ -62,6 +68,9 @@ describe('savingsPercent', () => {
   it('returns null when baseline is zero', () => {
     expect(savingsPercent(0, 0)).toBeNull();
   });
+  it('returns null on negative baseline', () => {
+    expect(savingsPercent(-100, 80)).toBeNull();
+  });
 });
 
 describe('windowDays', () => {
@@ -70,6 +79,12 @@ describe('windowDays', () => {
   });
   it('returns null on invalid dates', () => {
     expect(windowDays('nope', '2026-08-17T00:00:00Z')).toBeNull();
+  });
+  it('returns null on zero-duration window', () => {
+    expect(windowDays('2026-08-10T00:00:00Z', '2026-08-10T00:00:00Z')).toBeNull();
+  });
+  it('returns null on reversed dates', () => {
+    expect(windowDays('2026-08-17T00:00:00Z', '2026-08-10T00:00:00Z')).toBeNull();
   });
 });
 
