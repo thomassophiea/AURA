@@ -5,7 +5,7 @@
  * slow response cannot overwrite a newer one.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useGlobalFilters } from './useGlobalFilters';
 import {
@@ -38,7 +38,6 @@ function useEnergyResource<T>(
     filters: { site: string; timeRange: string },
     signal: AbortSignal
   ) => Promise<T>,
-  deps: unknown[],
   enabled = true
 ): AsyncState<T> {
   const { site, timeRange } = useGlobalFilters();
@@ -46,6 +45,8 @@ function useEnergyResource<T>(
   const [loading, setLoading] = useState<boolean>(enabled);
   const [error, setError] = useState<string | null>(null);
   const [nonce, setNonce] = useState(0);
+  const fetcherRef = useRef(fetcher);
+  fetcherRef.current = fetcher;
 
   const refetch = useCallback(() => setNonce((n) => n + 1), []);
 
@@ -57,7 +58,7 @@ function useEnergyResource<T>(
     const controller = new AbortController();
     setLoading(true);
     setError(null);
-    fetcher({ site, timeRange }, controller.signal)
+    fetcherRef.current({ site, timeRange }, controller.signal)
       .then((result) => {
         if (!controller.signal.aborted) {
           setData(result);
@@ -71,37 +72,32 @@ function useEnergyResource<T>(
         setLoading(false);
       });
     return () => controller.abort();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [site, timeRange, nonce, enabled, ...deps]);
+  }, [site, timeRange, nonce, enabled]);
 
   return { data, loading, error, refetch };
 }
 
 export function useEnergyOverview(): AsyncState<EnergyOverview> {
   return useEnergyResource(
-    (filters, signal) => getEnergyOverview(filters, signal),
-    []
+    (filters, signal) => getEnergyOverview(filters, signal)
   );
 }
 
 export function useEnergySites(): AsyncState<EnergySite[]> {
   return useEnergyResource(
-    async (filters, signal) => (await getEnergySites(filters, signal)).sites,
-    []
+    async (filters, signal) => (await getEnergySites(filters, signal)).sites
   );
 }
 
 export function useEnergyAps(enabled: boolean): AsyncState<EnergyAp[]> {
   return useEnergyResource(
     async (filters, signal) => (await getEnergyAps(filters, signal)).aps,
-    [],
     enabled
   );
 }
 
 export function useEnergyRecommendations(): AsyncState<EnergyRecommendation[]> {
   return useEnergyResource(
-    async (filters, signal) => (await getEnergyRecommendations(filters, signal)).recommendations,
-    []
+    async (filters, signal) => (await getEnergyRecommendations(filters, signal)).recommendations
   );
 }
