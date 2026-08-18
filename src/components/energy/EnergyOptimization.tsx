@@ -13,9 +13,22 @@ import { EnergyScenarioBuilder } from './EnergyScenarioBuilder';
 import { EnergyRecommendations } from './EnergyRecommendations';
 import { EnergyPreferencesPanel } from './EnergyPreferencesPanel';
 import { useGlobalFilters } from '@/hooks/useGlobalFilters';
+import { useSelectedTimeRange } from '@/hooks/useSelectedTimeRange';
+import { TimeRangeSelector } from '@/components/TimeRangeSelector';
 
 export function EnergyOptimization() {
-  const { updateFilter } = useGlobalFilters();
+  const { filters, updateFilter } = useGlobalFilters();
+  const {
+    token: timeRangeToken,
+    setToken: setTimeRangeToken,
+    optionGroups,
+    dayStatuses,
+    retentionDays,
+    neverCollected,
+  } = useSelectedTimeRange({
+    siteId: filters.site !== 'all' ? filters.site : undefined,
+    metricFamily: 'ap_report',
+  });
   const overview = useEnergyOverview();
   const sites = useEnergySites();
   const recommendations = useEnergyRecommendations();
@@ -25,6 +38,23 @@ export function EnergyOptimization() {
 
   return (
     <div className="space-y-6 p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold text-foreground">Energy Optimization</h1>
+          <p className="text-sm text-muted-foreground">
+            Fleet energy use, cost, and savings from AP power telemetry
+          </p>
+        </div>
+        <TimeRangeSelector
+          value={timeRangeToken}
+          onChange={setTimeRangeToken}
+          optionGroups={optionGroups}
+          dayStatuses={dayStatuses}
+          retentionDays={retentionDays}
+          neverCollected={neverCollected}
+        />
+      </div>
+
       {overview.data?.meta.limitationsNotes.map((note) => (
         <div
           key={note}

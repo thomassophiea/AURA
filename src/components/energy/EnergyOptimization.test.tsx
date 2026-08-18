@@ -18,6 +18,17 @@ vi.mock('@/hooks/useEnergyData', () => ({
   useEnergyRecommendations: () => ({ data: [], loading: false, error: null, refetch: () => {} }),
 }));
 
+vi.mock('@/hooks/useSelectedTimeRange', () => ({
+  useSelectedTimeRange: () => ({
+    token: '24h',
+    setToken: () => {},
+    optionGroups: [],
+    dayStatuses: new Map(),
+    retentionDays: 7,
+    neverCollected: false,
+  }),
+}));
+
 describe('EnergyOptimization', () => {
   it('renders the empty state when no APs report power', () => {
     render(<EnergyOptimization />);
