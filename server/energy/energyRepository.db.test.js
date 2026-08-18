@@ -63,7 +63,7 @@ d('energyRepository power integration', () => {
         `INSERT INTO metric_samples
            (monitored_source_id, site_id, device_external_id, metric_family, metric_name,
             observed_at, numeric_value, unit, metric_kind, expires_at)
-         VALUES ($1,'site-A','AP-1','ap_report','power_consumption',$2,$3,'mW','gauge', now() + interval '7 days')
+         VALUES ($1,'site-A','AP-1','ap_report','apPowerConsumptionTimeseries.power_consumption',$2,$3,'mW','gauge', now() + interval '7 days')
          ON CONFLICT DO NOTHING`,
         [sourceId, ts, mw]
       );

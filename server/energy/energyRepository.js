@@ -10,10 +10,15 @@
 
 import { query } from '../db/pool.js';
 
+// The AP report collector stores each stat as `${reportKey}.${slugifiedStatName}`
+// (reportNormalizer.js), so AP power lands under this compound name — NOT a bare
+// 'power_consumption'. Querying the bare name matched zero rows against real data.
+const POWER_METRIC_NAME = 'apPowerConsumptionTimeseries.power_consumption';
+
 // Uses $1 sourceIds, $2 start, $3 end. INTEGRATED_CTE extends it with $4 siteId, $5 maxGapSeconds; fetchPowerSamples adds $4 siteId only. Do not add $5 here.
 const POWER_FILTER = `
   metric_family = 'ap_report'
-  AND metric_name = 'power_consumption'
+  AND metric_name = '${POWER_METRIC_NAME}'
   AND monitored_source_id = ANY($1::uuid[])
   AND observed_at >= $2::timestamptz
   AND observed_at <  $3::timestamptz
@@ -146,7 +151,7 @@ export async function getEarliestPowerSampleAt({ sourceIds, siteId }) {
   const { rows } = await query(
     `SELECT MIN(observed_at) AS earliest
      FROM metric_samples
-     WHERE metric_family = 'ap_report' AND metric_name = 'power_consumption'
+     WHERE metric_family = 'ap_report' AND metric_name = '${POWER_METRIC_NAME}'
        AND monitored_source_id = ANY($1::uuid[])
        AND ($2::text IS NULL OR site_id = $2)`,
     [sourceIds, siteId]
