@@ -68,6 +68,7 @@ const monitoringItems = [
   { id: 'app-insights', label: 'App Analytics', icon: AppWindow },
   { id: 'access-points', label: 'Access Points', icon: Wifi },
   { id: 'connected-clients', label: 'Clients', icon: Users },
+  { id: 'energy-optimization', label: 'Energy', icon: Zap },
 ];
 
 const configureItems = [

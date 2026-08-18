@@ -111,6 +111,9 @@ const SiteDetail = lazy(() =>
 const AppInsights = lazy(() =>
   import('./components/AppInsights').then((m) => ({ default: m.AppInsights }))
 );
+const EnergyOptimization = lazy(() =>
+  import('./components/energy/EnergyOptimization').then((m) => ({ default: m.EnergyOptimization }))
+);
 const AuditLogs = lazy(() =>
   import('./components/AuditLogs').then((m) => ({ default: m.AuditLogs }))
 );
@@ -199,6 +202,10 @@ const pageInfo = {
   'app-insights': {
     title: 'App Insights',
     description: 'Application visibility and traffic analytics',
+  },
+  'energy-optimization': {
+    title: 'Energy Optimization',
+    description: 'Fleet energy use, cost, and savings scenarios from AP power telemetry',
   },
   'audit-logs': {
     title: 'Audit Logs',
@@ -1198,6 +1205,8 @@ export default function App() {
         return <SLEDashboard onClientClick={handleShowClientDetail} />;
       case 'app-insights':
         return <AppInsights api={apiService} />;
+      case 'energy-optimization':
+        return <EnergyOptimization />;
       case 'access-points':
         return (
           <AccessPoints
