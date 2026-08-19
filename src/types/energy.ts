@@ -71,6 +71,10 @@ export interface EnergyScenarioPolicy {
   afterHoursEnd?: number;
   reduceTxPower?: boolean;
   reducePercent?: number;
+  lightAware?: {
+    enabled: boolean;
+    actionsByState?: Partial<Record<LightState, LightActionInput[]>>;
+  };
 }
 
 export interface EnergyProjectionBlock {
@@ -102,4 +106,61 @@ export interface EnergyPreferences {
   currencyCode: string;
   currencySymbol: string;
   ratePerKwh: number;
+}
+
+export type LightState = 'bright' | 'dim' | 'dark' | 'unknown';
+
+export interface LightAwareSummary {
+  sensorCapableCount: number;
+  reportingCount: number;
+  stateBreakdown: Record<LightState, number>;
+  policyEnabled: boolean;
+  projectedAnnual: { kwh: number | null; cost: number | null };
+  currency: string;
+  currencySymbol: string;
+}
+
+export interface LightAwareApRow {
+  serial: string;
+  apName: string;
+  siteId: string | null;
+  model: string;
+  sensorCapable: boolean;
+  lightState: LightState;
+  dwellSeconds: number;
+  policyEnabled: boolean;
+  currentWatts: number;
+  optimizedWatts: number;
+  savingsWatts: number;
+}
+
+export interface LightActionInput {
+  kind: 'reduceTxPower' | 'reduceChains' | 'disableRadio' | 'disableWlan' | 'lowPowerProfile';
+  band?: '2.4' | '5' | '6';
+  reducePercent?: number;
+  wlanId?: string;
+}
+
+export interface LightAwarePolicyDoc {
+  thresholds?: { brightLux: number; darkLux: number };
+  hysteresis?: { dimDwellMinutes: number; darkDwellMinutes: number; restoreDwellMinutes: number };
+  dim?: { actions: LightActionInput[] };
+  dark?: { actions: LightActionInput[] };
+  protectedWlanIds?: string[];
+  restore?: { toNormal: boolean };
+}
+
+export interface LightAwarePolicy {
+  enabled: boolean;
+  policy: LightAwarePolicyDoc;
+}
+
+export interface LightAwareObserved {
+  brightPct: number | null;
+  dimPct: number | null;
+  darkPct: number | null;
+  unknownPct: number | null;
+  avgDarkHoursPerDay: number | null;
+  confidence: 'high' | 'medium' | 'low';
+  collecting: boolean;
 }
