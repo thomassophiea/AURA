@@ -18,6 +18,9 @@ vi.mock('@/hooks/useEnergyData', () => ({
   useEnergySites: () => ({ data: [], loading: false, error: null, refetch: () => {} }),
   useEnergyAps: () => ({ data: [], loading: false, error: null, refetch: () => {} }),
   useEnergyRecommendations: () => ({ data: [], loading: false, error: null, refetch: () => {} }),
+  useLightAwareSummary: () => ({ data: null, loading: false, error: null, refetch: () => {} }),
+  useLightAwareAps: () => ({ data: [], loading: false, error: null, refetch: () => {} }),
+  useLightAwarePolicy: () => ({ data: null, loading: false, error: null, save: () => {} }),
 }));
 
 vi.mock('@/hooks/useSelectedTimeRange', () => ({
