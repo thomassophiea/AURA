@@ -9,6 +9,7 @@ import { EnergyOverviewCards } from './EnergyOverviewCards';
 import { EnergyEmptyState } from './EnergyEmptyState';
 import { EnergySiteRankings } from './EnergySiteRankings';
 import { LightAwareOptimization } from './LightAwareOptimization';
+import { LightAwarePolicyDialog } from './LightAwarePolicyDialog';
 import { EnergyApTable } from './EnergyApTable';
 import { EnergyScenarioBuilder } from './EnergyScenarioBuilder';
 import { EnergyRecommendations } from './EnergyRecommendations';
@@ -145,6 +146,8 @@ export function EnergyOptimization() {
           </div>
         </div>
       )}
+
+      <LightAwarePolicyDialog open={policyOpen} onOpenChange={setPolicyOpen} />
     </div>
   );
 }
