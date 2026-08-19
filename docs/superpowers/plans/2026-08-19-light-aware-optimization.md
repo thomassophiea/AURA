@@ -1727,12 +1727,13 @@ import { describe, it, expect } from 'vitest';
 import { supportsLightSensor } from './apCapabilities';
 
 describe('supportsLightSensor', () => {
-  it('flags Wi-Fi 7 sensor models', () => {
+  it('flags confirmed sensor families', () => {
     expect(supportsLightSensor('AP5020')).toBe(true);
-    expect(supportsLightSensor('ap5050')).toBe(true);
+    expect(supportsLightSensor('ap4020x')).toBe(true);
+    expect(supportsLightSensor('AP4060X')).toBe(true);
   });
-  it('rejects older and unknown models', () => {
-    expect(supportsLightSensor('AP4020X')).toBe(false);
+  it('rejects non-sensor and unknown models', () => {
+    expect(supportsLightSensor('AP4000')).toBe(false);
     expect(supportsLightSensor(undefined)).toBe(false);
   });
 });
@@ -1747,8 +1748,9 @@ Expected: FAIL — module not found.
 
 ```typescript
 // src/lib/apCapabilities.ts
-/** UI mirror of server/energy/apCapabilities.js. Keep SENSOR_MODELS in sync. */
-const SENSOR_MODELS = ['AP5020', 'AP5050'];
+/** UI mirror of server/energy/apCapabilities.js. Keep SENSOR_MODELS in sync.
+ *  Confirmed sensor families: AP4020/4020X/4020FX, AP4060/4060X, AP5020. */
+const SENSOR_MODELS = ['AP4020', 'AP4060', 'AP5020'];
 
 export function supportsLightSensor(model: string | undefined | null): boolean {
   if (!model) return false;
