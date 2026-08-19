@@ -8,6 +8,7 @@ import {
 import { EnergyOverviewCards } from './EnergyOverviewCards';
 import { EnergyEmptyState } from './EnergyEmptyState';
 import { EnergySiteRankings } from './EnergySiteRankings';
+import { LightAwareOptimization } from './LightAwareOptimization';
 import { EnergyApTable } from './EnergyApTable';
 import { EnergyScenarioBuilder } from './EnergyScenarioBuilder';
 import { EnergyRecommendations } from './EnergyRecommendations';
@@ -57,6 +58,8 @@ export function EnergyOptimization() {
   const sites = useEnergySites();
   const recommendations = useEnergyRecommendations();
   const [apTableEnabled, setApTableEnabled] = useState(false);
+  const [policyOpen, setPolicyOpen] = useState(false);
+  const [apDrawerOpen, setApDrawerOpen] = useState(false);
 
   const noData = overview.data !== null && overview.data.apWithDataCount === 0;
 
@@ -125,6 +128,10 @@ export function EnergyOptimization() {
                 updateFilter('site', siteId);
                 setApTableEnabled(true);
               }}
+            />
+            <LightAwareOptimization
+              onConfigure={() => setPolicyOpen(true)}
+              onViewAps={() => setApDrawerOpen(true)}
             />
             <EnergyApTable enabled={apTableEnabled} />
           </div>
