@@ -25,9 +25,9 @@ export async function closeAndOpenTransition({ sourceId, apSerial, fromState, to
   await withTransaction(async (client) => {
     await client.query(
       `UPDATE light_state_transitions
-         SET dwell_seconds = GREATEST(0, EXTRACT(EPOCH FROM ($4::timestamptz - entered_at))::int)
+         SET dwell_seconds = GREATEST(0, EXTRACT(EPOCH FROM ($3::timestamptz - entered_at))::int)
        WHERE monitored_source_id = $1 AND ap_serial = $2 AND dwell_seconds IS NULL`,
-      [sourceId, apSerial, null, enteredAt]
+      [sourceId, apSerial, enteredAt]
     );
     await client.query(
       `INSERT INTO light_state_transitions
