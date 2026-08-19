@@ -886,18 +886,21 @@ app.post(
 const lightSensorStates = new Map(); // serial -> { state, data, ts }
 const LIGHT_SENSOR_TTL_MS = 120000;
 
-// Cached primary source id for fire-and-forget ingest (null when DB is unconfigured).
-let _cachedPrimarySourceId;
+// Cached primary source id for fire-and-forget ingest. Only a real id is cached
+// (it never changes); a null/empty/transient-error result is returned but NOT
+// cached, so ingest recovers once the source row exists or the DB is reachable —
+// caching null here would silently disable ingest for the process lifetime.
+let _cachedPrimarySourceId = null;
 async function resolveLightSourceId() {
-  if (_cachedPrimarySourceId !== undefined) return _cachedPrimarySourceId;
-  if (!isDatabaseConfigured()) { _cachedPrimarySourceId = null; return null; }
+  if (_cachedPrimarySourceId) return _cachedPrimarySourceId;
+  if (!isDatabaseConfigured()) return null;
   try {
     const { rows } = await query('SELECT id FROM monitored_sources ORDER BY created_at LIMIT 1');
-    _cachedPrimarySourceId = rows[0]?.id ?? null;
+    if (rows[0]?.id) _cachedPrimarySourceId = rows[0].id;
+    return _cachedPrimarySourceId;
   } catch {
-    _cachedPrimarySourceId = null;
+    return null;
   }
-  return _cachedPrimarySourceId;
 }
 
 app.post('/api/light-sensor/report', express.json({ limit: '4kb' }), (req, res) => {
