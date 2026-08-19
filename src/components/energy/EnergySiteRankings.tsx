@@ -9,9 +9,24 @@ interface EnergySiteRankingsProps {
   sites: EnergySite[] | null;
   loading: boolean;
   onSelectSite: (siteId: string) => void;
+  /** Resolves a site id to its human-readable name (from the site catalog). */
+  siteNameById?: Map<string, string>;
 }
 
-function EnergySiteRankingsComponent({ sites, loading, onSelectSite }: EnergySiteRankingsProps) {
+/** Human-readable label for a row: catalog name, then API name, then id, else a legacy label. */
+function siteLabel(site: EnergySite, siteNameById?: Map<string, string>): string {
+  if (site.siteId) {
+    return siteNameById?.get(site.siteId) ?? site.siteName ?? site.siteId;
+  }
+  return site.siteName ?? 'Unassigned (legacy)';
+}
+
+function EnergySiteRankingsComponent({
+  sites,
+  loading,
+  onSelectSite,
+  siteNameById,
+}: EnergySiteRankingsProps) {
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -40,11 +55,17 @@ function EnergySiteRankingsComponent({ sites, loading, onSelectSite }: EnergySit
             <tbody>
               {sites.map((site) => (
                 <tr
-                  key={site.siteId}
-                  className="cursor-pointer border-b border-border/50 hover:bg-muted/50"
-                  onClick={() => onSelectSite(site.siteId)}
+                  key={site.siteId ?? 'unassigned'}
+                  className={
+                    site.siteId
+                      ? 'cursor-pointer border-b border-border/50 hover:bg-muted/50'
+                      : 'border-b border-border/50'
+                  }
+                  onClick={site.siteId ? () => onSelectSite(site.siteId as string) : undefined}
                 >
-                  <td className="py-2 font-medium text-foreground">{site.siteName}</td>
+                  <td className="py-2 font-medium text-foreground">
+                    {siteLabel(site, siteNameById)}
+                  </td>
                   <td className="py-2 text-muted-foreground">{site.apWithDataCount}</td>
                   <td className="py-2 text-foreground">{formatKwh(site.totalKwh)}</td>
                   <td className="py-2 text-muted-foreground">{formatWatts(site.avgWattsPerAp)}</td>

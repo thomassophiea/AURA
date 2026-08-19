@@ -23,8 +23,8 @@ export interface EnergyOverview {
 }
 
 export interface EnergySite {
-  siteId: string;
-  siteName: string;
+  siteId: string | null;
+  siteName: string | null;
   apWithDataCount: number;
   totalKwh: number;
   avgWattsPerAp: number;

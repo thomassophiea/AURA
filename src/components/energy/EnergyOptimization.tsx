@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import {
   useEnergyOverview,
@@ -22,6 +22,11 @@ import { parseXiqSiteValue } from '@/services/siteContextService';
 export function EnergyOptimization() {
   const { filters, updateFilter } = useGlobalFilters();
   const { sites: os1Sites, xiqSites } = useSourceSites();
+  // Resolve site ids (what the aggregates carry) back to human-readable names.
+  const siteNameById = useMemo(
+    () => new Map(os1Sites.map((s) => [s.id, s.name])),
+    [os1Sites]
+  );
   // Picker value tracks the global site filter ('all' or an OS-ONE site id).
   // XIQ selections carry an `xiq:` value and are gated below — the energy store
   // holds only OS-ONE / controller telemetry.
@@ -115,6 +120,7 @@ export function EnergyOptimization() {
             <EnergySiteRankings
               sites={sites.data}
               loading={sites.loading}
+              siteNameById={siteNameById}
               onSelectSite={(siteId) => {
                 updateFilter('site', siteId);
                 setApTableEnabled(true);
