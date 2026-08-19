@@ -40,7 +40,8 @@ import {
 import { describeReadiness, seedDefaultSource } from './server/monitoring/bootstrap.js';
 import { startCollector } from './server/monitoring/collectorRunner.js';
 import { startRetentionSchedule } from './server/monitoring/retention.js';
-import { checkDatabaseHealth, isDatabaseConfigured } from './server/db/pool.js';
+import { checkDatabaseHealth, isDatabaseConfigured, query } from './server/db/pool.js';
+import { ingestLightReport } from './server/energy/lightAware/lightIngest.js';
 import { createRequireControllerScope } from './server/monitoring/requireControllerScope.js';
 import { sanitizeError as sanitizeMonitoringError } from './server/monitoring/errorSanitizer.js';
 import {
@@ -884,6 +885,21 @@ app.post(
 // the AP inventory payload so the AP list can render a sun/moon. No controller change.
 const lightSensorStates = new Map(); // serial -> { state, data, ts }
 const LIGHT_SENSOR_TTL_MS = 120000;
+
+// Cached primary source id for fire-and-forget ingest (null when DB is unconfigured).
+let _cachedPrimarySourceId;
+async function resolveLightSourceId() {
+  if (_cachedPrimarySourceId !== undefined) return _cachedPrimarySourceId;
+  if (!isDatabaseConfigured()) { _cachedPrimarySourceId = null; return null; }
+  try {
+    const { rows } = await query('SELECT id FROM monitored_sources ORDER BY created_at LIMIT 1');
+    _cachedPrimarySourceId = rows[0]?.id ?? null;
+  } catch {
+    _cachedPrimarySourceId = null;
+  }
+  return _cachedPrimarySourceId;
+}
+
 app.post('/api/light-sensor/report', express.json({ limit: '4kb' }), (req, res) => {
   const token = process.env.LIGHT_SENSOR_TOKEN;
   if (token && req.get('X-Light-Token') !== token) {
@@ -896,6 +912,15 @@ app.post('/api/light-sensor/report', express.json({ limit: '4kb' }), (req, res) 
     data: Number(data) || 0,
     ts: Date.now(),
   });
+  // Fire-and-forget: persist sample + transition; failures must never break the endpoint.
+  Promise.resolve()
+    .then(async () => {
+      const sourceId = await resolveLightSourceId();
+      if (sourceId) {
+        await ingestLightReport({ sourceId, serial: String(serial), state, data });
+      }
+    })
+    .catch((e) => console.warn('[light-ingest] skipped:', e?.message));
   res.json({ ok: true });
 });
 app.get('/api/light-sensor/states', (_req, res) => {
