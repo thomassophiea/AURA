@@ -4,11 +4,14 @@
  * appears in the light feed. Unknown models default to no sensor / conservative
  * capabilities so adding a new Extreme model can never silently enable actions.
  *
- * SENSOR_MODELS: Wi-Fi 7 models carrying the onboard JSA-1141 ambient light
- * sensor. Add new models here — the only edit needed to support them.
+ * SENSOR_MODELS: Extreme AP families whose hardware requirements specify an
+ * onboard ambient light sensor (visible through the radome) that software can
+ * read as an environmental signal. Substrings match model variants, so 'AP4020'
+ * covers AP4020 / AP4020X / AP4020FX and 'AP4060' covers AP4060 / AP4060X.
+ * Add new families here — the only edit needed to support them.
  */
 
-const SENSOR_MODELS = ['AP5020', 'AP5050']; // Wi-Fi 7, JSA-1141
+const SENSOR_MODELS = ['AP4020', 'AP4060', 'AP5020'];
 
 const CAPABLE_DEFAULTS = {
   ambientLightSensor: false,
@@ -44,7 +47,7 @@ export function capabilitiesForModel(model) {
     };
   }
   // Tri-band non-sensor models still support radio enable/disable + Tx control.
-  const triBand = ['AP4000', 'AP4020', 'AP5010'].some((s) => m.includes(s));
+  const triBand = ['AP4000', 'AP5010'].some((s) => m.includes(s));
   return {
     ...CAPABLE_DEFAULTS,
     radioPowerControl: triBand,

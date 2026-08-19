@@ -2,19 +2,22 @@ import { describe, it, expect } from 'vitest';
 import { capabilitiesForModel, supportsLightSensor } from './apCapabilities.js';
 
 describe('capabilitiesForModel', () => {
-  it('flags ambient light sensor on Wi-Fi 7 JSA-1141 models', () => {
-    expect(supportsLightSensor('AP5020')).toBe(true);
-    expect(capabilitiesForModel('AP5020').ambientLightSensor).toBe(true);
+  it('flags the ambient light sensor on every confirmed sensor family', () => {
+    for (const model of ['AP4020', 'AP4020X', 'AP4020FX', 'AP4060', 'AP4060X', 'AP5020']) {
+      expect(supportsLightSensor(model)).toBe(true);
+      expect(capabilitiesForModel(model).ambientLightSensor).toBe(true);
+    }
   });
 
   it('matches case-insensitively and on descriptive strings', () => {
     expect(supportsLightSensor('ap5020')).toBe(true);
-    expect(supportsLightSensor('Extreme AP5020 Wi-Fi 7')).toBe(true);
+    expect(supportsLightSensor('Extreme AP4060X Wi-Fi 7')).toBe(true);
   });
 
-  it('does not flag older models without the sensor', () => {
-    expect(supportsLightSensor('AP4020X')).toBe(false);
+  it('does not flag models without the sensor', () => {
+    expect(supportsLightSensor('AP4000')).toBe(false);
     expect(supportsLightSensor('AP505')).toBe(false);
+    expect(supportsLightSensor('AP3000')).toBe(false);
   });
 
   it('defaults unknown models to no sensor and conservative capabilities', () => {
