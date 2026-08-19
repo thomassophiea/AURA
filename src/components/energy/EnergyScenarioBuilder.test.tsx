@@ -18,6 +18,16 @@ vi.mock('@/services/energyService', () => ({
   postEnergyScenario: (...a: unknown[]) => postEnergyScenario(...a),
 }));
 
+const useLightAwarePolicy = vi.fn(() => ({
+  data: null as unknown,
+  loading: false,
+  error: null,
+  save: vi.fn(),
+}));
+vi.mock('@/hooks/useEnergyData', () => ({
+  useLightAwarePolicy: () => useLightAwarePolicy(),
+}));
+
 describe('EnergyScenarioBuilder', () => {
   beforeEach(() => {
     postEnergyScenario.mockReset();
@@ -48,5 +58,46 @@ describe('EnergyScenarioBuilder', () => {
     render(<EnergyScenarioBuilder />);
     fireEvent.click(screen.getByRole('button', { name: /run scenario/i }));
     await waitFor(() => expect(screen.getByText(/nope/)).toBeInTheDocument());
+  });
+
+  it('offers a Model Light-Aware policy toggle', () => {
+    useLightAwarePolicy.mockReturnValue({
+      data: { enabled: true, policy: { dark: { actions: [{ kind: 'disableRadio', band: '6' }] } } },
+      loading: false,
+      error: null,
+      save: vi.fn(),
+    });
+    render(<EnergyScenarioBuilder />);
+    expect(screen.getByText(/Model Light-Aware policy/i)).toBeInTheDocument();
+  });
+
+  it('includes the light-aware block in the submitted policy when toggled on', async () => {
+    useLightAwarePolicy.mockReturnValue({
+      data: { enabled: true, policy: { dark: { actions: [{ kind: 'disableRadio', band: '6' }] } } },
+      loading: false,
+      error: null,
+      save: vi.fn(),
+    });
+    postEnergyScenario.mockResolvedValue({
+      scenarioId: 'sc-2',
+      baseline: { kwh: 1, dailyProjected: 1, monthlyProjected: 1, annualProjected: 1, estimatedAnnualCost: 1 },
+      simulated: { kwh: 1, dailyProjected: 1, monthlyProjected: 1, annualProjected: 1, estimatedAnnualCost: 1 },
+      savings: { kwh: 0, percent: 0, dailyKwh: 0, monthlyKwh: 0, annualKwh: 0, annualCost: 0 },
+      apCount: 1,
+      apWithDataCount: 1,
+      computedAt: '2026-08-19T00:00:00Z',
+    });
+    render(<EnergyScenarioBuilder />);
+    fireEvent.click(screen.getByLabelText(/Model Light-Aware policy/i));
+    fireEvent.click(screen.getByRole('button', { name: /run scenario/i }));
+    await waitFor(() => expect(postEnergyScenario).toHaveBeenCalled());
+    const submitted = postEnergyScenario.mock.calls[0][0].policy;
+    expect(submitted.lightAware).toEqual({
+      enabled: true,
+      actionsByState: {
+        dim: [],
+        dark: [{ kind: 'disableRadio', band: '6' }],
+      },
+    });
   });
 });

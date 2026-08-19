@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatKwh, formatPercent, formatCurrency } from '@/lib/energyCalc';
 import { postEnergyScenario } from '@/services/energyService';
 import { useGlobalFilters } from '@/hooks/useGlobalFilters';
+import { useLightAwarePolicy } from '@/hooks/useEnergyData';
 import type { EnergyScenarioPolicy, EnergyScenarioResult } from '@/types/energy';
 
 const OVERNIGHT_HOURS = [0, 1, 2, 3, 4, 5];
@@ -15,6 +16,9 @@ export function EnergyScenarioBuilder() {
   const [disable6Ghz, setDisable6Ghz] = useState(true);
   const [disableLowUtil, setDisableLowUtil] = useState(false);
   const [reduceTxPower, setReduceTxPower] = useState(false);
+  const [modelLightAware, setModelLightAware] = useState(false);
+  const { data: lightPolicy } = useLightAwarePolicy();
+  const hasLightPolicy = !!lightPolicy;
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<EnergyScenarioResult | null>(null);
@@ -33,6 +37,15 @@ export function EnergyScenarioBuilder() {
       policy.afterHoursStart = 22;
       policy.afterHoursEnd = 6;
       policy.reducePercent = 20;
+    }
+    if (modelLightAware && lightPolicy) {
+      policy.lightAware = {
+        enabled: true,
+        actionsByState: {
+          dim: lightPolicy.policy?.dim?.actions ?? [],
+          dark: lightPolicy.policy?.dark?.actions ?? [],
+        },
+      };
     }
     try {
       const res = await postEnergyScenario({
@@ -70,6 +83,18 @@ export function EnergyScenarioBuilder() {
             <input type="checkbox" checked={reduceTxPower} onChange={(e) => setReduceTxPower(e.target.checked)} />
             Reduce Tx power 20% after hours (22:00–06:00)
           </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={modelLightAware}
+              disabled={!hasLightPolicy}
+              onChange={(e) => setModelLightAware(e.target.checked)}
+            />
+            Model Light-Aware policy
+          </label>
+          {!hasLightPolicy ? (
+            <p className="pl-6 text-xs text-muted-foreground">Configure a policy first</p>
+          ) : null}
         </div>
 
         <button
