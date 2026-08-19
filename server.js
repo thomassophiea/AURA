@@ -27,6 +27,7 @@ import { sentinelEngine } from './server/sentinel/sentinelEngine.js';
 import { createSentinelRouter } from './server/sentinel/sentinelRouter.js';
 import { createMonitoringRouter } from './server/monitoring/monitoringRouter.js';
 import { createEnergyRouter } from './server/energy/energyRouter.js';
+import { createLightAwareRouter } from './server/energy/lightAware/router.js';
 import { createGuestsRouter } from './server/guests/guestsRouter.js';
 import { createSystemRouter } from './server/system/systemRouter.js';
 import { createServicesSummaryRouter } from './server/services/servicesSummaryRouter.js';
@@ -2139,6 +2140,10 @@ if (monitoringConfig) {
     })
   );
   console.log('[Proxy Server] ✓ Energy API mounted at /api/energy/*');
+  app.use('/api', createLightAwareRouter({
+    scopeMiddleware: undefined, // uses default requireControllerScope
+  }));
+  console.log('[Proxy Server] ✓ Light-Aware API mounted at /api/energy/light-aware/*');
 }
 
 // ==================== System Introspection Routes ====================

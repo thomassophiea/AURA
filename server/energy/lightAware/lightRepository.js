@@ -82,3 +82,51 @@ export async function upsertPolicy({ sourceId, siteId, enabled, policy }) {
   );
   return rows[0];
 }
+
+/**
+ * Returns one row per AP that has power data, LEFT JOINed to its open
+ * light-state transition. model/apName fall back to the serial when the
+ * controller inventory is not mirrored in Postgres.
+ *
+ * NOTE: This SQL is unverified locally — there is no local Postgres. Tested
+ * via injected fakes in router.test.js; real validation needs Integration env.
+ *
+ * Bind order: $1 sourceId, $2 optional siteId.
+ */
+export async function listApLightStates({ sourceId, siteId } = {}) {
+  const { rows } = await query(
+    `SELECT
+       ms.device_external_id                        AS serial,
+       COALESCE(ms.device_external_id, ms.device_external_id) AS "apName",
+       COALESCE(ms.model, ms.device_external_id)   AS model,
+       ms.site_id                                   AS "siteId",
+       latest.watts,
+       row_to_json(lst)                             AS "openTransition"
+     FROM (
+       SELECT DISTINCT ON (device_external_id)
+         device_external_id,
+         site_id,
+         numeric_value / 1000.0 AS watts,
+         model
+       FROM metric_samples
+       WHERE monitored_source_id = $1
+         AND metric_family = 'ap_report'
+         AND metric_name = 'apPowerConsumptionTimeseries.power_consumption'
+         AND numeric_value IS NOT NULL
+         AND ($2::text IS NULL OR site_id = $2)
+       ORDER BY device_external_id, observed_at DESC
+     ) ms
+     CROSS JOIN LATERAL (SELECT ms.device_external_id AS serial, ms.site_id) latest
+     LEFT JOIN LATERAL (
+       SELECT *
+       FROM light_state_transitions lst
+       WHERE lst.monitored_source_id = $1
+         AND lst.ap_serial = ms.device_external_id
+         AND lst.dwell_seconds IS NULL
+       ORDER BY lst.entered_at DESC
+       LIMIT 1
+     ) lst ON true`,
+    [sourceId, siteId ?? null]
+  );
+  return rows;
+}
