@@ -15,6 +15,10 @@ import type {
   EnergyScenarioPolicy,
   EnergyScenarioResult,
   EnergyPreferences,
+  LightAwareSummary,
+  LightAwareApRow,
+  LightAwarePolicy,
+  LightAwareObserved,
 } from '../types/energy';
 
 const BASE = '/api/energy';
@@ -119,4 +123,59 @@ export function putEnergyPreferences(
     body: JSON.stringify(body),
     signal,
   });
+}
+
+export function getLightAwareSummary(
+  filters: { site: string; timeRange: string },
+  signal?: AbortSignal
+): Promise<LightAwareSummary> {
+  const { start, end } = windowParams(filters.timeRange);
+  return request<LightAwareSummary>(
+    `/light-aware/summary${buildQuery({ siteId: filters.site, start, end })}`,
+    { signal }
+  );
+}
+
+export function getLightAwareAps(
+  filters: { site: string; timeRange: string },
+  signal?: AbortSignal
+): Promise<{ aps: LightAwareApRow[] }> {
+  const { start, end } = windowParams(filters.timeRange);
+  return request<{ aps: LightAwareApRow[] }>(
+    `/light-aware/aps${buildQuery({ siteId: filters.site, start, end })}`,
+    { signal }
+  );
+}
+
+export function getLightAwarePolicy(
+  filters: { site: string },
+  signal?: AbortSignal
+): Promise<LightAwarePolicy> {
+  return request<LightAwarePolicy>(
+    `/light-aware/policy${buildQuery({ siteId: filters.site })}`,
+    { signal }
+  );
+}
+
+export function putLightAwarePolicy(body: {
+  enabled: boolean;
+  policy: LightAwarePolicy['policy'];
+  siteId?: string;
+}): Promise<LightAwarePolicy> {
+  return request<LightAwarePolicy>('/light-aware/policy', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+export function getLightAwareObserved(
+  filters: { site: string; timeRange: string },
+  signal?: AbortSignal
+): Promise<LightAwareObserved> {
+  const { start, end } = windowParams(filters.timeRange);
+  return request<LightAwareObserved>(
+    `/light-aware/observed${buildQuery({ siteId: filters.site, start, end })}`,
+    { signal }
+  );
 }

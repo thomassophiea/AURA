@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { getEnergyOverview, putEnergyPreferences } from './energyService';
+import {
+  getEnergyOverview,
+  putEnergyPreferences,
+  getLightAwareSummary,
+  putLightAwarePolicy,
+} from './energyService';
 
 vi.mock('./monitoringHistory', () => ({
   buildMonitoringHeaders: () => ({ Authorization: 'Bearer t', Accept: 'application/json' }),
@@ -57,5 +62,31 @@ describe('energyService', () => {
     const init = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][1];
     expect(init.method).toBe('PUT');
     expect(JSON.parse(init.body)).toEqual({ currencyCode: 'EUR', ratePerKwh: 0.31 });
+  });
+
+  it('GET light-aware summary hits the summary endpoint with window params', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ sensorCapableCount: 1 }),
+    });
+    const res = await getLightAwareSummary({ site: 'all', timeRange: '24h' });
+    expect(res.sensorCapableCount).toBe(1);
+    const url = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    expect(url).toContain('/api/energy/light-aware/summary');
+    expect(url).toContain('start=');
+    expect(url).toContain('end=');
+  });
+
+  it('PUT light-aware policy posts a JSON body', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ enabled: true, policy: {} }),
+    });
+    const res = await putLightAwarePolicy({ enabled: true, policy: {}, siteId: 'site-9' });
+    expect(res.enabled).toBe(true);
+    const call = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(call[0]).toContain('/api/energy/light-aware/policy');
+    expect(call[1].method).toBe('PUT');
+    expect(JSON.parse(call[1].body)).toEqual({ enabled: true, policy: {}, siteId: 'site-9' });
   });
 });
