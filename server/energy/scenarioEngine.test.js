@@ -45,9 +45,9 @@ describe('simulatedWattsForSample', () => {
   it('zeroes low-utilization radio share below threshold', () => {
     const s = at('2026-08-10T03:00:00Z', 10, { channelUtilization: 2 });
     const policy = { disableLowUtilRadios: true, lowUtilThresholdPercent: 5 };
-    // low-util now maps to disableRadio band '5' (share 0.30, not old SIX_GHZ_BAND_SHARE 0.25)
-    // resolveApState(10, [{kind:'disableRadio', band:'5'}]) = 10 * (1 - 0.30) = 7.0
-    expect(simulatedWattsForSample(s, policy)).toBeCloseTo(7.0, 6);
+    // low-util maps to disableRadio band '6' (idle high-band radio, share 0.25)
+    // resolveApState(10, [{kind:'disableRadio', band:'6'}]) = 10 * (1 - 0.25) = 7.5
+    expect(simulatedWattsForSample(s, policy)).toBeCloseTo(7.5, 6);
   });
 });
 
@@ -106,10 +106,10 @@ describe('optimizationsForSample', () => {
     expect(opts).toEqual([{ kind: 'disableRadio', band: '6', source: 'whatif', reason: 'disable6GhzHours' }]);
   });
 
-  it('maps low-util radios to a 5 GHz disableRadio', () => {
+  it('maps low-util radios to a 6 GHz disableRadio (idle high-band)', () => {
     const sample = { watts: 20, observedAt: '2026-08-19T02:00:00Z', channelUtilization: 2 };
     const opts = optimizationsForSample(sample, { disableLowUtilRadios: true, lowUtilThresholdPercent: 5 });
-    expect(opts).toEqual([{ kind: 'disableRadio', band: '5', source: 'whatif', reason: 'lowUtil' }]);
+    expect(opts).toEqual([{ kind: 'disableRadio', band: '6', source: 'whatif', reason: 'lowUtil' }]);
   });
 
   it('does not double-count 6 GHz when both hour-disable and light-aware dark disable it', () => {

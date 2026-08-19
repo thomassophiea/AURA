@@ -39,7 +39,10 @@ export function optimizationsForSample(sample, policy = {}) {
     Number.isFinite(sample.channelUtilization) &&
     sample.channelUtilization < (policy.lowUtilThresholdPercent ?? 5)
   ) {
-    opts.push({ kind: 'disableRadio', band: '5', source: 'whatif', reason: 'lowUtil' });
+    // Low-util targets the idle high-band (6 GHz) radio — same resource as the
+    // overnight 6 GHz disable, so the resolver collapses them (no double-count)
+    // and the share matches recommendationEngine's SIX_GHZ_BAND_SHARE.
+    opts.push({ kind: 'disableRadio', band: '6', source: 'whatif', reason: 'lowUtil' });
   }
   if (policy.reduceTxPower && isAfterHours(hour, policy.afterHoursStart ?? 22, policy.afterHoursEnd ?? 6)) {
     const reducePercent = Number.isFinite(policy.reducePercent) ? policy.reducePercent : 20;
