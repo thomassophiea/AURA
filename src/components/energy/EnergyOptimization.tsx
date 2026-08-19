@@ -10,6 +10,7 @@ import { EnergyEmptyState } from './EnergyEmptyState';
 import { EnergySiteRankings } from './EnergySiteRankings';
 import { LightAwareOptimization } from './LightAwareOptimization';
 import { LightAwarePolicyDialog } from './LightAwarePolicyDialog';
+import { LightAwareApDrawer } from './LightAwareApDrawer';
 import { EnergyApTable } from './EnergyApTable';
 import { EnergyScenarioBuilder } from './EnergyScenarioBuilder';
 import { EnergyRecommendations } from './EnergyRecommendations';
@@ -148,6 +149,7 @@ export function EnergyOptimization() {
       )}
 
       <LightAwarePolicyDialog open={policyOpen} onOpenChange={setPolicyOpen} />
+      <LightAwareApDrawer open={apDrawerOpen} onOpenChange={setApDrawerOpen} />
     </div>
   );
 }
