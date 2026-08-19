@@ -21,10 +21,7 @@ const STATE_ROWS: { key: LightState; label: string; Icon: typeof Sun }[] = [
   { key: 'unknown', label: 'Unknown', Icon: HelpCircle },
 ];
 
-function LightAwareOptimizationComponent({
-  onConfigure,
-  onViewAps,
-}: LightAwareOptimizationProps) {
+function LightAwareOptimizationComponent({ onConfigure, onViewAps }: LightAwareOptimizationProps) {
   const { data, loading } = useLightAwareSummary();
 
   return (
@@ -50,8 +47,8 @@ function LightAwareOptimizationComponent({
         ) : data.sensorCapableCount === 0 ? (
           <div className="space-y-3">
             <p className="py-6 text-center text-sm text-muted-foreground">
-              No sensor-capable APs in range. Light-Aware Optimization requires APs with an
-              onboard ambient-light sensor.
+              No sensor-capable APs in range. Light-Aware Optimization requires APs with an onboard
+              ambient-light sensor.
             </p>
           </div>
         ) : (

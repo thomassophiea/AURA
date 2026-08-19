@@ -14,11 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useLightAwarePolicy } from '@/hooks/useEnergyData';
 import type { LightActionInput, LightAwarePolicyDoc } from '@/types/energy';
 
@@ -65,7 +61,11 @@ function hasAction(actions: LightActionInput[] | undefined, kind: string, band?:
   return !!actions?.some((a) => a.kind === kind && (band ? a.band === band : true));
 }
 
-function percentOf(actions: LightActionInput[] | undefined, kind: string, band?: string): number | undefined {
+function percentOf(
+  actions: LightActionInput[] | undefined,
+  kind: string,
+  band?: string
+): number | undefined {
   return actions?.find((a) => a.kind === kind && (band ? a.band === band : true))?.reducePercent;
 }
 
@@ -94,7 +94,13 @@ function fromPolicy(doc: LightAwarePolicyDoc | undefined, enabled: boolean): For
     dimDwellMinutes: doc.hysteresis?.dimDwellMinutes ?? DEFAULTS.dimDwellMinutes,
     darkDwellMinutes: doc.hysteresis?.darkDwellMinutes ?? DEFAULTS.darkDwellMinutes,
     restoreDwellMinutes: doc.hysteresis?.restoreDwellMinutes ?? DEFAULTS.restoreDwellMinutes,
-    disableWlanIds: (dark?.filter((a) => a.kind === 'disableWlan').map((a) => a.wlanId).filter(Boolean) as string[])?.join(', ') ?? '',
+    disableWlanIds:
+      (
+        dark
+          ?.filter((a) => a.kind === 'disableWlan')
+          .map((a) => a.wlanId)
+          .filter(Boolean) as string[]
+      )?.join(', ') ?? '',
     protectedWlanIds: doc.protectedWlanIds?.join(', ') ?? '',
   };
 }
@@ -107,7 +113,8 @@ function toPolicy(form: FormState): LightAwarePolicyDoc {
 
   const dark: LightActionInput[] = [];
   if (form.darkDisable6) dark.push({ kind: 'disableRadio', band: '6' });
-  if (form.darkReduceTx5) dark.push({ kind: 'reduceTxPower', band: '5', reducePercent: form.darkTx5Percent });
+  if (form.darkReduceTx5)
+    dark.push({ kind: 'reduceTxPower', band: '5', reducePercent: form.darkTx5Percent });
   for (const wlanId of idsToList(form.disableWlanIds)) dark.push({ kind: 'disableWlan', wlanId });
 
   return {
@@ -229,11 +236,31 @@ export function LightAwarePolicyDialog({ open, onOpenChange }: LightAwarePolicyD
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-3 pt-3">
               <div className="grid grid-cols-2 gap-3">
-                <NumberField label="Bright lux ≥" value={form.brightLux} onChange={(v) => set('brightLux', v)} />
-                <NumberField label="Dark lux ≤" value={form.darkLux} onChange={(v) => set('darkLux', v)} />
-                <NumberField label="Dim dwell (min)" value={form.dimDwellMinutes} onChange={(v) => set('dimDwellMinutes', v)} />
-                <NumberField label="Dark dwell (min)" value={form.darkDwellMinutes} onChange={(v) => set('darkDwellMinutes', v)} />
-                <NumberField label="Restore dwell (min)" value={form.restoreDwellMinutes} onChange={(v) => set('restoreDwellMinutes', v)} />
+                <NumberField
+                  label="Bright lux ≥"
+                  value={form.brightLux}
+                  onChange={(v) => set('brightLux', v)}
+                />
+                <NumberField
+                  label="Dark lux ≤"
+                  value={form.darkLux}
+                  onChange={(v) => set('darkLux', v)}
+                />
+                <NumberField
+                  label="Dim dwell (min)"
+                  value={form.dimDwellMinutes}
+                  onChange={(v) => set('dimDwellMinutes', v)}
+                />
+                <NumberField
+                  label="Dark dwell (min)"
+                  value={form.darkDwellMinutes}
+                  onChange={(v) => set('darkDwellMinutes', v)}
+                />
+                <NumberField
+                  label="Restore dwell (min)"
+                  value={form.restoreDwellMinutes}
+                  onChange={(v) => set('restoreDwellMinutes', v)}
+                />
               </div>
               <TextField
                 label="Disable WLAN ids when dark (comma-separated)"

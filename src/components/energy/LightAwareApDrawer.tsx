@@ -26,7 +26,7 @@ interface LightAwareApDrawerProps {
 }
 
 const STATE_FILTERS: (LightState | 'all')[] = ['all', 'bright', 'dim', 'dark', 'unknown'];
-const SENSOR_FILTERS = ['all', 'capable', 'unavailable'] as const;
+type SensorFilter = 'all' | 'capable' | 'unavailable';
 
 function formatDuration(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds <= 0) return '—';
@@ -46,7 +46,7 @@ export function LightAwareApDrawer({ open, onOpenChange }: LightAwareApDrawerPro
   // Only fetch while the drawer is open.
   const { data, loading } = useLightAwareAps(open);
   const [stateFilter, setStateFilter] = useState<(typeof STATE_FILTERS)[number]>('all');
-  const [sensorFilter, setSensorFilter] = useState<(typeof SENSOR_FILTERS)[number]>('all');
+  const [sensorFilter, setSensorFilter] = useState<SensorFilter>('all');
 
   const rows = useMemo<LightAwareApRow[]>(() => {
     const all = data ?? [];
@@ -70,7 +70,10 @@ export function LightAwareApDrawer({ open, onOpenChange }: LightAwareApDrawerPro
         </DialogHeader>
 
         <div className="flex flex-wrap gap-2">
-          <Select value={stateFilter} onValueChange={(v) => setStateFilter(v as typeof stateFilter)}>
+          <Select
+            value={stateFilter}
+            onValueChange={(v) => setStateFilter(v as typeof stateFilter)}
+          >
             <SelectTrigger className="h-8 w-36">
               <SelectValue placeholder="Light state" />
             </SelectTrigger>
@@ -139,10 +142,10 @@ export function LightAwareApDrawer({ open, onOpenChange }: LightAwareApDrawerPro
                       <Badge variant={stateVariant(r.lightState)}>{r.lightState}</Badge>
                     </td>
                     <td className="py-2 text-muted-foreground">{formatDuration(r.dwellSeconds)}</td>
-                    <td className="py-2 text-muted-foreground">
-                      {r.policyEnabled ? 'On' : 'Off'}
+                    <td className="py-2 text-muted-foreground">{r.policyEnabled ? 'On' : 'Off'}</td>
+                    <td className="py-2 text-right text-foreground">
+                      {formatWatts(r.currentWatts)}
                     </td>
-                    <td className="py-2 text-right text-foreground">{formatWatts(r.currentWatts)}</td>
                     <td className="py-2 text-right text-foreground">
                       {formatWatts(r.optimizedWatts)}
                     </td>
