@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { simulatedWattsForSample, replayScenario, SIX_GHZ_BAND_SHARE } from './scenarioEngine.js';
+import {
+  simulatedWattsForSample,
+  replayScenario,
+  SIX_GHZ_BAND_SHARE,
+  optimizationsForSample,
+} from './scenarioEngine.js';
+import { resolveApState } from './powerModel.js';
 
 const at = (iso, watts, extra = {}) => ({
   deviceExternalId: 'AP-1',
@@ -39,8 +45,9 @@ describe('simulatedWattsForSample', () => {
   it('zeroes low-utilization radio share below threshold', () => {
     const s = at('2026-08-10T03:00:00Z', 10, { channelUtilization: 2 });
     const policy = { disableLowUtilRadios: true, lowUtilThresholdPercent: 5 };
-    // low-util share modeled at SIX_GHZ_BAND_SHARE of draw
-    expect(simulatedWattsForSample(s, policy)).toBeCloseTo(10 * (1 - SIX_GHZ_BAND_SHARE), 6);
+    // low-util now maps to disableRadio band '5' (share 0.30, not old SIX_GHZ_BAND_SHARE 0.25)
+    // resolveApState(10, [{kind:'disableRadio', band:'5'}]) = 10 * (1 - 0.30) = 7.0
+    expect(simulatedWattsForSample(s, policy)).toBeCloseTo(7.0, 6);
   });
 });
 
@@ -89,5 +96,32 @@ describe('replayScenario', () => {
     const out = replayScenario({ samples, policy: {}, maxGapSeconds: 7200 });
     expect(out.apWithDataCount).toBe(1); // only AP-good has a usable interval
     expect(out.baselineKwh).toBeGreaterThan(0); // AP-good contributes
+  });
+});
+
+describe('optimizationsForSample', () => {
+  it('maps disable6GhzHours to a 6 GHz disableRadio in-window', () => {
+    const sample = { watts: 20, observedAt: '2026-08-19T02:00:00Z' };
+    const opts = optimizationsForSample(sample, { disable6GhzHours: [2] });
+    expect(opts).toEqual([{ kind: 'disableRadio', band: '6', source: 'whatif', reason: 'disable6GhzHours' }]);
+  });
+
+  it('maps low-util radios to a 5 GHz disableRadio', () => {
+    const sample = { watts: 20, observedAt: '2026-08-19T02:00:00Z', channelUtilization: 2 };
+    const opts = optimizationsForSample(sample, { disableLowUtilRadios: true, lowUtilThresholdPercent: 5 });
+    expect(opts).toEqual([{ kind: 'disableRadio', band: '5', source: 'whatif', reason: 'lowUtil' }]);
+  });
+
+  it('does not double-count 6 GHz when both hour-disable and light-aware dark disable it', () => {
+    const sample = { watts: 20, observedAt: '2026-08-19T02:00:00Z' };
+    // simulatedWattsForSample only uses whatif opts; resolver deduplicates by band Set
+    expect(simulatedWattsForSample(sample, { disable6GhzHours: [2] })).toBeCloseTo(15, 6);
+    // manually verify resolver collapses duplicate band descriptors
+    const opts = [
+      { kind: 'disableRadio', band: '6', source: 'whatif', reason: 'disable6GhzHours' },
+      { kind: 'disableRadio', band: '6', source: 'lightAware', reason: 'dark' },
+    ];
+    // Set deduplication: band '6' added once → removed share = 0.25 → 20 * 0.75 = 15
+    expect(resolveApState(20, opts)).toBeCloseTo(15, 6);
   });
 });

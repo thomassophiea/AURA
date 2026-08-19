@@ -3,11 +3,15 @@
  * never touches live config. The controller does not expose per-radio power,
  * so radio-level effects use a band-ratio model (6 GHz ~ 25% of AP draw).
  * Results are labeled "modeled estimate" by the UI, not "measured".
+ *
+ * All per-sample math is delegated to resolveApState (powerModel.js) so each
+ * resource (band, WLAN, chain) can never be double-counted across policies.
  */
 
 import { kwhFromWattSeconds, savingsPercent } from './energyCalculator.js';
+import { resolveApState } from './powerModel.js';
 
-/** Modeled share of an AP's draw attributable to a single high-band radio. */
+/** Modeled share of an AP's draw attributable to a single high-band radio. Kept for external consumers. */
 export const SIX_GHZ_BAND_SHARE = 0.25;
 
 function hourOfDayUTC(iso) {
@@ -21,32 +25,32 @@ function isAfterHours(hour, start, end) {
   return hour >= start || hour < end; // wraps midnight, e.g. 22..6
 }
 
-export function simulatedWattsForSample(sample, policy = {}) {
-  let watts = sample.watts;
-  if (!Number.isFinite(watts)) return 0;
+/** Translate a What-if policy into resolver optimization descriptors for one sample. */
+export function optimizationsForSample(sample, policy = {}) {
+  const opts = [];
+  if (!Number.isFinite(sample.watts)) return opts;
   const hour = hourOfDayUTC(sample.observedAt);
 
   if (Array.isArray(policy.disable6GhzHours) && policy.disable6GhzHours.includes(hour)) {
-    watts *= 1 - SIX_GHZ_BAND_SHARE;
+    opts.push({ kind: 'disableRadio', band: '6', source: 'whatif', reason: 'disable6GhzHours' });
   }
-
   if (
     policy.disableLowUtilRadios &&
     Number.isFinite(sample.channelUtilization) &&
     sample.channelUtilization < (policy.lowUtilThresholdPercent ?? 5)
   ) {
-    watts *= 1 - SIX_GHZ_BAND_SHARE;
+    opts.push({ kind: 'disableRadio', band: '5', source: 'whatif', reason: 'lowUtil' });
   }
-
-  if (
-    policy.reduceTxPower &&
-    isAfterHours(hour, policy.afterHoursStart ?? 22, policy.afterHoursEnd ?? 6)
-  ) {
-    const pct = Number.isFinite(policy.reducePercent) ? policy.reducePercent : 20;
-    watts *= 1 - pct / 100;
+  if (policy.reduceTxPower && isAfterHours(hour, policy.afterHoursStart ?? 22, policy.afterHoursEnd ?? 6)) {
+    const reducePercent = Number.isFinite(policy.reducePercent) ? policy.reducePercent : 20;
+    opts.push({ kind: 'reduceTxPower', reducePercent, source: 'whatif', reason: 'afterHours' });
   }
+  return opts;
+}
 
-  return watts;
+export function simulatedWattsForSample(sample, policy = {}) {
+  if (!Number.isFinite(sample.watts)) return 0;
+  return resolveApState(sample.watts, optimizationsForSample(sample, policy));
 }
 
 /**
