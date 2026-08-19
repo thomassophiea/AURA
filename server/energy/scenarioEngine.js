@@ -51,9 +51,24 @@ export function optimizationsForSample(sample, policy = {}) {
   return opts;
 }
 
+/**
+ * Translate a saved Light-Aware policy into resolver descriptors for one sample,
+ * keyed on the sample's committed light state. Returns nothing unless the policy
+ * is enabled and the sample carries a lightState — combined with the What-if
+ * descriptors, the resolver collapses any shared resource (spec §9, no double-count).
+ */
+function lightAwareOptsForSample(sample, policy = {}) {
+  const la = policy?.lightAware;
+  if (!la?.enabled || !sample.lightState) return [];
+  const actions = la.actionsByState?.[sample.lightState];
+  if (!Array.isArray(actions)) return [];
+  return actions.map((a) => ({ ...a, source: 'lightAware', reason: sample.lightState }));
+}
+
 export function simulatedWattsForSample(sample, policy = {}) {
   if (!Number.isFinite(sample.watts)) return 0;
-  return resolveApState(sample.watts, optimizationsForSample(sample, policy));
+  const opts = [...optimizationsForSample(sample, policy), ...lightAwareOptsForSample(sample, policy)];
+  return resolveApState(sample.watts, opts);
 }
 
 /**

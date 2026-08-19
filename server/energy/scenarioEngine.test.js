@@ -125,3 +125,43 @@ describe('optimizationsForSample', () => {
     expect(resolveApState(20, opts)).toBeCloseTo(15, 6);
   });
 });
+
+describe('simulatedWattsForSample with lightAware', () => {
+  it('applies dark-state light-aware actions when the sample is dark', () => {
+    const sample = { watts: 20, observedAt: '2026-08-19T12:00:00Z', lightState: 'dark' };
+    const policy = {
+      lightAware: { enabled: true, actionsByState: { dark: [{ kind: 'disableRadio', band: '6' }] } },
+    };
+    // 6 GHz disabled -> 20 * 0.75 = 15
+    expect(simulatedWattsForSample(sample, policy)).toBeCloseTo(15, 6);
+  });
+
+  it('ignores light-aware actions when disabled', () => {
+    const sample = { watts: 20, observedAt: '2026-08-19T12:00:00Z', lightState: 'dark' };
+    const policy = {
+      lightAware: { enabled: false, actionsByState: { dark: [{ kind: 'disableRadio', band: '6' }] } },
+    };
+    expect(simulatedWattsForSample(sample, policy)).toBe(20);
+  });
+
+  it('ignores light-aware actions when the sample carries no lightState', () => {
+    const sample = { watts: 20, observedAt: '2026-08-19T12:00:00Z' };
+    const policy = {
+      lightAware: { enabled: true, actionsByState: { dark: [{ kind: 'disableRadio', band: '6' }] } },
+    };
+    expect(simulatedWattsForSample(sample, policy)).toBe(20);
+  });
+
+  it('does not double-count 6 GHz when whatif overnight and dark-policy both disable it', () => {
+    const samples = [
+      { deviceExternalId: 'A', watts: 20, observedAt: '2026-08-19T02:00:00Z', lightState: 'dark' },
+      { deviceExternalId: 'A', watts: 20, observedAt: '2026-08-19T03:00:00Z', lightState: 'dark' },
+    ];
+    const policy = {
+      disable6GhzHours: [2, 3],
+      lightAware: { enabled: true, actionsByState: { dark: [{ kind: 'disableRadio', band: '6' }] } },
+    };
+    // combined resolves to a single 6 GHz disable: 20 * 0.75 = 15
+    expect(simulatedWattsForSample(samples[0], policy)).toBeCloseTo(15, 6);
+  });
+});

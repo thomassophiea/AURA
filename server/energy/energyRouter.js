@@ -270,6 +270,8 @@ export function createEnergyRouter(options = {}) {
         start: win.start,
         end: win.end,
       });
+      // policy.lightAware (if present) rides through to replayScenario and is
+      // modeled per-sample by the resolver — no signature change needed.
       const replay = replayScenario({ samples, policy, maxGapSeconds });
       const seconds = (new Date(win.end) - new Date(win.start)) / 1000;
 
