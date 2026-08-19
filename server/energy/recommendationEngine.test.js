@@ -92,3 +92,27 @@ describe('buildRecommendations', () => {
     expect(recs.find((r) => r.type === 'low_utilization_6ghz')).toBeUndefined();
   });
 });
+
+describe('light-aware recommendation', () => {
+  it('emits an opportunity only when APs were dark for real observed time', () => {
+    const recs = buildRecommendations({
+      samples: [],
+      windowDays: 7,
+      ratePerKwh: 0.14,
+      maxGapSeconds: 7200,
+      lightObserved: { sensorCapableCount: 4, darkApCount: 3, darkAvgHours: 6.2, baselineKwhDark: 50 },
+    });
+    const r = recs.find((x) => x.type === 'light_aware_opportunity');
+    expect(r).toBeTruthy();
+    expect(r.affectedApCount).toBe(3);
+    expect(r.estimatedAnnualSaving).toBeGreaterThan(0);
+  });
+
+  it('emits nothing when no observed dark time', () => {
+    const recs = buildRecommendations({
+      samples: [], windowDays: 7, ratePerKwh: 0.14, maxGapSeconds: 7200,
+      lightObserved: { sensorCapableCount: 4, darkApCount: 0, darkAvgHours: 0, baselineKwhDark: 0 },
+    });
+    expect(recs.find((x) => x.type === 'light_aware_opportunity')).toBeUndefined();
+  });
+});

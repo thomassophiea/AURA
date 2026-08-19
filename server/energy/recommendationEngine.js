@@ -52,7 +52,7 @@ function annualize(periodKwh, samples, maxGapSeconds) {
   return projectAnnual(daily);
 }
 
-export function buildRecommendations({ samples, windowDays, ratePerKwh, maxGapSeconds }) {
+export function buildRecommendations({ samples, windowDays, ratePerKwh, maxGapSeconds, lightObserved }) {
   const confidence = dataQualityForDays(windowDays);
   const recommendations = [];
 
@@ -93,6 +93,31 @@ export function buildRecommendations({ samples, windowDays, ratePerKwh, maxGapSe
         observationDays: windowDays,
         lowUtilApCount: lowUtilAps.length,
       },
+    });
+  }
+
+  // --- light_aware_opportunity ---------------------------------------------
+  // Only surfaced when APs actually spent observed time dark (spec §15). Modeled
+  // savings = disabling the 6 GHz radio (band share 0.25) over that dark time.
+  if (lightObserved && lightObserved.darkApCount > 0 && lightObserved.darkAvgHours > 0) {
+    const savingsKwh = (lightObserved.baselineKwhDark ?? 0) * SIX_GHZ_BAND_SHARE;
+    const annualFactor = windowDays > 0 ? 365 / windowDays : 0;
+    const estimatedAnnualSaving = savingsKwh * annualFactor * (ratePerKwh ?? 0);
+    recommendations.push({
+      id: randomUUID(),
+      type: 'light_aware_opportunity',
+      scope: 'fleet',
+      title: 'Enable Light-Aware Optimization for dark spaces',
+      explanation: `${lightObserved.sensorCapableCount} AP(s) support ambient light sensing; ${lightObserved.darkApCount} averaged ${lightObserved.darkAvgHours.toFixed(1)} h dark during the window. Disabling the idle 6 GHz radio while dark reclaims an estimated ${(SIX_GHZ_BAND_SHARE * 100).toFixed(0)}% of their draw.`,
+      affectedApCount: lightObserved.darkApCount,
+      baselineKwh: lightObserved.baselineKwhDark ?? 0,
+      projectedKwh: (lightObserved.baselineKwhDark ?? 0) - savingsKwh,
+      savingsKwh,
+      savingsPercent: SIX_GHZ_BAND_SHARE * 100,
+      estimatedAnnualSaving,
+      riskLevel: 'low',
+      confidenceLevel: confidence,
+      supportingData: { source: 'light-aware', modeled: true, observationDays: windowDays },
     });
   }
 
