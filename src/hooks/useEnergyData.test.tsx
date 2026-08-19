@@ -4,6 +4,9 @@ import {
   useEnergyOverview,
   useEnergyAps,
   useEnergySites,
+  useLightAwareSummary,
+  useLightAwareAps,
+  useLightAwarePolicy,
 } from './useEnergyData';
 
 vi.mock('./useGlobalFilters', () => ({
@@ -20,11 +23,21 @@ vi.mock('./useGlobalFilters', () => ({
 const getEnergyOverview = vi.fn();
 const getEnergyAps = vi.fn();
 const getEnergySites = vi.fn();
+const getLightAwareSummary = vi.fn();
+const getLightAwareAps = vi.fn();
+const getLightAwareObserved = vi.fn();
+const getLightAwarePolicy = vi.fn();
+const putLightAwarePolicy = vi.fn();
 vi.mock('../services/energyService', () => ({
   getEnergyOverview: (...args: unknown[]) => getEnergyOverview(...args),
   getEnergyAps: (...args: unknown[]) => getEnergyAps(...args),
   getEnergySites: (...args: unknown[]) => getEnergySites(...args),
   getEnergyRecommendations: vi.fn(),
+  getLightAwareSummary: (...args: unknown[]) => getLightAwareSummary(...args),
+  getLightAwareAps: (...args: unknown[]) => getLightAwareAps(...args),
+  getLightAwareObserved: (...args: unknown[]) => getLightAwareObserved(...args),
+  getLightAwarePolicy: (...args: unknown[]) => getLightAwarePolicy(...args),
+  putLightAwarePolicy: (...args: unknown[]) => putLightAwarePolicy(...args),
 }));
 
 describe('useEnergyOverview', () => {
@@ -69,5 +82,57 @@ describe('useEnergyAps', () => {
     const { result } = renderHook(() => useEnergyAps(false));
     expect(result.current.loading).toBe(false);
     expect(getEnergyAps).not.toHaveBeenCalled();
+  });
+});
+
+describe('useLightAwareSummary', () => {
+  beforeEach(() => getLightAwareSummary.mockReset());
+  it('loads the summary', async () => {
+    getLightAwareSummary.mockResolvedValue({
+      sensorCapableCount: 4,
+      reportingCount: 6,
+      stateBreakdown: { bright: 2, dim: 1, dark: 1, unknown: 2 },
+      policyEnabled: true,
+      projectedAnnual: { kwh: 100, cost: 14 },
+      currency: 'USD',
+      currencySymbol: '$',
+    });
+    const { result } = renderHook(() => useLightAwareSummary());
+    await waitFor(() => expect(result.current.data?.sensorCapableCount).toBe(4));
+  });
+});
+
+describe('useLightAwareAps', () => {
+  beforeEach(() => getLightAwareAps.mockReset());
+  it('does not fetch when disabled', () => {
+    const { result } = renderHook(() => useLightAwareAps(false));
+    expect(result.current.loading).toBe(false);
+    expect(getLightAwareAps).not.toHaveBeenCalled();
+  });
+
+  it('unwraps the aps envelope when enabled', async () => {
+    getLightAwareAps.mockResolvedValue({ aps: [{ serial: 'A' }] });
+    const { result } = renderHook(() => useLightAwareAps(true));
+    await waitFor(() => expect(result.current.data).toEqual([{ serial: 'A' }]));
+  });
+});
+
+describe('useLightAwarePolicy', () => {
+  beforeEach(() => {
+    getLightAwarePolicy.mockReset();
+    putLightAwarePolicy.mockReset();
+  });
+  it('loads the policy and saves through the service', async () => {
+    // Initial load returns disabled; the post-save reconcile GET returns the saved state.
+    getLightAwarePolicy
+      .mockResolvedValueOnce({ enabled: false, policy: {} })
+      .mockResolvedValue({ enabled: true, policy: { dark: { actions: [] } } });
+    putLightAwarePolicy.mockResolvedValue({ enabled: true, policy: { dark: { actions: [] } } });
+    const { result } = renderHook(() => useLightAwarePolicy());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.data?.enabled).toBe(false);
+    await result.current.save({ enabled: true, policy: { dark: { actions: [] } } });
+    await waitFor(() => expect(result.current.data?.enabled).toBe(true));
+    expect(putLightAwarePolicy).toHaveBeenCalled();
   });
 });
