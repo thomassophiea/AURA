@@ -1329,7 +1329,7 @@ export const TOPIC_METADATA: Record<
     },
   },
   ContextualInsights: {
-    label: 'Insights',
+    label: 'Observatory',
     description: 'Anomalies and insights tied to time and scope',
     color: {
       bg: 'bg-cyan-500/10',
