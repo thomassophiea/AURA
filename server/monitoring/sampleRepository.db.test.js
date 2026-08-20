@@ -313,7 +313,7 @@ describe.skipIf(!hasTestDatabase)('sampleRepository (PostgreSQL)', () => {
         start: new Date('2026-01-01T00:00:00Z'),
         end: new Date('2027-01-01T00:00:00Z'),
       });
-      expect(result).toEqual({ points: [], truncated: false });
+      expect(result).toEqual({ points: [], truncated: false, effectiveStart: null });
     });
 
     it('reports truncation instead of silently capping', async () => {

@@ -24,10 +24,11 @@ d('0004_energy migration', () => {
        WHERE table_name IN ('energy_rate_preferences','energy_scenarios','energy_scenario_results')`
     );
     const names = rows.map((r) => r.table_name).sort();
+    // JS string sort: '_' (95) < 's' (115), so scenario_results precedes scenarios.
     expect(names).toEqual([
       'energy_rate_preferences',
-      'energy_scenarios',
       'energy_scenario_results',
+      'energy_scenarios',
     ]);
   });
 
