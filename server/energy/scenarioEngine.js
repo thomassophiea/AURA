@@ -36,6 +36,7 @@ export function optimizationsForSample(sample, policy = {}) {
   }
   if (
     policy.disableLowUtilRadios &&
+    (sample.band == null || String(sample.band) === '6') &&
     Number.isFinite(sample.channelUtilization) &&
     sample.channelUtilization < (policy.lowUtilThresholdPercent ?? 5)
   ) {
@@ -85,24 +86,41 @@ export function replayScenario({ samples, policy, maxGapSeconds }) {
 
   let baselineKwh = 0;
   let simulatedKwh = 0;
+  let baselineDailyKwh = 0;
+  let simulatedDailyKwh = 0;
   const apsWithData = new Set();
 
   for (const [deviceExternalId, rows] of byAp.entries()) {
     rows.sort((a, b) => new Date(a.observedAt) - new Date(b.observedAt));
+    let apBaselineKwh = 0;
+    let apSimulatedKwh = 0;
+    let apObservedSeconds = 0;
     for (let i = 0; i < rows.length - 1; i += 1) {
       const elapsed = (new Date(rows[i + 1].observedAt) - new Date(rows[i].observedAt)) / 1000;
       if (!(elapsed > 0) || elapsed > maxGapSeconds) continue;
       apsWithData.add(deviceExternalId);
-      baselineKwh += kwhFromWattSeconds(rows[i].watts, elapsed) ?? 0;
-      simulatedKwh += kwhFromWattSeconds(simulatedWattsForSample(rows[i], policy), elapsed) ?? 0;
+      apObservedSeconds += elapsed;
+      apBaselineKwh += kwhFromWattSeconds(rows[i].watts, elapsed) ?? 0;
+      apSimulatedKwh +=
+        kwhFromWattSeconds(simulatedWattsForSample(rows[i], policy), elapsed) ?? 0;
+    }
+    baselineKwh += apBaselineKwh;
+    simulatedKwh += apSimulatedKwh;
+    if (apObservedSeconds > 0) {
+      baselineDailyKwh += (apBaselineKwh / apObservedSeconds) * 86_400;
+      simulatedDailyKwh += (apSimulatedKwh / apObservedSeconds) * 86_400;
     }
   }
 
-  const savingsKwh = baselineKwh - simulatedKwh;
+  const savingsKwh = Math.max(0, baselineKwh - simulatedKwh);
+  const savingsDailyKwh = Math.max(0, baselineDailyKwh - simulatedDailyKwh);
   return {
     baselineKwh,
     simulatedKwh,
     savingsKwh,
+    baselineDailyKwh,
+    simulatedDailyKwh,
+    savingsDailyKwh,
     savingsPercent: savingsPercent(baselineKwh, simulatedKwh),
     apWithDataCount: apsWithData.size,
   };

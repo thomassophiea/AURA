@@ -73,7 +73,7 @@ export function EnergyScenarioBuilder() {
         <div className="space-y-2 text-sm">
           <label className="flex items-center gap-2">
             <input type="checkbox" checked={disable6Ghz} onChange={(e) => setDisable6Ghz(e.target.checked)} />
-            Disable 6 GHz radios overnight (00:00–06:00)
+            Disable 6 GHz radios overnight (00:00–06:00 UTC)
           </label>
           <label className="flex items-center gap-2">
             <input type="checkbox" checked={disableLowUtil} onChange={(e) => setDisableLowUtil(e.target.checked)} />
@@ -81,7 +81,7 @@ export function EnergyScenarioBuilder() {
           </label>
           <label className="flex items-center gap-2">
             <input type="checkbox" checked={reduceTxPower} onChange={(e) => setReduceTxPower(e.target.checked)} />
-            Reduce Tx power 20% after hours (22:00–06:00)
+            Reduce Tx power 20% after hours (22:00–06:00 UTC)
           </label>
           <label className="flex items-center gap-2">
             <input

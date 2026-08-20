@@ -380,10 +380,7 @@ export function createEnergyRouter(options = {}) {
       // policy.lightAware (if present) rides through to replayScenario and is
       // modeled per-sample by the resolver — no signature change needed.
       const replay = replayScenario({ samples, policy, maxGapSeconds });
-      const seconds = (new Date(win.end) - new Date(win.start)) / 1000;
-
-      const projectBlock = (kwh) => {
-        const daily = projectDaily(kwh, seconds);
+      const projectBlock = (kwh, daily) => {
         const annual = projectAnnual(daily);
         return {
           kwh,
@@ -393,7 +390,7 @@ export function createEnergyRouter(options = {}) {
           estimatedAnnualCost: estimateCost(annual, prefs.ratePerKwh),
         };
       };
-      const savingsDaily = projectDaily(replay.savingsKwh, seconds);
+      const savingsDaily = replay.savingsDailyKwh;
       const savingsAnnual = projectAnnual(savingsDaily);
 
       const { id: scenarioId } = await insertScenarioFn({
@@ -418,8 +415,8 @@ export function createEnergyRouter(options = {}) {
         scenarioId,
         currency: prefs.currencyCode,
         currencySymbol: prefs.currencySymbol,
-        baseline: projectBlock(replay.baselineKwh),
-        simulated: projectBlock(replay.simulatedKwh),
+        baseline: projectBlock(replay.baselineKwh, replay.baselineDailyKwh),
+        simulated: projectBlock(replay.simulatedKwh, replay.simulatedDailyKwh),
         savings: {
           kwh: replay.savingsKwh,
           percent: replay.savingsPercent,

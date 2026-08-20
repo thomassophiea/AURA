@@ -49,6 +49,15 @@ describe('simulatedWattsForSample', () => {
     // resolveApState(10, [{kind:'disableRadio', band:'6'}]) = 10 * (1 - 0.25) = 7.5
     expect(simulatedWattsForSample(s, policy)).toBeCloseTo(7.5, 6);
   });
+
+  it('does not apply a 6 GHz low-utilization action to an explicit non-6 GHz sample', () => {
+    const sample = at('2026-08-10T03:00:00Z', 10, {
+      band: '2.4',
+      channelUtilization: 2,
+    });
+    const policy = { disableLowUtilRadios: true, lowUtilThresholdPercent: 5 };
+    expect(simulatedWattsForSample(sample, policy)).toBe(10);
+  });
 });
 
 describe('replayScenario', () => {
@@ -64,6 +73,9 @@ describe('replayScenario', () => {
     expect(out.baselineKwh).toBeCloseTo(0.002, 6);
     expect(out.simulatedKwh).toBeCloseTo(0.0015, 6);
     expect(out.savingsKwh).toBeCloseTo(0.0005, 6);
+    expect(out.baselineDailyKwh).toBeCloseTo(0.048, 6);
+    expect(out.simulatedDailyKwh).toBeCloseTo(0.036, 6);
+    expect(out.savingsDailyKwh).toBeCloseTo(0.012, 6);
     expect(out.savingsPercent).toBeCloseTo(25, 6);
     expect(out.apWithDataCount).toBe(1);
   });
@@ -75,6 +87,7 @@ describe('replayScenario', () => {
     ];
     const out = replayScenario({ samples, policy: {}, maxGapSeconds: 7200 });
     expect(out.baselineKwh).toBe(0); // the only interval exceeds the clamp
+    expect(out.baselineDailyKwh).toBe(0);
   });
 
   it('does not count APs with only a single sample (no forward edge)', () => {
