@@ -1,10 +1,6 @@
 import { useMemo, useState } from 'react';
 
-import {
-  useEnergyOverview,
-  useEnergySites,
-  useEnergyRecommendations,
-} from '@/hooks/useEnergyData';
+import { useEnergyOverview, useEnergySites, useEnergyRecommendations } from '@/hooks/useEnergyData';
 import { EnergyOverviewCards } from './EnergyOverviewCards';
 import { EnergyEmptyState } from './EnergyEmptyState';
 import { EnergySiteRankings } from './EnergySiteRankings';
@@ -16,6 +12,7 @@ import { EnergyScenarioBuilder } from './EnergyScenarioBuilder';
 import { EnergyRecommendations } from './EnergyRecommendations';
 import { EnergyPreferencesPanel } from './EnergyPreferencesPanel';
 import { useGlobalFilters } from '@/hooks/useGlobalFilters';
+import { useSiteNames } from '@/hooks/useSiteNames';
 import { useSelectedTimeRange } from '@/hooks/useSelectedTimeRange';
 import { TimeRangeSelector } from '@/components/TimeRangeSelector';
 import { SourceSiteSelector } from '@/components/SourceSiteSelector';
@@ -26,10 +23,14 @@ export function EnergyOptimization() {
   const { filters, updateFilter } = useGlobalFilters();
   const { sites: os1Sites, xiqSites } = useSourceSites();
   // Resolve site ids (what the aggregates carry) back to human-readable names.
-  const siteNameById = useMemo(
-    () => new Map(os1Sites.map((s) => [s.id, s.name])),
-    [os1Sites]
-  );
+  // The controller `/v3/sites` catalog (useSiteNames) is the reliable source on
+  // this page; os1Sites is layered on top for the active source when present.
+  const { nameById: catalogNames } = useSiteNames();
+  const siteNameById = useMemo(() => {
+    const map = new Map<string, string>(catalogNames);
+    for (const s of os1Sites) if (s.id && s.name) map.set(s.id, s.name);
+    return map;
+  }, [catalogNames, os1Sites]);
   // Picker value tracks the global site filter ('all' or an OS-ONE site id).
   // XIQ selections carry an `xiq:` value and are gated below — the energy store
   // holds only OS-ONE / controller telemetry.
@@ -123,7 +124,7 @@ export function EnergyOptimization() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className="space-y-6">
             <EnergySiteRankings
-              sites={sites.data}
+              sites={sites.data ? sites.data.filter((s) => s.siteId) : null}
               loading={sites.loading}
               siteNameById={siteNameById}
               onSelectSite={(siteId) => {
@@ -134,6 +135,8 @@ export function EnergyOptimization() {
             <LightAwareOptimization
               onConfigure={() => setPolicyOpen(true)}
               onViewAps={() => setApDrawerOpen(true)}
+              ratePerKwh={overview.data?.ratePerKwh ?? 0.14}
+              currencySymbol={overview.data?.currencySymbol ?? '$'}
             />
             <EnergyApTable enabled={apTableEnabled} />
           </div>

@@ -5,12 +5,22 @@ import { EnergyOptimization } from './EnergyOptimization';
 const overviewEmpty = {
   data: {
     apWithDataCount: 0,
-    currentWatts: 0, avgWatts: 0, peakWatts: 0, periodKwh: 0,
-    dailyKwhProjected: null, monthlyKwhProjected: null, annualKwhProjected: null,
-    estimatedAnnualCost: null, currency: 'USD', currencySymbol: '$', ratePerKwh: 0.14,
+    currentWatts: 0,
+    avgWatts: 0,
+    peakWatts: 0,
+    periodKwh: 0,
+    dailyKwhProjected: null,
+    monthlyKwhProjected: null,
+    annualKwhProjected: null,
+    estimatedAnnualCost: null,
+    currency: 'USD',
+    currencySymbol: '$',
+    ratePerKwh: 0.14,
     meta: { dataWindowDays: 0, earliestSampleAt: null, limitationsNotes: [] },
   },
-  loading: false, error: null, refetch: () => {},
+  loading: false,
+  error: null,
+  refetch: () => {},
 };
 
 vi.mock('@/hooks/useEnergyData', () => ({
@@ -23,10 +33,22 @@ vi.mock('@/hooks/useEnergyData', () => ({
   useLightAwarePolicy: () => ({ data: null, loading: false, error: null, save: () => {} }),
 }));
 
+vi.mock('@/hooks/useApModels', () => ({
+  useApModels: () => ({ modelBySerial: new Map(), loading: false }),
+}));
+
+vi.mock('@/hooks/useSiteNames', () => ({
+  useSiteNames: () => ({ nameById: new Map(), loading: false }),
+}));
+
 vi.mock('@/hooks/useSelectedTimeRange', () => ({
   useSelectedTimeRange: () => ({
-    token: '24h', setToken: () => {}, optionGroups: [], dayStatuses: new Map(),
-    retentionDays: 7, neverCollected: false,
+    token: '24h',
+    setToken: () => {},
+    optionGroups: [],
+    dayStatuses: new Map(),
+    retentionDays: 7,
+    neverCollected: false,
   }),
 }));
 
