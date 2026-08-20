@@ -200,13 +200,14 @@ async function readVersion(dirname) {
       /* try the next candidate */
     }
   }
-  const sha = process.env.RAILWAY_GIT_COMMIT_SHA || '';
+  const sha = process.env.RAILWAY_GIT_COMMIT_SHA || process.env.AURA_GIT_COMMIT_SHA || '';
+  const source = process.env.RAILWAY_GIT_COMMIT_SHA ? 'railway-env' : 'aura-env';
   return {
     version: sha ? `v0.${sha.slice(0, 7)}` : 'unknown',
     commit: sha ? sha.slice(0, 7) : 'unknown',
     commitFull: sha || null,
-    branch: process.env.RAILWAY_GIT_BRANCH || 'unknown',
-    source: 'railway-env',
+    branch: process.env.RAILWAY_GIT_BRANCH || process.env.AURA_GIT_BRANCH || 'unknown',
+    source,
   };
 }
 

@@ -367,8 +367,8 @@ app.get('/api/version', async (req, res) => {
   }
 
   // Final fallback: use Railway runtime env vars if available
-  const railwayCommit = process.env.RAILWAY_GIT_COMMIT_SHA || '';
-  const railwayBranch = process.env.RAILWAY_GIT_BRANCH || 'unknown';
+  const railwayCommit = process.env.RAILWAY_GIT_COMMIT_SHA || process.env.AURA_GIT_COMMIT_SHA || '';
+  const railwayBranch = process.env.RAILWAY_GIT_BRANCH || process.env.AURA_GIT_BRANCH || 'unknown';
   const commitShort = railwayCommit.length >= 7 ? railwayCommit.substring(0, 7) : null;
 
   if (commitShort) {
@@ -386,7 +386,7 @@ app.get('/api/version', async (req, res) => {
   res.json({
     version: 'unknown',
     commit: 'unknown',
-    error: 'version.json not found; RAILWAY_GIT_COMMIT_SHA not set',
+    error: 'version.json not found; deployment commit metadata not set',
     buildDate: new Date().toISOString(),
   });
 });

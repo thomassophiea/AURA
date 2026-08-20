@@ -113,8 +113,10 @@ VITE_APP_COMMIT_DATE=${commitDate}
  */
 async function railwayFallback() {
   const buildDate = new Date().toISOString();
-  const railwayCommit = process.env.RAILWAY_GIT_COMMIT_SHA || 'unknown';
-  const railwayBranch = process.env.RAILWAY_GIT_BRANCH || 'unknown';
+  const railwayCommit =
+    process.env.RAILWAY_GIT_COMMIT_SHA || process.env.AURA_GIT_COMMIT_SHA || 'unknown';
+  const railwayBranch =
+    process.env.RAILWAY_GIT_BRANCH || process.env.AURA_GIT_BRANCH || 'unknown';
   const railwayOwner = process.env.RAILWAY_GIT_REPO_OWNER || '';
   const railwayRepo = process.env.RAILWAY_GIT_REPO_NAME || '';
   const commitShort = railwayCommit !== 'unknown' ? railwayCommit.substring(0, 7) : 'unknown';

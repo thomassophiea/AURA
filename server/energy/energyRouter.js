@@ -500,7 +500,9 @@ export function createEnergyRouter(options = {}) {
         recommendationTypes,
         generatedAt: nowFn().toISOString(),
         generatedBy: actor,
-        auraVersion: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 12) ?? process.env.npm_package_version,
+        auraVersion:
+          (process.env.RAILWAY_GIT_COMMIT_SHA || process.env.AURA_GIT_COMMIT_SHA)?.slice(0, 12) ??
+          process.env.npm_package_version,
       });
       const saved = await insertEnvironmentalReportFn({
         sourceId: req.monitoringScope.sources[0]?.id,

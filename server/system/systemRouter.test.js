@@ -88,6 +88,20 @@ describe('GET /api/v1/system/version', () => {
     expect(res.body.commit).toBe('abcdef1');
     expect(res.body.source).toBe('railway-env');
   });
+
+  it('falls back to AURA commit metadata for recovery deployments', async () => {
+    delete process.env.RAILWAY_GIT_COMMIT_SHA;
+    delete process.env.RAILWAY_GIT_BRANCH;
+    process.env.AURA_GIT_COMMIT_SHA = '37cf877b66bad8c3454afdda7bea204070ac23be';
+    process.env.AURA_GIT_BRANCH = 'main';
+    const res = await request(makeApp()).get('/api/v1/system/version');
+    expect(res.body).toMatchObject({
+      commit: '37cf877',
+      commitFull: '37cf877b66bad8c3454afdda7bea204070ac23be',
+      branch: 'main',
+      source: 'aura-env',
+    });
+  });
 });
 
 describe('GET /api/v1/system/health', () => {
