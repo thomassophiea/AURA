@@ -85,11 +85,10 @@ export async function upsertPolicy({ sourceId, siteId, enabled, policy }) {
 
 /**
  * Returns one row per AP that has power data, LEFT JOINed to its open
- * light-state transition. model/apName fall back to the serial when the
- * controller inventory is not mirrored in Postgres.
- *
- * NOTE: This SQL is unverified locally — there is no local Postgres. Tested
- * via injected fakes in router.test.js; real validation needs Integration env.
+ * light-state transition. `metric_samples` has no model column, so model is
+ * read best-effort from the sample `dimensions` and falls back to the serial;
+ * apName likewise falls back to the serial until controller inventory is
+ * mirrored in Postgres.
  *
  * Bind order: $1 sourceId, $2 optional siteId.
  */
@@ -97,17 +96,17 @@ export async function listApLightStates({ sourceId, siteId } = {}) {
   const { rows } = await query(
     `SELECT
        ms.device_external_id                        AS serial,
-       COALESCE(ms.device_external_id, ms.device_external_id) AS "apName",
-       COALESCE(ms.model, ms.device_external_id)   AS model,
+       ms.device_external_id                        AS "apName",
+       COALESCE(ms.model, ms.device_external_id)    AS model,
        ms.site_id                                   AS "siteId",
-       latest.watts,
+       ms.watts,
        row_to_json(lst)                             AS "openTransition"
      FROM (
        SELECT DISTINCT ON (device_external_id)
          device_external_id,
          site_id,
          numeric_value / 1000.0 AS watts,
-         model
+         dimensions->>'model'   AS model
        FROM metric_samples
        WHERE monitored_source_id = $1
          AND metric_family = 'ap_report'
@@ -116,7 +115,6 @@ export async function listApLightStates({ sourceId, siteId } = {}) {
          AND ($2::text IS NULL OR site_id = $2)
        ORDER BY device_external_id, observed_at DESC
      ) ms
-     CROSS JOIN LATERAL (SELECT ms.device_external_id AS serial, ms.site_id) latest
      LEFT JOIN LATERAL (
        SELECT *
        FROM light_state_transitions lst
