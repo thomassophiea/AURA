@@ -79,6 +79,7 @@ function EnergyOverviewCardsComponent({ overview, loading }: EnergyOverviewCards
         icon={TrendIcon}
         label="Average draw"
         value={formatWatts(overview.avgWatts)}
+        sub="per reporting AP"
       />
       <StatCard
         icon={Wifi}

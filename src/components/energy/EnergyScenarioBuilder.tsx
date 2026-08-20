@@ -114,14 +114,14 @@ export function EnergyScenarioBuilder() {
               <p className="text-xs text-muted-foreground">Current</p>
               <p className="text-lg font-semibold">{formatKwh(result.baseline.annualProjected)}/yr</p>
               <p className="text-xs text-muted-foreground">
-                {formatCurrency(result.baseline.estimatedAnnualCost, '$')}
+                {formatCurrency(result.baseline.estimatedAnnualCost, result.currencySymbol ?? '$')}
               </p>
             </div>
             <div className="rounded-md border border-border p-3">
               <p className="text-xs text-muted-foreground">Optimized</p>
               <p className="text-lg font-semibold">{formatKwh(result.simulated.annualProjected)}/yr</p>
               <p className="text-xs text-muted-foreground">
-                {formatCurrency(result.simulated.estimatedAnnualCost, '$')}
+                {formatCurrency(result.simulated.estimatedAnnualCost, result.currencySymbol ?? '$')}
               </p>
             </div>
             <div className="rounded-md border border-emerald-500/40 bg-emerald-500/5 p-3">
@@ -130,7 +130,7 @@ export function EnergyScenarioBuilder() {
                 {formatPercent(result.savings.percent)}
               </p>
               <p className="text-xs text-muted-foreground">
-                {formatCurrency(result.savings.annualCost, '$')}/yr
+                {formatCurrency(result.savings.annualCost, result.currencySymbol ?? '$')}/yr
               </p>
             </div>
           </div>

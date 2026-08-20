@@ -31,11 +31,19 @@ export function projectLightAwareSavings(
   aps: { watts: number }[],
   { darkHours, dimHours, darkFactor, dimFactor, ratePerKwh }: SavingsInput
 ): { kwh: number; cost: number } {
-  const whPerWattDay = darkHours * darkFactor + dimHours * dimFactor;
+  const clamp = (value: number, min: number, max: number) =>
+    Math.max(min, Math.min(Number.isFinite(value) ? value : min, max));
+  const safeDarkHours = clamp(darkHours, 0, 24);
+  const safeDimHours = clamp(dimHours, 0, 24 - safeDarkHours);
+  const safeDarkFactor = clamp(darkFactor, 0, 1);
+  const safeDimFactor = clamp(dimFactor, 0, 1);
+  const safeRate = Math.max(0, Number.isFinite(ratePerKwh) ? ratePerKwh : 0);
+  const whPerWattDay =
+    safeDarkHours * safeDarkFactor + safeDimHours * safeDimFactor;
   let whPerDay = 0;
   for (const ap of aps) {
-    if (Number.isFinite(ap.watts)) whPerDay += ap.watts * whPerWattDay;
+    if (Number.isFinite(ap.watts) && ap.watts > 0) whPerDay += ap.watts * whPerWattDay;
   }
   const kwh = (whPerDay * 365) / 1000;
-  return { kwh, cost: kwh * ratePerKwh };
+  return { kwh, cost: kwh * safeRate };
 }

@@ -91,6 +91,41 @@ describe('buildRecommendations', () => {
     });
     expect(recs.find((r) => r.type === 'low_utilization_6ghz')).toBeUndefined();
   });
+
+  it('annualizes each AP over its own observed duration', () => {
+    const complete = overnightSamples(7);
+    const sparse = overnightSamples(1).map((sample) => ({
+      ...sample,
+      deviceExternalId: 'AP-2',
+      watts: 20,
+    }));
+    const recs = buildRecommendations({
+      samples: [...complete, ...sparse],
+      windowDays: 7,
+      ratePerKwh: 0.14,
+      maxGapSeconds: 7200,
+    });
+    const rec = recs.find((item) => item.type === 'low_utilization_6ghz');
+
+    // AP-1 saves 2.5 W, AP-2 saves 5 W. Annualize each AP independently:
+    // (2.5 W + 5 W) * 8760 h / 1000 = 65.7 kWh/year.
+    expect(rec.annualSavingsKwh).toBeCloseTo(65.7, 1);
+    expect(rec.estimatedAnnualSaving).toBeCloseTo(65.7 * 0.14, 1);
+  });
+
+  it('does not emit a recommendation when qualifying samples have no usable interval', () => {
+    const recs = buildRecommendations({
+      samples: [
+        { deviceExternalId: 'AP-1', watts: 10, observedAt: '2026-08-10T00:00:00Z', band: '6', channelUtilization: 1 },
+        { deviceExternalId: 'AP-1', watts: 10, observedAt: '2026-08-11T00:00:00Z', band: '6', channelUtilization: 1 },
+      ],
+      windowDays: 1,
+      ratePerKwh: 0.14,
+      maxGapSeconds: 7200,
+    });
+
+    expect(recs.find((item) => item.type === 'low_utilization_6ghz')).toBeUndefined();
+  });
 });
 
 describe('light-aware recommendation', () => {

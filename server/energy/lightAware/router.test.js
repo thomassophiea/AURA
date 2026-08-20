@@ -19,7 +19,7 @@ function appWith(overrides = {}) {
       ],
       getPolicy: async () => ({ enabled: true, policy: { dark: { actions: [{ kind: 'disableRadio', band: '6' }] } } }),
       upsertPolicy: async (p) => ({ ...p }),
-      getObservedDistribution: async () => ({ brightSeconds: 60, dimSeconds: 0, darkSeconds: 40, unknownSeconds: 0, days: 1 }),
+      getObservedDistribution: async () => ({ brightSeconds: 60, dimSeconds: 0, darkSeconds: 40, unknownSeconds: 0, days: 1, observedApCount: 2 }),
       getRatePreferences: async () => ({ currencyCode: 'USD', currencySymbol: '$', ratePerKwh: 0.14 }),
       ...overrides,
     },
@@ -35,6 +35,31 @@ describe('GET /energy/light-aware/summary', () => {
     expect(res.body.sensorCapableCount).toBe(1); // only AP5020
     expect(res.body.reportingCount).toBe(2);
     expect(res.body.stateBreakdown).toEqual(expect.objectContaining({ dark: 1, unknown: 1 }));
+  });
+
+  it('does not present the current instantaneous state as an annual projection', async () => {
+    const res = await request(appWith()).get('/api/energy/light-aware/summary');
+    expect(res.body.projectedAnnual).toEqual({ kwh: null, cost: null });
+  });
+});
+
+describe('GET /energy/light-aware/observed', () => {
+  it('normalizes fleet dark AP-hours by reporting AP count', async () => {
+    const res = await request(
+      appWith({
+        getObservedDistribution: async () => ({
+          brightSeconds: 0,
+          dimSeconds: 0,
+          darkSeconds: 48 * 3600,
+          unknownSeconds: 0,
+          days: 1,
+          observedApCount: 2,
+        }),
+      })
+    ).get('/api/energy/light-aware/observed?start=2026-08-10T00:00:00Z&end=2026-08-11T00:00:00Z');
+
+    expect(res.status).toBe(200);
+    expect(res.body.avgDarkHoursPerDay).toBe(24);
   });
 });
 

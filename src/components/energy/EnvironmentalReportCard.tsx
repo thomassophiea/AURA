@@ -296,7 +296,13 @@ export function EnvironmentalReportCard({
                 Include financial savings
               </label>
               <div className="flex items-start gap-2 text-sm">
-                <input type="checkbox" checked={includeCarbon} disabled={!carbonConfigured} onChange={(event) => setIncludeCarbon(event.target.checked)} />
+                <input
+                  aria-label="Include CO2e estimate"
+                  type="checkbox"
+                  checked={includeCarbon}
+                  disabled={!carbonConfigured}
+                  onChange={(event) => setIncludeCarbon(event.target.checked)}
+                />
                 <span>
                   Include CO2e estimate
                   {!carbonConfigured ? (

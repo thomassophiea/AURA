@@ -3,6 +3,8 @@
 export interface EnergyOverviewMeta {
   dataWindowDays: number | null;
   earliestSampleAt: string | null;
+  temporalCoveragePercent?: number | null;
+  rateIsDefault?: boolean;
   limitationsNotes: string[];
 }
 
@@ -40,6 +42,8 @@ export interface EnergyAp {
   totalKwh: number;
   estimatedAnnualCost: number | null;
   sampleCount: number;
+  observedSeconds?: number;
+  temporalCoveragePercent?: number | null;
   dataQuality: 'ok' | 'sparse';
 }
 
@@ -88,6 +92,8 @@ export interface EnergyProjectionBlock {
 
 export interface EnergyScenarioResult {
   scenarioId: string;
+  currency?: string;
+  currencySymbol?: string;
   baseline: EnergyProjectionBlock;
   simulated: EnergyProjectionBlock;
   savings: {
@@ -177,6 +183,7 @@ export interface EnvironmentalReport {
     reportingApCount: number;
     totalApCount: number;
     coveragePercent: number | null;
+    temporalCoveragePercent?: number | null;
     missingApCount: number;
     evidenceStatus: EnvironmentalEvidenceStatus;
   };
@@ -209,6 +216,7 @@ export interface EnvironmentalReport {
     projectionMethodology: string;
     modelAssumptions: Array<{ type: string; assumptions: Record<string, unknown> }>;
     excludedDeviceCount: number;
+    temporalCoveragePercent?: number | null;
     dataQuality: EnergyConfidence;
     scenarioModelVersion: string;
     reportGeneratedAt: string;

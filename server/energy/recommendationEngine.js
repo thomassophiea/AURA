@@ -24,32 +24,33 @@ function lowUtilFraction(rows, threshold) {
   return low / withUtil.length;
 }
 
-/**
- * Projects a period's energy to annual consumption.
- * Divides total observed seconds by AP count to compute a per-AP-equivalent duration,
- * which is an APPROXIMATION that distorts the projection when qualifying APs have
- * unequal sample density; acceptable for Phase 3 (single-AP-dominant), to be refined
- * per-AP in a later phase.
- */
-function annualize(periodKwh, samples, maxGapSeconds) {
-  // Total observed seconds across the window, capped per interval, for projection.
-  let seconds = 0;
+/** Annualize each AP independently, then sum the fleet projection. */
+function annualizeScenarioSavings(samples, policy, maxGapSeconds) {
   const byAp = new Map();
   for (const s of samples) {
     if (!byAp.has(s.deviceExternalId)) byAp.set(s.deviceExternalId, []);
     byAp.get(s.deviceExternalId).push(s);
   }
+
+  let fleetAnnualKwh = 0;
+  let projectedApCount = 0;
   for (const rows of byAp.values()) {
     rows.sort((a, b) => new Date(a.observedAt) - new Date(b.observedAt));
+    let observedSeconds = 0;
     for (let i = 0; i < rows.length - 1; i += 1) {
       const gap = (new Date(rows[i + 1].observedAt) - new Date(rows[i].observedAt)) / 1000;
-      if (gap > 0 && gap <= maxGapSeconds) seconds += gap;
+      if (gap > 0 && gap <= maxGapSeconds) observedSeconds += gap;
     }
+    if (observedSeconds === 0) continue;
+
+    const replay = replayScenario({ samples: rows, policy, maxGapSeconds });
+    const annualKwh = projectAnnual(projectDaily(replay.savingsKwh, observedSeconds));
+    if (!Number.isFinite(annualKwh)) continue;
+    fleetAnnualKwh += annualKwh;
+    projectedApCount += 1;
   }
-  // Divide by AP count so projectDaily sees a single-AP-equivalent duration.
-  const perApSeconds = byAp.size > 0 ? seconds / byAp.size : 0;
-  const daily = projectDaily(periodKwh, perApSeconds);
-  return projectAnnual(daily);
+
+  return projectedApCount > 0 ? fleetAnnualKwh : null;
 }
 
 export function buildRecommendations({ samples, windowDays, ratePerKwh, maxGapSeconds, lightObserved }) {
@@ -69,13 +70,15 @@ export function buildRecommendations({ samples, windowDays, ratePerKwh, maxGapSe
 
   if (lowUtilAps.length > 0) {
     const affected = lowUtilAps.flatMap(([, rows]) => rows);
+    const policy = { disableLowUtilRadios: true, lowUtilThresholdPercent: 5 };
     const replay = replayScenario({
       samples: affected,
-      policy: { disableLowUtilRadios: true, lowUtilThresholdPercent: 5 },
+      policy,
       maxGapSeconds,
     });
-    const annualSaving = annualize(replay.savingsKwh, affected, maxGapSeconds);
-    recommendations.push({
+    const annualSaving = annualizeScenarioSavings(affected, policy, maxGapSeconds);
+    if (replay.apWithDataCount > 0 && replay.savingsKwh > 0 && Number.isFinite(annualSaving)) {
+      recommendations.push({
       id: randomUUID(),
       type: 'low_utilization_6ghz',
       scope: 'fleet',
@@ -94,7 +97,8 @@ export function buildRecommendations({ samples, windowDays, ratePerKwh, maxGapSe
         observationDays: windowDays,
         lowUtilApCount: lowUtilAps.length,
       },
-    });
+      });
+    }
   }
 
   // --- light_aware_opportunity ---------------------------------------------
@@ -124,7 +128,8 @@ export function buildRecommendations({ samples, windowDays, ratePerKwh, maxGapSe
         modeled: true,
         observationDays: windowDays,
         sensorCapableApCount: lightObserved.sensorCapableCount,
-        observedDarkHoursPerDay: lightObserved.darkAvgHours,
+        observedDarkHoursPerAffectedApDay: lightObserved.darkAvgHours,
+        observedDarkHoursPerSensorApDay: lightObserved.darkAvgHoursPerSensorAp ?? null,
         observedDimHoursPerDay: lightObserved.dimAvgHours ?? null,
         modeledPowerReductionPercent: SIX_GHZ_BAND_SHARE * 100,
       },

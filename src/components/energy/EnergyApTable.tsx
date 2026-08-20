@@ -8,9 +8,10 @@ import { useEnergyAps } from '@/hooks/useEnergyData';
 
 interface EnergyApTableProps {
   enabled: boolean;
+  currencySymbol?: string;
 }
 
-function EnergyApTableComponent({ enabled }: EnergyApTableProps) {
+function EnergyApTableComponent({ enabled, currencySymbol = '$' }: EnergyApTableProps) {
   const { data: aps, loading, error } = useEnergyAps(enabled);
 
   if (!enabled) return null;
@@ -51,7 +52,7 @@ function EnergyApTableComponent({ enabled }: EnergyApTableProps) {
                   <td className="py-2 text-muted-foreground">{formatWatts(ap.peakWatts)}</td>
                   <td className="py-2 text-foreground">{formatKwh(ap.totalKwh)}</td>
                   <td className="py-2 text-foreground">
-                    {formatCurrency(ap.estimatedAnnualCost, '$')}
+                    {formatCurrency(ap.estimatedAnnualCost, currencySymbol)}
                   </td>
                   <td className="py-2">
                     <Badge variant={ap.dataQuality === 'ok' ? 'secondary' : 'outline'}>

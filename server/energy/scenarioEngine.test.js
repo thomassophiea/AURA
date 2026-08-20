@@ -97,6 +97,25 @@ describe('replayScenario', () => {
     expect(out.apWithDataCount).toBe(1); // only AP-good has a usable interval
     expect(out.baselineKwh).toBeGreaterThan(0); // AP-good contributes
   });
+
+  it('never projects more energy than the measured baseline for valid optimizations', () => {
+    const samples = [
+      at('2026-08-10T02:00:00Z', 20, { channelUtilization: 1, lightState: 'dark' }),
+      at('2026-08-10T03:00:00Z', 20, { channelUtilization: 1, lightState: 'dark' }),
+    ];
+    const policies = [
+      { disable6GhzHours: [2] },
+      { disableLowUtilRadios: true, lowUtilThresholdPercent: 5 },
+      { reduceTxPower: true, afterHoursStart: 22, afterHoursEnd: 6, reducePercent: 20 },
+      { lightAware: { enabled: true, actionsByState: { dark: [{ kind: 'disableRadio', band: '6' }] } } },
+    ];
+
+    for (const policy of policies) {
+      const replay = replayScenario({ samples, policy, maxGapSeconds: 7200 });
+      expect(replay.simulatedKwh).toBeLessThanOrEqual(replay.baselineKwh);
+      expect(replay.savingsKwh).toBeGreaterThanOrEqual(0);
+    }
+  });
 });
 
 describe('optimizationsForSample', () => {

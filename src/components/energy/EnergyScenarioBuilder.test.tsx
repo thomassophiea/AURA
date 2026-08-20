@@ -39,6 +39,8 @@ describe('EnergyScenarioBuilder', () => {
   it('runs a scenario and displays savings', async () => {
     postEnergyScenario.mockResolvedValue({
       scenarioId: 'sc-1',
+      currency: 'EUR',
+      currencySymbol: '€',
       baseline: { kwh: 100, dailyProjected: 14, monthlyProjected: 420, annualProjected: 5110, estimatedAnnualCost: 715.4 },
       simulated: { kwh: 80, dailyProjected: 11.2, monthlyProjected: 336, annualProjected: 4088, estimatedAnnualCost: 572.3 },
       savings: { kwh: 20, percent: 20, dailyKwh: 2.8, monthlyKwh: 84, annualKwh: 1022, annualCost: 143.1 },
@@ -49,6 +51,7 @@ describe('EnergyScenarioBuilder', () => {
     render(<EnergyScenarioBuilder />);
     fireEvent.click(screen.getByRole('button', { name: /run scenario/i }));
     await waitFor(() => expect(screen.getByText('20.0%')).toBeInTheDocument());
+    expect(screen.getByText('€143.10/yr')).toBeInTheDocument();
     expect(postEnergyScenario).toHaveBeenCalledTimes(1);
   });
 

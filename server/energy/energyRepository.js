@@ -29,12 +29,15 @@ const POWER_FILTER = `
 const INTEGRATED_CTE = `
   WITH samples AS (
     SELECT
+      monitored_source_id,
       device_external_id,
       site_id,
       numeric_value / 1000.0 AS watts,
       observed_at,
       EXTRACT(EPOCH FROM (
-        LEAD(observed_at) OVER (PARTITION BY device_external_id ORDER BY observed_at) - observed_at
+        LEAD(observed_at) OVER (
+          PARTITION BY monitored_source_id, device_external_id ORDER BY observed_at
+        ) - observed_at
       )) AS elapsed_seconds
     FROM metric_samples
     WHERE ${POWER_FILTER}
@@ -43,26 +46,75 @@ const INTEGRATED_CTE = `
   ),
   per_ap AS (
     SELECT
+      monitored_source_id,
       device_external_id,
       site_id,
       SUM((watts * elapsed_seconds) / 3600000.0)
         FILTER (WHERE elapsed_seconds IS NOT NULL AND elapsed_seconds <= $5) AS kwh,
-      AVG(watts) AS avg_watts,
+      SUM(watts * elapsed_seconds)
+        FILTER (WHERE elapsed_seconds IS NOT NULL AND elapsed_seconds <= $5)
+        / NULLIF(
+          SUM(elapsed_seconds)
+            FILTER (WHERE elapsed_seconds IS NOT NULL AND elapsed_seconds <= $5),
+          0
+        ) AS avg_watts,
       MAX(watts) AS peak_watts,
-      COUNT(*) AS sample_count
+      COUNT(*) FILTER (WHERE elapsed_seconds IS NOT NULL AND elapsed_seconds <= $5) AS sample_count,
+      COALESCE(
+        SUM(elapsed_seconds)
+          FILTER (WHERE elapsed_seconds IS NOT NULL AND elapsed_seconds <= $5),
+        0
+      ) AS observed_seconds
     FROM samples
-    GROUP BY device_external_id, site_id
+    GROUP BY monitored_source_id, device_external_id, site_id
   ),
   latest_per_ap AS (
-    SELECT DISTINCT ON (device_external_id)
+    SELECT DISTINCT ON (monitored_source_id, device_external_id)
+      monitored_source_id,
       device_external_id,
+      site_id,
+      watts,
+      observed_at
+    FROM samples
+    ORDER BY monitored_source_id, device_external_id, observed_at DESC
+  ),
+  per_device AS (
+    SELECT
+      p.monitored_source_id,
+      p.device_external_id,
+      latest.site_id,
+      SUM(p.kwh) AS kwh,
+      SUM(p.avg_watts * p.observed_seconds)
+        / NULLIF(SUM(p.observed_seconds), 0) AS avg_watts,
+      MAX(p.peak_watts) AS peak_watts,
+      SUM(p.sample_count) AS sample_count,
+      SUM(p.observed_seconds) AS observed_seconds
+    FROM per_ap p
+    LEFT JOIN latest_per_ap latest
+      ON latest.monitored_source_id = p.monitored_source_id
+     AND latest.device_external_id = p.device_external_id
+    GROUP BY p.monitored_source_id, p.device_external_id, latest.site_id
+  ),
+  per_ap_minute AS (
+    SELECT DISTINCT ON (
+      monitored_source_id,
+      device_external_id,
+      date_trunc('minute', observed_at)
+    )
+      monitored_source_id,
+      device_external_id,
+      date_trunc('minute', observed_at) AS sample_minute,
       watts
     FROM samples
-    ORDER BY device_external_id, observed_at DESC
+    ORDER BY
+      monitored_source_id,
+      device_external_id,
+      date_trunc('minute', observed_at),
+      observed_at DESC
   ),
   fleet_by_minute AS (
-    SELECT date_trunc('minute', observed_at) AS sample_minute, SUM(watts) AS fleet_watts
-    FROM samples
+    SELECT sample_minute, SUM(watts) AS fleet_watts
+    FROM per_ap_minute
     GROUP BY sample_minute
   )
 `;
@@ -71,12 +123,21 @@ export async function fetchOverviewAggregate({ sourceIds, siteId, start, end, ma
   const { rows } = await query(
     `${INTEGRATED_CTE}
      SELECT
-       COUNT(*)::int                       AS ap_with_data_count,
+      COUNT(kwh)::int                     AS ap_with_data_count,
        COALESCE(SUM(kwh), 0)::float8       AS period_kwh,
        COALESCE(AVG(avg_watts), 0)::float8 AS avg_watts,
-       COALESCE((SELECT SUM(watts) FROM latest_per_ap), 0)::float8 AS current_watts,
-       COALESCE((SELECT MAX(fleet_watts) FROM fleet_by_minute), 0)::float8 AS peak_watts
-     FROM per_ap`,
+       COALESCE((
+         SELECT SUM(watts)
+         FROM latest_per_ap
+         WHERE observed_at >= $3::timestamptz - ($5 * interval '1 second')
+       ), 0)::float8 AS current_watts,
+       COALESCE((SELECT MAX(fleet_watts) FROM fleet_by_minute), 0)::float8 AS peak_watts,
+       COALESCE(
+         SUM((kwh / NULLIF(observed_seconds, 0)) * 86400),
+         0
+       )::float8 AS daily_kwh_projected,
+       COALESCE(SUM(observed_seconds), 0)::float8 AS observed_seconds
+    FROM per_device`,
     [sourceIds, start, end, siteId, maxGapSeconds, authorizedSiteIds]
   );
   const r = rows[0];
@@ -86,6 +147,8 @@ export async function fetchOverviewAggregate({ sourceIds, siteId, start, end, ma
     avgWatts: r.avg_watts,
     currentWatts: r.current_watts,
     peakWatts: r.peak_watts,
+    dailyKwhProjected: r.daily_kwh_projected,
+    observedSeconds: r.observed_seconds,
   };
 }
 
@@ -94,9 +157,15 @@ export async function fetchSiteAggregates({ sourceIds, start, end, maxGapSeconds
     `${INTEGRATED_CTE}
      SELECT
        site_id,
-       COUNT(*)::int                 AS ap_with_data_count,
+       COUNT(DISTINCT (monitored_source_id, device_external_id))
+         FILTER (WHERE kwh IS NOT NULL)::int AS ap_with_data_count,
        COALESCE(SUM(kwh), 0)::float8 AS total_kwh,
-       COALESCE(AVG(avg_watts), 0)::float8 AS avg_watts_per_ap
+       COALESCE(AVG(avg_watts), 0)::float8 AS avg_watts_per_ap,
+       COALESCE(
+         SUM((kwh / NULLIF(observed_seconds, 0)) * 86400),
+         0
+       )::float8 AS daily_kwh_projected,
+       COALESCE(SUM(observed_seconds), 0)::float8 AS observed_seconds
      FROM per_ap
      GROUP BY site_id
      ORDER BY total_kwh DESC`,
@@ -107,6 +176,8 @@ export async function fetchSiteAggregates({ sourceIds, start, end, maxGapSeconds
     apWithDataCount: r.ap_with_data_count,
     totalKwh: r.total_kwh,
     avgWattsPerAp: r.avg_watts_per_ap,
+    dailyKwhProjected: r.daily_kwh_projected,
+    observedSeconds: r.observed_seconds,
   }));
 }
 
@@ -116,11 +187,17 @@ export async function fetchApAggregates({ sourceIds, siteId, start, end, maxGapS
      SELECT
        device_external_id AS serial,
        site_id,
-       COALESCE(avg_watts, 0)::float8  AS avg_watts,
-       COALESCE(peak_watts, 0)::float8 AS peak_watts,
-       COALESCE(kwh, 0)::float8        AS total_kwh,
-       sample_count::int               AS sample_count
-     FROM per_ap
+       COALESCE(
+         SUM(avg_watts * observed_seconds) / NULLIF(SUM(observed_seconds), 0),
+         0
+       )::float8 AS avg_watts,
+       COALESCE(MAX(peak_watts), 0)::float8 AS peak_watts,
+       COALESCE(SUM(kwh), 0)::float8 AS total_kwh,
+       SUM(sample_count)::int AS sample_count,
+       SUM(observed_seconds)::float8 AS observed_seconds
+    FROM per_device
+     WHERE kwh IS NOT NULL
+     GROUP BY device_external_id, site_id
      ORDER BY total_kwh DESC`,
     [sourceIds, start, end, siteId, maxGapSeconds, authorizedSiteIds]
   );
@@ -132,6 +209,7 @@ export async function fetchApAggregates({ sourceIds, siteId, start, end, maxGapS
     peakWatts: r.peak_watts,
     totalKwh: r.total_kwh,
     sampleCount: r.sample_count,
+    observedSeconds: r.observed_seconds,
   }));
 }
 

@@ -44,7 +44,20 @@ export function buildEnvironmentalReport({
 }) {
   const days = windowDays(windowStart, windowEnd);
   const seconds = (new Date(windowEnd) - new Date(windowStart)) / 1000;
-  const annualKwh = projectAnnual(projectDaily(aggregate.periodKwh, seconds));
+  const dailyKwh = Number.isFinite(aggregate.dailyKwhProjected)
+    ? aggregate.dailyKwhProjected
+    : projectDaily(aggregate.periodKwh, seconds);
+  const annualKwh = projectAnnual(dailyKwh);
+  const temporalCoveragePercent =
+    Number.isFinite(aggregate.observedSeconds) &&
+    Number.isFinite(aggregate.apWithDataCount) &&
+    aggregate.apWithDataCount > 0 &&
+    seconds > 0
+      ? Math.min(
+          100,
+          (aggregate.observedSeconds / (aggregate.apWithDataCount * seconds)) * 100
+        )
+      : null;
   const selected = recommendations.filter(
     (recommendation) =>
       !Array.isArray(recommendationTypes) ||
@@ -52,7 +65,13 @@ export function buildEnvironmentalReport({
       recommendationTypes.includes(recommendation.type)
   );
   const opportunities = selected.map((recommendation) => {
-    const annualSavingsKwh = finiteOrNull(recommendation.annualSavingsKwh) ?? 0;
+    const modeledAnnualSavingsKwh = Math.max(
+      0,
+      finiteOrNull(recommendation.annualSavingsKwh) ?? 0
+    );
+    const annualSavingsKwh = Number.isFinite(annualKwh)
+      ? Math.min(modeledAnnualSavingsKwh, annualKwh)
+      : modeledAnnualSavingsKwh;
     return {
       id: recommendation.id ?? recommendation.type,
       type: recommendation.type,
@@ -76,10 +95,13 @@ export function buildEnvironmentalReport({
   // Opportunities may overlap. Until the scenario engine supports combined
   // replay, use the largest independent opportunity instead of adding them and
   // overstating savings.
-  const annualSavingsKwh = opportunities.reduce(
+  const modeledAnnualSavingsKwh = opportunities.reduce(
     (largest, opportunity) => Math.max(largest, opportunity.projectedAnnualSavingsKwh),
     0
   );
+  const annualSavingsKwh = Number.isFinite(annualKwh)
+    ? Math.min(modeledAnnualSavingsKwh, annualKwh)
+    : modeledAnnualSavingsKwh;
   const optimizedAnnualKwh = Number.isFinite(annualKwh)
     ? Math.max(0, annualKwh - annualSavingsKwh)
     : null;
@@ -145,6 +167,7 @@ export function buildEnvironmentalReport({
       reportingApCount,
       totalApCount,
       coveragePercent: percent(reportingApCount, totalApCount),
+      temporalCoveragePercent,
       missingApCount: Math.max(0, totalApCount - reportingApCount),
       evidenceStatus: 'measured',
     },
@@ -180,6 +203,7 @@ export function buildEnvironmentalReport({
         assumptions: opportunity.assumptions,
       })),
       excludedDeviceCount: Math.max(0, totalApCount - reportingApCount),
+      temporalCoveragePercent,
       dataQuality: dataQualityForDays(days),
       scenarioModelVersion: 'energy-environmental-report-v1',
       reportGeneratedAt: generatedAt,

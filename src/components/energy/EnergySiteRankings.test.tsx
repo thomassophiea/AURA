@@ -22,4 +22,16 @@ describe('EnergySiteRankings', () => {
     fireEvent.click(screen.getByText('Branch'));
     expect(onSelectSite).toHaveBeenCalledWith('s2');
   });
+
+  it('uses the configured currency symbol', () => {
+    render(
+      <EnergySiteRankings
+        sites={sites}
+        loading={false}
+        onSelectSite={() => {}}
+        currencySymbol="€"
+      />
+    );
+    expect(screen.getByText('€1,200.50')).toBeInTheDocument();
+  });
 });

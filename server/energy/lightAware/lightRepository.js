@@ -41,19 +41,33 @@ export async function closeAndOpenTransition({ sourceId, apSerial, fromState, to
 export async function getObservedDistribution({ sourceId, siteId, start, end }) {
   // Sum dwell per state for closed transitions within the window.
   const { rows } = await query(
-    `SELECT to_state, COALESCE(SUM(dwell_seconds),0)::bigint AS secs
-     FROM light_state_transitions
-     WHERE monitored_source_id = $1
-       AND entered_at >= $2::timestamptz AND entered_at < $3::timestamptz
-       AND dwell_seconds IS NOT NULL
-       ${siteId ? 'AND ap_serial IN (SELECT DISTINCT device_external_id FROM metric_samples WHERE site_id = $4)' : ''}
+    `WITH scoped AS (
+       SELECT to_state, dwell_seconds, ap_serial
+       FROM light_state_transitions
+       WHERE monitored_source_id = $1
+         AND entered_at >= $2::timestamptz AND entered_at < $3::timestamptz
+         AND dwell_seconds IS NOT NULL
+         ${siteId ? 'AND ap_serial IN (SELECT DISTINCT device_external_id FROM metric_samples WHERE site_id = $4)' : ''}
+     )
+     SELECT
+       to_state,
+       COALESCE(SUM(dwell_seconds),0)::bigint AS secs,
+       (SELECT COUNT(DISTINCT ap_serial)::int FROM scoped) AS observed_ap_count
+     FROM scoped
      GROUP BY to_state`,
     siteId ? [sourceId, start, end, siteId] : [sourceId, start, end]
   );
   const by = { bright: 0, dim: 0, dark: 0, unknown: 0 };
   for (const r of rows) by[r.to_state] = Number(r.secs);
   const days = Math.max((new Date(end) - new Date(start)) / 86_400_000, 0);
-  return { brightSeconds: by.bright, dimSeconds: by.dim, darkSeconds: by.dark, unknownSeconds: by.unknown, days };
+  return {
+    brightSeconds: by.bright,
+    dimSeconds: by.dim,
+    darkSeconds: by.dark,
+    unknownSeconds: by.unknown,
+    days,
+    observedApCount: Number(rows[0]?.observed_ap_count ?? 0),
+  };
 }
 
 export async function getPolicy({ sourceId, siteId }) {

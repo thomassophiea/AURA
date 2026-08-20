@@ -15,9 +15,14 @@ const CONFIDENCE_VARIANT: Record<EnergyConfidence, 'secondary' | 'outline'> = {
 interface EnergyRecommendationsProps {
   recommendations: EnergyRecommendation[] | null;
   loading: boolean;
+  currencySymbol?: string;
 }
 
-function EnergyRecommendationsComponent({ recommendations, loading }: EnergyRecommendationsProps) {
+function EnergyRecommendationsComponent({
+  recommendations,
+  loading,
+  currencySymbol = '$',
+}: EnergyRecommendationsProps) {
   if (loading || !recommendations) {
     return (
       <div className="space-y-3">
@@ -58,8 +63,10 @@ function EnergyRecommendationsComponent({ recommendations, loading }: EnergyReco
             <p className="text-sm text-muted-foreground">{rec.explanation}</p>
             <div className="flex flex-wrap gap-4 text-sm">
               <span>Affects <strong>{rec.affectedApCount}</strong> APs</span>
-              <span>Saves <strong>{formatKwh(rec.savingsKwh)}</strong> ({formatPercent(rec.savingsPercent)})</span>
-              <span><strong>{formatCurrency(rec.estimatedAnnualSaving, '$')}</strong>/yr</span>
+              <span>
+                Saves <strong>{formatKwh(rec.annualSavingsKwh)}</strong>/yr ({formatPercent(rec.savingsPercent)})
+              </span>
+              <span><strong>{formatCurrency(rec.estimatedAnnualSaving, currencySymbol)}</strong>/yr</span>
             </div>
           </CardContent>
         </Card>

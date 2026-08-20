@@ -126,6 +126,7 @@ export function EnergyOptimization() {
                 sites={sites.data ? sites.data.filter((s) => s.siteId) : null}
                 loading={sites.loading}
                 siteNameById={siteNameById}
+                currencySymbol={overview.data?.currencySymbol}
                 onSelectSite={(siteId) => {
                   updateFilter('site', siteId);
                   setSelectedSite(siteId);
@@ -138,7 +139,10 @@ export function EnergyOptimization() {
                 ratePerKwh={overview.data?.ratePerKwh ?? 0.14}
                 currencySymbol={overview.data?.currencySymbol ?? '$'}
               />
-              <EnergyApTable enabled={apTableEnabled} />
+              <EnergyApTable
+                enabled={apTableEnabled}
+                currencySymbol={overview.data?.currencySymbol}
+              />
             </>
           ) : null}
         </div>
@@ -149,6 +153,7 @@ export function EnergyOptimization() {
               <EnergyRecommendations
                 recommendations={recommendations.data}
                 loading={recommendations.loading}
+                currencySymbol={overview.data?.currencySymbol}
               />
             </>
           ) : null}

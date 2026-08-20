@@ -90,6 +90,7 @@ export async function createEnvironmentalReportPdf(
     head: [['Metric', 'Value', 'Evidence']],
     body: [
       ['AP telemetry coverage', `${report.baseline.reportingApCount} / ${report.baseline.totalApCount} (${formatNumber(report.baseline.coveragePercent)}%)`, 'Measured'],
+      ['Temporal telemetry coverage', report.baseline.temporalCoveragePercent == null ? 'Not available' : `${formatNumber(report.baseline.temporalCoveragePercent)}%`, 'Measured'],
       ['Total energy in period', `${formatNumber(report.baseline.measuredKwh, 2)} kWh`, 'Measured'],
       ['Average power per AP', `${formatNumber(report.baseline.averageWattsPerAp)} W`, 'Measured'],
       ['Annualized energy', `${formatNumber(report.baseline.annualKwhProjected)} kWh`, 'Projected'],
@@ -194,6 +195,7 @@ export async function createEnvironmentalReportPdf(
       ['Electricity rate', report.financials ? `${report.financials.currencySymbol}${report.financials.electricityRate}/kWh (${report.financials.currency})` : 'Not included'],
       ['Carbon factor', report.carbon ? `${report.carbon.factor} ${report.carbon.factorUnit}; ${report.carbon.source}` : 'Not configured or not included'],
       ['Excluded devices', String(report.provenance.excludedDeviceCount)],
+      ['Temporal coverage', report.provenance.temporalCoveragePercent == null ? 'Not available' : `${formatNumber(report.provenance.temporalCoveragePercent)}%`],
       ['Data quality', report.provenance.dataQuality],
       ['Scenario/model version', report.provenance.scenarioModelVersion],
       ['Generated timestamp', report.provenance.reportGeneratedAt],

@@ -11,6 +11,7 @@ interface EnergySiteRankingsProps {
   onSelectSite: (siteId: string) => void;
   /** Resolves a site id to its human-readable name (from the site catalog). */
   siteNameById?: Map<string, string>;
+  currencySymbol?: string;
 }
 
 /** Human-readable label for a row: catalog name, then API name, then id, else a legacy label. */
@@ -26,6 +27,7 @@ function EnergySiteRankingsComponent({
   loading,
   onSelectSite,
   siteNameById,
+  currencySymbol = '$',
 }: EnergySiteRankingsProps) {
   return (
     <Card>
@@ -70,7 +72,7 @@ function EnergySiteRankingsComponent({
                   <td className="py-2 text-foreground">{formatKwh(site.totalKwh)}</td>
                   <td className="py-2 text-muted-foreground">{formatWatts(site.avgWattsPerAp)}</td>
                   <td className="py-2 text-foreground">
-                    {formatCurrency(site.estimatedAnnualCost, '$')}
+                    {formatCurrency(site.estimatedAnnualCost, currencySymbol)}
                   </td>
                 </tr>
               ))}

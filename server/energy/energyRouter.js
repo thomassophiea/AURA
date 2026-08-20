@@ -133,7 +133,7 @@ export function createEnergyRouter(options = {}) {
 
   async function resolvePrefs(sourceId) {
     const prefs = await getRatePreferencesFn(sourceId);
-    return prefs ?? {
+    return prefs ? { ...prefs, isDefault: false } : {
       currencyCode: 'USD',
       currencySymbol: '$',
       ratePerKwh: 0.14,
@@ -141,7 +141,15 @@ export function createEnergyRouter(options = {}) {
       emissionsFactorSource: null,
       emissionsFactorRegion: null,
       emissionsFactorYear: null,
+      isDefault: true,
     };
+  }
+
+  function temporalCoveragePercent(observedSeconds, apCount, windowSeconds) {
+    if (!Number.isFinite(observedSeconds) || !Number.isFinite(apCount) || apCount <= 0 || windowSeconds <= 0) {
+      return null;
+    }
+    return Math.min(100, (observedSeconds / (apCount * windowSeconds)) * 100);
   }
 
   function generatedBy(req) {
@@ -167,6 +175,7 @@ export function createEnergyRouter(options = {}) {
       sensorCapableCount: sensorRows.length,
       darkApCount: darkRows.length,
       darkAvgHours: darkSeconds / darkRows.length / days / 3600,
+      darkAvgHoursPerSensorAp: darkSeconds / sensorRows.length / days / 3600,
       dimAvgHours: dimRows.length > 0 ? dimSeconds / dimRows.length / days / 3600 : 0,
       baselineKwhDark,
     };
@@ -192,8 +201,15 @@ export function createEnergyRouter(options = {}) {
       });
       const prefs = await resolvePrefs(req.monitoringScope.sources[0]?.id);
       const seconds = (new Date(win.end) - new Date(win.start)) / 1000;
-      const dailyKwh = projectDaily(agg.periodKwh, seconds);
+      const dailyKwh = Number.isFinite(agg.dailyKwhProjected)
+        ? agg.dailyKwhProjected
+        : projectDaily(agg.periodKwh, seconds);
       const days = windowDays(win.start, win.end);
+      const temporalCoverage = temporalCoveragePercent(
+        agg.observedSeconds,
+        agg.apWithDataCount,
+        seconds
+      );
       const earliest = await getEarliestPowerSampleAtFn({ sourceIds, siteId, authorizedSiteIds });
 
       res.json({
@@ -212,17 +228,26 @@ export function createEnergyRouter(options = {}) {
         meta: {
           dataWindowDays: days,
           earliestSampleAt: earliest,
+          temporalCoveragePercent: temporalCoverage,
+          rateIsDefault: prefs.isDefault,
           // Only a caveat about the selected window, not a "no data" warning
           // (the empty state covers that). Firing it with zero data made it
           // read as missing data on the default short-range view.
-          limitationsNotes:
-            agg.apWithDataCount > 0 && days !== null && days < 3
+          limitationsNotes: [
+            ...(agg.apWithDataCount > 0 && days !== null && days < 3
               ? [
                   `Annualized projections are extrapolated from ${
                     days < 1 ? 'under a day' : `${Math.round(days)} day${Math.round(days) === 1 ? '' : 's'}`
                   } of data — widen the time range for higher confidence.`,
                 ]
-              : [],
+              : []),
+            ...(temporalCoverage !== null && temporalCoverage < 80
+              ? [`Temporal power coverage is ${temporalCoverage.toFixed(0)}% — projections annualize only usable observed intervals.`]
+              : []),
+            ...(prefs.isDefault
+              ? [`Annual cost uses the default ${prefs.currencySymbol}${prefs.ratePerKwh}/kWh rate — configure Electricity rate for accurate financial estimates.`]
+              : []),
+          ],
         },
       });
     } catch (error) {
@@ -238,8 +263,6 @@ export function createEnergyRouter(options = {}) {
       const sourceIds = sourceIdsOf(req);
       const authorizedSiteIds = authorizedSiteIdsOf(req);
       const prefs = await resolvePrefs(req.monitoringScope.sources[0]?.id);
-      const seconds = (new Date(win.end) - new Date(win.start)) / 1000;
-
       const rows = await fetchSiteAggregatesFn({
         sourceIds,
         start: win.start,
@@ -248,14 +271,14 @@ export function createEnergyRouter(options = {}) {
         authorizedSiteIds,
       });
       const sites = rows.map((r) => {
-        const daily = projectDaily(r.totalKwh, seconds);
+        const daily = Number.isFinite(r.dailyKwhProjected) ? r.dailyKwhProjected : null;
         return {
           siteId: r.siteId,
           siteName: r.siteId,
           apWithDataCount: r.apWithDataCount,
           totalKwh: r.totalKwh,
           avgWattsPerAp: r.avgWattsPerAp,
-          estimatedAnnualCost: estimateCost(projectAnnual(daily) ?? 0, prefs.ratePerKwh),
+          estimatedAnnualCost: estimateCost(projectAnnual(daily), prefs.ratePerKwh),
         };
       });
       res.json({ sites, meta: { currency: prefs.currencyCode } });
@@ -285,11 +308,13 @@ export function createEnergyRouter(options = {}) {
         authorizedSiteIds,
       });
       const aps = rows.map((r) => {
-        const daily = projectDaily(r.totalKwh, seconds);
+        const daily = projectDaily(r.totalKwh, r.observedSeconds);
+        const coverage = temporalCoveragePercent(r.observedSeconds, 1, seconds);
         return {
           ...r,
-          estimatedAnnualCost: estimateCost(projectAnnual(daily) ?? 0, prefs.ratePerKwh),
-          dataQuality: r.sampleCount >= 5 ? 'ok' : 'sparse',
+          estimatedAnnualCost: estimateCost(projectAnnual(daily), prefs.ratePerKwh),
+          dataQuality: coverage !== null && coverage >= 80 ? 'ok' : 'sparse',
+          temporalCoveragePercent: coverage,
         };
       });
       res.json({ aps, meta: { currency: prefs.currencyCode } });
@@ -359,15 +384,17 @@ export function createEnergyRouter(options = {}) {
 
       const projectBlock = (kwh) => {
         const daily = projectDaily(kwh, seconds);
+        const annual = projectAnnual(daily);
         return {
           kwh,
           dailyProjected: daily,
           monthlyProjected: projectMonthly(daily),
-          annualProjected: projectAnnual(daily),
-          estimatedAnnualCost: estimateCost(projectAnnual(daily) ?? 0, prefs.ratePerKwh),
+          annualProjected: annual,
+          estimatedAnnualCost: estimateCost(annual, prefs.ratePerKwh),
         };
       };
       const savingsDaily = projectDaily(replay.savingsKwh, seconds);
+      const savingsAnnual = projectAnnual(savingsDaily);
 
       const { id: scenarioId } = await insertScenarioFn({
         sourceId: req.monitoringScope.sources[0]?.id,
@@ -389,6 +416,8 @@ export function createEnergyRouter(options = {}) {
 
       res.json({
         scenarioId,
+        currency: prefs.currencyCode,
+        currencySymbol: prefs.currencySymbol,
         baseline: projectBlock(replay.baselineKwh),
         simulated: projectBlock(replay.simulatedKwh),
         savings: {
@@ -396,8 +425,8 @@ export function createEnergyRouter(options = {}) {
           percent: replay.savingsPercent,
           dailyKwh: savingsDaily,
           monthlyKwh: projectMonthly(savingsDaily),
-          annualKwh: projectAnnual(savingsDaily),
-          annualCost: estimateCost(projectAnnual(savingsDaily) ?? 0, prefs.ratePerKwh),
+          annualKwh: savingsAnnual,
+          annualCost: estimateCost(savingsAnnual, prefs.ratePerKwh),
         },
         apCount: replay.apWithDataCount,
         apWithDataCount: replay.apWithDataCount,

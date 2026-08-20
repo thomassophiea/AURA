@@ -76,6 +76,30 @@ describe('GET /api/energy/overview', () => {
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('invalid range');
   });
+
+  it('uses interval-derived daily energy and exposes temporal coverage', async () => {
+    const res = await call(
+      buildApp({
+        fetchOverviewAggregateFn: async () => ({
+          apWithDataCount: 2,
+          periodKwh: 10,
+          avgWatts: 40,
+          currentWatts: 80,
+          peakWatts: 100,
+          dailyKwhProjected: 2,
+          observedSeconds: 2 * 3.5 * 86_400,
+        }),
+      }),
+      'get',
+      '/api/energy/overview?start=2026-08-10T00:00:00Z&end=2026-08-17T00:00:00Z'
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body.dailyKwhProjected).toBe(2);
+    expect(res.body.annualKwhProjected).toBe(730);
+    expect(res.body.meta.temporalCoveragePercent).toBe(50);
+    expect(res.body.meta.limitationsNotes.join(' ')).toMatch(/Temporal power coverage is 50%/i);
+  });
 });
 
 describe('PUT /api/energy/preferences', () => {
@@ -114,6 +138,19 @@ describe('POST /api/energy/scenarios', () => {
     expect(res.status).toBe(200);
     expect(res.body.scenarioId).toBe('sc-1');
     expect(res.body.savings.percent).toBeCloseTo(25, 4);
+  });
+
+  it('preserves unknown projections as null instead of reporting zero cost', async () => {
+    const res = await call(buildApp(), 'post', '/api/energy/scenarios', {
+      name: 'no samples',
+      policy: { disable6GhzHours: [0, 1, 2] },
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.baseline.dailyProjected).toBe(0);
+    expect(res.body.baseline.estimatedAnnualCost).toBe(0);
+    expect(res.body.savings.percent).toBeNull();
+    expect(res.body.savings.annualCost).toBe(0);
   });
 });
 
@@ -205,6 +242,36 @@ describe('environmental reports', () => {
     expect(res.body.carbon.factorUnit).toBe('kg CO2e/kWh');
   });
 
+  it('uses the same interval-derived annual baseline as the Energy overview', async () => {
+    const res = await call(
+      buildApp({
+        fetchOverviewAggregateFn: async () => ({
+          apWithDataCount: 2,
+          periodKwh: 10,
+          avgWatts: 40,
+          currentWatts: 80,
+          peakWatts: 100,
+          dailyKwhProjected: 2,
+          observedSeconds: 2 * 3.5 * 86_400,
+        }),
+      }),
+      'post',
+      '/api/energy/environmental-reports',
+      {
+        windowStart: '2026-08-10T00:00:00Z',
+        windowEnd: '2026-08-17T00:00:00Z',
+        includeFinancials: true,
+        includeCarbon: false,
+        recommendationTypes: [],
+      }
+    );
+
+    expect(res.status).toBe(201);
+    expect(res.body.baseline.annualKwhProjected).toBe(730);
+    expect(res.body.baseline.temporalCoveragePercent).toBe(50);
+    expect(res.body.provenance.temporalCoveragePercent).toBe(50);
+  });
+
   it('scopes latest report retrieval to the authenticated source', async () => {
     const getLatestEnvironmentalReportFn = vi.fn(async () => ({
       id: 'report-1',
@@ -272,6 +339,40 @@ describe('environmental reports', () => {
           darkApCount: 1,
           darkAvgHours: 6,
           dimAvgHours: 2,
+        }),
+      })
+    );
+  });
+
+  it('reports Light-Aware dark hours across all sensor-capable APs without upward bias', async () => {
+    const buildRecommendationsFn = vi.fn(() => []);
+    const res = await call(
+      buildApp({
+        buildRecommendationsFn,
+        fetchLightAwareEvidenceFn: async () => [
+          { apSerial: 'AP-1', model: 'AP5020', watts: 20, darkSeconds: 7 * 8 * 3600, dimSeconds: 0 },
+          { apSerial: 'AP-2', model: 'AP5020', watts: 20, darkSeconds: 0, dimSeconds: 0 },
+        ],
+      }),
+      'post',
+      '/api/energy/environmental-reports',
+      {
+        windowStart: '2026-08-10T00:00:00Z',
+        windowEnd: '2026-08-17T00:00:00Z',
+        includeFinancials: true,
+        includeCarbon: false,
+        recommendationTypes: [],
+      }
+    );
+
+    expect(res.status).toBe(201);
+    expect(buildRecommendationsFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lightObserved: expect.objectContaining({
+          sensorCapableCount: 2,
+          darkApCount: 1,
+          darkAvgHours: 8,
+          darkAvgHoursPerSensorAp: 4,
         }),
       })
     );
@@ -353,5 +454,40 @@ describe('environmental reports', () => {
     expect(historical.status).toBe(200);
     expect(historical.body.baseline.annualCostProjected).toBe(originalCost);
     expect(historical.body.financials.electricityRate).toBe(0.14);
+  });
+
+  it('caps modeled annual savings at the annualized baseline', async () => {
+    const res = await call(
+      buildApp({
+        buildRecommendationsFn: () => [{
+          id: 'oversized',
+          type: 'low_utilization_6ghz',
+          title: 'Oversized model input',
+          explanation: 'Regression fixture',
+          affectedApCount: 2,
+          baselineKwh: 10,
+          projectedKwh: 0,
+          savingsKwh: 10,
+          annualSavingsKwh: 10_000,
+          savingsPercent: 100,
+          confidenceLevel: 'low',
+          supportingData: {},
+        }],
+      }),
+      'post',
+      '/api/energy/environmental-reports',
+      {
+        windowStart: '2026-08-10T00:00:00Z',
+        windowEnd: '2026-08-17T00:00:00Z',
+        includeFinancials: true,
+        includeCarbon: false,
+        recommendationTypes: [],
+      }
+    );
+
+    expect(res.status).toBe(201);
+    expect(res.body.improvement.annualSavingsKwh).toBe(res.body.improvement.baselineAnnualKwh);
+    expect(res.body.improvement.optimizedAnnualKwh).toBe(0);
+    expect(res.body.improvement.annualSavingsPercent).toBe(100);
   });
 });

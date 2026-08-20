@@ -10,7 +10,6 @@ import { supportsLightSensor, capabilitiesForModel } from '../apCapabilities.js'
 import { eligibleOptimizations } from './policyEngine.js';
 import { ambientLightTrigger } from './triggers/ambientLightTrigger.js';
 import { resolveApState } from '../powerModel.js';
-import { projectDaily, projectAnnual, estimateCost } from '../energyCalculator.js';
 import * as repo from './lightRepository.js';
 import { getRatePreferences } from '../energyRepository.js';
 import { listApLightStates as realListApLightStates } from './lightRepository.js';
@@ -77,21 +76,17 @@ export function createLightAwareRouter(options = {}) {
       const rows = await buildRows(req);
       const p = await prefs(req);
       const stateBreakdown = { bright: 0, dim: 0, dark: 0, unknown: 0 };
-      let savingsWatts = 0;
       for (const r of rows) {
         stateBreakdown[r.lightState] = (stateBreakdown[r.lightState] ?? 0) + 1;
-        savingsWatts += r.savingsWatts;
       }
-      // Watts saved held for a year is a projection, not a measurement.
-      const annualKwh = projectAnnual(projectDaily((savingsWatts * 86400) / 3_600_000, 86400));
       res.json({
         sensorCapableCount: rows.filter((r) => r.sensorCapable).length,
         reportingCount: rows.length,
         stateBreakdown,
         policyEnabled: rows.some((r) => r.policyEnabled),
         projectedAnnual: {
-          kwh: annualKwh,
-          cost: estimateCost(annualKwh ?? 0, p.ratePerKwh),
+          kwh: null,
+          cost: null,
         },
         currency: p.currencyCode,
         currencySymbol: p.currencySymbol,
@@ -146,7 +141,10 @@ export function createLightAwareRouter(options = {}) {
       });
       const total = STATES.reduce((s, k) => s + (dist[`${k}Seconds`] ?? 0), 0);
       const pct = (secs) => (total > 0 ? (secs / total) * 100 : null);
-      const avgDarkHoursPerDay = dist.days > 0 ? dist.darkSeconds / 3600 / dist.days : null;
+      const avgDarkHoursPerDay =
+        dist.days > 0 && dist.observedApCount > 0
+          ? Math.min(24, dist.darkSeconds / 3600 / dist.days / dist.observedApCount)
+          : null;
       const confidence = dist.days >= 7 ? 'high' : dist.days >= 3 ? 'medium' : 'low';
       res.json({
         brightPct: pct(dist.brightSeconds),

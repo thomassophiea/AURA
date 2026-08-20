@@ -3,6 +3,7 @@ import { isDatabaseConfigured, query, closePool } from '../db/pool.js';
 import { runMigrations } from '../db/migrate.js';
 import {
   fetchOverviewAggregate,
+  fetchSiteAggregates,
   upsertRatePreferences,
   getRatePreferences,
 } from './energyRepository.js';
@@ -108,5 +109,46 @@ d('energyRepository power integration', () => {
       emissionsFactorRegion: null,
       emissionsFactorYear: null,
     });
+  });
+
+  it('weights irregular intervals, projects observed run-rate, and excludes stale current draw', async () => {
+    const weightedSite = `site-weighted-${Date.now()}`;
+    const serial = `AP-WEIGHTED-${Date.now()}`;
+    for (const [ts, mw] of [
+      ['2026-08-11T00:00:00Z', 10000],
+      ['2026-08-11T01:00:00Z', 20000],
+      ['2026-08-11T03:00:00Z', 20000],
+    ]) {
+      await query(
+        `INSERT INTO metric_samples
+           (monitored_source_id, site_id, device_external_id, metric_family, metric_name,
+            observed_at, numeric_value, unit, metric_kind, expires_at)
+         VALUES ($1,$2,$3,'ap_report','apPowerConsumptionTimeseries.power_consumption',$4,$5,'mW','gauge', now() + interval '7 days')`,
+        [sourceId, weightedSite, serial, ts, mw]
+      );
+    }
+
+    const aggregate = await fetchOverviewAggregate({
+      sourceIds: [sourceId],
+      siteId: weightedSite,
+      start: '2026-08-11T00:00:00Z',
+      end: '2026-08-11T06:00:00Z',
+      maxGapSeconds: 7200,
+    });
+    expect(aggregate.periodKwh).toBeCloseTo(0.05, 6);
+    expect(aggregate.avgWatts).toBeCloseTo(50 / 3, 6);
+    expect(aggregate.dailyKwhProjected).toBeCloseTo(0.4, 6);
+    expect(aggregate.currentWatts).toBe(0);
+    expect(aggregate.peakWatts).toBe(20);
+
+    const sites = await fetchSiteAggregates({
+      sourceIds: [sourceId],
+      start: '2026-08-11T00:00:00Z',
+      end: '2026-08-11T06:00:00Z',
+      maxGapSeconds: 7200,
+    });
+    const site = sites.find((row) => row.siteId === weightedSite);
+    expect(site.dailyKwhProjected).toBeCloseTo(0.4, 6);
+    expect(site.avgWattsPerAp).toBeCloseTo(50 / 3, 6);
   });
 });

@@ -62,4 +62,27 @@ describe('projectLightAwareSavings', () => {
     // only the 10W AP counts: 10 × 3.5 Wh/day × 365 = 12.775 kWh
     expect(r.kwh).toBeCloseTo(12.775, 3);
   });
+
+  it('clamps modeled states to a non-overlapping 24-hour day', () => {
+    const r = projectLightAwareSavings([{ watts: 10 }], {
+      darkHours: 20,
+      dimHours: 20,
+      darkFactor: 0.35,
+      dimFactor: 0.15,
+      ratePerKwh: rate,
+    });
+    expect(r.kwh).toBeCloseTo(27.74, 2);
+  });
+
+  it('never turns invalid negative inputs into negative savings', () => {
+    const r = projectLightAwareSavings([{ watts: -10 }, { watts: 10 }], {
+      darkHours: -5,
+      dimHours: 4,
+      darkFactor: 2,
+      dimFactor: -1,
+      ratePerKwh: -0.14,
+    });
+    expect(r.kwh).toBe(0);
+    expect(r.cost).toBe(0);
+  });
 });
