@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { FileText, Leaf } from 'lucide-react';
 
 import { useEnergyOverview, useEnergySites, useEnergyRecommendations } from '@/hooks/useEnergyData';
 import { useGlobalFilters } from '@/hooks/useGlobalFilters';
@@ -8,11 +7,8 @@ import { useSelectedTimeRange } from '@/hooks/useSelectedTimeRange';
 import { useSourceSites } from '@/hooks/useSourceSites';
 import { TimeRangeSelector } from '@/components/TimeRangeSelector';
 import { SourceSiteSelector } from '@/components/SourceSiteSelector';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { downloadEnvironmentalReportPdf, getEnvironmentalReport } from '@/services/energyService';
-import { formatCurrency, formatKwh } from '@/lib/energyCalc';
 import { parseXiqSiteValue } from '@/services/siteContextService';
+import type { EnergyPreferences } from '@/types/energy';
 import { EnergyOverviewCards } from './EnergyOverviewCards';
 import { EnergyEmptyState } from './EnergyEmptyState';
 import { EnergySiteRankings } from './EnergySiteRankings';
@@ -23,6 +19,7 @@ import { EnergyApTable } from './EnergyApTable';
 import { EnergyScenarioBuilder } from './EnergyScenarioBuilder';
 import { EnergyRecommendations } from './EnergyRecommendations';
 import { EnergyPreferencesPanel } from './EnergyPreferencesPanel';
+import { EnvironmentalReportCard } from './EnvironmentalReportCard';
 
 export function EnergyOptimization() {
   const { filters, updateFilter } = useGlobalFilters();
@@ -35,8 +32,7 @@ export function EnergyOptimization() {
   }, [catalogNames, os1Sites]);
 
   const [selectedSite, setSelectedSite] = useState<string>(filters.site);
-  const [reportLoading, setReportLoading] = useState(false);
-  const [reportError, setReportError] = useState<string | null>(null);
+  const [preferences, setPreferences] = useState<EnergyPreferences | null>(null);
   const isXiqSite = parseXiqSiteValue(selectedSite) !== null;
 
   const handleSiteChange = (value: string) => {
@@ -48,6 +44,7 @@ export function EnergyOptimization() {
 
   const {
     token: timeRangeToken,
+    range: selectedRange,
     setToken: setTimeRangeToken,
     optionGroups,
     dayStatuses,
@@ -65,22 +62,6 @@ export function EnergyOptimization() {
   const [apDrawerOpen, setApDrawerOpen] = useState(false);
 
   const noData = overview.data !== null && overview.data.apWithDataCount === 0;
-
-  async function handleGenerateReport() {
-    setReportError(null);
-    setReportLoading(true);
-    try {
-      const report = await getEnvironmentalReport({
-        site: selectedSite,
-        timeRange: timeRangeToken,
-      });
-      await downloadEnvironmentalReportPdf(report);
-    } catch (error) {
-      setReportError(error instanceof Error ? error.message : 'Report generation failed');
-    } finally {
-      setReportLoading(false);
-    }
-  }
 
   const header = (
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -146,6 +127,7 @@ export function EnergyOptimization() {
                 siteNameById={siteNameById}
                 onSelectSite={(siteId) => {
                   updateFilter('site', siteId);
+                  setSelectedSite(siteId);
                   setApTableEnabled(true);
                 }}
               />
@@ -169,47 +151,21 @@ export function EnergyOptimization() {
               />
             </>
           ) : null}
-          <EnergyPreferencesPanel onSaved={() => overview.refetch()} />
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-foreground" aria-hidden />
-                  <h3 className="text-sm font-semibold text-foreground">Environmental Report</h3>
-                </div>
-                <Badge variant="outline">ISO 14001-aligned</Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-start gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-400">
-                <Leaf className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-                <p>Measured AP telemetry provides evidence of environmental performance; this is not a certification and does not determine ISO conformity.</p>
-              </div>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="rounded-md border border-border bg-muted/20 p-3">
-                  <p className="text-xs text-muted-foreground">Annual energy</p>
-                  <p className="mt-1 text-base font-semibold text-foreground">
-                    {formatKwh(overview.data?.annualKwhProjected ?? 0)}
-                  </p>
-                </div>
-                <div className="rounded-md border border-border bg-muted/20 p-3">
-                  <p className="text-xs text-muted-foreground">Annual cost</p>
-                  <p className="mt-1 text-base font-semibold text-foreground">
-                    {formatCurrency(overview.data?.estimatedAnnualCost ?? 0, overview.data?.currencySymbol ?? '$')}
-                  </p>
-                </div>
-              </div>
-              {reportError ? <p className="text-sm text-destructive">{reportError}</p> : null}
-              <button
-                type="button"
-                onClick={handleGenerateReport}
-                disabled={reportLoading || !overview.data}
-                className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {reportLoading ? 'Generating…' : 'Generate report'}
-              </button>
-            </CardContent>
-          </Card>
+          <EnergyPreferencesPanel
+            onLoaded={setPreferences}
+            onSaved={(saved) => {
+              setPreferences(saved);
+              overview.refetch();
+            }}
+          />
+          <EnvironmentalReportCard
+            overview={overview.data}
+            recommendations={recommendations.data}
+            preferences={preferences}
+            siteId={filters.site}
+            siteName={filters.site === 'all' ? 'All sites' : siteNameById.get(filters.site) ?? filters.site}
+            range={selectedRange}
+          />
         </div>
       </div>
 

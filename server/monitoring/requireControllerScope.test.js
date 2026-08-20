@@ -60,9 +60,11 @@ describe('validateTokenAgainstController cache', () => {
 
     expect(await validateTokenAgainstController(token, controller, { fetchFn })).toEqual({
       valid: true,
+      allowedSiteIds: [],
     });
     expect(await validateTokenAgainstController(token, controller, { fetchFn })).toEqual({
       valid: true,
+      allowedSiteIds: [],
     });
     expect(fetchFn).toHaveBeenCalledTimes(1);
   });
@@ -81,6 +83,7 @@ describe('validateTokenAgainstController cache', () => {
 
     expect(await validateTokenAgainstController(valid, controller, { fetchFn })).toEqual({
       valid: true,
+      allowedSiteIds: [],
     });
     const result = await validateTokenAgainstController(forged, controller, { fetchFn });
 
@@ -94,6 +97,7 @@ describe('validateTokenAgainstController cache', () => {
 
     expect(await validateTokenAgainstController(token, controller, { fetchFn })).toEqual({
       valid: true,
+      allowedSiteIds: [],
     });
     const other = await validateTokenAgainstController(token, 'https://ctrl-b.example.com', {
       fetchFn,
@@ -122,6 +126,16 @@ describe('validateTokenAgainstController cache', () => {
 
     await validateTokenAgainstController(token, controller, { fetchFn, now: start + 120_000 });
     expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+
+  it('retains the site IDs the controller authorized for this token', async () => {
+    const fetchFn = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ sites: [{ id: 'site-a' }, { siteId: 'site-b' }] }),
+    }));
+    const result = await validateTokenAgainstController('s'.repeat(40), controller, { fetchFn });
+    expect(result.allowedSiteIds).toEqual(['site-a', 'site-b']);
   });
 
 });

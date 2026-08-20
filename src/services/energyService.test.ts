@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   getEnergyOverview,
   putEnergyPreferences,
+  createEnvironmentalReport,
+  getLatestEnvironmentalReport,
   getLightAwareSummary,
   putLightAwarePolicy,
 } from './energyService';
@@ -62,6 +64,40 @@ describe('energyService', () => {
     const init = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][1];
     expect(init.method).toBe('PUT');
     expect(JSON.parse(init.body)).toEqual({ currencyCode: 'EUR', ratePerKwh: 0.31 });
+  });
+
+  it('POST environmental report sends the immutable generation inputs', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ reportId: 'report-1' }),
+    });
+    const input = {
+      siteId: 'site-42',
+      siteName: 'PrimarySite',
+      windowStart: '2026-08-10T00:00:00.000Z',
+      windowEnd: '2026-08-17T00:00:00.000Z',
+      includeFinancials: true,
+      includeCarbon: false,
+      recommendationTypes: ['low_utilization_6ghz'],
+    };
+
+    const report = await createEnvironmentalReport(input);
+    expect(report.reportId).toBe('report-1');
+    const [url, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(url).toBe('/api/energy/environmental-reports');
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(init.body)).toEqual(input);
+  });
+
+  it('GET latest environmental report scopes by the concrete site', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ reportId: 'report-1' }),
+    });
+
+    await getLatestEnvironmentalReport('site-42');
+    const url = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    expect(url).toBe('/api/energy/environmental-reports/latest?siteId=site-42');
   });
 
   it('GET light-aware summary hits the summary endpoint with window params', async () => {

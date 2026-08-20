@@ -15,7 +15,8 @@ import type {
   EnergyScenarioPolicy,
   EnergyScenarioResult,
   EnergyPreferences,
-  EnvironmentalReportSummary,
+  EnvironmentalReport,
+  EnvironmentalReportRequest,
   LightAwareSummary,
   LightAwareApRow,
   LightAwarePolicy,
@@ -115,7 +116,14 @@ export function getEnergyPreferences(signal?: AbortSignal): Promise<EnergyPrefer
 }
 
 export function putEnergyPreferences(
-  body: { currencyCode: string; ratePerKwh: number },
+  body: {
+    currencyCode: string;
+    ratePerKwh: number;
+    emissionsFactorKgPerKwh?: number | null;
+    emissionsFactorSource?: string | null;
+    emissionsFactorRegion?: string | null;
+    emissionsFactorYear?: number | null;
+  },
   signal?: AbortSignal
 ): Promise<EnergyPreferences> {
   return request<EnergyPreferences>('/preferences', {
@@ -126,89 +134,35 @@ export function putEnergyPreferences(
   });
 }
 
-export function getEnvironmentalReport(
-  filters: { site: string; timeRange: string },
+export function createEnvironmentalReport(
+  body: EnvironmentalReportRequest,
   signal?: AbortSignal
-): Promise<EnvironmentalReportSummary> {
-  const { start, end } = windowParams(filters.timeRange);
-  return request<EnvironmentalReportSummary>(
-    `/report${buildQuery({ start, end, siteId: filters.site })}`,
+): Promise<EnvironmentalReport> {
+  return request<EnvironmentalReport>('/environmental-reports', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal,
+  });
+}
+
+export function getLatestEnvironmentalReport(
+  siteId?: string,
+  signal?: AbortSignal
+): Promise<EnvironmentalReport> {
+  return request<EnvironmentalReport>(
+    `/environmental-reports/latest${buildQuery({ siteId })}`,
     { signal }
   );
 }
 
-export async function downloadEnvironmentalReportPdf(
-  report: EnvironmentalReportSummary
-): Promise<void> {
-  const [jsPDFModule, autoTableModule] = await Promise.all([
-    import('jspdf') as Promise<typeof import('jspdf')>,
-    import('jspdf-autotable') as Promise<typeof import('jspdf-autotable')>,
-  ]);
-
-  const { default: jsPDF } = jsPDFModule;
-  const { default: autoTable } = autoTableModule;
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const generatedAt = new Date(report.generatedAt ?? Date.now()).toISOString().slice(0, 19).replace('T', ' ');
-  const filename = `AURA_Environmental_Report_${new Date(report.generatedAt ?? Date.now())
-    .toISOString()
-    .slice(0, 19)
-    .replace(/:/g, '-')}.pdf`;
-
-  doc.setFillColor(30, 30, 46);
-  doc.rect(0, 0, 210, 34, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.text('AURA Environmental Report', 14, 18);
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Generated: ${generatedAt}`, 14, 26);
-  doc.text(`Scope: ${report.scopeLabel}`, 14, 31);
-  doc.setTextColor(0, 0, 0);
-
-  let y = 44;
-  doc.setFillColor(106, 90, 205);
-  doc.rect(14, y, 182, 8, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Environmental performance summary', 17, y + 5.5);
-  doc.setTextColor(0, 0, 0);
-  y += 16;
-
-  autoTable(doc, {
-    startY: y,
-    head: [['Metric', 'Value']],
-    body: [
-      ['Reporting window', `${report.windowStart.slice(0, 10)} to ${report.windowEnd.slice(0, 10)}`],
-      ['Annualized energy', `${report.annualKwhProjected ?? 0} kWh/yr`],
-      ['Annual cost', `${report.currencySymbol}${(report.annualCost ?? 0).toFixed(2)}`],
-      ['APs reporting', String(report.apWithDataCount)],
-      ['Projected savings', `${report.projectedSavingsKwh.toFixed(1)} kWh`],
-      ['Data window', `${report.dataWindowDays ?? 0} days`],
-    ],
-    headStyles: { fillColor: [106, 90, 205], textColor: [255, 255, 255], fontStyle: 'bold' },
-    styles: { fontSize: 9 },
-    margin: { left: 14, right: 14 },
+export function getEnvironmentalReport(
+  reportId: string,
+  signal?: AbortSignal
+): Promise<EnvironmentalReport> {
+  return request<EnvironmentalReport>(`/environmental-reports/${encodeURIComponent(reportId)}`, {
+    signal,
   });
-
-  y = (doc as typeof doc & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 12;
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Important note', 14, y);
-  y += 8;
-  doc.setFont('helvetica', 'normal');
-  const noteLines = [
-    'This report provides evidence of measured electrical performance from AP telemetry and',
-    'is aligned with ISO 14001 environmental management concepts. It is not a certification,',
-    'nor does it determine ISO conformity or conformance status.',
-  ];
-  noteLines.forEach((line) => {
-    doc.text(line, 14, y);
-    y += 6;
-  });
-
-  doc.save(filename);
 }
 
 export function getLightAwareSummary(

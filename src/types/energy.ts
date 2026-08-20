@@ -56,6 +56,7 @@ export interface EnergyRecommendation {
   baselineKwh: number;
   projectedKwh: number;
   savingsKwh: number;
+  annualSavingsKwh?: number | null;
   savingsPercent: number | null;
   estimatedAnnualSaving: number | null;
   riskLevel: EnergyRiskLevel;
@@ -106,27 +107,113 @@ export interface EnergyPreferences {
   currencyCode: string;
   currencySymbol: string;
   ratePerKwh: number;
+  emissionsFactorKgPerKwh?: number | null;
+  emissionsFactorSource?: string | null;
+  emissionsFactorRegion?: string | null;
+  emissionsFactorYear?: number | null;
 }
 
-export interface EnvironmentalReportSummary {
-  reportType: 'environmental-report';
+export type EnvironmentalEvidenceStatus =
+  | 'measured'
+  | 'modeled'
+  | 'partially-measured'
+  | 'verified';
+
+export interface EnvironmentalReportRequest {
+  siteId?: string;
+  siteName?: string;
   windowStart: string;
   windowEnd: string;
-  siteId: string | null;
-  scopeLabel: string;
-  totalKwh: number;
-  annualKwhProjected: number | null;
-  annualCost: number | null;
-  apWithDataCount: number;
-  recommendationsCount: number;
-  projectedSavingsKwh: number;
-  projectedSavingsPercent: number | null;
-  dataWindowDays: number | null;
+  includeFinancials: boolean;
+  includeCarbon: boolean;
+  recommendationTypes: string[];
+}
+
+export interface EnvironmentalReportOpportunity {
+  id: string;
+  type: string;
+  recommendation: string;
+  technicalAction: string;
+  scope: string;
+  affectedApCount: number;
+  baselinePeriodKwh: number | null;
+  projectedAnnualSavingsKwh: number;
+  projectedReductionPercent: number | null;
+  projectedAnnualCostSavings: number | null;
+  evidenceStatus: EnvironmentalEvidenceStatus;
+  confidence: EnergyConfidence;
+  assumptions: Record<string, unknown>;
+}
+
+export interface EnvironmentalReport {
+  reportId: string;
+  reportType: 'environmental-performance';
+  title: string;
+  subtitle: string;
+  auraVersion: string;
   generatedAt: string;
-  currency: string;
-  currencySymbol: string;
-  ratePerKwh: number;
-  notes: string[];
+  generatedBy: string;
+  evidenceStatus: EnvironmentalEvidenceStatus;
+  scope: {
+    organizationId: string | null;
+    organizationName: string | null;
+    siteGroupId: string | null;
+    siteGroupName: string | null;
+    siteId: string | null;
+    siteName: string | null;
+    siteIds: string[] | null;
+    label: string;
+  };
+  reportingPeriod: { start: string; end: string; days: number | null };
+  environmentalAspect: string;
+  environmentalObjective: string;
+  baseline: {
+    measuredKwh: number;
+    averageWattsPerAp: number;
+    currentWatts: number;
+    peakWatts: number;
+    annualKwhProjected: number | null;
+    annualCostProjected: number | null;
+    reportingApCount: number;
+    totalApCount: number;
+    coveragePercent: number | null;
+    missingApCount: number;
+    evidenceStatus: EnvironmentalEvidenceStatus;
+  };
+  improvement: {
+    baselineAnnualKwh: number | null;
+    optimizedAnnualKwh: number | null;
+    annualSavingsKwh: number;
+    annualSavingsPercent: number | null;
+    annualCostSavings: number | null;
+    aggregationMethod: string;
+    opportunities: EnvironmentalReportOpportunity[];
+  };
+  carbon: {
+    avoidedKgCo2e: number;
+    factor: number;
+    factorUnit: string;
+    source: string;
+    geographicScope: string | null;
+    sourceYear: number | null;
+  } | null;
+  financials: {
+    electricityRate: number;
+    currency: string;
+    currencySymbol: string;
+  } | null;
+  provenance: {
+    telemetrySource: string;
+    samplingIntervalSeconds: number | null;
+    baselineMethodology: string;
+    projectionMethodology: string;
+    modelAssumptions: Array<{ type: string; assumptions: Record<string, unknown> }>;
+    excludedDeviceCount: number;
+    dataQuality: EnergyConfidence;
+    scenarioModelVersion: string;
+    reportGeneratedAt: string;
+  };
+  disclaimer: string;
 }
 
 export type LightState = 'bright' | 'dim' | 'dark' | 'unknown';

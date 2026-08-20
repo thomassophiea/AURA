@@ -85,6 +85,7 @@ export function buildRecommendations({ samples, windowDays, ratePerKwh, maxGapSe
       baselineKwh: replay.baselineKwh,
       projectedKwh: replay.simulatedKwh,
       savingsKwh: replay.savingsKwh,
+      annualSavingsKwh: annualSaving,
       savingsPercent: replay.savingsPercent,
       estimatedAnnualSaving: estimateCost(annualSaving ?? 0, ratePerKwh),
       riskLevel: 'low',
@@ -113,11 +114,20 @@ export function buildRecommendations({ samples, windowDays, ratePerKwh, maxGapSe
       baselineKwh: lightObserved.baselineKwhDark ?? 0,
       projectedKwh: (lightObserved.baselineKwhDark ?? 0) - savingsKwh,
       savingsKwh,
+      annualSavingsKwh: savingsKwh * annualFactor,
       savingsPercent: SIX_GHZ_BAND_SHARE * 100,
       estimatedAnnualSaving,
       riskLevel: 'low',
       confidenceLevel: confidence,
-      supportingData: { source: 'light-aware', modeled: true, observationDays: windowDays },
+      supportingData: {
+        source: 'light-aware',
+        modeled: true,
+        observationDays: windowDays,
+        sensorCapableApCount: lightObserved.sensorCapableCount,
+        observedDarkHoursPerDay: lightObserved.darkAvgHours,
+        observedDimHoursPerDay: lightObserved.dimAvgHours ?? null,
+        modeledPowerReductionPercent: SIX_GHZ_BAND_SHARE * 100,
+      },
     });
   }
 

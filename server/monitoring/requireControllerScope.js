@@ -59,21 +59,29 @@ export function clearValidationCache() {
   provenCache.clear();
 }
 
-function rememberProven(key, now) {
+function rememberProven(key, now, value) {
   if (provenCache.size >= MAX_CACHE_ENTRIES) {
     provenCache.delete(provenCache.keys().next().value);
   }
-  provenCache.set(key, now);
+  provenCache.set(key, { provenAt: now, value });
 }
 
 function wasProvenRecently(key, now, graceMs) {
-  const provenAt = provenCache.get(key);
-  if (provenAt === undefined) return false;
-  if (now - provenAt > graceMs) {
+  const proven = provenCache.get(key);
+  if (!proven) return null;
+  if (now - proven.provenAt > graceMs) {
     provenCache.delete(key);
-    return false;
+    return null;
   }
-  return true;
+  return proven.value;
+}
+
+function authorizedSiteIds(data) {
+  const rows = Array.isArray(data)
+    ? data
+    : data?.sites ?? data?.items ?? data?.data ?? data?.results ?? [];
+  if (!Array.isArray(rows)) return [];
+  return [...new Set(rows.map((site) => site?.id ?? site?.siteId ?? site?.siteID).filter(Boolean).map(String))];
 }
 
 function readCache(key, now) {
@@ -121,8 +129,9 @@ export async function validateTokenAgainstController(
    * one, and label the result so callers can tell the UI the check was skipped.
    */
   const unreachable = (detail) => {
-    if (wasProvenRecently(key, now, graceMs)) {
-      return { valid: true, degraded: true, reason: 'controller_unreachable', ...detail };
+    const proven = wasProvenRecently(key, now, graceMs);
+    if (proven) {
+      return { ...proven, valid: true, degraded: true, reason: 'controller_unreachable', ...detail };
     }
     return { valid: false, unreachable: true, ...detail };
   };
@@ -136,9 +145,9 @@ export async function validateTokenAgainstController(
     });
 
     if (result.ok) {
-      const value = { valid: true };
+      const value = { valid: true, allowedSiteIds: authorizedSiteIds(result.data) };
       writeCache(key, value, now);
-      rememberProven(key, now);
+      rememberProven(key, now, value);
       return value;
     }
 
@@ -226,6 +235,7 @@ export function createRequireControllerScope(options = {}) {
       // validation was used instead. The data below is stored history either
       // way; this only records how the caller was authorized.
       degradedAuth: Boolean(validation.degraded),
+      allowedSiteIds: validation.allowedSiteIds ?? null,
     };
     return next();
   };

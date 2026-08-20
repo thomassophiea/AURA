@@ -8,6 +8,7 @@
  */
 
 import { Router, json as expressJson } from 'express';
+import crypto from 'node:crypto';
 
 import { createRequireControllerScope } from '../monitoring/requireControllerScope.js';
 import { sanitizeError, ERROR_CLASS_LABELS } from '../monitoring/errorSanitizer.js';
@@ -21,9 +22,16 @@ import {
   upsertRatePreferences,
   insertScenario,
   insertScenarioResult,
+  fetchTelemetryCoverage,
+  fetchLightAwareEvidence,
+  insertEnvironmentalReport,
+  getLatestEnvironmentalReport,
+  getEnvironmentalReportById,
 } from './energyRepository.js';
 import { replayScenario } from './scenarioEngine.js';
 import { buildRecommendations } from './recommendationEngine.js';
+import { buildEnvironmentalReport } from './environmentalReport.js';
+import { supportsLightSensor } from './apCapabilities.js';
 import {
   projectDaily,
   projectMonthly,
@@ -56,6 +64,11 @@ export function createEnergyRouter(options = {}) {
     upsertRatePreferencesFn = upsertRatePreferences,
     insertScenarioFn = insertScenario,
     insertScenarioResultFn = insertScenarioResult,
+    fetchTelemetryCoverageFn = fetchTelemetryCoverage,
+    fetchLightAwareEvidenceFn = fetchLightAwareEvidence,
+    insertEnvironmentalReportFn = insertEnvironmentalReport,
+    getLatestEnvironmentalReportFn = getLatestEnvironmentalReport,
+    getEnvironmentalReportByIdFn = getEnvironmentalReportById,
     buildRecommendationsFn = buildRecommendations,
     nowFn = () => new Date(),
   } = options;
@@ -84,6 +97,24 @@ export function createEnergyRouter(options = {}) {
     return (req.monitoringScope?.sources ?? []).map((s) => s.id);
   }
 
+  function authorizedSiteIdsOf(req) {
+    return Array.isArray(req.monitoringScope?.allowedSiteIds)
+      ? req.monitoringScope.allowedSiteIds
+      : null;
+  }
+
+  function siteAllowed(req, siteId) {
+    const allowed = authorizedSiteIdsOf(req);
+    return allowed === null || siteId == null || allowed.includes(siteId);
+  }
+
+  function reportAllowed(req, report) {
+    const allowed = authorizedSiteIdsOf(req);
+    const reportSiteIds = report?.scope?.siteIds;
+    if (allowed === null || !Array.isArray(reportSiteIds)) return true;
+    return reportSiteIds.every((siteId) => allowed.includes(siteId));
+  }
+
   /** Resolve the [start,end) window, defaulting to the retention window ending now.
    *  Returns null when a provided param is present but unparseable, or when start >= end. */
   function resolveWindow(req) {
@@ -102,7 +133,43 @@ export function createEnergyRouter(options = {}) {
 
   async function resolvePrefs(sourceId) {
     const prefs = await getRatePreferencesFn(sourceId);
-    return prefs ?? { currencyCode: 'USD', currencySymbol: '$', ratePerKwh: 0.14 };
+    return prefs ?? {
+      currencyCode: 'USD',
+      currencySymbol: '$',
+      ratePerKwh: 0.14,
+      emissionsFactorKgPerKwh: null,
+      emissionsFactorSource: null,
+      emissionsFactorRegion: null,
+      emissionsFactorYear: null,
+    };
+  }
+
+  function generatedBy(req) {
+    const token = req.headers.authorization?.replace(/^Bearer\s+/i, '') ?? 'validated-session';
+    return `controller-session:${crypto.createHash('sha256').update(token).digest('hex').slice(0, 16)}`;
+  }
+
+  function summarizeLightAwareEvidence(rows, days) {
+    if (!Array.isArray(rows) || rows.length === 0 || !Number.isFinite(days) || days <= 0) {
+      return null;
+    }
+    const sensorRows = rows.filter((row) => supportsLightSensor(row.model));
+    const darkRows = sensorRows.filter((row) => row.darkSeconds > 0);
+    const dimRows = sensorRows.filter((row) => row.dimSeconds > 0);
+    if (darkRows.length === 0) return null;
+    const darkSeconds = darkRows.reduce((sum, row) => sum + row.darkSeconds, 0);
+    const dimSeconds = dimRows.reduce((sum, row) => sum + row.dimSeconds, 0);
+    const baselineKwhDark = darkRows.reduce(
+      (sum, row) => sum + (row.watts * row.darkSeconds) / 3_600_000,
+      0
+    );
+    return {
+      sensorCapableCount: sensorRows.length,
+      darkApCount: darkRows.length,
+      darkAvgHours: darkSeconds / darkRows.length / days / 3600,
+      dimAvgHours: dimRows.length > 0 ? dimSeconds / dimRows.length / days / 3600 : 0,
+      baselineKwhDark,
+    };
   }
 
   // ---- Overview -----------------------------------------------------------
@@ -112,6 +179,8 @@ export function createEnergyRouter(options = {}) {
       if (!win) return fail(res, new Error('invalid range'), 400);
       const sourceIds = sourceIdsOf(req);
       const siteId = req.query.siteId ?? null;
+      if (!siteAllowed(req, siteId)) return fail(res, new Error('forbidden site'), 403);
+      const authorizedSiteIds = authorizedSiteIdsOf(req);
 
       const agg = await fetchOverviewAggregateFn({
         sourceIds,
@@ -119,12 +188,13 @@ export function createEnergyRouter(options = {}) {
         start: win.start,
         end: win.end,
         maxGapSeconds,
+        authorizedSiteIds,
       });
       const prefs = await resolvePrefs(req.monitoringScope.sources[0]?.id);
       const seconds = (new Date(win.end) - new Date(win.start)) / 1000;
       const dailyKwh = projectDaily(agg.periodKwh, seconds);
       const days = windowDays(win.start, win.end);
-      const earliest = await getEarliestPowerSampleAtFn({ sourceIds, siteId });
+      const earliest = await getEarliestPowerSampleAtFn({ sourceIds, siteId, authorizedSiteIds });
 
       res.json({
         apWithDataCount: agg.apWithDataCount,
@@ -166,6 +236,7 @@ export function createEnergyRouter(options = {}) {
       const win = resolveWindow(req);
       if (!win) return fail(res, new Error('invalid range'), 400);
       const sourceIds = sourceIdsOf(req);
+      const authorizedSiteIds = authorizedSiteIdsOf(req);
       const prefs = await resolvePrefs(req.monitoringScope.sources[0]?.id);
       const seconds = (new Date(win.end) - new Date(win.start)) / 1000;
 
@@ -174,6 +245,7 @@ export function createEnergyRouter(options = {}) {
         start: win.start,
         end: win.end,
         maxGapSeconds,
+        authorizedSiteIds,
       });
       const sites = rows.map((r) => {
         const daily = projectDaily(r.totalKwh, seconds);
@@ -198,15 +270,19 @@ export function createEnergyRouter(options = {}) {
       const win = resolveWindow(req);
       if (!win) return fail(res, new Error('invalid range'), 400);
       const sourceIds = sourceIdsOf(req);
+      const siteId = req.query.siteId ?? null;
+      if (!siteAllowed(req, siteId)) return fail(res, new Error('forbidden site'), 403);
+      const authorizedSiteIds = authorizedSiteIdsOf(req);
       const prefs = await resolvePrefs(req.monitoringScope.sources[0]?.id);
       const seconds = (new Date(win.end) - new Date(win.start)) / 1000;
 
       const rows = await fetchApAggregatesFn({
         sourceIds,
-        siteId: req.query.siteId ?? null,
+        siteId,
         start: win.start,
         end: win.end,
         maxGapSeconds,
+        authorizedSiteIds,
       });
       const aps = rows.map((r) => {
         const daily = projectDaily(r.totalKwh, seconds);
@@ -229,17 +305,20 @@ export function createEnergyRouter(options = {}) {
       if (!win) return fail(res, new Error('invalid range'), 400);
       const sourceIds = sourceIdsOf(req);
       const prefs = await resolvePrefs(req.monitoringScope.sources[0]?.id);
-      const samples = await fetchPowerSamplesFn({
-        sourceIds,
-        siteId: req.query.siteId ?? null,
-        start: win.start,
-        end: win.end,
-      });
+      const siteId = req.query.siteId ?? null;
+      if (!siteAllowed(req, siteId)) return fail(res, new Error('forbidden site'), 403);
+      const authorizedSiteIds = authorizedSiteIdsOf(req);
+      const days = windowDays(win.start, win.end);
+      const [samples, lightRows] = await Promise.all([
+        fetchPowerSamplesFn({ sourceIds, siteId, start: win.start, end: win.end, authorizedSiteIds }),
+        fetchLightAwareEvidenceFn({ sourceIds, siteId, start: win.start, end: win.end, authorizedSiteIds }),
+      ]);
       const recommendations = buildRecommendationsFn({
         samples,
-        windowDays: windowDays(win.start, win.end),
+        windowDays: days,
         ratePerKwh: prefs.ratePerKwh,
         maxGapSeconds,
+        lightObserved: summarizeLightAwareEvidence(lightRows, days),
       });
       res.json({ recommendations, meta: { currency: prefs.currencyCode } });
     } catch (error) {
@@ -258,6 +337,8 @@ export function createEnergyRouter(options = {}) {
         return fail(res, new Error('policy object required'), 400);
       }
       const sourceIds = sourceIdsOf(req);
+      if (!siteAllowed(req, siteId)) return fail(res, new Error('forbidden site'), 403);
+      const authorizedSiteIds = authorizedSiteIdsOf(req);
       const win = resolveWindow({
         query: { start: windowStart, end: windowEnd },
       });
@@ -269,6 +350,7 @@ export function createEnergyRouter(options = {}) {
         siteId: siteId ?? null,
         start: win.start,
         end: win.end,
+        authorizedSiteIds,
       });
       // policy.lightAware (if present) rides through to replayScenario and is
       // modeled per-sample by the resolver — no signature change needed.
@@ -326,67 +408,139 @@ export function createEnergyRouter(options = {}) {
     }
   });
 
-  // ---- Environmental report -----------------------------------------------
-  router.get('/energy/report', async (req, res) => {
+  // ---- Environmental reports ----------------------------------------------
+  router.post('/energy/environmental-reports', jsonBody, async (req, res) => {
     try {
-      const win = resolveWindow(req);
+      const {
+        siteId = null,
+        siteName = null,
+        windowStart,
+        windowEnd,
+        includeFinancials = true,
+        includeCarbon = false,
+        recommendationTypes,
+      } = req.body ?? {};
+      const win = resolveWindow({ query: { start: windowStart, end: windowEnd } });
       if (!win) return fail(res, new Error('invalid range'), 400);
+      const days = windowDays(win.start, win.end);
+      if (days > 366) return fail(res, new Error('reporting range cannot exceed 366 days'), 400);
+      if (siteId !== null && (typeof siteId !== 'string' || siteId.length > 256)) {
+        return fail(res, new Error('invalid site'), 400);
+      }
+      if (
+        recommendationTypes !== undefined &&
+        (!Array.isArray(recommendationTypes) ||
+          recommendationTypes.length > 20 ||
+          recommendationTypes.some((type) => typeof type !== 'string' || type.length > 100))
+      ) {
+        return fail(res, new Error('invalid recommendation selection'), 400);
+      }
+      if (typeof includeFinancials !== 'boolean' || typeof includeCarbon !== 'boolean') {
+        return fail(res, new Error('invalid report options'), 400);
+      }
       const sourceIds = sourceIdsOf(req);
-      const siteId = req.query.siteId ?? null;
+      if (!siteAllowed(req, siteId)) return fail(res, new Error('forbidden site'), 403);
+      const authorizedSiteIds = authorizedSiteIdsOf(req);
       const prefs = await resolvePrefs(req.monitoringScope.sources[0]?.id);
-      const [agg, recommendations] = await Promise.all([
+      const samplesPromise = fetchPowerSamplesFn({
+        sourceIds,
+        siteId,
+        start: win.start,
+        end: win.end,
+        authorizedSiteIds,
+      });
+      const [aggregate, coverage, samples, lightRows] = await Promise.all([
         fetchOverviewAggregateFn({
           sourceIds,
           siteId,
           start: win.start,
           end: win.end,
           maxGapSeconds,
+          authorizedSiteIds,
         }),
-        buildRecommendationsFn({
-          samples: await fetchPowerSamplesFn({
-            sourceIds,
-            siteId,
-            start: win.start,
-            end: win.end,
-          }),
-          windowDays: windowDays(win.start, win.end),
-          ratePerKwh: prefs.ratePerKwh,
-          maxGapSeconds,
+        fetchTelemetryCoverageFn({
+          sourceIds,
+          siteId,
+          start: win.start,
+          end: win.end,
+          authorizedSiteIds,
+        }),
+        samplesPromise,
+        fetchLightAwareEvidenceFn({
+          sourceIds,
+          siteId,
+          start: win.start,
+          end: win.end,
+          authorizedSiteIds,
         }),
       ]);
-      const seconds = (new Date(win.end) - new Date(win.start)) / 1000;
-      const dailyKwh = projectDaily(agg.periodKwh, seconds);
-      const annualKwhProjected = projectAnnual(dailyKwh) ?? 0;
-      const projectedSavingsKwh = recommendations.reduce((sum, rec) => sum + (rec.savingsKwh ?? 0), 0);
-      const projectedSavingsPercent =
-        recommendations.length > 0 && annualKwhProjected > 0
-          ? (projectedSavingsKwh / annualKwhProjected) * 100
-          : null;
-
-      res.json({
-        reportType: 'environmental-report',
+      if (aggregate.apWithDataCount === 0) {
+        return fail(res, new Error('no AP power telemetry in the selected scope and period'), 422);
+      }
+      const recommendations = buildRecommendationsFn({
+        samples,
+        windowDays: days,
+        ratePerKwh: prefs.ratePerKwh,
+        maxGapSeconds,
+        lightObserved: summarizeLightAwareEvidence(lightRows, days),
+      });
+      const actor = generatedBy(req);
+      const report = buildEnvironmentalReport({
+        aggregate,
+        coverage,
+        recommendations,
+        preferences: prefs,
         windowStart: win.start,
         windowEnd: win.end,
         siteId,
-        scopeLabel: siteId ? `Site ${siteId}` : 'Fleet',
-        totalKwh: agg.periodKwh,
-        annualKwhProjected,
-        annualCost: estimateCost(annualKwhProjected, prefs.ratePerKwh),
-        apWithDataCount: agg.apWithDataCount,
-        recommendationsCount: recommendations.length,
-        projectedSavingsKwh,
-        projectedSavingsPercent,
-        dataWindowDays: windowDays(win.start, win.end),
+        siteName: typeof siteName === 'string' ? siteName.slice(0, 256) : null,
+        authorizedSiteIds,
+        includeFinancials: includeFinancials !== false,
+        includeCarbon: includeCarbon === true,
+        recommendationTypes,
         generatedAt: nowFn().toISOString(),
-        currency: prefs.currencyCode,
-        currencySymbol: prefs.currencySymbol,
-        ratePerKwh: prefs.ratePerKwh,
-        notes: [
-          'This report is evidence of measured electrical performance from AP telemetry.',
-          'It is aligned with ISO 14001 environmental management concepts.',
-          'It is not ISO certification and does not determine ISO conformity or conformance status.',
-        ],
+        generatedBy: actor,
+        auraVersion: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 12) ?? process.env.npm_package_version,
       });
+      const saved = await insertEnvironmentalReportFn({
+        sourceId: req.monitoringScope.sources[0]?.id,
+        generatedBy: actor,
+        report,
+      });
+      res.status(201).json(saved?.snapshot ?? saved?.report ?? saved);
+    } catch (error) {
+      fail(res, error);
+    }
+  });
+
+  router.get('/energy/environmental-reports/latest', async (req, res) => {
+    try {
+      const report = await getLatestEnvironmentalReportFn({
+        sourceIds: sourceIdsOf(req),
+        siteId: req.query.siteId ?? null,
+      });
+      if (!report) return res.status(404).json({ error: 'No environmental reports found' });
+      const snapshot = report.snapshot ?? report;
+      if (!reportAllowed(req, snapshot)) return fail(res, new Error('forbidden report'), 403);
+      res.json(snapshot);
+    } catch (error) {
+      fail(res, error);
+    }
+  });
+
+  router.get('/energy/environmental-reports/:reportId', async (req, res) => {
+    try {
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(req.params.reportId)) {
+        return fail(res, new Error('invalid report ID'), 400);
+      }
+      const report = await getEnvironmentalReportByIdFn({
+        sourceIds: sourceIdsOf(req),
+        reportId: req.params.reportId,
+      });
+      if (!report) return res.status(404).json({ error: 'Environmental report not found' });
+      const snapshot = report.snapshot ?? report;
+      if (!reportAllowed(req, snapshot)) return fail(res, new Error('forbidden report'), 403);
+      res.json(snapshot);
     } catch (error) {
       fail(res, error);
     }
@@ -404,18 +558,46 @@ export function createEnergyRouter(options = {}) {
 
   router.put('/energy/preferences', jsonBody, async (req, res) => {
     try {
-      const { currencyCode, ratePerKwh } = req.body ?? {};
+      const {
+        currencyCode,
+        ratePerKwh,
+        emissionsFactorKgPerKwh = null,
+        emissionsFactorSource = null,
+        emissionsFactorRegion = null,
+        emissionsFactorYear = null,
+      } = req.body ?? {};
       if (!CURRENCY_SYMBOLS[currencyCode]) {
         return fail(res, new Error('unsupported currency'), 400);
       }
       if (!Number.isFinite(ratePerKwh) || ratePerKwh <= 0) {
         return fail(res, new Error('rate must be positive'), 400);
       }
+      if (
+        emissionsFactorKgPerKwh !== null &&
+        (!Number.isFinite(emissionsFactorKgPerKwh) || emissionsFactorKgPerKwh <= 0)
+      ) {
+        return fail(res, new Error('emissions factor must be positive'), 400);
+      }
+      if (emissionsFactorKgPerKwh !== null && !String(emissionsFactorSource ?? '').trim()) {
+        return fail(res, new Error('emissions factor source required'), 400);
+      }
+      if (
+        emissionsFactorYear !== null &&
+        (!Number.isInteger(emissionsFactorYear) ||
+          emissionsFactorYear < 1900 ||
+          emissionsFactorYear > 2200)
+      ) {
+        return fail(res, new Error('invalid emissions factor year'), 400);
+      }
       const saved = await upsertRatePreferencesFn({
         sourceId: req.monitoringScope.sources[0]?.id,
         currencyCode,
         currencySymbol: CURRENCY_SYMBOLS[currencyCode],
         ratePerKwh,
+        emissionsFactorKgPerKwh,
+        emissionsFactorSource: emissionsFactorSource ? String(emissionsFactorSource).trim().slice(0, 512) : null,
+        emissionsFactorRegion: emissionsFactorRegion ? String(emissionsFactorRegion).trim().slice(0, 256) : null,
+        emissionsFactorYear,
       });
       res.json(saved);
     } catch (error) {

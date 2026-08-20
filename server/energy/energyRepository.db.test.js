@@ -18,14 +18,20 @@ d('0004_energy migration', () => {
     await closePool();
   });
 
-  it('creates the three energy tables', async () => {
+  it('creates the Energy and Environmental Reporting tables', async () => {
     const { rows } = await query(
       `SELECT table_name FROM information_schema.tables
-       WHERE table_name IN ('energy_rate_preferences','energy_scenarios','energy_scenario_results')`
+       WHERE table_name IN (
+         'energy_rate_preferences',
+         'energy_scenarios',
+         'energy_scenario_results',
+         'energy_environmental_reports'
+       )`
     );
     const names = rows.map((r) => r.table_name).sort();
     // JS string sort: '_' (95) < 's' (115), so scenario_results precedes scenarios.
     expect(names).toEqual([
+      'energy_environmental_reports',
       'energy_rate_preferences',
       'energy_scenario_results',
       'energy_scenarios',
@@ -93,6 +99,14 @@ d('energyRepository power integration', () => {
       ratePerKwh: 0.31,
     });
     const prefs = await getRatePreferences(sourceId);
-    expect(prefs).toEqual({ currencyCode: 'EUR', currencySymbol: '€', ratePerKwh: 0.31 });
+    expect(prefs).toEqual({
+      currencyCode: 'EUR',
+      currencySymbol: '€',
+      ratePerKwh: 0.31,
+      emissionsFactorKgPerKwh: null,
+      emissionsFactorSource: null,
+      emissionsFactorRegion: null,
+      emissionsFactorYear: null,
+    });
   });
 });
