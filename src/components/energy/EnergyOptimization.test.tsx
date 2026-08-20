@@ -143,6 +143,17 @@ describe('EnergyOptimization', () => {
     expect(within(dialog).getByText('All sites')).toBeInTheDocument();
     expect(within(dialog).getByRole('option', { name: /Current dashboard period \(Last 24 hours\)/i })).toBeInTheDocument();
     expect(screen.getByText(/Partially Measured/i)).toBeInTheDocument();
+    fireEvent.click(
+      within(dialog).getByRole('button', {
+        name: /Configure a documented emissions factor in Electricity rate first/i,
+      })
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole('spinbutton', { name: /Emissions factor \(kg CO2e\/kWh\)/i })
+      ).toHaveFocus()
+    );
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     await waitFor(() => expect(serviceMocks.getEnergyPreferences).toHaveBeenCalled());
   });
 

@@ -35,6 +35,7 @@ interface EnvironmentalReportCardProps {
     endIso: string;
     label: string;
   };
+  onConfigureCarbon: () => void;
 }
 
 type PeriodChoice = 'current' | '7d' | '30d' | 'custom';
@@ -54,6 +55,7 @@ export function EnvironmentalReportCard({
   siteId,
   siteName,
   range,
+  onConfigureCarbon,
 }: EnvironmentalReportCardProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [latest, setLatest] = useState<EnvironmentalReport | null>(null);
@@ -293,13 +295,24 @@ export function EnvironmentalReportCard({
                 <input type="checkbox" checked={includeFinancials} onChange={(event) => setIncludeFinancials(event.target.checked)} />
                 Include financial savings
               </label>
-              <label className="flex items-start gap-2 text-sm">
+              <div className="flex items-start gap-2 text-sm">
                 <input type="checkbox" checked={includeCarbon} disabled={!carbonConfigured} onChange={(event) => setIncludeCarbon(event.target.checked)} />
                 <span>
                   Include CO2e estimate
-                  {!carbonConfigured ? <span className="block text-xs text-muted-foreground">Configure a documented emissions factor in Electricity rate first.</span> : null}
+                  {!carbonConfigured ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDialogOpen(false);
+                        onConfigureCarbon();
+                      }}
+                      className="block text-left text-xs font-medium text-primary underline underline-offset-2 hover:text-primary/80 focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      Configure a documented emissions factor in Electricity rate first.
+                    </button>
+                  ) : null}
                 </span>
-              </label>
+              </div>
             </section>
           </div>
 

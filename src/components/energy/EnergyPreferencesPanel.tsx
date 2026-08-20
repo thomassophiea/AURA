@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type Ref } from 'react';
 
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { getEnergyPreferences, putEnergyPreferences } from '@/services/energyService';
@@ -9,9 +9,14 @@ const CURRENCIES = ['USD', 'EUR', 'GBP', 'CAD', 'AUD'];
 interface EnergyPreferencesPanelProps {
   onSaved: (prefs: EnergyPreferences) => void;
   onLoaded?: (prefs: EnergyPreferences) => void;
+  emissionsFactorRef?: Ref<HTMLInputElement>;
 }
 
-export function EnergyPreferencesPanel({ onSaved, onLoaded }: EnergyPreferencesPanelProps) {
+export function EnergyPreferencesPanel({
+  onSaved,
+  onLoaded,
+  emissionsFactorRef,
+}: EnergyPreferencesPanelProps) {
   const [currencyCode, setCurrencyCode] = useState('USD');
   const [rate, setRate] = useState('0.14');
   const [emissionsFactor, setEmissionsFactor] = useState('');
@@ -110,7 +115,7 @@ export function EnergyPreferencesPanel({ onSaved, onLoaded }: EnergyPreferencesP
         </label>
         <label className="text-sm">
           <span className="mb-1 block text-xs text-muted-foreground">Emissions factor (kg CO2e/kWh)</span>
-          <input type="number" step="0.001" min="0.001" value={emissionsFactor} onChange={(e) => setEmissionsFactor(e.target.value)} placeholder="Optional" className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm" />
+          <input ref={emissionsFactorRef} type="number" step="0.001" min="0.001" value={emissionsFactor} onChange={(e) => setEmissionsFactor(e.target.value)} placeholder="Optional" className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm" />
         </label>
         <label className="text-sm">
           <span className="mb-1 block text-xs text-muted-foreground">Factor source</span>

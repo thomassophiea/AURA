@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 import { useEnergyOverview, useEnergySites, useEnergyRecommendations } from '@/hooks/useEnergyData';
 import { useGlobalFilters } from '@/hooks/useGlobalFilters';
@@ -33,6 +33,7 @@ export function EnergyOptimization() {
 
   const [selectedSite, setSelectedSite] = useState<string>(filters.site);
   const [preferences, setPreferences] = useState<EnergyPreferences | null>(null);
+  const emissionsFactorRef = useRef<HTMLInputElement>(null);
   const isXiqSite = parseXiqSiteValue(selectedSite) !== null;
 
   const handleSiteChange = (value: string) => {
@@ -152,6 +153,7 @@ export function EnergyOptimization() {
             </>
           ) : null}
           <EnergyPreferencesPanel
+            emissionsFactorRef={emissionsFactorRef}
             onLoaded={setPreferences}
             onSaved={(saved) => {
               setPreferences(saved);
@@ -165,6 +167,12 @@ export function EnergyOptimization() {
             siteId={filters.site}
             siteName={filters.site === 'all' ? 'All sites' : siteNameById.get(filters.site) ?? filters.site}
             range={selectedRange}
+            onConfigureCarbon={() => {
+              window.requestAnimationFrame(() => {
+                emissionsFactorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                emissionsFactorRef.current?.focus();
+              });
+            }}
           />
         </div>
       </div>
