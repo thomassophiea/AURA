@@ -326,6 +326,72 @@ export function createEnergyRouter(options = {}) {
     }
   });
 
+  // ---- Environmental report -----------------------------------------------
+  router.get('/energy/report', async (req, res) => {
+    try {
+      const win = resolveWindow(req);
+      if (!win) return fail(res, new Error('invalid range'), 400);
+      const sourceIds = sourceIdsOf(req);
+      const siteId = req.query.siteId ?? null;
+      const prefs = await resolvePrefs(req.monitoringScope.sources[0]?.id);
+      const [agg, recommendations] = await Promise.all([
+        fetchOverviewAggregateFn({
+          sourceIds,
+          siteId,
+          start: win.start,
+          end: win.end,
+          maxGapSeconds,
+        }),
+        buildRecommendationsFn({
+          samples: await fetchPowerSamplesFn({
+            sourceIds,
+            siteId,
+            start: win.start,
+            end: win.end,
+          }),
+          windowDays: windowDays(win.start, win.end),
+          ratePerKwh: prefs.ratePerKwh,
+          maxGapSeconds,
+        }),
+      ]);
+      const seconds = (new Date(win.end) - new Date(win.start)) / 1000;
+      const dailyKwh = projectDaily(agg.periodKwh, seconds);
+      const annualKwhProjected = projectAnnual(dailyKwh) ?? 0;
+      const projectedSavingsKwh = recommendations.reduce((sum, rec) => sum + (rec.savingsKwh ?? 0), 0);
+      const projectedSavingsPercent =
+        recommendations.length > 0 && annualKwhProjected > 0
+          ? (projectedSavingsKwh / annualKwhProjected) * 100
+          : null;
+
+      res.json({
+        reportType: 'environmental-report',
+        windowStart: win.start,
+        windowEnd: win.end,
+        siteId,
+        scopeLabel: siteId ? `Site ${siteId}` : 'Fleet',
+        totalKwh: agg.periodKwh,
+        annualKwhProjected,
+        annualCost: estimateCost(annualKwhProjected, prefs.ratePerKwh),
+        apWithDataCount: agg.apWithDataCount,
+        recommendationsCount: recommendations.length,
+        projectedSavingsKwh,
+        projectedSavingsPercent,
+        dataWindowDays: windowDays(win.start, win.end),
+        generatedAt: nowFn().toISOString(),
+        currency: prefs.currencyCode,
+        currencySymbol: prefs.currencySymbol,
+        ratePerKwh: prefs.ratePerKwh,
+        notes: [
+          'This report is evidence of measured electrical performance from AP telemetry.',
+          'It is aligned with ISO 14001 environmental management concepts.',
+          'It is not ISO certification and does not determine ISO conformity or conformance status.',
+        ],
+      });
+    } catch (error) {
+      fail(res, error);
+    }
+  });
+
   // ---- Preferences --------------------------------------------------------
   router.get('/energy/preferences', async (req, res) => {
     try {

@@ -64,7 +64,7 @@ interface SidebarProps {
 
 // ── Org-level navigation (primary scope) ──
 const monitoringItems = [
-  { id: 'insights', label: 'Observatory', icon: Brain },
+  { id: 'insights', label: 'Observatory', badge: 'BETA', icon: Brain },
   { id: 'app-insights', label: 'App Analytics', icon: AppWindow },
   { id: 'access-points', label: 'Access Points', icon: Wifi },
   { id: 'connected-clients', label: 'Clients', icon: Users },

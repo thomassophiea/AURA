@@ -76,6 +76,13 @@ describe('EnergyOptimization', () => {
     expect(screen.getByText(/No power data in this window/i)).toBeInTheDocument();
   });
 
+  it('renders the Environmental Report widget with a Generate Report action', () => {
+    siteFilter = 'all';
+    render(<EnergyOptimization />);
+    expect(screen.getByText(/Environmental Report/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Generate report/i })).toBeInTheDocument();
+  });
+
   it('gates with the OS ONE upsell when an XIQ site is selected', () => {
     siteFilter = 'xiq:sg1:loc1';
     render(<EnergyOptimization />);

@@ -108,6 +108,27 @@ export interface EnergyPreferences {
   ratePerKwh: number;
 }
 
+export interface EnvironmentalReportSummary {
+  reportType: 'environmental-report';
+  windowStart: string;
+  windowEnd: string;
+  siteId: string | null;
+  scopeLabel: string;
+  totalKwh: number;
+  annualKwhProjected: number | null;
+  annualCost: number | null;
+  apWithDataCount: number;
+  recommendationsCount: number;
+  projectedSavingsKwh: number;
+  projectedSavingsPercent: number | null;
+  dataWindowDays: number | null;
+  generatedAt: string;
+  currency: string;
+  currencySymbol: string;
+  ratePerKwh: number;
+  notes: string[];
+}
+
 export type LightState = 'bright' | 'dim' | 'dark' | 'unknown';
 
 export interface LightAwareSummary {
