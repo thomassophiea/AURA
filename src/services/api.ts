@@ -1,5 +1,6 @@
 import { cacheService, CACHE_TTL } from './cache';
 import { logger } from './logger';
+import { isSystemSiteKey } from './siteCatalog';
 
 /**
  * How long a completed GET stays replayable.
@@ -187,7 +188,10 @@ class ApiService {
    * user sees stale state. Anything needing real freshness semantics still
    * refetches on its own cadence, and writes clear the cache outright.
    */
-  private burstCache = new Map<string, { body: string; status: number; statusText: string; at: number }>();
+  private burstCache = new Map<
+    string,
+    { body: string; status: number; statusText: string; at: number }
+  >();
 
   // Developer mode API logging
   private apiCallLogs: ApiCallLog[] = [];
@@ -1031,12 +1035,12 @@ class ApiService {
         const arr: Site[] = Array.isArray(sites)
           ? sites
           : (sites?.data ??
-              sites?.items ??
-              sites?.results ??
-              sites?.sites ??
-              sites?.siteList ??
-              sites?.content ??
-              []);
+            sites?.items ??
+            sites?.results ??
+            sites?.sites ??
+            sites?.siteList ??
+            sites?.content ??
+            []);
         logger.log(`Fetched ${arr.length} sites from ${endpoint}`);
 
         // A non-empty list is authoritative: cache and return it. An empty
@@ -1080,13 +1084,19 @@ class ApiService {
       }
 
       // Not in list — try /v3 single-site lookup (current platform endpoint).
-      try {
-        const response = await this.makeAuthenticatedRequest(`/v3/sites/${siteId}`, {}, 5000);
-        if (response.ok) return await response.json();
-      } catch (error) {
-        logger.log(
-          `Single-site lookup failed for ${siteId}: ${error instanceof Error ? error.message : String(error)}`
-        );
+      // XIQ composite keys (`xiq:<siteGroupId>:<locationId>`) and system-site
+      // sentinels are never Campus Controller site ids, so this lookup can only
+      // 422. Skip it for them (the controller sites list above already had the
+      // final say for any real id).
+      if (!siteId.startsWith('xiq:') && !isSystemSiteKey(siteId)) {
+        try {
+          const response = await this.makeAuthenticatedRequest(`/v3/sites/${siteId}`, {}, 5000);
+          if (response.ok) return await response.json();
+        } catch (error) {
+          logger.log(
+            `Single-site lookup failed for ${siteId}: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
       }
 
       return null;
@@ -6300,7 +6310,9 @@ class ApiService {
     const response = await this.makeAuthenticatedRequest('/v1/aps/registration', {}, 10000);
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Failed to fetch AP registration settings: ${response.status} - ${errorText}`);
+      throw new Error(
+        `Failed to fetch AP registration settings: ${response.status} - ${errorText}`
+      );
     }
     return (await response.json()) as ApRegistrationSettings;
   }
