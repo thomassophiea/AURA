@@ -3,16 +3,10 @@
  * Shows check cards, controls (Run Now, schedule), and an alert timeline.
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import {
   Network,
   Server,
@@ -67,10 +61,26 @@ const CHECK_CONFIG: Record<
   string,
   { label: string; icon: React.ComponentType<{ className?: string }>; description: string }
 > = {
-  vlan_trunk: { label: 'Missing VLAN', icon: Network, description: 'Validates VLAN presence on AP uplink trunks' },
-  dhcp_reachability: { label: 'DHCP Reachability', icon: Server, description: 'Validates local DHCP pools and relay server reachability' },
-  radius_reachability: { label: 'RADIUS Reachability', icon: Shield, description: 'Tests RADIUS server reachability' },
-  client_dhcp_failure: { label: 'Client DHCP Failure', icon: Users, description: 'Monitors per-SSID DHCP failure rates' },
+  vlan_trunk: {
+    label: 'Missing VLAN',
+    icon: Network,
+    description: 'Validates VLAN presence on AP uplink trunks',
+  },
+  dhcp_reachability: {
+    label: 'DHCP Reachability',
+    icon: Server,
+    description: 'Validates local DHCP pools and relay server reachability',
+  },
+  radius_reachability: {
+    label: 'RADIUS Reachability',
+    icon: Shield,
+    description: 'Tests RADIUS server reachability',
+  },
+  client_dhcp_failure: {
+    label: 'Client DHCP Failure',
+    icon: Users,
+    description: 'Monitors per-SSID DHCP failure rates',
+  },
 };
 
 const SCHEDULE_OPTIONS = [
@@ -109,13 +119,38 @@ function severityBadgeClass(severity: string) {
 function checkStatusBadge(status: SentinelCheckStatus['status']) {
   switch (status) {
     case 'ok':
-      return <Badge variant="outline" className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30 text-[10px]">OK</Badge>;
+      return (
+        <Badge
+          variant="outline"
+          className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30 text-[10px]"
+        >
+          OK
+        </Badge>
+      );
     case 'error':
-      return <Badge variant="outline" className="bg-red-500/15 text-red-500 border-red-500/30 text-[10px]">Error</Badge>;
+      return (
+        <Badge
+          variant="outline"
+          className="bg-red-500/15 text-red-500 border-red-500/30 text-[10px]"
+        >
+          Error
+        </Badge>
+      );
     case 'running':
-      return <Badge variant="outline" className="bg-blue-500/15 text-blue-500 border-blue-500/30 text-[10px]">Running</Badge>;
+      return (
+        <Badge
+          variant="outline"
+          className="bg-blue-500/15 text-blue-500 border-blue-500/30 text-[10px]"
+        >
+          Running
+        </Badge>
+      );
     default:
-      return <Badge variant="outline" className="text-muted-foreground text-[10px]">Idle</Badge>;
+      return (
+        <Badge variant="outline" className="text-muted-foreground text-[10px]">
+          Idle
+        </Badge>
+      );
   }
 }
 
@@ -159,12 +194,25 @@ function EvidencePanel({ checkId, evidence }: { checkId: string; evidence: Check
 }
 
 function DhcpEvidence({ evidence }: { evidence: CheckEvidence }) {
-  const networks = (evidence.networks ?? []) as Array<{ name: string; vlanId: number; dhcpMode: string }>;
-  const localServers = (evidence.localServers ?? []) as Array<{
-    label: string; vlanId: number; pool: string | null; gateway: string | null;
-    gatewayReachable: boolean | null; hasPool: boolean; issues: string[];
+  const networks = (evidence.networks ?? []) as Array<{
+    name: string;
+    vlanId: number;
+    dhcpMode: string;
   }>;
-  const relayResults = (evidence.reachabilityResults ?? []) as Array<{ server: string; usedBy: string; reachable: boolean }>;
+  const localServers = (evidence.localServers ?? []) as Array<{
+    label: string;
+    vlanId: number;
+    pool: string | null;
+    gateway: string | null;
+    gatewayReachable: boolean | null;
+    hasPool: boolean;
+    issues: string[];
+  }>;
+  const relayResults = (evidence.reachabilityResults ?? []) as Array<{
+    server: string;
+    usedBy: string;
+    reachable: boolean;
+  }>;
   return (
     <div className="space-y-2">
       {/* Local DHCP Server pools */}
@@ -174,12 +222,14 @@ function DhcpEvidence({ evidence }: { evidence: CheckEvidence }) {
             Local DHCP Servers ({localServers.length})
           </div>
           <table className="w-full text-[11px]">
-            <thead><tr className="bg-muted/20 text-muted-foreground">
-              <th className="text-left px-2.5 py-1.5 font-medium">Network</th>
-              <th className="text-left px-2.5 py-1.5 font-medium">IP Pool</th>
-              <th className="text-left px-2.5 py-1.5 font-medium">Gateway</th>
-              <th className="text-center px-2.5 py-1.5 font-medium">Status</th>
-            </tr></thead>
+            <thead>
+              <tr className="bg-muted/20 text-muted-foreground">
+                <th className="text-left px-2.5 py-1.5 font-medium">Network</th>
+                <th className="text-left px-2.5 py-1.5 font-medium">IP Pool</th>
+                <th className="text-left px-2.5 py-1.5 font-medium">Gateway</th>
+                <th className="text-center px-2.5 py-1.5 font-medium">Status</th>
+              </tr>
+            </thead>
             <tbody>
               {localServers.map((r) => (
                 <tr key={r.vlanId} className="border-t border-border/20">
@@ -191,11 +241,13 @@ function DhcpEvidence({ evidence }: { evidence: CheckEvidence }) {
                     {r.gateway ?? <span className="text-muted-foreground">—</span>}
                   </td>
                   <td className="px-2.5 py-1.5 text-center">
-                    {r.issues.length === 0
-                      ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 inline" />
-                      : r.issues.some((i) => i.includes('gateway')) && r.hasPool
-                        ? <AlertCircle className="h-3.5 w-3.5 text-red-500 inline" />
-                        : <AlertTriangle className="h-3.5 w-3.5 text-amber-500 inline" />}
+                    {r.issues.length === 0 ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 inline" />
+                    ) : r.issues.some((i) => i.includes('gateway')) && r.hasPool ? (
+                      <AlertCircle className="h-3.5 w-3.5 text-red-500 inline" />
+                    ) : (
+                      <AlertTriangle className="h-3.5 w-3.5 text-amber-500 inline" />
+                    )}
                   </td>
                 </tr>
               ))}
@@ -211,20 +263,24 @@ function DhcpEvidence({ evidence }: { evidence: CheckEvidence }) {
             Relay Server Reachability
           </div>
           <table className="w-full text-[11px]">
-            <thead><tr className="bg-muted/20 text-muted-foreground">
-              <th className="text-left px-2.5 py-1.5 font-medium">Server</th>
-              <th className="text-left px-2.5 py-1.5 font-medium">Used By</th>
-              <th className="text-center px-2.5 py-1.5 font-medium">Reachable</th>
-            </tr></thead>
+            <thead>
+              <tr className="bg-muted/20 text-muted-foreground">
+                <th className="text-left px-2.5 py-1.5 font-medium">Server</th>
+                <th className="text-left px-2.5 py-1.5 font-medium">Used By</th>
+                <th className="text-center px-2.5 py-1.5 font-medium">Reachable</th>
+              </tr>
+            </thead>
             <tbody>
               {relayResults.map((r) => (
                 <tr key={r.server} className="border-t border-border/20">
                   <td className="px-2.5 py-1.5 font-mono">{r.server}</td>
                   <td className="px-2.5 py-1.5 text-muted-foreground">{r.usedBy}</td>
                   <td className="px-2.5 py-1.5 text-center">
-                    {r.reachable
-                      ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 inline" />
-                      : <AlertCircle className="h-3.5 w-3.5 text-red-500 inline" />}
+                    {r.reachable ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 inline" />
+                    ) : (
+                      <AlertCircle className="h-3.5 w-3.5 text-red-500 inline" />
+                    )}
                   </td>
                 </tr>
               ))}
@@ -240,11 +296,13 @@ function DhcpEvidence({ evidence }: { evidence: CheckEvidence }) {
             Networks ({networks.length})
           </div>
           <table className="w-full text-[11px]">
-            <thead><tr className="bg-muted/20 text-muted-foreground">
-              <th className="text-left px-2.5 py-1 font-medium">Network</th>
-              <th className="text-center px-2.5 py-1 font-medium">VLAN</th>
-              <th className="text-left px-2.5 py-1 font-medium">DHCP Mode</th>
-            </tr></thead>
+            <thead>
+              <tr className="bg-muted/20 text-muted-foreground">
+                <th className="text-left px-2.5 py-1 font-medium">Network</th>
+                <th className="text-center px-2.5 py-1 font-medium">VLAN</th>
+                <th className="text-left px-2.5 py-1 font-medium">DHCP Mode</th>
+              </tr>
+            </thead>
             <tbody>
               {networks.map((n) => (
                 <tr key={n.name} className="border-t border-border/20">
@@ -262,8 +320,19 @@ function DhcpEvidence({ evidence }: { evidence: CheckEvidence }) {
 }
 
 function RadiusEvidence({ evidence }: { evidence: CheckEvidence }) {
-  const policies = (evidence.policies ?? []) as Array<{ name: string; authServers: number; acctServers: number; usedByWlans: string }>;
-  const results = (evidence.reachabilityResults ?? []) as Array<{ server: string; port: number; role: string; policy: string; reachable: boolean }>;
+  const policies = (evidence.policies ?? []) as Array<{
+    name: string;
+    authServers: number;
+    acctServers: number;
+    usedByWlans: string;
+  }>;
+  const results = (evidence.reachabilityResults ?? []) as Array<{
+    server: string;
+    port: number;
+    role: string;
+    policy: string;
+    reachable: boolean;
+  }>;
   const skipped = (evidence.skippedLoopback ?? 0) as number;
   return (
     <div className="space-y-2">
@@ -274,12 +343,14 @@ function RadiusEvidence({ evidence }: { evidence: CheckEvidence }) {
             AAA Policies ({policies.length})
           </div>
           <table className="w-full text-[11px]">
-            <thead><tr className="bg-muted/20 text-muted-foreground">
-              <th className="text-left px-2.5 py-1 font-medium">Policy</th>
-              <th className="text-center px-2.5 py-1 font-medium">Auth Servers</th>
-              <th className="text-center px-2.5 py-1 font-medium">Acct Servers</th>
-              <th className="text-left px-2.5 py-1 font-medium">Used By</th>
-            </tr></thead>
+            <thead>
+              <tr className="bg-muted/20 text-muted-foreground">
+                <th className="text-left px-2.5 py-1 font-medium">Policy</th>
+                <th className="text-center px-2.5 py-1 font-medium">Auth Servers</th>
+                <th className="text-center px-2.5 py-1 font-medium">Acct Servers</th>
+                <th className="text-left px-2.5 py-1 font-medium">Used By</th>
+              </tr>
+            </thead>
             <tbody>
               {policies.map((p) => (
                 <tr key={p.name} className="border-t border-border/20">
@@ -301,12 +372,14 @@ function RadiusEvidence({ evidence }: { evidence: CheckEvidence }) {
             Server Reachability
           </div>
           <table className="w-full text-[11px]">
-            <thead><tr className="bg-muted/20 text-muted-foreground">
-              <th className="text-left px-2.5 py-1.5 font-medium">Server</th>
-              <th className="text-left px-2.5 py-1.5 font-medium">Role</th>
-              <th className="text-left px-2.5 py-1.5 font-medium">Policy</th>
-              <th className="text-center px-2.5 py-1.5 font-medium">Reachable</th>
-            </tr></thead>
+            <thead>
+              <tr className="bg-muted/20 text-muted-foreground">
+                <th className="text-left px-2.5 py-1.5 font-medium">Server</th>
+                <th className="text-left px-2.5 py-1.5 font-medium">Role</th>
+                <th className="text-left px-2.5 py-1.5 font-medium">Policy</th>
+                <th className="text-center px-2.5 py-1.5 font-medium">Reachable</th>
+              </tr>
+            </thead>
             <tbody>
               {results.map((r) => (
                 <tr key={`${r.server}:${r.port}`} className="border-t border-border/20">
@@ -314,9 +387,11 @@ function RadiusEvidence({ evidence }: { evidence: CheckEvidence }) {
                   <td className="px-2.5 py-1.5 text-muted-foreground">{r.role}</td>
                   <td className="px-2.5 py-1.5 text-muted-foreground">{r.policy}</td>
                   <td className="px-2.5 py-1.5 text-center">
-                    {r.reachable
-                      ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 inline" />
-                      : <AlertCircle className="h-3.5 w-3.5 text-red-500 inline" />}
+                    {r.reachable ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 inline" />
+                    ) : (
+                      <AlertCircle className="h-3.5 w-3.5 text-red-500 inline" />
+                    )}
                   </td>
                 </tr>
               ))}
@@ -335,7 +410,13 @@ function RadiusEvidence({ evidence }: { evidence: CheckEvidence }) {
 }
 
 function ClientDhcpEvidence({ evidence }: { evidence: CheckEvidence }) {
-  const breakdown = (evidence.ssidBreakdown ?? []) as Array<{ ssid: string; total: number; noIp: number; rate: number; status: string }>;
+  const breakdown = (evidence.ssidBreakdown ?? []) as Array<{
+    ssid: string;
+    total: number;
+    noIp: number;
+    rate: number;
+    status: string;
+  }>;
   const thresholds = evidence.thresholds as { warning: string; critical: string } | undefined;
   if (!breakdown.length) return null;
   return (
@@ -347,13 +428,15 @@ function ClientDhcpEvidence({ evidence }: { evidence: CheckEvidence }) {
       )}
       <div className="rounded border border-border/30 overflow-hidden">
         <table className="w-full text-[11px]">
-          <thead><tr className="bg-muted/40 text-muted-foreground">
-            <th className="text-left px-2.5 py-1.5 font-medium">SSID</th>
-            <th className="text-center px-2.5 py-1.5 font-medium">Clients</th>
-            <th className="text-center px-2.5 py-1.5 font-medium">No IP</th>
-            <th className="text-center px-2.5 py-1.5 font-medium">Rate</th>
-            <th className="text-center px-2.5 py-1.5 font-medium">Status</th>
-          </tr></thead>
+          <thead>
+            <tr className="bg-muted/40 text-muted-foreground">
+              <th className="text-left px-2.5 py-1.5 font-medium">SSID</th>
+              <th className="text-center px-2.5 py-1.5 font-medium">Clients</th>
+              <th className="text-center px-2.5 py-1.5 font-medium">No IP</th>
+              <th className="text-center px-2.5 py-1.5 font-medium">Rate</th>
+              <th className="text-center px-2.5 py-1.5 font-medium">Status</th>
+            </tr>
+          </thead>
           <tbody>
             {breakdown.map((r) => (
               <tr key={r.ssid} className="border-t border-border/20">
@@ -362,9 +445,15 @@ function ClientDhcpEvidence({ evidence }: { evidence: CheckEvidence }) {
                 <td className="px-2.5 py-1.5 text-center">{r.noIp}</td>
                 <td className="px-2.5 py-1.5 text-center">{r.rate}%</td>
                 <td className="px-2.5 py-1.5 text-center">
-                  {r.status === 'ok' && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 inline" />}
-                  {r.status === 'warning' && <AlertTriangle className="h-3.5 w-3.5 text-amber-500 inline" />}
-                  {r.status === 'critical' && <AlertCircle className="h-3.5 w-3.5 text-red-500 inline" />}
+                  {r.status === 'ok' && (
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 inline" />
+                  )}
+                  {r.status === 'warning' && (
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500 inline" />
+                  )}
+                  {r.status === 'critical' && (
+                    <AlertCircle className="h-3.5 w-3.5 text-red-500 inline" />
+                  )}
                   {r.status === 'skipped' && <span className="text-muted-foreground">-</span>}
                 </td>
               </tr>
@@ -377,8 +466,16 @@ function ClientDhcpEvidence({ evidence }: { evidence: CheckEvidence }) {
 }
 
 function VlanTrunkEvidence({ evidence }: { evidence: CheckEvidence }) {
-  const mappings = (evidence.wlanMappings ?? []) as Array<{ wlan: string; network: string | null; vlanId: number | null }>;
-  const networks = (evidence.networks ?? []) as Array<{ name: string; vlanId: number; dhcpMode: string }>;
+  const mappings = (evidence.wlanMappings ?? []) as Array<{
+    wlan: string;
+    network: string | null;
+    vlanId: number | null;
+  }>;
+  const networks = (evidence.networks ?? []) as Array<{
+    name: string;
+    vlanId: number;
+    dhcpMode: string;
+  }>;
   const lldp = (evidence.lldpResults ?? []) as Array<{ accessPoint: string; neighbors: number }>;
   return (
     <div className="space-y-2">
@@ -389,11 +486,13 @@ function VlanTrunkEvidence({ evidence }: { evidence: CheckEvidence }) {
             WLAN Assignments ({mappings.length})
           </div>
           <table className="w-full text-[11px]">
-            <thead><tr className="bg-muted/20 text-muted-foreground">
-              <th className="text-left px-2.5 py-1 font-medium">WLAN</th>
-              <th className="text-left px-2.5 py-1 font-medium">Network</th>
-              <th className="text-center px-2.5 py-1 font-medium">VLAN</th>
-            </tr></thead>
+            <thead>
+              <tr className="bg-muted/20 text-muted-foreground">
+                <th className="text-left px-2.5 py-1 font-medium">WLAN</th>
+                <th className="text-left px-2.5 py-1 font-medium">Network</th>
+                <th className="text-center px-2.5 py-1 font-medium">VLAN</th>
+              </tr>
+            </thead>
             <tbody>
               {mappings.map((m) => (
                 <tr key={m.wlan} className="border-t border-border/20">
@@ -402,9 +501,11 @@ function VlanTrunkEvidence({ evidence }: { evidence: CheckEvidence }) {
                     {m.network ?? <span className="italic text-amber-500">Not assigned</span>}
                   </td>
                   <td className="px-2.5 py-1 text-center">
-                    {m.vlanId != null
-                      ? <span className="text-emerald-500">{m.vlanId}</span>
-                      : <span className="text-amber-500">--</span>}
+                    {m.vlanId != null ? (
+                      <span className="text-emerald-500">{m.vlanId}</span>
+                    ) : (
+                      <span className="text-amber-500">--</span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -420,11 +521,13 @@ function VlanTrunkEvidence({ evidence }: { evidence: CheckEvidence }) {
             Networks ({networks.length})
           </div>
           <table className="w-full text-[11px]">
-            <thead><tr className="bg-muted/20 text-muted-foreground">
-              <th className="text-left px-2.5 py-1 font-medium">Network</th>
-              <th className="text-center px-2.5 py-1 font-medium">VLAN</th>
-              <th className="text-left px-2.5 py-1 font-medium">DHCP Mode</th>
-            </tr></thead>
+            <thead>
+              <tr className="bg-muted/20 text-muted-foreground">
+                <th className="text-left px-2.5 py-1 font-medium">Network</th>
+                <th className="text-center px-2.5 py-1 font-medium">VLAN</th>
+                <th className="text-left px-2.5 py-1 font-medium">DHCP Mode</th>
+              </tr>
+            </thead>
             <tbody>
               {networks.map((n) => (
                 <tr key={n.name} className="border-t border-border/20">
@@ -445,18 +548,22 @@ function VlanTrunkEvidence({ evidence }: { evidence: CheckEvidence }) {
             Access Points Scanned ({lldp.length} of {(evidence.totalAps as number) ?? 0})
           </div>
           <table className="w-full text-[11px]">
-            <thead><tr className="bg-muted/20 text-muted-foreground">
-              <th className="text-left px-2.5 py-1 font-medium">Access Point</th>
-              <th className="text-center px-2.5 py-1 font-medium">Uplink Neighbors</th>
-            </tr></thead>
+            <thead>
+              <tr className="bg-muted/20 text-muted-foreground">
+                <th className="text-left px-2.5 py-1 font-medium">Access Point</th>
+                <th className="text-center px-2.5 py-1 font-medium">Uplink Neighbors</th>
+              </tr>
+            </thead>
             <tbody>
               {lldp.map((l) => (
                 <tr key={l.accessPoint} className="border-t border-border/20">
                   <td className="px-2.5 py-1">{l.accessPoint}</td>
                   <td className="px-2.5 py-1 text-center">
-                    {l.neighbors > 0
-                      ? <span className="text-emerald-500">{l.neighbors}</span>
-                      : <span className="text-muted-foreground">0</span>}
+                    {l.neighbors > 0 ? (
+                      <span className="text-emerald-500">{l.neighbors}</span>
+                    ) : (
+                      <span className="text-muted-foreground">0</span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -500,13 +607,17 @@ function SentinelExportButton({
           lastRunAt: c.lastRunAt ?? '',
           alertCount: c.alertCount ?? 0,
         }));
-        exportToCSV(rows, [
-          { key: 'check', label: 'Check ID' },
-          { key: 'label', label: 'Check Name' },
-          { key: 'status', label: 'Status' },
-          { key: 'lastRunAt', label: 'Last Run' },
-          { key: 'alertCount', label: 'Alerts' },
-        ], 'sentinel-report');
+        exportToCSV(
+          rows,
+          [
+            { key: 'check', label: 'Check ID' },
+            { key: 'label', label: 'Check Name' },
+            { key: 'status', label: 'Status' },
+            { key: 'lastRunAt', label: 'Last Run' },
+            { key: 'alertCount', label: 'Alerts' },
+          ],
+          'sentinel-report'
+        );
       } else if (format === 'json') {
         exportToJSON([snapshot], 'sentinel-report');
       } else {
@@ -545,7 +656,11 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
 
   // Fetch status + alerts + trends together
   const fetcher = useCallback(async () => {
-    const [statusData, alertsData, trendsData] = await Promise.all([getStatus(), getAlerts(), getTrends()]);
+    const [statusData, alertsData, trendsData] = await Promise.all([
+      getStatus(),
+      getAlerts(),
+      getTrends(),
+    ]);
     return { status: statusData, alerts: alertsData.alerts, trends: trendsData.trends };
   }, []);
 
@@ -575,6 +690,25 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
     }
   }, [status, alerts, onBadgeUpdate]);
 
+  // Auto-run one poll the first time the tab opens with no prior results. The
+  // engine is idle until something triggers it, so without this the cards sit
+  // on "Not Started / No data" until the user clicks Run Now. We only do this
+  // when the engine has genuinely never run (no lastPollAt) and isn't already
+  // polling, so it never fights a scheduled run or repeats on every render.
+  const autoPolledRef = useRef(false);
+  useEffect(() => {
+    if (autoPolledRef.current || !status) return;
+    if (status.lastPollAt || status.polling || pollRunning) return;
+    autoPolledRef.current = true;
+    setPollRunning(true);
+    triggerPoll(siteId)
+      .catch(() => {
+        // A transient failure just leaves the board empty; the manual Run Now
+        // path surfaces errors if the user retries.
+      })
+      .finally(() => setPollRunning(false));
+  }, [status, siteId, pollRunning]);
+
   // ── Handlers ──
 
   const handleScheduleChange = async (value: string) => {
@@ -585,7 +719,9 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
         toast.info('Operational Insights polling stopped');
       } else {
         await configure({ intervalMs: parseInt(value, 10), siteId });
-        toast.success(`Operational Insights polling set to ${SCHEDULE_OPTIONS.find((o) => o.value === value)?.label}`);
+        toast.success(
+          `Operational Insights polling set to ${SCHEDULE_OPTIONS.find((o) => o.value === value)?.label}`
+        );
       }
     } catch (err) {
       toast.error(`Failed to update schedule: ${(err as Error).message}`);
@@ -652,7 +788,10 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
   });
 
   // Count alerts per check (separate actionable from informational)
-  const alertsByCheck: Record<string, { total: number; critical: number; warning: number; info: number }> = {};
+  const alertsByCheck: Record<
+    string,
+    { total: number; critical: number; warning: number; info: number }
+  > = {};
   for (const alert of alerts) {
     if (!alertsByCheck[alert.checkName]) {
       alertsByCheck[alert.checkName] = { total: 0, critical: 0, warning: 0, info: 0 };
@@ -697,7 +836,12 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
           </Select>
 
           {alerts.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={handleClearAlerts} className="text-muted-foreground">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearAlerts}
+              className="text-muted-foreground"
+            >
               <Trash2 className="mr-1.5 h-3.5 w-3.5" />
               Clear
             </Button>
@@ -708,19 +852,23 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
 
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           {status?.polling && (
-            <Badge variant="outline" className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30 text-[10px]">
+            <Badge
+              variant="outline"
+              className="bg-emerald-500/15 text-emerald-500 border-emerald-500/30 text-[10px]"
+            >
               Polling
             </Badge>
           )}
           {status?.authExpired && (
-            <Badge variant="outline" className="bg-red-500/15 text-red-500 border-red-500/30 text-[10px]">
+            <Badge
+              variant="outline"
+              className="bg-red-500/15 text-red-500 border-red-500/30 text-[10px]"
+            >
               Auth Expired
             </Badge>
           )}
           {status?.lastPollAt && (
-            <span>
-              Last poll: {new Date(status.lastPollAt).toLocaleTimeString()}
-            </span>
+            <span>Last poll: {new Date(status.lastPollAt).toLocaleTimeString()}</span>
           )}
         </div>
       </div>
@@ -754,11 +902,12 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
                 </div>
                 <div className="flex items-center gap-1.5">
                   {checkStatus && checkStatusBadge(checkStatus.status)}
-                  {hasRun && (
-                    isExpanded
-                      ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
-                      : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-                  )}
+                  {hasRun &&
+                    (isExpanded ? (
+                      <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                    ))}
                 </div>
               </div>
 
@@ -777,18 +926,22 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
                         {checkAlertData.warning} warning
                       </span>
                     )}
-                    {checkAlertData.info > 0 && checkAlertData.critical === 0 && checkAlertData.warning === 0 && (
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <Info className="h-3 w-3" />
-                        {checkAlertData.info} note{checkAlertData.info > 1 ? 's' : ''}
-                      </span>
-                    )}
-                    {checkAlertData.critical === 0 && checkAlertData.warning === 0 && checkAlertData.info === 0 && (
-                      <span className="flex items-center gap-1 text-emerald-500">
-                        <CheckCircle2 className="h-3 w-3" />
-                        All clear
-                      </span>
-                    )}
+                    {checkAlertData.info > 0 &&
+                      checkAlertData.critical === 0 &&
+                      checkAlertData.warning === 0 && (
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Info className="h-3 w-3" />
+                          {checkAlertData.info} note{checkAlertData.info > 1 ? 's' : ''}
+                        </span>
+                      )}
+                    {checkAlertData.critical === 0 &&
+                      checkAlertData.warning === 0 &&
+                      checkAlertData.info === 0 && (
+                        <span className="flex items-center gap-1 text-emerald-500">
+                          <CheckCircle2 className="h-3 w-3" />
+                          All clear
+                        </span>
+                      )}
                   </>
                 ) : (
                   <span className="flex items-center gap-1 text-emerald-500">
@@ -853,69 +1006,75 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
         </div>
       )}
 
-      {sortedAlerts.length > 0 && (() => {
-        const actionable = sortedAlerts.filter((a) => a.severity !== 'info');
-        const informational = sortedAlerts.filter((a) => a.severity === 'info');
-        return (
-          <div className="space-y-3">
-            {actionable.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium text-muted-foreground">Alerts</h4>
-                <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1">
-                  {actionable.map((alert) => (
-                    <div
-                      key={alert.id}
-                      className="flex items-start gap-2.5 rounded-lg border border-border/40 bg-card/50 px-3 py-2"
-                    >
-                      <div className="mt-0.5 shrink-0">{severityIcon(alert.severity)}</div>
-                      <div className="flex-1 min-w-0 space-y-0.5">
-                        <div className="text-sm leading-tight">{alert.message}</div>
-                        <div className="flex items-center gap-2 flex-wrap text-[11px] text-muted-foreground">
-                          <Badge variant="outline" className={`${severityBadgeClass(alert.severity)} text-[10px] px-1.5 py-0`}>
-                            {alert.severity}
-                          </Badge>
-                          <span>{alert.target}</span>
-                          {alert.occurrences > 1 && (
-                            <span className="font-medium">{alert.occurrences}x</span>
-                          )}
-                          <span>{new Date(alert.lastSeenAt).toLocaleTimeString()}</span>
+      {sortedAlerts.length > 0 &&
+        (() => {
+          const actionable = sortedAlerts.filter((a) => a.severity !== 'info');
+          const informational = sortedAlerts.filter((a) => a.severity === 'info');
+          return (
+            <div className="space-y-3">
+              {actionable.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-muted-foreground">Alerts</h4>
+                  <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1">
+                    {actionable.map((alert) => (
+                      <div
+                        key={alert.id}
+                        className="flex items-start gap-2.5 rounded-lg border border-border/40 bg-card/50 px-3 py-2"
+                      >
+                        <div className="mt-0.5 shrink-0">{severityIcon(alert.severity)}</div>
+                        <div className="flex-1 min-w-0 space-y-0.5">
+                          <div className="text-sm leading-tight">{alert.message}</div>
+                          <div className="flex items-center gap-2 flex-wrap text-[11px] text-muted-foreground">
+                            <Badge
+                              variant="outline"
+                              className={`${severityBadgeClass(alert.severity)} text-[10px] px-1.5 py-0`}
+                            >
+                              {alert.severity}
+                            </Badge>
+                            <span>{alert.target}</span>
+                            {alert.occurrences > 1 && (
+                              <span className="font-medium">{alert.occurrences}x</span>
+                            )}
+                            <span>{new Date(alert.lastSeenAt).toLocaleTimeString()}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-            {informational.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium text-muted-foreground">
-                  Informational ({informational.length})
-                </h4>
-                <div className="max-h-40 overflow-y-auto space-y-1 pr-1">
-                  {informational.map((alert) => (
-                    <div
-                      key={alert.id}
-                      className="flex items-start gap-2 rounded-md border border-border/20 bg-muted/20 px-2.5 py-1.5"
-                    >
-                      <div className="mt-0.5 shrink-0">{severityIcon(alert.severity)}</div>
-                      <div className="flex-1 min-w-0 space-y-0.5">
-                        <div className="text-[12px] leading-tight text-muted-foreground">{alert.message}</div>
-                        <div className="flex items-center gap-2 flex-wrap text-[10px] text-muted-foreground/70">
-                          <span>{alert.target}</span>
-                          {alert.occurrences > 1 && (
-                            <span className="font-medium">{alert.occurrences}x</span>
-                          )}
-                          <span>{new Date(alert.lastSeenAt).toLocaleTimeString()}</span>
+              )}
+              {informational.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-muted-foreground">
+                    Informational ({informational.length})
+                  </h4>
+                  <div className="max-h-40 overflow-y-auto space-y-1 pr-1">
+                    {informational.map((alert) => (
+                      <div
+                        key={alert.id}
+                        className="flex items-start gap-2 rounded-md border border-border/20 bg-muted/20 px-2.5 py-1.5"
+                      >
+                        <div className="mt-0.5 shrink-0">{severityIcon(alert.severity)}</div>
+                        <div className="flex-1 min-w-0 space-y-0.5">
+                          <div className="text-[12px] leading-tight text-muted-foreground">
+                            {alert.message}
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap text-[10px] text-muted-foreground/70">
+                            <span>{alert.target}</span>
+                            {alert.occurrences > 1 && (
+                              <span className="font-medium">{alert.occurrences}x</span>
+                            )}
+                            <span>{new Date(alert.lastSeenAt).toLocaleTimeString()}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        );
-      })()}
+              )}
+            </div>
+          );
+        })()}
 
       {!loading && sortedAlerts.length === 0 && status?.lastPollAt && (
         <div className="flex flex-col items-center py-8 text-center text-muted-foreground">
@@ -929,7 +1088,9 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
         <div className="flex flex-col items-center py-8 text-center text-muted-foreground">
           <Shield className="h-10 w-10 mb-2 opacity-40" />
           <div className="text-sm font-medium">Not Started</div>
-          <div className="text-xs">Click &quot;Run Now&quot; to run infrastructure checks or set a schedule.</div>
+          <div className="text-xs">
+            Click &quot;Run Now&quot; to run infrastructure checks or set a schedule.
+          </div>
         </div>
       )}
     </div>

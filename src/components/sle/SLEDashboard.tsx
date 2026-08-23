@@ -55,6 +55,7 @@ import { SLEHoneycomb } from './SLEHoneycomb';
 import { SLEWaterfall } from './SLEWaterfall';
 import { SentinelInfraTab } from './SentinelInfraTab';
 import type { SentinelBadgeData } from './SentinelInfraTab';
+import { InfraOsOneGate } from './InfraOsOneGate';
 import { getStatus as getSentinelStatus } from '../../services/sentinelService';
 import { SLE_STATUS_COLORS, DEFAULT_SLE_THRESHOLDS } from '../../types/sle';
 import type { SLEMetric, SLEThresholds } from '../../types/sle';
@@ -727,12 +728,17 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
         </TabsContent>
 
         <TabsContent value="infrastructure" className="mt-4">
-          <SentinelInfraTab
-            onBadgeUpdate={setSentinelBadge}
-            siteId={
-              selectedSite !== 'all' && !selectedSite.startsWith('xiq:') ? selectedSite : undefined
-            }
-          />
+          {/* The Sentinel checks read OS ONE Gateway state; XIQ has no
+              equivalent, so gate the tab with an upgrade message instead of an
+              empty board — same treatment as the Energy page. */}
+          {selectedSite.startsWith('xiq:') ? (
+            <InfraOsOneGate />
+          ) : (
+            <SentinelInfraTab
+              onBadgeUpdate={setSentinelBadge}
+              siteId={selectedSite !== 'all' ? selectedSite : undefined}
+            />
+          )}
         </TabsContent>
       </Tabs>
 
