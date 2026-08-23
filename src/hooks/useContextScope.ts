@@ -22,6 +22,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { whenAutoRefresh } from '../lib/autoRefresh';
 import { useGlobalFilters } from './useGlobalFilters';
 import { apiService, AccessPoint, Station, Service } from '../services/api';
+import { isSystemSiteKey, systemSiteLabel } from '../services/siteCatalog';
 
 export type ScopeLevel = 'organization' | 'site' | 'ap' | 'client' | 'wlan';
 
@@ -76,6 +77,14 @@ export function useContextScope(): ContextScope {
   useEffect(() => {
     if (filters.site === 'all') {
       setSiteName(null);
+      return;
+    }
+
+    // XIQ selections (`xiq:<siteGroupId>:<locationId>`) and system-site keys are
+    // not Campus Controller site ids. Handing either to GET /v3/sites/{id} 422s
+    // against the controller, so resolve their label locally and skip the call.
+    if (filters.site.startsWith('xiq:') || isSystemSiteKey(filters.site)) {
+      setSiteName(systemSiteLabel(filters.site));
       return;
     }
 
