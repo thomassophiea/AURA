@@ -236,7 +236,10 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
   const devMode = useDevModeUnlock();
 
   // Sentinel badge state (lightweight poll for tab badge)
-  const [sentinelBadge, setSentinelBadge] = useState<SentinelBadgeData>({ alertCount: 0, maxSeverity: 'ok' });
+  const [sentinelBadge, setSentinelBadge] = useState<SentinelBadgeData>({
+    alertCount: 0,
+    maxSeverity: 'ok',
+  });
 
   useEffect(() => {
     const fetchBadge = async () => {
@@ -411,15 +414,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      selectedSite,
-      selectedRange,
-      siteThresholds,
-      navigationScope,
-      siteGroups,
-      siteGroup,
-      xiqSites,
-    ]
+    [selectedSite, selectedRange, siteThresholds, navigationScope, siteGroups, siteGroup, xiqSites]
   );
 
   // Initial load, plus auto-refresh only while the window tracks the present. A
@@ -428,7 +423,10 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
   useEffect(() => {
     loadData();
     if (!selectedRange.isLive) return undefined;
-    const interval = setInterval(whenAutoRefresh(() => loadData(true)), 60000);
+    const interval = setInterval(
+      whenAutoRefresh(() => loadData(true)),
+      60000
+    );
     return () => clearInterval(interval);
   }, [loadData, selectedRange.isLive]);
 
@@ -480,17 +478,13 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
       ? measuredSLEs.reduce((sum, s) => sum + s.successRate, 0) / measuredSLEs.length
       : 0;
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="flex items-center gap-3 text-muted-foreground">
-          <RefreshCw className="h-5 w-5 animate-spin" />
-          <span>Loading Operational Insights...</span>
-        </div>
-      </div>
-    );
-  }
-
+  // Note: the page is intentionally NOT gated behind `loading` with a full-page
+  // spinner. The Infrastructure tab is powered by the Sentinel engine, an
+  // independent and fast data source, and must stay reachable even while the
+  // slower SLE metrics for the Wireless tab are still loading. The loading state
+  // is therefore scoped to the SLE-dependent pieces below (summary bar + the
+  // Wireless tab body), leaving the header, the tab bar, and the Infrastructure
+  // tab always rendered.
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -504,11 +498,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
             )}
           </p>
           {/* The resolved dates, so a screenshot of this page is unambiguous. */}
-          <SelectedRangeLabel
-            range={selectedRange}
-            coverage={selectedCoverage}
-            className="mt-2"
-          />
+          <SelectedRangeLabel range={selectedRange} coverage={selectedCoverage} className="mt-2" />
         </div>
         <div className="flex items-center gap-2">
           {/* OS1 and XIQ are separate aggregates — their metrics differ, so
@@ -555,46 +545,52 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
         </div>
       </div>
 
-      {/* Summary Bar */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {/* Overall score */}
-        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30 border border-border/50">
-          <Target className="h-4 w-4 text-purple-400" />
-          <span className="text-xs font-medium">Overall</span>
-          <span
-            className="text-sm font-bold"
-            style={{
-              color:
-                SLE_STATUS_COLORS[
-                  overallScore >= 95 ? 'good' : overallScore >= 80 ? 'warn' : 'poor'
-                ].hex,
-            }}
-          >
-            {overallScore.toFixed(1)}%
-          </span>
-        </div>
-
-        {/* Per-SLE pills - clickable to edit thresholds */}
-        {slesWithHistory.map((sle) => (
-          <button
-            key={sle.id}
-            onClick={() => handleSLEClick(sle.id)}
-            className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-muted/20 border border-border/30 hover:border-primary/50 hover:bg-muted/40 cursor-pointer transition-all group"
-            title={`Click to adjust ${sle.name} threshold`}
-          >
-            <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
-              {sle.name}
-            </span>
+      {/* Summary Bar — SLE-derived, so hidden until the metrics load rather than
+          flashing a misleading 0.0%. The Infrastructure tab does not depend on
+          any of this. */}
+      {!loading && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Overall score */}
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30 border border-border/50">
+            <Target className="h-4 w-4 text-purple-400" />
+            <span className="text-xs font-medium">Overall</span>
             <span
-              className="text-xs font-bold"
-              style={{ color: sle.hasData === false ? '#6b7280' : SLE_STATUS_COLORS[sle.status].hex }}
+              className="text-sm font-bold"
+              style={{
+                color:
+                  SLE_STATUS_COLORS[
+                    overallScore >= 95 ? 'good' : overallScore >= 80 ? 'warn' : 'poor'
+                  ].hex,
+              }}
             >
-              {sle.hasData === false ? '—' : `${sle.successRate.toFixed(1)}%`}
+              {overallScore.toFixed(1)}%
             </span>
-            <Settings2 className="h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground transition-all" />
-          </button>
-        ))}
-      </div>
+          </div>
+
+          {/* Per-SLE pills - clickable to edit thresholds */}
+          {slesWithHistory.map((sle) => (
+            <button
+              key={sle.id}
+              onClick={() => handleSLEClick(sle.id)}
+              className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-muted/20 border border-border/30 hover:border-primary/50 hover:bg-muted/40 cursor-pointer transition-all group"
+              title={`Click to adjust ${sle.name} threshold`}
+            >
+              <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+                {sle.name}
+              </span>
+              <span
+                className="text-xs font-bold"
+                style={{
+                  color: sle.hasData === false ? '#6b7280' : SLE_STATUS_COLORS[sle.status].hex,
+                }}
+              >
+                {sle.hasData === false ? '—' : `${sle.successRate.toFixed(1)}%`}
+              </span>
+              <Settings2 className="h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground transition-all" />
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Context notices (e.g. an SLE unavailable for the active source) */}
       {warnings.length > 0 && wirelessSLEs.length > 0 && (
@@ -664,7 +660,14 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
         </div>
 
         <TabsContent value="wireless" className="mt-4">
-          {wirelessSLEs.length === 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="flex items-center gap-3 text-muted-foreground">
+                <RefreshCw className="h-5 w-5 animate-spin" />
+                <span>Loading Operational Insights...</span>
+              </div>
+            </div>
+          ) : wirelessSLEs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <Wifi className="h-12 w-12 text-muted-foreground/40 mb-4" />
               <h3 className="text-base font-medium text-foreground mb-1">No SLE data available</h3>
@@ -726,7 +729,9 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
         <TabsContent value="infrastructure" className="mt-4">
           <SentinelInfraTab
             onBadgeUpdate={setSentinelBadge}
-            siteId={selectedSite !== 'all' && !selectedSite.startsWith('xiq:') ? selectedSite : undefined}
+            siteId={
+              selectedSite !== 'all' && !selectedSite.startsWith('xiq:') ? selectedSite : undefined
+            }
           />
         </TabsContent>
       </Tabs>
