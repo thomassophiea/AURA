@@ -9,7 +9,11 @@ import { SentinelInfraTab } from './SentinelInfraTab';
 
 const pollingData = vi.hoisted(() => ({ current: null as unknown }));
 vi.mock('../../hooks/useRealtimePolling', () => ({
-  useRealtimePolling: () => ({ data: pollingData.current, loading: false }),
+  useRealtimePolling: () => ({
+    data: pollingData.current,
+    loading: false,
+    refresh: vi.fn().mockResolvedValue(undefined),
+  }),
 }));
 
 const svc = vi.hoisted(() => ({

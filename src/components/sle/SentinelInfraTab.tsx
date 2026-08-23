@@ -664,7 +664,7 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
     return { status: statusData, alerts: alertsData.alerts, trends: trendsData.trends };
   }, []);
 
-  const { data, loading } = useRealtimePolling<{
+  const { data, loading, refresh } = useRealtimePolling<{
     status: SentinelStatus;
     alerts: SentinelAlert[];
     trends: Record<string, TrendEntry[]>;
@@ -702,12 +702,13 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
     autoPolledRef.current = true;
     setPollRunning(true);
     triggerPoll(siteId)
+      .then(() => refresh()) // pull the fresh results now, not on the next cycle
       .catch(() => {
         // A transient failure just leaves the board empty; the manual Run Now
         // path surfaces errors if the user retries.
       })
       .finally(() => setPollRunning(false));
-  }, [status, siteId, pollRunning]);
+  }, [status, siteId, pollRunning, refresh]);
 
   // ── Handlers ──
 
@@ -761,6 +762,8 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
         toast.success('Operational Insights poll complete');
         // Clear cached evidence so next click fetches fresh data
         setEvidenceData({});
+        // Surface the new results immediately rather than on the next cycle.
+        await refresh();
       }
     } catch (err) {
       toast.error(`Operational Insights poll failed: ${(err as Error).message}`);
