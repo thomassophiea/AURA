@@ -192,7 +192,7 @@ const pageInfo = {
     description: 'Create custom widgets for Devices, Clients, Licensing, and Alerts',
   },
   insights: {
-    title: 'Observatory',
+    title: 'Network Overview',
     description: 'Context-aware network monitoring and analytics',
   },
   'service-levels': {

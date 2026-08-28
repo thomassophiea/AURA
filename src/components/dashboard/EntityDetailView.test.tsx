@@ -43,18 +43,6 @@ describe('EntityDetailView', () => {
     expect(detail.textContent).toBe('aa:bb:cc:dd:ee:ff');
   });
 
-  it('switch: renders the placeholder card with the entity name in the body', () => {
-    render(
-      <EntityDetailView kind="switch" entityId="sw-01" entityName="Lobby-SW" onBack={() => {}} />
-    );
-    expect(screen.getByText(/Switch detail view for Lobby-SW/)).toBeInTheDocument();
-  });
-
-  it('switch: falls back to entityId in the body when entityName is missing', () => {
-    render(<EntityDetailView kind="switch" entityId="sw-02" onBack={() => {}} />);
-    expect(screen.getByText(/Switch detail view for sw-02/)).toBeInTheDocument();
-  });
-
   it('renders the entityName as the heading when provided', () => {
     render(
       <EntityDetailView

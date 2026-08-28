@@ -181,7 +181,7 @@ export interface CortexPageAnalysis {
  */
 export const CORTEX_PAGE_NAMES: Record<string, string> = {
   workspace: 'Dashboard',
-  insights: 'Insights',
+  insights: 'Network Overview',
   'service-levels': 'Service Levels',
   'app-insights': 'App Insights',
   'access-points': 'Access Points',

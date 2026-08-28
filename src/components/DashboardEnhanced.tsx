@@ -367,23 +367,9 @@ function DashboardEnhancedComponent() {
         />
       )}
 
-      {selectorTab === 'switch' && selectedEntityId && (
-        <EntityDetailView
-          kind="switch"
-          entityId={selectedEntityId}
-          entityName={selectedEntityName}
-          onBack={() => {
-            setOperationalMode('AI_INSIGHTS');
-            setSelectedEntityId(null);
-            setSelectedEntityName(null);
-          }}
-        />
-      )}
-
       {(selectorTab === 'site' ||
         (selectorTab === 'access-point' && !selectedEntityId) ||
-        (selectorTab === 'client' && !selectedEntityId) ||
-        (selectorTab === 'switch' && !selectedEntityId)) && (
+        (selectorTab === 'client' && !selectedEntityId)) && (
         <NetworkDashboardView
           showSection={showSection}
           selectorTab={selectorTab}

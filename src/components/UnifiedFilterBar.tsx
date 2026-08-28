@@ -2,11 +2,10 @@
 /**
  * UnifiedFilterBar Component
  *
- * Standardized filter bar used across the entire AURA app.
- * Combines: context-aware search, context selector popover (AI/Site/AP/Switch/Client tabs),
- * global dropdowns (environment, time range), and page-specific filter slots.
- *
- * Replaces: FilterBar.tsx, ContextualInsightsSelector.tsx, and all ad-hoc local filters.
+ * The Network Overview page's filter row: the standard grouped site picker
+ * (the same SourceSiteSelector used on Access Points), an inspect selector
+ * for drilling into an AP or client, and the global environment/time
+ * dropdowns plus page-specific filter slots.
  */
 
 import { useState, useEffect, useMemo } from 'react';
@@ -18,10 +17,8 @@ import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import {
   Search,
-  Brain,
-  Building,
+  Gauge,
   Radio,
-  Network,
   Users,
   ChevronDown,
   Check,
@@ -35,9 +32,8 @@ import {
 } from 'lucide-react';
 import { cn } from './ui/utils';
 import { apiService } from '../services/api';
-import { buildOs1Catalog, flattenOs1Catalog } from '../services/siteCatalog';
-import { OS1_STAGING_DESCRIPTION } from '../types/siteCatalog';
-import { useAppContext } from '@/contexts/AppContext';
+import { SourceSiteSelector } from './SourceSiteSelector';
+import { useSourceSites } from '../hooks/useSourceSites';
 import { ContextConfigModal } from './ContextConfigModal';
 import { TimeRangeSelector } from './TimeRangeSelector';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
@@ -47,7 +43,9 @@ import { DEFAULT_TIME_RANGE_TOKEN } from '../lib/timeRange';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-export type SelectorTab = 'ai-insights' | 'site' | 'access-point' | 'switch' | 'client';
+// 'site' remains a valid view state (a site picked in the standard picker
+// scopes the classic dashboard view) but is no longer an inspect tab.
+export type SelectorTab = 'ai-insights' | 'site' | 'access-point' | 'client';
 
 interface SelectorItem {
   id: string;
@@ -103,19 +101,16 @@ const TABS: {
   label: string;
   shortLabel: string;
   icon: React.ElementType;
-  beta?: boolean;
   noSearch?: boolean;
 }[] = [
   {
     id: 'ai-insights',
-    label: 'AI Insights',
-    shortLabel: 'AI Insights',
-    icon: Brain,
+    label: 'Overview',
+    shortLabel: 'Overview',
+    icon: Gauge,
     noSearch: true,
   },
-  { id: 'site', label: 'Site', shortLabel: 'Site', icon: Building },
   { id: 'access-point', label: 'Access Point', shortLabel: 'AP', icon: Radio },
-  { id: 'switch', label: 'Switch', shortLabel: 'Switch', icon: Network, beta: true },
   { id: 'client', label: 'Client', shortLabel: 'Client', icon: Users },
 ];
 
@@ -123,7 +118,6 @@ const MODE_MAP: Record<SelectorTab, 'AI_INSIGHTS' | 'SITE' | 'AP' | 'CLIENT'> = 
   'ai-insights': 'AI_INSIGHTS',
   site: 'SITE',
   'access-point': 'AP',
-  switch: 'SITE',
   client: 'CLIENT',
 };
 
@@ -181,8 +175,9 @@ export function UnifiedFilterBar({
 }: UnifiedFilterBarProps) {
   // Global state hooks
   const { filters, updateFilter, resetFilters, hasActiveFilters } = useGlobalFilters();
-  // Site Groups are the OS1 Gateway boundaries the site list is grouped by.
-  const { siteGroups } = useAppContext();
+  // The standard grouped site list, shared with Access Points / Service Levels
+  // so the site picker cannot drift between pages.
+  const { sites: srcSites } = useSourceSites();
   const { setMode, selectSite, selectAP, selectClient } = useOperationalContext();
   // The time selection is global, so it is read here rather than owned here —
   // switching pages must not reset it. Coverage is scoped to the active site so
@@ -224,46 +219,12 @@ export function UnifiedFilterBar({
 
     try {
       switch (tab) {
+        // Overview has nothing to pick — selecting the tab returns to the
+        // whole-network view. Site scoping is owned by the standard site
+        // picker beside this control.
         case 'ai-insights':
-          setItems([
-            { id: 'all', name: 'All Insights', subtitle: 'Complete network overview' },
-            { id: 'network-health', name: 'Network Health', subtitle: 'Performance metrics' },
-            { id: 'anomaly-detection', name: 'Anomaly Detection', subtitle: 'Unusual patterns' },
-            { id: 'capacity-planning', name: 'Capacity Planning', subtitle: 'Utilization trends' },
-            {
-              id: 'predictive-maintenance',
-              name: 'Predictive Maintenance',
-              subtitle: 'Issue forecast',
-            },
-          ]);
+        case 'site':
           break;
-
-        case 'site': {
-          const sites = await apiService.getSites();
-          // Sites are presented under the Gateway boundary that owns them, and
-          // the OS1 Staging site closes the list. Both the grouping and the
-          // ordering come from the catalog so this list cannot disagree with the
-          // pickers on Access Points or Service Levels.
-          const catalog = buildOs1Catalog({ siteGroups, sites, osSiteValue: 'id' });
-          const siteItems: SelectorItem[] = [
-            { id: 'all', name: 'All Sites', subtitle: `${sites.length} sites` },
-          ];
-          flattenOs1Catalog(catalog).forEach((site) => {
-            siteItems.push({
-              id: site.key,
-              name: site.name,
-              subtitle: site.systemKind
-                ? OS1_STAGING_DESCRIPTION
-                : site.siteGroupName
-                  ? `Site Group: ${site.siteGroupName}`
-                  : undefined,
-              status: 'online' as const,
-              isSystemSite: Boolean(site.systemKind),
-            });
-          });
-          setItems(siteItems);
-          break;
-        }
 
         case 'access-point': {
           const aps = await apiService.getAccessPoints();
@@ -320,30 +281,6 @@ export function UnifiedFilterBar({
             });
           });
           setItems(apItems);
-          break;
-        }
-
-        case 'switch': {
-          try {
-            const switches = (await apiService.getSwitches?.()) || [];
-            const switchItems: SelectorItem[] = [
-              { id: 'all', name: 'All Switches', subtitle: `${switches.length} switches` },
-            ];
-            switches.slice(0, 50).forEach((sw: any) => {
-              const swName = sw.displayName || sw.name || sw.hostname || sw.serialNumber;
-              const swStatusStr = sw.status || sw.connectionState || sw.operationalState || '';
-              const swIsOnline = isDeviceOnline(swStatusStr, sw.isUp, sw.online);
-              switchItems.push({
-                id: sw.serialNumber || sw.id,
-                name: swName,
-                subtitle: sw.siteName || sw.model || undefined,
-                status: swIsOnline ? 'online' : 'offline',
-              });
-            });
-            setItems(switchItems);
-          } catch {
-            setItems([{ id: 'all', name: 'All Switches', subtitle: 'No switches available' }]);
-          }
           break;
         }
 
@@ -461,7 +398,7 @@ export function UnifiedFilterBar({
   }, [items, popoverSearch]);
 
   const currentTabInfo = TABS.find((t) => t.id === currentTab);
-  const CurrentIcon = currentTabInfo?.icon || Brain;
+  const CurrentIcon = currentTabInfo?.icon || Gauge;
   const contextDisplayText = selectedItemName || currentTabInfo?.label || 'Select Context';
 
   const totalActiveFilters =
@@ -488,7 +425,27 @@ export function UnifiedFilterBar({
         />
       </div>
 
-      {/* Context Selector — popover with tabs */}
+      {/* Site scope — the same grouped picker used on Access Points and
+          Service Levels, so site selection behaves identically everywhere. */}
+      <SourceSiteSelector
+        value={filters.site || 'all'}
+        onValueChange={(value) => {
+          updateFilter('site', value);
+          if (value === 'all') {
+            setMode('AI_INSIGHTS');
+          } else {
+            selectSite(value);
+          }
+        }}
+        sites={srcSites}
+        // This page reads the controller only — an IQ Engine site key would
+        // silently scope to nothing, so XIQ sites are not offered here.
+        xiqSites={[]}
+        osSiteValue="id"
+        triggerClassName="w-[200px] h-10"
+      />
+
+      {/* Inspect selector — drill into an AP or client */}
       <div className="shrink-0">
         <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
           <PopoverTrigger asChild>
@@ -522,14 +479,6 @@ export function UnifiedFilterBar({
                 >
                   <tab.icon className="h-4 w-4 flex-shrink-0" />
                   <span>{tab.shortLabel}</span>
-                  {tab.beta && (
-                    <Badge
-                      variant="outline"
-                      className="text-[9px] px-1.5 py-0 h-4 border-[color:var(--status-warning)]/50 text-[color:var(--status-warning)]"
-                    >
-                      Beta
-                    </Badge>
-                  )}
                 </button>
               ))}
             </div>
@@ -685,10 +634,8 @@ export function UnifiedFilterBar({
                             </div>
                           )}
 
-                          {/* Site/Switch/All subtitle */}
-                          {(currentTab === 'site' ||
-                            currentTab === 'switch' ||
-                            item.id === 'all') &&
+                          {/* All-items subtitle */}
+                          {item.id === 'all' &&
                             item.subtitle && (
                               <div className="text-xs text-muted-foreground truncate mt-0.5">
                                 {item.subtitle}

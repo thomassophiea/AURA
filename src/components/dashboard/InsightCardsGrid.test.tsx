@@ -107,7 +107,7 @@ describe('InsightCardsGrid — Capacity Planning card', () => {
   });
 });
 
-describe('InsightCardsGrid — Anomaly Detection card', () => {
+describe('InsightCardsGrid — Active Issues card', () => {
   it('shows All Clear when no offline APs and no critical alerts', () => {
     render(
       <InsightCardsGrid
@@ -176,7 +176,7 @@ describe('InsightCardsGrid — Anomaly Detection card', () => {
   });
 });
 
-describe('InsightCardsGrid — Predictive Maintenance card', () => {
+describe('InsightCardsGrid — Maintenance Watch card', () => {
   it('shows Systems Healthy when no low power and no poor services', () => {
     render(
       <InsightCardsGrid
@@ -229,7 +229,7 @@ describe('InsightCardsGrid — Predictive Maintenance card', () => {
         lastUpdate={null}
       />
     );
-    expect(screen.getByText(/Models tracked:/)).toBeInTheDocument();
+    expect(screen.getByText(/AP models deployed:/)).toBeInTheDocument();
     expect(screen.getByText(/\+1 more/)).toBeInTheDocument();
   });
 });

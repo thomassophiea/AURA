@@ -46,15 +46,12 @@ function DashboardHeroComponent({
               one claim this header must never make. */}
           {!isHistorical && <span className="aura-live-dot" aria-hidden="true" />}
           <span>
-            {isHistorical ? 'Network Intelligence — Historical' : 'Network Intelligence — Live Telemetry'}
+            {isHistorical ? 'Network Monitoring — Historical' : 'Network Monitoring — Live Telemetry'}
           </span>
           <span className="aura-eyebrow-rule" aria-hidden="true" />
         </div>
         <h2 className="aura-hero-title flex items-center gap-3">
-          <em>Observatory</em>
-          <span className="inline-flex items-center rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-blue-400">
-            Beta
-          </span>
+          <em>Network Overview</em>
         </h2>
         {activePersona !== 'super-user' && personaConfig && (
           <span className="aura-hero-coord">{personaConfig.dashboardLabel}</span>

@@ -55,9 +55,9 @@ interface InsightCardsGridProps {
 
 /**
  * InsightCardsGrid — second-tier 4-card grid below the hero KPIs in the
- * AI Insights view: Network Health, Capacity Planning, Anomaly Detection,
- * Predictive Maintenance. Each card uses the .aura-section Observatory
- * chrome (commit 32f259b) and the <NoData /> primitive (commit eb5dd79).
+ * Overview: Network Health, Capacity Planning, Active Issues, Maintenance
+ * Watch. Each card uses the .aura-section instrument chrome and the
+ * <NoData /> primitive.
  */
 function InsightCardsGridImpl({
   apStats,
@@ -236,8 +236,8 @@ function InsightCardsGridImpl({
               <AlertCircle className="h-5 w-5 text-[color:var(--status-warning)]" />
             </div>
             <div>
-              <CardTitle className="text-base">Anomaly Detection</CardTitle>
-              <CardDescription>Unusual patterns and alerts</CardDescription>
+              <CardTitle className="text-base">Active Issues</CardTitle>
+              <CardDescription>Offline devices and critical alerts</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -274,7 +274,7 @@ function InsightCardsGridImpl({
               <div>
                 <p className="text-sm font-medium text-[color:var(--status-success)]">All Clear</p>
                 <p className="text-xs text-muted-foreground">
-                  No anomalies detected - network operating normally
+                  No active issues — network operating normally
                 </p>
               </div>
             </div>
@@ -293,8 +293,8 @@ function InsightCardsGridImpl({
               <Timer className="h-5 w-5 text-purple-600" />
             </div>
             <div>
-              <CardTitle className="text-base">Predictive Maintenance</CardTitle>
-              <CardDescription>Potential issues forecast</CardDescription>
+              <CardTitle className="text-base">Maintenance Watch</CardTitle>
+              <CardDescription>Power, RF and service warnings</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -333,14 +333,14 @@ function InsightCardsGridImpl({
                   Systems Healthy
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  No maintenance issues predicted in the near term
+                  No power, RF or service warnings detected
                 </p>
               </div>
             </div>
           )}
           <div className="pt-2">
             <p className="text-xs text-muted-foreground">
-              Models tracked:{' '}
+              AP models deployed:{' '}
               {Object.entries(apStats.models)
                 .slice(0, 3)
                 .map(([m]) => m)

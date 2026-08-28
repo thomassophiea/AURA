@@ -1,11 +1,9 @@
-import { ReactNode } from 'react';
-import { ArrowRight, Network } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { Button } from '../ui/button';
-import { Card, CardContent } from '../ui/card';
 import { AccessPointDetail } from '../AccessPointDetail';
 import { ClientDetail } from '../ClientDetail';
 
-type Kind = 'access-point' | 'client' | 'switch';
+type Kind = 'access-point' | 'client';
 
 interface EntityDetailViewProps {
   kind: Kind;
@@ -23,38 +21,22 @@ const COPY: Record<Kind, { fallbackTitle: string; subtitle: string }> = {
     fallbackTitle: 'Client Details',
     subtitle: 'Client connection and performance details',
   },
-  switch: {
-    fallbackTitle: 'Switch Details',
-    subtitle: 'Switch configuration and port status',
-  },
 };
 
 /**
  * EntityDetailView — wraps the back-button-header pattern used by the
- * access-point / client / switch detail views and dispatches to the
- * corresponding child component (or a placeholder for switch).
+ * access-point / client detail views and dispatches to the corresponding
+ * child component.
  */
 export function EntityDetailView({ kind, entityId, entityName, onBack }: EntityDetailViewProps) {
   const copy = COPY[kind];
 
-  let body: ReactNode;
-  if (kind === 'access-point') {
-    body = <AccessPointDetail serialNumber={entityId} />;
-  } else if (kind === 'client') {
-    body = <ClientDetail macAddress={entityId} />;
-  } else {
-    body = (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <Network className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-          <h4 className="text-lg font-medium mb-2">Switch Details</h4>
-          <p className="text-sm text-muted-foreground">
-            Switch detail view for {entityName || entityId}
-          </p>
-        </CardContent>
-      </Card>
+  const body =
+    kind === 'access-point' ? (
+      <AccessPointDetail serialNumber={entityId} />
+    ) : (
+      <ClientDetail macAddress={entityId} />
     );
-  }
 
   return (
     <div className="space-y-4">

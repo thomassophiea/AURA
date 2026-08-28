@@ -10,8 +10,7 @@
 
 import { memo, useCallback } from 'react';
 import { Card, CardContent } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { AlertTriangle, Activity, Wifi, Users, Brain } from 'lucide-react';
+import { AlertTriangle, Activity, Wifi, Users, Gauge } from 'lucide-react';
 import { formatBitsPerSecond } from '../../lib/units';
 import type { RangedNetworkStats } from '../../lib/rangedNetworkStats';
 import type { ResolvedTimeRange } from '../../lib/timeRange';
@@ -22,7 +21,6 @@ import { OrgSiteHealthOverview } from './OrgSiteHealthOverview';
 import { DetailPanel } from './DetailPanel';
 import { BestPracticesWidget } from '../BestPracticesWidget';
 import { AuditLogsWidget } from '../AuditLogsWidget';
-import { PeerBenchmarking } from '../PeerBenchmarking';
 import type { SelectorTab } from '../UnifiedFilterBar';
 
 interface APStats {
@@ -310,9 +308,6 @@ function AIInsightsBranchComponent({
         </div>
       </div>
 
-      {/* Peer Benchmarking */}
-      <PeerBenchmarking />
-
       {/* Best Practice Evaluation */}
       <div className="space-y-4">
         <div className="border-b pb-2">
@@ -377,16 +372,11 @@ function AIInsightsBranchComponent({
         <CardContent className="py-4">
           <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
             <div className="flex items-center gap-4">
-              <Brain className="h-4 w-4" />
+              <Gauge className="h-4 w-4" />
               <span>
-                Select <strong>Site</strong>, <strong>AP</strong>, <strong>Switch</strong>{' '}
-                <Badge
-                  variant="outline"
-                  className="text-[9px] px-1.5 py-0 h-4 border-[color:var(--status-warning)]/50 text-[color:var(--status-warning)]"
-                >
-                  Beta
-                </Badge>
-                , or <strong>Client</strong> above to drill into specific details
+                Pick a <strong>Site</strong> to scope this page, or select an{' '}
+                <strong>Access Point</strong> or <strong>Client</strong> above to drill into
+                specific details
               </span>
             </div>
           </div>

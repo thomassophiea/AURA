@@ -9,7 +9,7 @@ import {
   ArrowDown,
   ArrowRight,
   ArrowUp,
-  Brain,
+
   CheckCircle,
   CheckCircle2,
   Eye,
@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { formatBitsPerSecond } from '../../lib/units';
 
-type SelectorTab = 'ai-insights' | 'access-point' | 'client' | 'switch' | 'site';
+type SelectorTab = 'ai-insights' | 'access-point' | 'client' | 'site';
 
 type HealthTab = 'needsAttention' | 'healthy';
 
@@ -70,9 +70,9 @@ interface DetailPanelProps {
 }
 
 /**
- * DetailPanel — the AI Insights Detail Panel: Health Category Tabs
- * (Needs Attention / Healthy / Selected Event), AI Analysis section
- * with flashy gradient, Events table with severity/affected breakdown.
+ * DetailPanel — the Network Overview detail panel: Health Category Tabs
+ * (Needs Attention / Healthy / Selected Event), live status summary section
+ * and the events table with severity/affected breakdown.
  *
  * Extracted as a single ~800-line block from DashboardEnhanced; touches
  * only what's in DetailPanelProps. State remains owned by the parent.
@@ -168,33 +168,23 @@ function DetailPanelImpl({
         {/* Tab Content */}
         {!selectedNetworkEvent ? (
           <div className="space-y-4">
-            {/* AI Assistant Panel - Flashy Design */}
-            <div className="relative overflow-hidden rounded-xl border border-purple-500/30 bg-card dark:bg-gradient-to-br dark:from-slate-900 dark:via-purple-950/50 dark:to-slate-900">
-              {/* Animated background effects */}
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-purple-600/10 via-transparent to-transparent" />
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-cyan-600/10 via-transparent to-transparent" />
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-purple-500/50 to-transparent" />
-
+            {/* Live status summary panel */}
+            <div className="relative overflow-hidden rounded-xl border border-border/60 bg-card">
               {/* Header */}
-              <div className="relative px-4 py-3 border-b border-purple-500/20 flex items-center justify-between">
+              <div className="relative px-4 py-3 border-b border-border/50 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <div className="absolute inset-0 bg-purple-500/20 rounded-lg blur-md animate-pulse" />
-                    <div className="relative bg-gradient-to-br from-purple-500 to-cyan-500 p-2 rounded-lg">
-                      <Brain className="w-5 h-5 text-white" />
-                    </div>
+                  <div className="bg-muted p-2 rounded-lg">
+                    <Activity className="w-5 h-5 text-foreground" />
                   </div>
                   <div>
                     <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                      AI Network Analysis
+                      Network Status
                       <span className="relative flex h-2 w-2">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                       </span>
                     </h3>
-                    <p className="text-xs text-muted-foreground">
-                      Real-time insights powered by AI
-                    </p>
+                    <p className="text-xs text-muted-foreground">Live summary of current state</p>
                   </div>
                 </div>
                 <div className="text-xs text-muted-foreground font-mono">
@@ -468,7 +458,7 @@ function DetailPanelImpl({
                         Status
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">
-                        AI Explanation
+                        Details
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground"></th>
                     </tr>
@@ -500,8 +490,8 @@ function DetailPanelImpl({
                               </span>
                             </td>
                             <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">
-                              AI detected {apStats.offline} access point(s) are offline. Check
-                              network connectivity, PoE power delivery, or hardware status.
+                              {apStats.offline} access point(s) are offline. Check network
+                              connectivity, PoE power delivery, or hardware status.
                             </td>
                             <td className="px-4 py-3">
                               <button
