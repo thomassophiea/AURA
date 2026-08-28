@@ -106,6 +106,33 @@ describe('vlanTrunkCheck', () => {
     expect(lldpCalls[0][0]).not.toContain('undefined');
   });
 
+  it('folds per-WLAN "no LLDP neighbors" repeats into one note per AP', async () => {
+    routeFetch({
+      services: {
+        data: [
+          { serviceName: 'AURA-CWP', defaultTopology: 'topo-1' },
+          { serviceName: 'GUEST_2026', defaultTopology: 'topo-3' },
+        ],
+      },
+      topologies: {
+        data: [
+          { id: 'topo-1', name: 'Bridged VLAN 1', vlanid: 1 },
+          { id: 'topo-3', name: 'Bridged VLAN 3', vlanid: 3 },
+        ],
+      },
+      aps: { data: [{ serialNumber: 'CV012408S-C0102', apName: 'AP5020-PVT-01' }] },
+      lldp: { 'CV012408S-C0102': [] },
+    });
+
+    const { alerts } = await runVlanTrunkCheck({ authToken: 'x', controllerUrl: 'http://t' });
+
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].severity).toBe('info');
+    expect(alerts[0].message).toContain('AP5020-PVT-01 has no LLDP neighbors');
+    expect(alerts[0].message).toContain('AURA-CWP');
+    expect(alerts[0].message).toContain('GUEST_2026');
+  });
+
   it('reports a warning with port detail when the VLAN is missing from the trunk', async () => {
     routeFetch({
       lldp: {
