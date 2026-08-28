@@ -4,11 +4,20 @@
  */
 
 import net from 'node:net';
-import { exec } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 const TCP_TIMEOUT_MS = 5000;
+
+// Hosts come from controller configuration fields (free text). Only a plain
+// IP or hostname may reach the ping binary — anything else is rejected, and
+// execFile (no shell) means even an accepted value cannot chain commands.
+const SAFE_HOST_RE = /^[A-Za-z0-9]([A-Za-z0-9.:-]{0,252}[A-Za-z0-9])?$/;
+
+export function isSafeHost(host) {
+  return typeof host === 'string' && SAFE_HOST_RE.test(host);
+}
 
 export function isLoopback(host) {
   return /^127\.\d+\.\d+\.\d+$/.test(host) || host === '::1' || host === 'localhost';
@@ -35,8 +44,11 @@ export function tcpConnect(host, port, timeoutMs = TCP_TIMEOUT_MS) {
 }
 
 export async function pingHost(host) {
+  if (!isSafeHost(host)) return false;
   try {
-    const { stdout } = await execAsync(`ping -c 2 -W 3 ${host}`, { timeout: 10000 });
+    const { stdout } = await execFileAsync('ping', ['-c', '2', '-W', '3', host], {
+      timeout: 10000,
+    });
     return (
       /\d+ received/.test(stdout) && !/ 0 received/.test(stdout) && !/100% packet loss/.test(stdout)
     );
@@ -47,6 +59,7 @@ export async function pingHost(host) {
 
 /** TCP first (port-specific), ICMP as fallback. */
 export async function probeHost(host, port) {
+  if (!isSafeHost(host)) return { reachable: false, method: 'invalid-host' };
   if (await tcpConnect(host, port)) return { reachable: true, method: 'tcp' };
   const icmp = await pingHost(host);
   return { reachable: icmp, method: icmp ? 'icmp' : 'none' };

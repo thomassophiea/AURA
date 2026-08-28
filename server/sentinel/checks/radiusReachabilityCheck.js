@@ -1,63 +1,9 @@
-import net from 'node:net';
-import { exec } from 'node:child_process';
-import { promisify } from 'node:util';
 import { fetchXcc } from '../../validationEngine/xccClient.js';
+// Shared, injection-safe probes: hosts come from controller config (free
+// text), so they are validated and never passed through a shell.
+import { probeHost, isLoopback } from './netProbe.js';
 
-const execAsync = promisify(exec);
 const DEFAULT_RADIUS_PORT = 1812;
-const TCP_TIMEOUT_MS = 5000;
-
-/**
- * Skip loopback / link-local addresses — not meaningful external servers.
- */
-function isLoopback(host) {
-  return /^127\.\d+\.\d+\.\d+$/.test(host) || host === '::1' || host === 'localhost';
-}
-
-/**
- * ICMP ping a host. Returns true if at least one reply received.
- */
-async function pingHost(host) {
-  try {
-    const { stdout } = await execAsync(`ping -c 2 -W 3 ${host}`, { timeout: 10000 });
-    return /\d+ received/.test(stdout) && !/ 0 received/.test(stdout) && !/100% packet loss/.test(stdout);
-  } catch {
-    return false;
-  }
-}
-
-/**
- * TCP connect test to a host:port. Resolves true if connection succeeds.
- */
-function tcpConnect(host, port, timeoutMs = TCP_TIMEOUT_MS) {
-  return new Promise((resolve) => {
-    const socket = new net.Socket();
-    socket.setTimeout(timeoutMs);
-    socket.on('connect', () => {
-      socket.destroy();
-      resolve(true);
-    });
-    socket.on('timeout', () => {
-      socket.destroy();
-      resolve(false);
-    });
-    socket.on('error', () => {
-      socket.destroy();
-      resolve(false);
-    });
-    socket.connect(port, host);
-  });
-}
-
-/**
- * Multi-method reachability probe: try TCP first (port-specific), fall back to ICMP.
- */
-async function probeHost(host, port) {
-  const tcp = await tcpConnect(host, port);
-  if (tcp) return { reachable: true };
-  const icmp = await pingHost(host);
-  return { reachable: icmp };
-}
 
 /**
  * Extract unique RADIUS server host:port pairs from AAA policies.
