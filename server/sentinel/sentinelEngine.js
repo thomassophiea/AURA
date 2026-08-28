@@ -1,4 +1,5 @@
 import { AlertStore } from './alertStore.js';
+import * as repo from './sentinelRepository.js';
 import { runRadiusReachabilityCheck } from './checks/radiusReachabilityCheck.js';
 import { runDhcpReachabilityCheck } from './checks/dhcpReachabilityCheck.js';
 import { runClientDhcpFailureCheck } from './checks/clientDhcpFailureCheck.js';
@@ -15,6 +16,9 @@ export class SentinelEngine {
   #fetchFn = null;
   #timer = null;
   #intervalMs = null;
+  // A schedule restored from Postgres (or suspended by auth expiry) that
+  // resumes as soon as fresh controller auth arrives via configure().
+  #pendingIntervalMs = null;
   #authExpired = false;
   #lastPollAt = null;
   #polling = false;
@@ -33,6 +37,31 @@ export class SentinelEngine {
     if (siteId !== undefined) this.#siteId = siteId || null;
     if (fetchFn) this.#fetchFn = fetchFn;
     this.#authExpired = false;
+
+    // Resume a persisted/suspended schedule the moment auth is available
+    // again. Not immediate: the request that carried the auth usually follows
+    // with its own poll, which must not collide with a timer-fired one.
+    if (this.#pendingIntervalMs && this.#authToken && this.#controllerUrl && !this.#timer) {
+      this.startPolling(this.#pendingIntervalMs, { immediate: false });
+    }
+  }
+
+  /**
+   * Restore persisted state (alerts, trends, schedule) at boot. Returns true
+   * when something was restored. Safe without a database — resolves false.
+   */
+  async hydrate() {
+    const state = await repo.loadSentinelState();
+    if (!state) return false;
+    this.#alertStore.seed(state.alerts);
+    for (const [check, entries] of Object.entries(state.trends)) {
+      this.#trendStore[check] = entries;
+    }
+    if (state.config?.intervalMs) {
+      this.#pendingIntervalMs = state.config.intervalMs;
+      if (state.config.siteId) this.#siteId = state.config.siteId;
+    }
+    return state.alerts.length > 0 || !!state.config;
   }
 
   #getOpts() {
@@ -73,13 +102,20 @@ export class SentinelEngine {
         const evidence = Array.isArray(result) ? null : result.evidence ?? null;
 
         const activeIds = new Set();
+        const storedAlerts = [];
         for (const alert of alerts) {
-          this.#alertStore.upsert(alert);
+          const stored = this.#alertStore.upsert(alert);
+          if (stored) storedAlerts.push(stored);
           activeIds.add(alert.id);
         }
 
         // Auto-resolve alerts from this check that were not seen
         this.#alertStore.resolveAbsent(name, activeIds);
+
+        // Mirror to Postgres, best-effort — persistence trouble never fails a poll.
+        repo
+          .syncCheckAlerts(name, storedAlerts)
+          .catch((e) => console.warn(`[Sentinel] alert persistence failed: ${e.message}`));
 
         if (evidence) {
           this.#checkEvidence[name] = {
@@ -100,7 +136,10 @@ export class SentinelEngine {
       } catch (err) {
         if (err.message?.startsWith('401')) {
           this.#authExpired = true;
-          this.stopPolling();
+          // Suspend rather than forget: the schedule resumes automatically
+          // when the next request arrives with fresh controller auth.
+          this.#pendingIntervalMs = this.#intervalMs ?? this.#pendingIntervalMs;
+          this.stopPolling({ forget: false });
           this.#polling = false;
           return { error: 'auth_expired' };
         }
@@ -120,20 +159,38 @@ export class SentinelEngine {
     return results;
   }
 
-  startPolling(intervalMs = DEFAULT_INTERVAL_MS) {
-    this.stopPolling();
+  startPolling(intervalMs = DEFAULT_INTERVAL_MS, { immediate = true } = {}) {
+    this.#clearTimer();
+    this.#pendingIntervalMs = null;
     this.#intervalMs = intervalMs;
     this.#timer = setInterval(() => this.poll(), intervalMs);
-    // Run immediately
-    this.poll();
+    if (immediate) this.poll();
+    repo
+      .saveSchedule(intervalMs, this.#siteId)
+      .catch((e) => console.warn(`[Sentinel] schedule persistence failed: ${e.message}`));
   }
 
-  stopPolling() {
+  /**
+   * Stop background polling. With `forget: false` the schedule survives in
+   * Postgres and as a pending interval (used for auth expiry and shutdown);
+   * the default is a deliberate user stop, which erases it everywhere.
+   */
+  stopPolling({ forget = true } = {}) {
+    this.#clearTimer();
+    this.#intervalMs = null;
+    if (forget) {
+      this.#pendingIntervalMs = null;
+      repo
+        .clearSchedule()
+        .catch((e) => console.warn(`[Sentinel] schedule persistence failed: ${e.message}`));
+    }
+  }
+
+  #clearTimer() {
     if (this.#timer) {
       clearInterval(this.#timer);
       this.#timer = null;
     }
-    this.#intervalMs = null;
   }
 
   getAlerts({ severity, check } = {}) {
@@ -152,6 +209,9 @@ export class SentinelEngine {
 
   clearAlerts() {
     this.#alertStore.clear();
+    repo
+      .clearAllAlerts()
+      .catch((e) => console.warn(`[Sentinel] alert persistence failed: ${e.message}`));
   }
 
   getEvidence(checkName) {
@@ -163,7 +223,9 @@ export class SentinelEngine {
     return {
       configured: !!this.#controllerUrl,
       polling: this.#timer !== null,
-      intervalMs: this.#intervalMs,
+      // Active interval, or the restored/suspended one awaiting fresh auth —
+      // either way, the schedule the UI should display.
+      intervalMs: this.#intervalMs ?? this.#pendingIntervalMs,
       siteId: this.#siteId,
       lastPollAt: this.#lastPollAt,
       authExpired: this.#authExpired,
@@ -178,6 +240,9 @@ export class SentinelEngine {
     if (this.#trendStore[checkName].length > MAX_TREND_POINTS) {
       this.#trendStore[checkName].shift();
     }
+    repo
+      .recordTrend(checkName, entry)
+      .catch((e) => console.warn(`[Sentinel] trend persistence failed: ${e.message}`));
   }
 
   getTrend(checkName) {
@@ -189,7 +254,8 @@ export class SentinelEngine {
   }
 
   destroy() {
-    this.stopPolling();
+    // Shutdown, not a user stop — the persisted schedule must survive it.
+    this.stopPolling({ forget: false });
     this.#alertStore.destroy();
   }
 }

@@ -2472,6 +2472,16 @@ httpServer.listen(PORT, '0.0.0.0', async () => {
     console.warn(`[Proxy Server] ⚠  Could not seed monitoring source: ${error.message}`);
   }
 
+  // Restore Sentinel alerts/trends/schedule from Postgres so a redeploy does
+  // not blank the Infrastructure board. A restored schedule stays pending
+  // until the first request arrives with controller auth, then resumes.
+  try {
+    const restored = await sentinelEngine.hydrate();
+    if (restored) console.log('[Proxy Server] ✓ Sentinel state restored from Postgres');
+  } catch (error) {
+    console.warn(`[Proxy Server] ⚠  Sentinel state restore failed: ${error.message}`);
+  }
+
   // Retention must actually run or the rolling window never trims. When no
   // scheduled service exists, run it here — it is advisory-locked, so adding a
   // cron service later is safe and needs no change.

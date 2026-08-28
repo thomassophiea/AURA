@@ -734,15 +734,16 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
   }, [status, alerts, onBadgeUpdate]);
 
   // Reflect the engine's actual schedule. The engine is a server-side singleton,
-  // so a schedule set in another session (or before a reload) must show here
-  // rather than the dropdown silently claiming "Off".
+  // so a schedule set in another session, before a reload, or restored from
+  // Postgres after a redeploy (reported via intervalMs even while it waits for
+  // fresh auth) must show here rather than the dropdown silently claiming "Off".
   useEffect(() => {
     if (!status) return;
-    if (!status.polling) {
+    if (!status.intervalMs) {
       setSchedule('0');
       return;
     }
-    const match = SCHEDULE_OPTIONS.find((o) => o.value === String(status.intervalMs ?? ''));
+    const match = SCHEDULE_OPTIONS.find((o) => o.value === String(status.intervalMs));
     if (match) setSchedule(match.value);
   }, [status]);
 

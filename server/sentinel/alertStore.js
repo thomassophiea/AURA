@@ -54,6 +54,18 @@ export class AlertStore {
   }
 
   /**
+   * Seed the store with previously persisted alerts (boot hydration). Existing
+   * entries win — hydration must never clobber state from a poll that already
+   * ran in this process.
+   */
+  seed(alerts) {
+    for (const alert of alerts ?? []) {
+      if (!alert?.id || this.#alerts.has(alert.id)) continue;
+      this.#alerts.set(alert.id, { ...alert, context: alert.context ?? {} });
+    }
+  }
+
+  /**
    * Auto-resolve alerts that were NOT seen in the current poll cycle.
    * Call after a check completes with the set of alert IDs it produced.
    */
