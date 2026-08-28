@@ -145,7 +145,7 @@ describe('apStatusCheck', () => {
     const { alerts, evidence } = await runApStatusCheck(OPTS);
     expect(alerts).toHaveLength(2);
     const critical = alerts.find((a) => a.severity === 'critical');
-    expect(critical.message).toContain('AP-Two is OutOfService');
+    expect(critical.message).toContain('AP-Two is not in service (status: OutOfService');
     const warning = alerts.find((a) => a.severity === 'warning');
     expect(warning.message).toContain('AP-Three reports troubles: radio overheating');
     expect(evidence.summary).toContain('2 of 3');

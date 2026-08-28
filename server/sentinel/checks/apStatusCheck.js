@@ -54,7 +54,7 @@ export async function runApStatusCheck(opts) {
         id: `ap_status:${serial}`,
         severity: 'critical',
         checkName: 'ap_status',
-        message: `Access point ${name} is ${status}${troubles.length ? ` (${troubles.join(', ')})` : ''}`,
+        message: `Access point ${name} is not in service (status: ${status}${troubles.length ? `, ${troubles.join(', ')}` : ''})`,
         target: name,
         context: { apSerial: serial, apName: name, status, troubles },
       });
