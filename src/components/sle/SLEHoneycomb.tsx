@@ -7,6 +7,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { SLESankeyFlow } from './SLESankeyFlow';
+import { SLETrendStrip, seriesDelta } from './SLETrendStrip';
 import { SLERootCausePanel } from './SLERootCausePanel';
 import { buildRootCause } from './sleRootCause';
 import { SLE_STATUS_COLORS, SLE_NODATA_COLOR, getSLEStatus } from '../../types/sle';
@@ -222,6 +223,25 @@ export function SLEHoneycomb({
                 >
                   {noData ? 'No data' : `${sle.successRate.toFixed(1)}%`}
                 </text>
+                {/* Window delta — is this metric moving, and which way */}
+                {!noData &&
+                  (() => {
+                    const delta = seriesDelta(sle);
+                    if (delta === null || Math.abs(delta) < 0.1) return null;
+                    return (
+                      <text
+                        x={hcx}
+                        y={hcy + hexR * 0.52}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fontSize={Math.max(8, hexR * 0.14)}
+                        fontWeight="600"
+                        fill={delta >= 0 ? '#4ade80' : '#f87171'}
+                      >
+                        {delta >= 0 ? '▲' : '▼'} {Math.abs(delta).toFixed(1)}
+                      </text>
+                    );
+                  })()}
               </g>
             );
           })}
@@ -261,6 +281,7 @@ export function SLEHoneycomb({
               {selected.successRate.toFixed(1)}%
             </span>
           </div>
+          <SLETrendStrip sle={selected} />
           <div className="px-3 pb-4">
             <SLESankeyFlow
               sle={selected}

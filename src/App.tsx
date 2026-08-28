@@ -1135,6 +1135,26 @@ export default function App() {
     });
   };
 
+  // Cross-page requests to open an AP detail panel (e.g. clicking the AP named
+  // in an Operational Insights alert). CustomEvent bus, same pattern as
+  // aura:navigate-sentinel.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { serial, name } = ((e as CustomEvent).detail ?? {}) as {
+        serial?: string;
+        name?: string;
+      };
+      if (!serial) return;
+      setDetailPanel({
+        isOpen: true,
+        type: 'access-point',
+        data: { serialNumber: serial, displayName: name },
+      });
+    };
+    window.addEventListener('aura:show-ap-detail', handler);
+    return () => window.removeEventListener('aura:show-ap-detail', handler);
+  }, []);
+
   const handleShowSiteDetail = (siteId: string, siteName: string) => {
     setDetailPanel({
       isOpen: true,

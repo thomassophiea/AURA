@@ -3,6 +3,7 @@ import { AgentCommandBar } from './AgentCommandBar';
 import { AgentWorkspace } from './AgentWorkspace';
 import { useAgentWorkspace } from './useAgentWorkspace';
 import { useCortexContext } from '../../contexts/CortexContext';
+import { markCortexAvailable, CORTEX_DIAGNOSE_EVENT } from '../../lib/cortexLauncher';
 
 // Detail-panel callbacks are preserved for the App.tsx mount signature but
 // are no longer wired — the LLM coworker that surfaced these is gone in
@@ -79,6 +80,26 @@ export function AgentCoworker(_props: AgentCoworkerProps) {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
+  }, [ctx, ws]);
+
+  // Let distant pages (alert rows, detail panels) open the workspace with a
+  // pre-seeded question — and let them detect whether it is mounted at all.
+  useEffect(() => {
+    markCortexAvailable(true);
+    const diagnose = (e: Event) => {
+      const prompt = (e as CustomEvent).detail?.prompt;
+      if (typeof prompt !== 'string' || !prompt) return;
+      ctx.openCortex();
+      ws.open();
+      ws.setPrimaryTab('ops');
+      ws.setActivePanel('conversation');
+      void ctx.sendMessage(prompt);
+    };
+    window.addEventListener(CORTEX_DIAGNOSE_EVENT, diagnose);
+    return () => {
+      markCortexAvailable(false);
+      window.removeEventListener(CORTEX_DIAGNOSE_EVENT, diagnose);
+    };
   }, [ctx, ws]);
 
   return (

@@ -50,6 +50,7 @@ import { isSystemSiteKey, systemSiteLabel } from '../../services/siteCatalog';
 import { buildXiqRootCause } from './xiqRootCause';
 import type { SLESourceSystem } from '../../types/sleContext';
 import { SLERadialMap } from './SLERadialMap';
+import { SLESiteScoreboard } from './SLESiteScoreboard';
 import { SLEOctopus } from './SLEOctopus';
 import { SLEHoneycomb } from './SLEHoneycomb';
 import { SLEWaterfall } from './SLEWaterfall';
@@ -57,6 +58,10 @@ import { SentinelInfraTab } from './SentinelInfraTab';
 import type { SentinelBadgeData } from './SentinelInfraTab';
 import { InfraOsOneGate } from './InfraOsOneGate';
 import { getAlerts as getSentinelAlerts } from '../../services/sentinelService';
+import {
+  fetchSiteThresholds,
+  saveSiteThresholdsRemote,
+} from '../../services/sleThresholdsService';
 import { SLE_STATUS_COLORS, DEFAULT_SLE_THRESHOLDS } from '../../types/sle';
 import type { SLEMetric, SLEThresholds } from '../../types/sle';
 import { toast } from 'sonner';
@@ -282,9 +287,21 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
     loadSiteThresholds(filters.site || 'all')
   );
 
-  // Update thresholds when site changes
+  // Update thresholds when the site changes: local cache immediately (no
+  // flash of defaults), then the shared server copy — thresholds define what a
+  // service level means, so everyone must score against the same ones.
   useEffect(() => {
     setSiteThresholds(loadSiteThresholds(selectedSite));
+    let cancelled = false;
+    fetchSiteThresholds(selectedSite).then((remote) => {
+      if (cancelled || !remote) return;
+      const merged = { ...DEFAULT_SLE_THRESHOLDS, ...remote };
+      setSiteThresholds(merged);
+      saveSiteThresholds(selectedSite, merged); // refresh the local cache
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [selectedSite]);
 
   // Handle clicking on an SLE pill to edit threshold
@@ -342,7 +359,16 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
         : systemSiteLabel(selectedSite) ||
           sites.find((s) => s.id === selectedSite)?.name ||
           selectedSite;
-    toast.success(`${config.label} threshold updated for ${siteName}`);
+
+    // Share the definition with every other browser; local storage already has
+    // it, so a persistence outage only means the change stays on this machine.
+    saveSiteThresholdsRemote(selectedSite, newThresholds).then((shared) => {
+      if (shared) toast.success(`${config.label} threshold updated for ${siteName}`);
+      else
+        toast.warning(
+          `${config.label} threshold saved on this browser only — shared persistence unavailable`
+        );
+    });
 
     // Reload data with new thresholds
     loadData(true);
@@ -733,6 +759,19 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
                   onClientClick={onClientClick}
                   rootCauseBuilder={source === 'xiq' ? buildXiqRootCause : undefined}
                 />
+              )}
+
+              {/* Per-site breakdown, worst first — only meaningful on the
+                  estate-wide view; a single-site view IS its own breakdown. */}
+              {selectedSite === 'all' && source === 'controller' && (
+                <div className="mt-4">
+                  <SLESiteScoreboard
+                    sites={sites}
+                    stations={stations}
+                    aps={aps}
+                    onSelectSite={setSelectedSite}
+                  />
+                </div>
               )}
             </>
           )}

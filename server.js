@@ -25,6 +25,7 @@ import { driftMonitor } from './server/validationEngine/driftMonitor.js';
 import { registerResolver } from './server/cortex/toolDispatcher.js';
 import { sentinelEngine } from './server/sentinel/sentinelEngine.js';
 import { createSentinelRouter } from './server/sentinel/sentinelRouter.js';
+import { createSleThresholdsRouter } from './server/sle/thresholdsRouter.js';
 import { createMonitoringRouter } from './server/monitoring/monitoringRouter.js';
 import { createEnergyRouter } from './server/energy/energyRouter.js';
 import { createLightAwareRouter } from './server/energy/lightAware/router.js';
@@ -2120,6 +2121,11 @@ app.use('/api', createValidationRouter());
 // ==================== Sentinel Engine Routes ====================
 app.use(['/api/sentinel'], requireAuth);
 app.use('/api', createSentinelRouter());
+
+// ==================== SLE Threshold Routes ====================
+// Per-site SLE thresholds shared across users (Postgres-backed).
+app.use(['/api/sle'], requireAuth);
+app.use('/api', createSleThresholdsRouter());
 
 // ==================== Monitoring Persistence Routes ====================
 // Historical monitoring/SLE data served from PostgreSQL. These routes carry

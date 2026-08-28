@@ -30,7 +30,9 @@ import {
   Webhook,
   Check,
   Undo2,
+  Sparkles,
 } from 'lucide-react';
+import { launchCortexDiagnosis } from '../../lib/cortexLauncher';
 import {
   Dialog,
   DialogContent,
@@ -221,6 +223,44 @@ function checkStatusBadge(
           Idle
         </Badge>
       );
+  }
+}
+
+/**
+ * The alert's target, as a link into the AP detail panel when the alert names
+ * an access point, or plain text otherwise.
+ */
+function AlertTarget({ alert }: { alert: SentinelAlert }) {
+  const apSerial = alert.context?.apSerial as string | undefined;
+  if (!apSerial) return <span>{alert.target}</span>;
+  return (
+    <button
+      className="underline decoration-dotted underline-offset-2 hover:text-foreground transition-colors"
+      title="Open access point details"
+      onClick={(e) => {
+        e.stopPropagation();
+        window.dispatchEvent(
+          new CustomEvent('aura:show-ap-detail', {
+            detail: { serial: apSerial, name: alert.target },
+          })
+        );
+      }}
+    >
+      {alert.target}
+    </button>
+  );
+}
+
+/** Ask AURA Cortex to diagnose an alert; explains how to enable it when absent. */
+function handleDiagnose(alert: SentinelAlert) {
+  const label = CHECK_CONFIG[alert.checkName]?.label ?? alert.checkName;
+  const launched = launchCortexDiagnosis(
+    `Diagnose this network alert and recommend remediation steps: "${alert.message}". ` +
+      `Severity: ${alert.severity}. Source check: ${label}. Target: ${alert.target}. ` +
+      `Seen ${alert.occurrences} time(s).`
+  );
+  if (!launched) {
+    toast.info('Enable Dev mode with the Network Assistant to diagnose alerts with AURA Cortex.');
   }
 }
 
@@ -1463,27 +1503,38 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
                                   acknowledged
                                 </Badge>
                               )}
-                              <span>{alert.target}</span>
+                              <AlertTarget alert={alert} />
                               {alert.occurrences > 1 && (
                                 <span className="font-medium">{alert.occurrences}x</span>
                               )}
                               <span>{formatPollTimestamp(alert.lastSeenAt)}</span>
                             </div>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="shrink-0 h-7 px-2 text-muted-foreground"
-                            title={acked ? 'Reopen this alert' : 'Acknowledge — being handled'}
-                            onClick={() => handleAcknowledge(alert.id, acked)}
-                          >
-                            {acked ? (
-                              <Undo2 className="h-3.5 w-3.5" />
-                            ) : (
-                              <Check className="h-3.5 w-3.5" />
-                            )}
-                            <span className="ml-1 text-[11px]">{acked ? 'Reopen' : 'Ack'}</span>
-                          </Button>
+                          <div className="flex items-center shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-muted-foreground"
+                              title="Diagnose with AURA Cortex"
+                              onClick={() => handleDiagnose(alert)}
+                            >
+                              <Sparkles className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-muted-foreground"
+                              title={acked ? 'Reopen this alert' : 'Acknowledge — being handled'}
+                              onClick={() => handleAcknowledge(alert.id, acked)}
+                            >
+                              {acked ? (
+                                <Undo2 className="h-3.5 w-3.5" />
+                              ) : (
+                                <Check className="h-3.5 w-3.5" />
+                              )}
+                              <span className="ml-1 text-[11px]">{acked ? 'Reopen' : 'Ack'}</span>
+                            </Button>
+                          </div>
                         </div>
                       );
                     })}
@@ -1507,7 +1558,7 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
                             {alert.message}
                           </div>
                           <div className="flex items-center gap-2 flex-wrap text-[10px] text-muted-foreground/70">
-                            <span>{alert.target}</span>
+                            <AlertTarget alert={alert} />
                             {alert.occurrences > 1 && (
                               <span className="font-medium">{alert.occurrences}x</span>
                             )}
