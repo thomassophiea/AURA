@@ -302,7 +302,18 @@ export function SLESankeyFlow({ sle, onClassifierClick }: SLESankeyFlowProps) {
               opacity={isHovered ? 1 : 0.85}
               stroke={isHovered ? '#fff' : 'rgba(255,255,255,0.15)'}
               strokeWidth={isHovered ? 2 : 1}
-              className="transition-all duration-200 cursor-pointer"
+              className="transition-all duration-200 cursor-pointer focus:outline-none"
+              role="button"
+              tabIndex={0}
+              aria-label={`${bar.classifier.name}: ${bar.classifier.affectedClients} ${entityLabel} affected — show root cause`}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onClassifierClick?.(bar.classifier);
+                }
+              }}
+              onFocus={() => setHovered(bar.classifier.id)}
+              onBlur={() => setHovered(null)}
               onMouseEnter={() => setHovered(bar.classifier.id)}
               onMouseLeave={() => setHovered(null)}
               onClick={() => onClassifierClick?.(bar.classifier)}

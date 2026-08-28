@@ -114,6 +114,8 @@ export function SLEHoneycomb({
           height={svgH}
           viewBox={`0 0 ${svgW} ${svgH}`}
           className="w-full overflow-visible"
+          role="group"
+          aria-label="Service level metrics honeycomb — select a metric for its breakdown"
         >
           <defs>
             {sles.map((sle) => {
@@ -159,8 +161,22 @@ export function SLEHoneycomb({
             return (
               <g
                 key={sle.id}
-                className="cursor-pointer"
+                role="button"
+                tabIndex={0}
+                aria-label={`${sle.name}: ${
+                  noData ? 'no data' : `${sle.successRate.toFixed(1)}%`
+                } — show breakdown`}
+                aria-pressed={isSelected}
+                className="cursor-pointer focus:outline-none"
                 onClick={() => setSelectedId(isSelected ? null : sle.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelectedId(isSelected ? null : sle.id);
+                  }
+                }}
+                onFocus={() => setHoveredId(sle.id)}
+                onBlur={() => setHoveredId(null)}
                 onMouseEnter={() => setHoveredId(sle.id)}
                 onMouseLeave={() => setHoveredId(null)}
               >

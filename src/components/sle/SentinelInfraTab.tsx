@@ -934,8 +934,9 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
         </div>
       </div>
 
-      {/* Check cards grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Check cards grid — items-start so expanding one card's evidence does
+          not stretch its row neighbor into dead space. */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
         {Object.entries(CHECK_CONFIG).map(([checkId, config]) => {
           const Icon = config.icon;
           const checkStatus = status?.checks?.[checkId];
@@ -946,10 +947,28 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
           return (
             <div
               key={checkId}
+              role={hasRun ? 'button' : undefined}
+              tabIndex={hasRun ? 0 : undefined}
+              aria-expanded={hasRun ? isExpanded : undefined}
+              aria-label={hasRun ? `${config.label} — show evidence` : undefined}
               className={`rounded-lg border bg-card p-4 space-y-3 transition-colors ${
                 isExpanded ? 'border-primary/40 ring-1 ring-primary/20' : 'border-border/50'
-              } ${hasRun ? 'cursor-pointer hover:border-primary/30' : ''}`}
+              } ${
+                hasRun
+                  ? 'cursor-pointer hover:border-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+                  : ''
+              }`}
               onClick={hasRun ? () => handleCardClick(checkId) : undefined}
+              onKeyDown={
+                hasRun
+                  ? (e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleCardClick(checkId);
+                      }
+                    }
+                  : undefined
+              }
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">

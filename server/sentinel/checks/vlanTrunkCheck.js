@@ -16,6 +16,15 @@ function apName(ap) {
   return ap.apName ?? ap.name ?? ap.hostName ?? ap.hostname ?? null;
 }
 
+// Same mapping the DHCP check uses — raw controller enums like "DHCPNone"
+// must not leak into the evidence tables.
+function friendlyDhcpMode(mode) {
+  if (mode === 'DHCPRelay' || mode === 'DHCP Relay') return 'Relay';
+  if (mode === 'DHCPServer' || mode === 'Local') return 'Server';
+  if (mode == null || mode === 'DHCPNone') return 'None';
+  return mode;
+}
+
 /**
  * Map each WLAN to its topology's VLAN ID.
  */
@@ -126,7 +135,7 @@ export async function runVlanTrunkCheck(opts) {
     networks: topoList.map((t) => ({
       name: t.name ?? `VLAN ${t.vlanid}`,
       vlanId: t.vlanid,
-      dhcpMode: t.dhcpMode ?? 'Local',
+      dhcpMode: friendlyDhcpMode(t.dhcpMode),
     })),
     wlanMappings: serviceList.map((s) => {
       const svcName = s.serviceName ?? s.name ?? s.ssid;
@@ -219,10 +228,14 @@ export async function runVlanTrunkCheck(opts) {
     const reason = entry.noNeighbors
       ? 'has no LLDP neighbors'
       : 'LLDP neighbor lacks VLAN membership data';
+    // Long WLAN estates make an unreadable sentence — name the first few and
+    // count the rest; the complete list stays in context.ssids for the export.
+    const shown = ssids.slice(0, 3).join(', ');
+    const more = ssids.length - 3;
     const scope =
       ssids.length === 1
         ? `the trunk for SSID ${ssids[0]}`
-        : `trunks for ${ssids.length} SSIDs (${ssids.join(', ')})`;
+        : `trunks for ${ssids.length} SSIDs (${shown}${more > 0 ? ` +${more} more` : ''})`;
     alerts.push({
       id: `vlan_trunk:${serial}:lldp-indeterminate`,
       severity: 'info',
