@@ -26,6 +26,7 @@ import { registerResolver } from './server/cortex/toolDispatcher.js';
 import { sentinelEngine } from './server/sentinel/sentinelEngine.js';
 import { createSentinelRouter } from './server/sentinel/sentinelRouter.js';
 import { createSleThresholdsRouter } from './server/sle/thresholdsRouter.js';
+import { createRequireControllerScope } from './server/monitoring/requireControllerScope.js';
 import { createMonitoringRouter } from './server/monitoring/monitoringRouter.js';
 import { createEnergyRouter } from './server/energy/energyRouter.js';
 import { createLightAwareRouter } from './server/energy/lightAware/router.js';
@@ -2123,8 +2124,11 @@ app.use(['/api/sentinel'], requireAuth);
 app.use('/api', createSentinelRouter());
 
 // ==================== SLE Threshold Routes ====================
-// Per-site SLE thresholds shared across users (Postgres-backed).
-app.use(['/api/sle'], requireAuth);
+// Per-site SLE thresholds shared across users (Postgres-backed). Writes to
+// shared state need a token the controller actually accepts, not merely a
+// Bearer-shaped header — reuse the monitoring layer's controller-validated
+// scope middleware (cached, grace-window on controller blips).
+app.use(['/api/sle'], createRequireControllerScope());
 app.use('/api', createSleThresholdsRouter());
 
 // ==================== Monitoring Persistence Routes ====================

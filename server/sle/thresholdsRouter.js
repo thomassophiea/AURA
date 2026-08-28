@@ -17,7 +17,39 @@ import { getPool, isDatabaseConfigured } from '../db/pool.js';
 
 const THRESHOLDS_SCHEMA_LOCK_KEY = '8270119004461009';
 const SITE_KEY_RE = /^[A-Za-z0-9:_-]{1,128}$/;
-const MAX_BODY_KEYS = 32;
+
+// The SLE metric families the dashboard defines — nothing else is stored.
+const ALLOWED_THRESHOLD_KEYS = new Set([
+  'timeToConnect',
+  'successfulConnects',
+  'coverage',
+  'roaming',
+  'throughput',
+  'capacity',
+  'apHealth',
+]);
+
+/**
+ * Thresholds are a flat map of known metric keys to small objects of finite
+ * numbers (e.g. { coverage: { rssiMin: -70 } }). Anything else is rejected —
+ * this is shared state served back to every browser.
+ */
+export function validateThresholds(body) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return false;
+  const entries = Object.entries(body);
+  if (entries.length === 0 || entries.length > ALLOWED_THRESHOLD_KEYS.size) return false;
+  for (const [key, value] of entries) {
+    if (!ALLOWED_THRESHOLD_KEYS.has(key)) return false;
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const fields = Object.entries(value);
+    if (fields.length > 8) return false;
+    for (const [field, fieldValue] of fields) {
+      if (!/^[A-Za-z0-9_]{1,64}$/.test(field)) return false;
+      if (typeof fieldValue !== 'number' || !Number.isFinite(fieldValue)) return false;
+    }
+  }
+  return true;
+}
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS sle_thresholds (
@@ -73,7 +105,9 @@ export function createSleThresholdsRouter() {
         updatedAt: rows[0]?.updated_at ?? null,
       });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      // Internal detail stays in the server log, not the response.
+      console.warn(`[SLE] threshold read failed: ${error.message}`);
+      res.status(500).json({ error: 'internal error' });
     }
   });
 
@@ -82,13 +116,10 @@ export function createSleThresholdsRouter() {
     const { siteKey } = req.params;
     if (!SITE_KEY_RE.test(siteKey)) return res.status(400).json({ error: 'invalid site key' });
     const thresholds = req.body?.thresholds;
-    if (
-      !thresholds ||
-      typeof thresholds !== 'object' ||
-      Array.isArray(thresholds) ||
-      Object.keys(thresholds).length > MAX_BODY_KEYS
-    ) {
-      return res.status(400).json({ error: 'thresholds must be a small JSON object' });
+    if (!validateThresholds(thresholds)) {
+      return res
+        .status(400)
+        .json({ error: 'thresholds must map known SLE metric keys to objects of finite numbers' });
     }
     if (!(await ready())) return res.status(503).json({ error: 'persistence unavailable' });
     try {
@@ -102,7 +133,9 @@ export function createSleThresholdsRouter() {
       );
       res.json({ ok: true, siteKey });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      // Internal detail stays in the server log, not the response.
+      console.warn(`[SLE] threshold write failed: ${error.message}`);
+      res.status(500).json({ error: 'internal error' });
     }
   });
 
