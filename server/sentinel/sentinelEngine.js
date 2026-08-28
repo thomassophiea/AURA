@@ -14,6 +14,7 @@ export class SentinelEngine {
   #siteId = null;
   #fetchFn = null;
   #timer = null;
+  #intervalMs = null;
   #authExpired = false;
   #lastPollAt = null;
   #polling = false;
@@ -121,6 +122,7 @@ export class SentinelEngine {
 
   startPolling(intervalMs = DEFAULT_INTERVAL_MS) {
     this.stopPolling();
+    this.#intervalMs = intervalMs;
     this.#timer = setInterval(() => this.poll(), intervalMs);
     // Run immediately
     this.poll();
@@ -131,6 +133,7 @@ export class SentinelEngine {
       clearInterval(this.#timer);
       this.#timer = null;
     }
+    this.#intervalMs = null;
   }
 
   getAlerts({ severity, check } = {}) {
@@ -160,6 +163,7 @@ export class SentinelEngine {
     return {
       configured: !!this.#controllerUrl,
       polling: this.#timer !== null,
+      intervalMs: this.#intervalMs,
       siteId: this.#siteId,
       lastPollAt: this.#lastPollAt,
       authExpired: this.#authExpired,

@@ -17,6 +17,8 @@ export interface SentinelCheckStatus {
 export interface SentinelStatus {
   configured: boolean;
   polling: boolean;
+  /** Active schedule interval in ms; null when background polling is off. */
+  intervalMs?: number | null;
   lastPollAt: string | null;
   authExpired: boolean;
   activeAlerts: number;

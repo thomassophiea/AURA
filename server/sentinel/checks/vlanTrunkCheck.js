@@ -8,7 +8,8 @@ function toArray(val) {
 }
 
 function apSerial(ap) {
-  return ap.apSerialNum ?? ap.serialNumber ?? ap.id;
+  // /v1/aps uses serialNumber; /v1/state/sites/{id}/aps uses apSerialNo
+  return ap.apSerialNum ?? ap.serialNumber ?? ap.apSerialNo ?? ap.id;
 }
 
 function apName(ap) {
@@ -54,7 +55,11 @@ function mapWlansToVlans(services, topologies) {
  * Fetch LLDP data for APs in batches.
  */
 async function fetchLldpBatched(aps, opts) {
-  const apList = toArray(aps).slice(0, LLDP_BATCH_SIZE);
+  // An AP without a resolvable serial cannot be queried (the URL would be
+  // /v1/aps/undefined/lldp) and would surface as a bogus "undefined" alert.
+  const apList = toArray(aps)
+    .filter((ap) => apSerial(ap))
+    .slice(0, LLDP_BATCH_SIZE);
   return Promise.all(
     apList.map(async (ap) => {
       const serial = apSerial(ap);
@@ -73,17 +78,33 @@ async function fetchLldpBatched(aps, opts) {
  */
 export async function runVlanTrunkCheck(opts) {
   const osSiteId = opts.siteId && !opts.siteId.startsWith('xiq:') ? opts.siteId : null;
-  const apsPath = osSiteId ? `/v1/state/sites/${encodeURIComponent(osSiteId)}/aps` : '/v1/aps';
+  // Always read /v1/aps — it carries full AP objects (serialNumber + apName).
+  // The site-scoped state list only holds { apSerialNo, entityStatus }, so it is
+  // used purely to narrow the full list down to the selected site's APs.
   const [services, topologies, aps] = await Promise.all([
     fetchXcc('/v1/services', opts),
     fetchXcc('/v1/topologies', opts),
-    fetchXcc(apsPath, opts),
+    fetchXcc('/v1/aps', opts),
   ]);
 
   const serviceList = toArray(services);
   const topoList = toArray(topologies);
   const wlanVlans = mapWlansToVlans(services, topologies);
-  const apList = toArray(aps);
+  let apList = toArray(aps);
+
+  if (osSiteId) {
+    try {
+      const siteAps = toArray(
+        await fetchXcc(`/v1/state/sites/${encodeURIComponent(osSiteId)}/aps`, opts)
+      );
+      const siteSerials = new Set(siteAps.map((ap) => apSerial(ap)).filter(Boolean));
+      if (siteSerials.size > 0) {
+        apList = apList.filter((ap) => siteSerials.has(apSerial(ap)));
+      }
+    } catch {
+      // Site scoping is best-effort; checking every AP beats checking none.
+    }
+  }
 
   // Build serial -> name lookup
   const nameBySerial = new Map();
@@ -132,7 +153,7 @@ export async function runVlanTrunkCheck(opts) {
   }
 
   // Fetch LLDP once for the batch of APs
-  const lldpByAp = await fetchLldpBatched(aps, opts);
+  const lldpByAp = await fetchLldpBatched(apList, opts);
   evidence.lldpResults = lldpByAp.map(({ apSerial: serial, neighbors }) => ({
     accessPoint: displayAp(serial),
     neighbors: neighbors.length,
@@ -150,7 +171,10 @@ export async function runVlanTrunkCheck(opts) {
     if (result.result === 'pass') continue;
 
     for (const affected of result.affectedAps) {
-      const [apPart] = affected.split('(');
+      // Entries look like "SERIAL(port:1/0/23)" for failures or
+      // "SERIAL:no-neighbors" / "SERIAL:no-vlanMembership" for indeterminate —
+      // strip both decorations so only the serial reaches the display name.
+      const apPart = affected.split('(')[0].split(':')[0];
       const portMatch = affected.match(/port:([^)]+)/);
       const switchMatch = affected.match(/switch:([^)]+)/);
 

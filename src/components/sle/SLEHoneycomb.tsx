@@ -51,7 +51,18 @@ export function SLEHoneycomb({
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [rootCause, setRootCause] = useState<SLERootCause | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const detailRef = useRef<HTMLDivElement>(null);
   const [containerW, setContainerW] = useState(800);
+
+  // The drill-down renders below the honeycomb, usually below the fold — bring
+  // it into view when a hexagon is selected, or the click appears to do nothing.
+  useEffect(() => {
+    if (!selectedId) return;
+    const t = window.setTimeout(() => {
+      detailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 50);
+    return () => window.clearTimeout(t);
+  }, [selectedId]);
 
   const selected = sles.find((s) => s.id === selectedId) || null;
   // Overall reflects only metrics that actually have data — empty metrics
@@ -153,10 +164,11 @@ export function SLEHoneycomb({
                 onMouseEnter={() => setHoveredId(sle.id)}
                 onMouseLeave={() => setHoveredId(null)}
               >
-                {/* Dark background hex */}
+                {/* Background hex — theme token, so light mode gets a light
+                    surface instead of a hardcoded near-black slab. */}
                 <polygon
                   points={pts}
-                  fill="rgba(12,12,22,0.92)"
+                  fill="var(--card)"
                   stroke={color}
                   strokeWidth={active ? 2.5 : 1.5}
                   strokeOpacity={active ? 0.9 : 0.45}
@@ -177,7 +189,8 @@ export function SLEHoneycomb({
                   dominantBaseline="middle"
                   fontSize={Math.max(8, hexR * 0.155)}
                   fontWeight="600"
-                  fill="rgba(255,255,255,0.7)"
+                  fill="var(--foreground)"
+                  opacity={0.75}
                 >
                   {sle.name}
                 </text>
@@ -202,7 +215,7 @@ export function SLEHoneycomb({
             y={svgH - 12}
             textAnchor="middle"
             fontSize={11}
-            fill="rgba(255,255,255,0.35)"
+            fill="var(--muted-foreground)"
           >
             Overall: {overallScore.toFixed(1)}% — {overallStatus.toUpperCase()}
           </text>
@@ -211,6 +224,7 @@ export function SLEHoneycomb({
 
       {selected && (
         <div
+          ref={detailRef}
           className="rounded-xl overflow-hidden transition-all duration-300"
           style={{
             background: STATUS_DETAIL_BG[selected.status],

@@ -56,7 +56,7 @@ import { SLEWaterfall } from './SLEWaterfall';
 import { SentinelInfraTab } from './SentinelInfraTab';
 import type { SentinelBadgeData } from './SentinelInfraTab';
 import { InfraOsOneGate } from './InfraOsOneGate';
-import { getStatus as getSentinelStatus } from '../../services/sentinelService';
+import { getAlerts as getSentinelAlerts } from '../../services/sentinelService';
 import { SLE_STATUS_COLORS, DEFAULT_SLE_THRESHOLDS } from '../../types/sle';
 import type { SLEMetric, SLEThresholds } from '../../types/sle';
 import { toast } from 'sonner';
@@ -245,9 +245,19 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
   useEffect(() => {
     const fetchBadge = async () => {
       try {
-        const s = await getSentinelStatus();
-        const severity: SentinelBadgeData['maxSeverity'] = s.activeAlerts > 0 ? 'warning' : 'ok';
-        setSentinelBadge({ alertCount: s.activeAlerts, maxSeverity: severity });
+        // Same semantics as the Infrastructure tab's own badge callback: only
+        // actionable alerts (critical/warning) count, at their true severity —
+        // informational notes must not paint the tab amber.
+        const { alerts } = await getSentinelAlerts();
+        const actionable = alerts.filter((a) => a.severity !== 'info');
+        const severity: SentinelBadgeData['maxSeverity'] = actionable.some(
+          (a) => a.severity === 'critical'
+        )
+          ? 'critical'
+          : actionable.length > 0
+            ? 'warning'
+            : 'ok';
+        setSentinelBadge({ alertCount: actionable.length, maxSeverity: severity });
       } catch {
         // Sentinel may not be running — ignore
       }
@@ -488,20 +498,21 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
   // tab always rendered.
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl tracking-tight">Operational Insights</h2>
+      {/* Header — wraps as a whole row so the title never breaks mid-phrase
+          when the filter controls need the width. */}
+      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+        <div className="min-w-fit">
+          <h2 className="text-3xl tracking-tight whitespace-nowrap">Operational Insights</h2>
           <p className="text-muted-foreground text-sm">
             Service levels &amp; infrastructure health monitoring
             {lastUpdate && (
-              <span className="ml-2">- Updated {lastUpdate.toLocaleTimeString()}</span>
+              <span className="ml-2">&middot; Updated {lastUpdate.toLocaleTimeString()}</span>
             )}
           </p>
           {/* The resolved dates, so a screenshot of this page is unambiguous. */}
           <SelectedRangeLabel range={selectedRange} coverage={selectedCoverage} className="mt-2" />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* OS1 and XIQ are separate aggregates — their metrics differ, so
               there is no single combined "All Sites". This page used to carry
               its own copy of the grouped dropdown; it now shares the one picker

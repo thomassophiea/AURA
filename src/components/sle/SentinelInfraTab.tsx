@@ -3,7 +3,7 @@
  * Shows check cards, controls (Run Now, schedule), and an alert timeline.
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -83,6 +83,9 @@ const CHECK_CONFIG: Record<
   },
 };
 
+/** Results older than this are re-polled automatically when the tab opens. */
+const STALE_POLL_MS = 10 * 60 * 1000;
+
 const SCHEDULE_OPTIONS = [
   { value: '0', label: 'Off' },
   { value: '3600000', label: 'Hourly' },
@@ -116,7 +119,33 @@ function severityBadgeClass(severity: string) {
   }
 }
 
-function checkStatusBadge(status: SentinelCheckStatus['status']) {
+/**
+ * The engine's `status` says whether the check *ran* ('ok' = ran cleanly), not
+ * what it *found*. A card announcing "OK" beside "3 critical" reads as a
+ * contradiction, so the badge blends run status with the findings: a check that
+ * ran cleanly but found critical/warning alerts is labeled by its worst finding.
+ */
+function checkStatusBadge(
+  status: SentinelCheckStatus['status'],
+  findings?: { critical: number; warning: number }
+) {
+  if (status === 'ok' && findings && findings.critical > 0) {
+    return (
+      <Badge variant="outline" className="bg-red-500/15 text-red-500 border-red-500/30 text-[10px]">
+        Critical
+      </Badge>
+    );
+  }
+  if (status === 'ok' && findings && findings.warning > 0) {
+    return (
+      <Badge
+        variant="outline"
+        className="bg-amber-500/15 text-amber-500 border-amber-500/30 text-[10px]"
+      >
+        Warning
+      </Badge>
+    );
+  }
   switch (status) {
     case 'ok':
       return (
@@ -152,6 +181,17 @@ function checkStatusBadge(status: SentinelCheckStatus['status']) {
         </Badge>
       );
   }
+}
+
+/**
+ * A bare time like "3:36 PM" is misleading once the result is a day old —
+ * include the date whenever the timestamp is not from today.
+ */
+function formatPollTimestamp(iso: string): string {
+  const d = new Date(iso);
+  return d.toDateString() === new Date().toDateString()
+    ? d.toLocaleTimeString()
+    : d.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
 // ── Callbacks for the badge poller (exposed to parent) ──
@@ -675,30 +715,50 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
   });
 
   const status = data?.status ?? null;
-  const alerts = data?.alerts ?? [];
+  const alerts = useMemo(() => data?.alerts ?? [], [data?.alerts]);
   const trends = data?.trends ?? {};
 
-  // Push badge data to parent whenever data changes
+  // Push badge data to parent whenever data changes. Only actionable alerts
+  // (critical/warning) count toward the tab badge — informational notes about
+  // incomplete data should not raise an alarm on the tab bar.
   useEffect(() => {
     if (onBadgeUpdate && status) {
-      const maxSeverity = alerts.some((a) => a.severity === 'critical')
+      const actionable = alerts.filter((a) => a.severity !== 'info');
+      const maxSeverity = actionable.some((a) => a.severity === 'critical')
         ? 'critical'
-        : alerts.some((a) => a.severity === 'warning')
+        : actionable.length > 0
           ? 'warning'
           : 'ok';
-      onBadgeUpdate({ alertCount: status.activeAlerts, maxSeverity });
+      onBadgeUpdate({ alertCount: actionable.length, maxSeverity });
     }
   }, [status, alerts, onBadgeUpdate]);
 
-  // Auto-run one poll the first time the tab opens with no prior results. The
-  // engine is idle until something triggers it, so without this the cards sit
-  // on "Not Started / No data" until the user clicks Run Now. We only do this
-  // when the engine has genuinely never run (no lastPollAt) and isn't already
-  // polling, so it never fights a scheduled run or repeats on every render.
+  // Reflect the engine's actual schedule. The engine is a server-side singleton,
+  // so a schedule set in another session (or before a reload) must show here
+  // rather than the dropdown silently claiming "Off".
+  useEffect(() => {
+    if (!status) return;
+    if (!status.polling) {
+      setSchedule('0');
+      return;
+    }
+    const match = SCHEDULE_OPTIONS.find((o) => o.value === String(status.intervalMs ?? ''));
+    if (match) setSchedule(match.value);
+  }, [status]);
+
+  // Auto-run one poll when the tab opens with no results, or with results old
+  // enough to mislead. The engine is idle until something triggers it, so
+  // without this the cards sit on "Not Started / No data" (or on an hours-old
+  // answer) until the user clicks Run Now. We never fight a configured
+  // schedule (status.polling) and never repeat within a mount.
   const autoPolledRef = useRef(false);
   useEffect(() => {
     if (autoPolledRef.current || !status) return;
-    if (status.lastPollAt || status.polling || pollRunning) return;
+    if (status.polling || pollRunning) return;
+    const lastPollAge = status.lastPollAt
+      ? Date.now() - new Date(status.lastPollAt).getTime()
+      : Infinity;
+    if (lastPollAge < STALE_POLL_MS) return;
     autoPolledRef.current = true;
     setPollRunning(true);
     triggerPoll(siteId)
@@ -870,9 +930,7 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
               Auth Expired
             </Badge>
           )}
-          {status?.lastPollAt && (
-            <span>Last poll: {new Date(status.lastPollAt).toLocaleTimeString()}</span>
-          )}
+          {status?.lastPollAt && <span>Last poll: {formatPollTimestamp(status.lastPollAt)}</span>}
         </div>
       </div>
 
@@ -904,7 +962,7 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  {checkStatus && checkStatusBadge(checkStatus.status)}
+                  {checkStatus && checkStatusBadge(checkStatus.status, checkAlertData)}
                   {hasRun &&
                     (isExpanded ? (
                       <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
@@ -955,7 +1013,7 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
 
                 {checkStatus?.lastRunAt && (
                   <span className="text-muted-foreground ml-auto">
-                    {new Date(checkStatus.lastRunAt).toLocaleTimeString()}
+                    {formatPollTimestamp(checkStatus.lastRunAt)}
                   </span>
                 )}
                 {trends[checkId] && trends[checkId].length >= 2 && (
@@ -1038,7 +1096,7 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
                             {alert.occurrences > 1 && (
                               <span className="font-medium">{alert.occurrences}x</span>
                             )}
-                            <span>{new Date(alert.lastSeenAt).toLocaleTimeString()}</span>
+                            <span>{formatPollTimestamp(alert.lastSeenAt)}</span>
                           </div>
                         </div>
                       </div>
@@ -1067,7 +1125,7 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
                             {alert.occurrences > 1 && (
                               <span className="font-medium">{alert.occurrences}x</span>
                             )}
-                            <span>{new Date(alert.lastSeenAt).toLocaleTimeString()}</span>
+                            <span>{formatPollTimestamp(alert.lastSeenAt)}</span>
                           </div>
                         </div>
                       </div>
