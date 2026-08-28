@@ -21,8 +21,13 @@ interface SLETrendStripProps {
   sle: SLEMetric;
 }
 
-/** Change across the series in percentage points, or null when unknowable. */
+/**
+ * Change across the series in percentage points, or null when unknowable.
+ * Only history-backed series qualify — the local buffer's series are not
+ * percentages (Mbps, seconds, severity scores) and would produce nonsense.
+ */
 export function seriesDelta(sle: SLEMetric): number | null {
+  if (!sle.historyBacked) return null;
   const points = sle.timeSeries ?? [];
   if (points.length < 2) return null;
   return points[points.length - 1].successRate - points[0].successRate;
@@ -49,7 +54,7 @@ function TrendTooltip({ active, payload }: TrendTooltipProps) {
 
 export function SLETrendStrip({ sle }: SLETrendStripProps) {
   const points = sle.timeSeries ?? [];
-  if (points.length < 2) return null;
+  if (!sle.historyBacked || points.length < 2) return null;
 
   const color = SLE_STATUS_COLORS[sle.status].hex;
   const min = Math.min(...points.map((p) => p.successRate));

@@ -22,6 +22,12 @@ export interface SLEMetric {
    * not "perfect". Defaults to true (treated as data-bearing) when absent.
    */
   hasData?: boolean;
+  /**
+   * True when timeSeries came from persisted history (real stored success
+   * percentages). Only such series may be drawn on a percent axis — the local
+   * collection buffer's series mix units (Mbps, seconds, severity scores).
+   */
+  historyBacked?: boolean;
 }
 
 /**

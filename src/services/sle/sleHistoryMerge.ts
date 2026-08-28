@@ -100,7 +100,11 @@ export function mergeSleHistory(sles: SLEMetric[], series: MetricSeries[]): SleH
     }
 
     gapsById[sle.id] = entries.flatMap((entry) => entry.gaps);
-    return { ...sle, timeSeries };
+    // historyBacked marks a series whose values are real stored percentages —
+    // the only kind the trend visuals may chart. The local collection buffer's
+    // series mix units (Mbps, seconds, severity scores) and must not be drawn
+    // on a percent axis.
+    return { ...sle, timeSeries, historyBacked: true };
   });
 
   return { sles: merged, gapsById };

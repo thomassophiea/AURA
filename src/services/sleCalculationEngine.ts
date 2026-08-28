@@ -121,7 +121,9 @@ export function computeCoverage(stations: any[], historicalData: SLEDataPoint[])
     unit: 'percent',
     totalUserMinutes: total,
     affectedUserMinutes: failedCount,
-    timeSeries: buildTimeSeries(historicalData, 'coverage', true),
+    // The collection buffer stores coverage as percent-GOOD (see
+    // sleDataCollection.ts) — inverting it here charted ~13% for a healthy 86%.
+    timeSeries: buildTimeSeries(historicalData, 'coverage'),
     classifiers,
     description: 'Percentage of client-minutes with adequate signal strength',
   };
