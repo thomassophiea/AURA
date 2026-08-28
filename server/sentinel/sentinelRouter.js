@@ -85,5 +85,37 @@ export function createSentinelRouter() {
     res.json({ cleared: true });
   });
 
+  // POST /sentinel/alerts/:id/ack — acknowledge one alert (body: { by? })
+  router.post('/sentinel/alerts/:id/ack', jsonBody, (req, res) => {
+    const alert = sentinelEngine.acknowledgeAlert(req.params.id, req.body?.by ?? null);
+    if (!alert) return res.status(404).json({ error: 'alert not found' });
+    res.json({ alert });
+  });
+
+  // DELETE /sentinel/alerts/:id/ack — reverse an acknowledgement
+  router.delete('/sentinel/alerts/:id/ack', (req, res) => {
+    const alert = sentinelEngine.unacknowledgeAlert(req.params.id);
+    if (!alert) return res.status(404).json({ error: 'alert not found' });
+    res.json({ alert });
+  });
+
+  // GET /sentinel/webhook — current alert-routing webhook
+  router.get('/sentinel/webhook', (_req, res) => {
+    res.json({ url: sentinelEngine.getWebhookUrl() });
+  });
+
+  // POST /sentinel/webhook — set (body: { url }) or clear (url: null/empty)
+  router.post('/sentinel/webhook', jsonBody, (req, res) => {
+    const accepted = sentinelEngine.setWebhookUrl(req.body?.url ?? null);
+    if (!accepted) return res.status(400).json({ error: 'invalid webhook URL (http/https only)' });
+    res.json({ url: sentinelEngine.getWebhookUrl() });
+  });
+
+  // POST /sentinel/webhook/test — send a test event to the configured webhook
+  router.post('/sentinel/webhook/test', async (_req, res) => {
+    const result = await sentinelEngine.testWebhook();
+    res.status(result.ok ? 200 : 502).json(result);
+  });
+
   return router;
 }

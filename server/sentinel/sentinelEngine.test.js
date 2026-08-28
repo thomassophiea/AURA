@@ -14,6 +14,18 @@ vi.mock('./checks/clientDhcpFailureCheck.js', () => ({
 vi.mock('./checks/vlanTrunkCheck.js', () => ({
   runVlanTrunkCheck: vi.fn().mockResolvedValue([]),
 }));
+vi.mock('./checks/dnsReachabilityCheck.js', () => ({
+  runDnsReachabilityCheck: vi.fn().mockResolvedValue([]),
+}));
+vi.mock('./checks/certExpiryCheck.js', () => ({
+  runCertExpiryCheck: vi.fn().mockResolvedValue([]),
+}));
+vi.mock('./checks/firmwareConsistencyCheck.js', () => ({
+  runFirmwareConsistencyCheck: vi.fn().mockResolvedValue([]),
+}));
+vi.mock('./checks/apStatusCheck.js', () => ({
+  runApStatusCheck: vi.fn().mockResolvedValue([]),
+}));
 
 import { runRadiusReachabilityCheck } from './checks/radiusReachabilityCheck.js';
 import { runClientDhcpFailureCheck } from './checks/clientDhcpFailureCheck.js';

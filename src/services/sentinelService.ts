@@ -19,6 +19,8 @@ export interface SentinelStatus {
   polling: boolean;
   /** Active schedule interval in ms; null when background polling is off. */
   intervalMs?: number | null;
+  /** True when an alert-routing webhook is configured. */
+  webhookConfigured?: boolean;
   lastPollAt: string | null;
   authExpired: boolean;
   activeAlerts: number;
@@ -35,6 +37,8 @@ export interface SentinelAlert {
   firstSeenAt: string;
   lastSeenAt: string;
   resolvedAt: string | null;
+  acknowledgedAt?: string | null;
+  acknowledgedBy?: string | null;
   occurrences: number;
 }
 
@@ -114,6 +118,36 @@ export async function stop(): Promise<{ ok: boolean; status: SentinelStatus }> {
 
 export async function clearAlerts(): Promise<{ cleared: boolean }> {
   return sentinelFetch('/api/sentinel/alerts', { method: 'DELETE' });
+}
+
+export async function acknowledgeAlert(id: string): Promise<{ alert: SentinelAlert }> {
+  return sentinelFetch(`/api/sentinel/alerts/${encodeURIComponent(id)}/ack`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+export async function unacknowledgeAlert(id: string): Promise<{ alert: SentinelAlert }> {
+  return sentinelFetch(`/api/sentinel/alerts/${encodeURIComponent(id)}/ack`, {
+    method: 'DELETE',
+  });
+}
+
+// ── Webhook alert routing ──
+
+export async function getWebhook(): Promise<{ url: string | null }> {
+  return sentinelFetch('/api/sentinel/webhook');
+}
+
+export async function setWebhook(url: string | null): Promise<{ url: string | null }> {
+  return sentinelFetch('/api/sentinel/webhook', {
+    method: 'POST',
+    body: JSON.stringify({ url }),
+  });
+}
+
+export async function testWebhook(): Promise<{ ok: boolean; status?: number; error?: string }> {
+  return sentinelFetch('/api/sentinel/webhook/test', { method: 'POST' });
 }
 
 // ── Trends ──

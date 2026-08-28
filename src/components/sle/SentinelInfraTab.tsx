@@ -23,7 +23,23 @@ import {
   ChevronDown,
   ChevronUp,
   FileSearch,
+  Globe,
+  Lock,
+  Layers,
+  RadioTower,
+  Webhook,
+  Check,
+  Undo2,
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../ui/dialog';
+import { Input } from '../ui/input';
 import { useRealtimePolling } from '../../hooks/useRealtimePolling';
 import {
   getStatus,
@@ -35,6 +51,11 @@ import {
   configure,
   stop,
   clearAlerts,
+  acknowledgeAlert,
+  unacknowledgeAlert,
+  getWebhook,
+  setWebhook,
+  testWebhook,
 } from '../../services/sentinelService';
 import type {
   SentinelStatus,
@@ -80,6 +101,26 @@ const CHECK_CONFIG: Record<
     label: 'Client DHCP Failure',
     icon: Users,
     description: 'Monitors per-SSID DHCP failure rates',
+  },
+  dns_reachability: {
+    label: 'DNS Reachability',
+    icon: Globe,
+    description: 'Verifies DNS servers advertised by local DHCP scopes',
+  },
+  cert_expiry: {
+    label: 'Certificate Expiry',
+    icon: Lock,
+    description: 'Tracks the controller TLS certificate validity window',
+  },
+  firmware_consistency: {
+    label: 'Firmware Consistency',
+    icon: Layers,
+    description: 'Flags hardware types running mixed AP firmware versions',
+  },
+  ap_status: {
+    label: 'AP Status',
+    icon: RadioTower,
+    description: 'Watches AP operational state and reported troubles',
   },
 };
 
@@ -229,6 +270,177 @@ function EvidencePanel({ checkId, evidence }: { checkId: string; evidence: Check
       {checkId === 'radius_reachability' && <RadiusEvidence evidence={evidence} />}
       {checkId === 'client_dhcp_failure' && <ClientDhcpEvidence evidence={evidence} />}
       {checkId === 'vlan_trunk' && <VlanTrunkEvidence evidence={evidence} />}
+      {checkId === 'dns_reachability' && <DnsEvidence evidence={evidence} />}
+      {checkId === 'cert_expiry' && <CertEvidence evidence={evidence} />}
+      {checkId === 'firmware_consistency' && <FirmwareEvidence evidence={evidence} />}
+      {checkId === 'ap_status' && <ApStatusEvidence evidence={evidence} />}
+    </div>
+  );
+}
+
+function DnsEvidence({ evidence }: { evidence: CheckEvidence }) {
+  const results = (evidence.reachabilityResults ?? []) as Array<{
+    server: string;
+    usedBy: string;
+    reachable: boolean;
+  }>;
+  if (!results.length) return null;
+  return (
+    <div className="rounded border border-border/30 overflow-hidden">
+      <div className="bg-muted/40 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+        DNS Server Reachability
+      </div>
+      <table className="w-full text-[11px]">
+        <thead>
+          <tr className="bg-muted/20 text-muted-foreground">
+            <th className="text-left px-2.5 py-1.5 font-medium">Server</th>
+            <th className="text-left px-2.5 py-1.5 font-medium">Advertised On</th>
+            <th className="text-center px-2.5 py-1.5 font-medium">Reachable</th>
+          </tr>
+        </thead>
+        <tbody>
+          {results.map((r) => (
+            <tr key={r.server} className="border-t border-border/20">
+              <td className="px-2.5 py-1.5 font-mono">{r.server}</td>
+              <td className="px-2.5 py-1.5 text-muted-foreground">{r.usedBy}</td>
+              <td className="px-2.5 py-1.5 text-center">
+                {r.reachable ? (
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 inline" />
+                ) : (
+                  <AlertCircle className="h-3.5 w-3.5 text-red-500 inline" />
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function CertEvidence({ evidence }: { evidence: CheckEvidence }) {
+  const cert = evidence.certificate as
+    | {
+        host: string;
+        subject: string;
+        issuer: string;
+        selfSigned: boolean;
+        validFrom: string | null;
+        validTo: string;
+        daysLeft: number;
+      }
+    | undefined;
+  if (!cert) return null;
+  const rows: Array<[string, React.ReactNode]> = [
+    ['Endpoint', <span key="h" className="font-mono">{cert.host}</span>],
+    ['Subject', cert.subject],
+    ['Issuer', cert.selfSigned ? `${cert.issuer} (self-signed)` : cert.issuer],
+    ['Valid from', cert.validFrom ? new Date(cert.validFrom).toLocaleDateString() : '—'],
+    ['Expires', new Date(cert.validTo).toLocaleDateString()],
+    [
+      'Days remaining',
+      <span
+        key="d"
+        className={
+          cert.daysLeft < 7 ? 'text-red-500' : cert.daysLeft < 30 ? 'text-amber-500' : 'text-emerald-500'
+        }
+      >
+        {cert.daysLeft}
+      </span>,
+    ],
+  ];
+  return (
+    <div className="rounded border border-border/30 overflow-hidden">
+      <div className="bg-muted/40 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+        Controller Certificate
+      </div>
+      <table className="w-full text-[11px]">
+        <tbody>
+          {rows.map(([label, value]) => (
+            <tr key={label} className="border-t border-border/20 first:border-t-0">
+              <td className="px-2.5 py-1.5 text-muted-foreground w-32">{label}</td>
+              <td className="px-2.5 py-1.5">{value}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function FirmwareEvidence({ evidence }: { evidence: CheckEvidence }) {
+  const distribution = (evidence.distribution ?? []) as Array<{
+    hardwareType: string;
+    version: string;
+    apCount: number;
+    aps: string;
+  }>;
+  if (!distribution.length) return null;
+  return (
+    <div className="rounded border border-border/30 overflow-hidden">
+      <div className="bg-muted/40 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+        Firmware Distribution
+      </div>
+      <table className="w-full text-[11px]">
+        <thead>
+          <tr className="bg-muted/20 text-muted-foreground">
+            <th className="text-left px-2.5 py-1.5 font-medium">Hardware</th>
+            <th className="text-left px-2.5 py-1.5 font-medium">Version</th>
+            <th className="text-center px-2.5 py-1.5 font-medium">APs</th>
+            <th className="text-left px-2.5 py-1.5 font-medium">Access Points</th>
+          </tr>
+        </thead>
+        <tbody>
+          {distribution.map((d) => (
+            <tr key={`${d.hardwareType}:${d.version}`} className="border-t border-border/20">
+              <td className="px-2.5 py-1.5">{d.hardwareType}</td>
+              <td className="px-2.5 py-1.5 font-mono text-[10px]">{d.version}</td>
+              <td className="px-2.5 py-1.5 text-center">{d.apCount}</td>
+              <td className="px-2.5 py-1.5 text-muted-foreground">{d.aps}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ApStatusEvidence({ evidence }: { evidence: CheckEvidence }) {
+  const statuses = (evidence.apStatuses ?? []) as Array<{
+    accessPoint: string;
+    status: string;
+    troubles: string;
+  }>;
+  if (!statuses.length) return null;
+  return (
+    <div className="rounded border border-border/30 overflow-hidden">
+      <div className="bg-muted/40 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+        Access Point Status ({statuses.length})
+      </div>
+      <table className="w-full text-[11px]">
+        <thead>
+          <tr className="bg-muted/20 text-muted-foreground">
+            <th className="text-left px-2.5 py-1.5 font-medium">Access Point</th>
+            <th className="text-left px-2.5 py-1.5 font-medium">Status</th>
+            <th className="text-left px-2.5 py-1.5 font-medium">Troubles</th>
+          </tr>
+        </thead>
+        <tbody>
+          {statuses.map((s) => (
+            <tr key={s.accessPoint} className="border-t border-border/20">
+              <td className="px-2.5 py-1.5">{s.accessPoint}</td>
+              <td className="px-2.5 py-1.5">
+                {s.status === 'InService' ? (
+                  <span className="text-emerald-500">In service</span>
+                ) : (
+                  <span className="text-red-500">{s.status}</span>
+                )}
+              </td>
+              <td className="px-2.5 py-1.5 text-muted-foreground">{s.troubles}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -615,6 +827,100 @@ function VlanTrunkEvidence({ evidence }: { evidence: CheckEvidence }) {
   );
 }
 
+// ── Webhook settings ──
+
+function SentinelWebhookButton({ configured }: { configured: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [url, setUrl] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const handleOpen = async (next: boolean) => {
+    setOpen(next);
+    if (next) {
+      try {
+        const { url: current } = await getWebhook();
+        setUrl(current ?? '');
+      } catch {
+        // Leave the field as typed; saving will surface any real problem.
+      }
+    }
+  };
+
+  const handleSave = async () => {
+    setBusy(true);
+    try {
+      const trimmed = url.trim();
+      await setWebhook(trimmed || null);
+      toast.success(trimmed ? 'Alert webhook saved' : 'Alert webhook removed');
+      setOpen(false);
+    } catch (err) {
+      toast.error(`Webhook not saved: ${(err as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleTest = async () => {
+    setBusy(true);
+    try {
+      // Test what is typed, not what was last saved.
+      await setWebhook(url.trim() || null);
+      const result = await testWebhook();
+      if (result.ok) toast.success(`Webhook responded ${result.status}`);
+      else toast.error(`Webhook test failed: ${result.error ?? result.status}`);
+    } catch (err) {
+      toast.error(`Webhook test failed: ${(err as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => handleOpen(true)}
+        title="Route new critical/warning alerts to a webhook"
+      >
+        <Webhook
+          className={`mr-1.5 h-3.5 w-3.5 ${configured ? 'text-emerald-500' : ''}`}
+        />
+        Notify
+      </Button>
+      <Dialog open={open} onOpenChange={handleOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Webhook className="h-5 w-5 text-primary" />
+              Alert Webhook
+            </DialogTitle>
+            <DialogDescription>
+              New or reopened critical and warning alerts are POSTed as JSON to this URL — one
+              request per poll cycle. Works with Slack/Teams relays, PagerDuty events, or any
+              HTTP receiver. Leave empty to disable.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="https://hooks.example.com/aura-alerts"
+            aria-label="Webhook URL"
+          />
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" onClick={handleTest} disabled={busy || !url.trim()}>
+              Send test event
+            </Button>
+            <Button onClick={handleSave} disabled={busy}>
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 // ── Component ──
 
 function SentinelExportButton({
@@ -719,11 +1025,11 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
   const trends = data?.trends ?? {};
 
   // Push badge data to parent whenever data changes. Only actionable alerts
-  // (critical/warning) count toward the tab badge — informational notes about
-  // incomplete data should not raise an alarm on the tab bar.
+  // (critical/warning) that nobody has acknowledged count toward the tab
+  // badge — informational notes and acknowledged alerts are not alarms.
   useEffect(() => {
     if (onBadgeUpdate && status) {
-      const actionable = alerts.filter((a) => a.severity !== 'info');
+      const actionable = alerts.filter((a) => a.severity !== 'info' && !a.acknowledgedAt);
       const maxSeverity = actionable.some((a) => a.severity === 'critical')
         ? 'critical'
         : actionable.length > 0
@@ -842,28 +1148,52 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
     }
   };
 
-  // Sort alerts: critical first, then warning, then info; within same severity, newest first
+  const handleAcknowledge = async (id: string, acked: boolean) => {
+    try {
+      if (acked) {
+        await unacknowledgeAlert(id);
+      } else {
+        await acknowledgeAlert(id);
+      }
+      await refresh();
+    } catch (err) {
+      toast.error(`Failed to update alert: ${(err as Error).message}`);
+    }
+  };
+
+  // Sort alerts: critical first, then warning, then info; within a severity,
+  // unacknowledged before acknowledged, then newest first.
   const sortedAlerts = [...alerts].sort((a, b) => {
     const severityOrder = { critical: 0, warning: 1, info: 2 };
     const sa = severityOrder[a.severity as keyof typeof severityOrder] ?? 3;
     const sb = severityOrder[b.severity as keyof typeof severityOrder] ?? 3;
     if (sa !== sb) return sa - sb;
+    const aa = a.acknowledgedAt ? 1 : 0;
+    const ab = b.acknowledgedAt ? 1 : 0;
+    if (aa !== ab) return aa - ab;
     return new Date(b.lastSeenAt).getTime() - new Date(a.lastSeenAt).getTime();
   });
 
-  // Count alerts per check (separate actionable from informational)
+  // Count alerts per check. Acknowledged alerts stop counting toward the
+  // critical/warning numbers (they are being handled) but stay visible as a
+  // separate acknowledged count.
   const alertsByCheck: Record<
     string,
-    { total: number; critical: number; warning: number; info: number }
+    { total: number; critical: number; warning: number; info: number; acked: number }
   > = {};
   for (const alert of alerts) {
     if (!alertsByCheck[alert.checkName]) {
-      alertsByCheck[alert.checkName] = { total: 0, critical: 0, warning: 0, info: 0 };
+      alertsByCheck[alert.checkName] = { total: 0, critical: 0, warning: 0, info: 0, acked: 0 };
     }
-    alertsByCheck[alert.checkName].total++;
-    if (alert.severity === 'critical') alertsByCheck[alert.checkName].critical++;
-    if (alert.severity === 'warning') alertsByCheck[alert.checkName].warning++;
-    if (alert.severity === 'info') alertsByCheck[alert.checkName].info++;
+    const bucket = alertsByCheck[alert.checkName];
+    bucket.total++;
+    if (alert.acknowledgedAt && alert.severity !== 'info') {
+      bucket.acked++;
+      continue;
+    }
+    if (alert.severity === 'critical') bucket.critical++;
+    if (alert.severity === 'warning') bucket.warning++;
+    if (alert.severity === 'info') bucket.info++;
   }
 
   return (
@@ -912,6 +1242,8 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
           )}
 
           <SentinelExportButton disabled={!status?.lastPollAt} status={status} alerts={alerts} />
+
+          <SentinelWebhookButton configured={!!status?.webhookConfigured} />
         </div>
 
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -1015,9 +1347,16 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
                           {checkAlertData.info} note{checkAlertData.info > 1 ? 's' : ''}
                         </span>
                       )}
+                    {checkAlertData.acked > 0 && (
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <Check className="h-3 w-3" />
+                        {checkAlertData.acked} acknowledged
+                      </span>
+                    )}
                     {checkAlertData.critical === 0 &&
                       checkAlertData.warning === 0 &&
-                      checkAlertData.info === 0 && (
+                      checkAlertData.info === 0 &&
+                      checkAlertData.acked === 0 && (
                         <span className="flex items-center gap-1 text-emerald-500">
                           <CheckCircle2 className="h-3 w-3" />
                           All clear
@@ -1097,30 +1436,57 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
                 <div className="space-y-2">
                   <h4 className="text-sm font-medium text-muted-foreground">Alerts</h4>
                   <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1">
-                    {actionable.map((alert) => (
-                      <div
-                        key={alert.id}
-                        className="flex items-start gap-2.5 rounded-lg border border-border/40 bg-card/50 px-3 py-2"
-                      >
-                        <div className="mt-0.5 shrink-0">{severityIcon(alert.severity)}</div>
-                        <div className="flex-1 min-w-0 space-y-0.5">
-                          <div className="text-sm leading-tight">{alert.message}</div>
-                          <div className="flex items-center gap-2 flex-wrap text-[11px] text-muted-foreground">
-                            <Badge
-                              variant="outline"
-                              className={`${severityBadgeClass(alert.severity)} text-[10px] px-1.5 py-0`}
-                            >
-                              {alert.severity}
-                            </Badge>
-                            <span>{alert.target}</span>
-                            {alert.occurrences > 1 && (
-                              <span className="font-medium">{alert.occurrences}x</span>
-                            )}
-                            <span>{formatPollTimestamp(alert.lastSeenAt)}</span>
+                    {actionable.map((alert) => {
+                      const acked = !!alert.acknowledgedAt;
+                      return (
+                        <div
+                          key={alert.id}
+                          className={`flex items-start gap-2.5 rounded-lg border border-border/40 bg-card/50 px-3 py-2 ${
+                            acked ? 'opacity-55' : ''
+                          }`}
+                        >
+                          <div className="mt-0.5 shrink-0">{severityIcon(alert.severity)}</div>
+                          <div className="flex-1 min-w-0 space-y-0.5">
+                            <div className="text-sm leading-tight">{alert.message}</div>
+                            <div className="flex items-center gap-2 flex-wrap text-[11px] text-muted-foreground">
+                              <Badge
+                                variant="outline"
+                                className={`${severityBadgeClass(alert.severity)} text-[10px] px-1.5 py-0`}
+                              >
+                                {alert.severity}
+                              </Badge>
+                              {acked && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] px-1.5 py-0 text-muted-foreground"
+                                >
+                                  acknowledged
+                                </Badge>
+                              )}
+                              <span>{alert.target}</span>
+                              {alert.occurrences > 1 && (
+                                <span className="font-medium">{alert.occurrences}x</span>
+                              )}
+                              <span>{formatPollTimestamp(alert.lastSeenAt)}</span>
+                            </div>
                           </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="shrink-0 h-7 px-2 text-muted-foreground"
+                            title={acked ? 'Reopen this alert' : 'Acknowledge — being handled'}
+                            onClick={() => handleAcknowledge(alert.id, acked)}
+                          >
+                            {acked ? (
+                              <Undo2 className="h-3.5 w-3.5" />
+                            ) : (
+                              <Check className="h-3.5 w-3.5" />
+                            )}
+                            <span className="ml-1 text-[11px]">{acked ? 'Reopen' : 'Ack'}</span>
+                          </Button>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}

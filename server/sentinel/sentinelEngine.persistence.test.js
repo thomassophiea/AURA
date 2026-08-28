@@ -13,7 +13,13 @@ vi.mock('./sentinelRepository.js', () => ({
   recordTrend: vi.fn().mockResolvedValue(undefined),
   saveSchedule: vi.fn().mockResolvedValue(undefined),
   clearSchedule: vi.fn().mockResolvedValue(undefined),
+  setAcknowledged: vi.fn().mockResolvedValue(undefined),
+  saveWebhookUrl: vi.fn().mockResolvedValue(undefined),
 }));
+vi.mock('./sentinelWebhook.js', async (importOriginal) => {
+  const actual = await importOriginal();
+  return { ...actual, dispatchWebhook: vi.fn().mockResolvedValue({ ok: true, status: 200 }) };
+});
 vi.mock('./checks/radiusReachabilityCheck.js', () => ({
   runRadiusReachabilityCheck: vi.fn().mockResolvedValue([]),
 }));
@@ -26,9 +32,22 @@ vi.mock('./checks/clientDhcpFailureCheck.js', () => ({
 vi.mock('./checks/vlanTrunkCheck.js', () => ({
   runVlanTrunkCheck: vi.fn().mockResolvedValue([]),
 }));
+vi.mock('./checks/dnsReachabilityCheck.js', () => ({
+  runDnsReachabilityCheck: vi.fn().mockResolvedValue([]),
+}));
+vi.mock('./checks/certExpiryCheck.js', () => ({
+  runCertExpiryCheck: vi.fn().mockResolvedValue([]),
+}));
+vi.mock('./checks/firmwareConsistencyCheck.js', () => ({
+  runFirmwareConsistencyCheck: vi.fn().mockResolvedValue([]),
+}));
+vi.mock('./checks/apStatusCheck.js', () => ({
+  runApStatusCheck: vi.fn().mockResolvedValue([]),
+}));
 
 import { SentinelEngine } from './sentinelEngine.js';
 import * as repo from './sentinelRepository.js';
+import { dispatchWebhook } from './sentinelWebhook.js';
 import { runRadiusReachabilityCheck } from './checks/radiusReachabilityCheck.js';
 
 const PERSISTED_ALERT = {
@@ -139,6 +158,52 @@ describe('SentinelEngine persistence', () => {
   it('clears persisted alerts when the user clears the board', () => {
     engine.clearAlerts();
     expect(repo.clearAllAlerts).toHaveBeenCalled();
+  });
+
+  it('persists acknowledgements in both directions', async () => {
+    engine.configure({ authToken: 'Bearer t', controllerUrl: 'https://controller.local' });
+    runRadiusReachabilityCheck.mockResolvedValueOnce([
+      { id: 'r:1', severity: 'critical', checkName: 'radius_reachability', message: 'm', target: 't', context: {} },
+    ]);
+    await engine.poll();
+
+    const acked = engine.acknowledgeAlert('r:1', 'admin');
+    expect(acked.acknowledgedAt).toBeTruthy();
+    expect(repo.setAcknowledged).toHaveBeenCalledWith('r:1', acked.acknowledgedAt, 'admin');
+
+    engine.unacknowledgeAlert('r:1');
+    expect(repo.setAcknowledged).toHaveBeenLastCalledWith('r:1', null, null);
+    expect(engine.acknowledgeAlert('missing')).toBeNull();
+  });
+
+  it('dispatches the webhook for new actionable alerts, and only for news', async () => {
+    engine.configure({ authToken: 'Bearer t', controllerUrl: 'https://controller.local' });
+    expect(engine.setWebhookUrl('https://hooks.example.com/aura')).toBe(true);
+    expect(repo.saveWebhookUrl).toHaveBeenCalledWith('https://hooks.example.com/aura');
+
+    const critical = {
+      id: 'r:1', severity: 'critical', checkName: 'radius_reachability',
+      message: 'm', target: 't', context: {},
+    };
+    runRadiusReachabilityCheck.mockResolvedValueOnce([critical]);
+    await engine.poll();
+    expect(dispatchWebhook).toHaveBeenCalledTimes(1);
+    const [, payload] = dispatchWebhook.mock.calls[0];
+    expect(payload.event).toBe('sentinel.alerts');
+    expect(payload.alerts).toHaveLength(1);
+    expect(payload.alerts[0].id).toBe('r:1');
+
+    // Same alert still present next poll — not news, no dispatch.
+    runRadiusReachabilityCheck.mockResolvedValueOnce([critical]);
+    await engine.poll();
+    expect(dispatchWebhook).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a non-http webhook URL and clears on null', () => {
+    expect(engine.setWebhookUrl('ftp://nope')).toBe(false);
+    expect(engine.setWebhookUrl('https://ok.example.com')).toBe(true);
+    expect(engine.setWebhookUrl(null)).toBe(true);
+    expect(engine.getWebhookUrl()).toBeNull();
   });
 
   it('hydration never clobbers alerts from a poll that already ran', async () => {

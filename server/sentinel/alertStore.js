@@ -5,6 +5,8 @@
 const MAX_ACTIVE_ALERTS = 500;
 const RESOLVED_RETENTION_MS = 30 * 60 * 1000; // 30 minutes
 
+const SEVERITY_RANK = { info: 0, warning: 1, critical: 2 };
+
 export class AlertStore {
   #alerts = new Map(); // id -> alert object
   #pruneTimer = null;
@@ -22,6 +24,15 @@ export class AlertStore {
     const existing = this.#alerts.get(id);
 
     if (existing) {
+      // An escalation invalidates a standing acknowledgement — "I know about
+      // the warning" does not cover the critical it became.
+      if (
+        existing.acknowledgedAt &&
+        (SEVERITY_RANK[severity] ?? 0) > (SEVERITY_RANK[existing.severity] ?? 0)
+      ) {
+        existing.acknowledgedAt = null;
+        existing.acknowledgedBy = null;
+      }
       existing.severity = severity;
       existing.message = message;
       existing.context = context;
@@ -47,9 +58,33 @@ export class AlertStore {
       firstSeenAt: now,
       lastSeenAt: now,
       resolvedAt: null,
+      acknowledgedAt: null,
+      acknowledgedBy: null,
       occurrences: 1,
     };
     this.#alerts.set(id, alert);
+    return alert;
+  }
+
+  getById(id) {
+    return this.#alerts.get(id) ?? null;
+  }
+
+  /** Mark an alert as acknowledged (seen, being handled). Returns it, or null. */
+  acknowledge(id, by = null) {
+    const alert = this.#alerts.get(id);
+    if (!alert) return null;
+    alert.acknowledgedAt = new Date().toISOString();
+    alert.acknowledgedBy = by;
+    return alert;
+  }
+
+  /** Reverse an acknowledgement. Returns the alert, or null. */
+  unacknowledge(id) {
+    const alert = this.#alerts.get(id);
+    if (!alert) return null;
+    alert.acknowledgedAt = null;
+    alert.acknowledgedBy = null;
     return alert;
   }
 

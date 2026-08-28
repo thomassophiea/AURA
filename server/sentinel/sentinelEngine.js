@@ -1,9 +1,15 @@
 import { AlertStore } from './alertStore.js';
 import * as repo from './sentinelRepository.js';
+import { getServiceSession } from './sentinelServiceAuth.js';
+import { dispatchWebhook, buildAlertPayload, isValidWebhookUrl } from './sentinelWebhook.js';
 import { runRadiusReachabilityCheck } from './checks/radiusReachabilityCheck.js';
 import { runDhcpReachabilityCheck } from './checks/dhcpReachabilityCheck.js';
 import { runClientDhcpFailureCheck } from './checks/clientDhcpFailureCheck.js';
 import { runVlanTrunkCheck } from './checks/vlanTrunkCheck.js';
+import { runDnsReachabilityCheck } from './checks/dnsReachabilityCheck.js';
+import { runCertExpiryCheck } from './checks/certExpiryCheck.js';
+import { runFirmwareConsistencyCheck } from './checks/firmwareConsistencyCheck.js';
+import { runApStatusCheck } from './checks/apStatusCheck.js';
 
 const DEFAULT_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
 const MAX_TREND_POINTS = 100;
@@ -19,6 +25,7 @@ export class SentinelEngine {
   // A schedule restored from Postgres (or suspended by auth expiry) that
   // resumes as soon as fresh controller auth arrives via configure().
   #pendingIntervalMs = null;
+  #webhookUrl = process.env.SENTINEL_WEBHOOK_URL ?? null;
   #authExpired = false;
   #lastPollAt = null;
   #polling = false;
@@ -28,6 +35,10 @@ export class SentinelEngine {
     dhcp_reachability: { status: 'idle', lastRunAt: null, error: null },
     radius_reachability: { status: 'idle', lastRunAt: null, error: null },
     client_dhcp_failure: { status: 'idle', lastRunAt: null, error: null },
+    dns_reachability: { status: 'idle', lastRunAt: null, error: null },
+    cert_expiry: { status: 'idle', lastRunAt: null, error: null },
+    firmware_consistency: { status: 'idle', lastRunAt: null, error: null },
+    ap_status: { status: 'idle', lastRunAt: null, error: null },
   };
   #checkEvidence = {};
 
@@ -57,9 +68,18 @@ export class SentinelEngine {
     for (const [check, entries] of Object.entries(state.trends)) {
       this.#trendStore[check] = entries;
     }
+    if (state.config?.webhookUrl) this.#webhookUrl = state.config.webhookUrl;
     if (state.config?.intervalMs) {
       this.#pendingIntervalMs = state.config.intervalMs;
       if (state.config.siteId) this.#siteId = state.config.siteId;
+
+      // With a service account the schedule needs nobody's browser: adopt the
+      // deployment's controller and start polling right away. Without one it
+      // stays pending until a request arrives carrying auth.
+      this.#controllerUrl ??= process.env.CAMPUS_CONTROLLER_URL ?? null;
+      if (this.#controllerUrl && getServiceSession(this.#controllerUrl)) {
+        this.startPolling(this.#pendingIntervalMs, { immediate: true });
+      }
     }
     return state.alerts.length > 0 || !!state.config;
   }
@@ -73,19 +93,42 @@ export class SentinelEngine {
     };
   }
 
+  /**
+   * The token to poll with. A configured service account wins: it re-mints
+   * itself and keeps scheduled polls alive long after any browser session
+   * expired. Falls back to the last browser-provided token.
+   */
+  async #resolveAuthToken() {
+    const service = getServiceSession(this.#controllerUrl);
+    if (service?.hasCredentials()) {
+      try {
+        return `Bearer ${await service.getToken()}`;
+      } catch {
+        // Bad or unreachable service credentials — the browser token may
+        // still work, so this is a fallback rather than a failure.
+      }
+    }
+    return this.#authToken;
+  }
+
   async poll() {
     if (!this.#controllerUrl) return { error: 'not_configured' };
     if (this.#polling) return { error: 'poll_in_progress' };
 
     this.#polling = true;
-    const opts = this.#getOpts();
+    const opts = { ...this.#getOpts(), authToken: await this.#resolveAuthToken() };
     const results = {};
+    const notifiable = [];
 
     const checks = [
       { name: 'radius_reachability', fn: runRadiusReachabilityCheck },
       { name: 'dhcp_reachability', fn: runDhcpReachabilityCheck },
       { name: 'client_dhcp_failure', fn: runClientDhcpFailureCheck },
       { name: 'vlan_trunk', fn: runVlanTrunkCheck },
+      { name: 'dns_reachability', fn: runDnsReachabilityCheck },
+      { name: 'cert_expiry', fn: runCertExpiryCheck },
+      { name: 'firmware_consistency', fn: runFirmwareConsistencyCheck },
+      { name: 'ap_status', fn: runApStatusCheck },
     ];
 
     // Mark ALL checks as running upfront so the UI shows them all spinning
@@ -104,8 +147,16 @@ export class SentinelEngine {
         const activeIds = new Set();
         const storedAlerts = [];
         for (const alert of alerts) {
+          // New or reopened actionable alerts are the webhook-worthy events;
+          // an alert merely still present is not news.
+          const before = this.#alertStore.getById(alert.id);
           const stored = this.#alertStore.upsert(alert);
-          if (stored) storedAlerts.push(stored);
+          if (stored) {
+            storedAlerts.push(stored);
+            if (stored.severity !== 'info' && (!before || before.resolvedAt)) {
+              notifiable.push(stored);
+            }
+          }
           activeIds.add(alert.id);
         }
 
@@ -156,7 +207,71 @@ export class SentinelEngine {
 
     this.#lastPollAt = new Date().toISOString();
     this.#polling = false;
+
+    // Route new/reopened actionable alerts, one POST per poll cycle.
+    if (notifiable.length > 0 && this.#webhookUrl) {
+      const payload = buildAlertPayload({
+        alerts: notifiable,
+        controllerUrl: this.#controllerUrl,
+        siteId: this.#siteId,
+      });
+      dispatchWebhook(this.#webhookUrl, payload).then((r) => {
+        if (!r.ok) console.warn(`[Sentinel] webhook dispatch failed: ${r.error ?? r.status}`);
+      });
+    }
+
     return results;
+  }
+
+  // ── Acknowledgement ──
+
+  acknowledgeAlert(id, by = null) {
+    const alert = this.#alertStore.acknowledge(id, by);
+    if (alert) {
+      repo
+        .setAcknowledged(id, alert.acknowledgedAt, alert.acknowledgedBy)
+        .catch((e) => console.warn(`[Sentinel] ack persistence failed: ${e.message}`));
+    }
+    return alert;
+  }
+
+  unacknowledgeAlert(id) {
+    const alert = this.#alertStore.unacknowledge(id);
+    if (alert) {
+      repo
+        .setAcknowledged(id, null, null)
+        .catch((e) => console.warn(`[Sentinel] ack persistence failed: ${e.message}`));
+    }
+    return alert;
+  }
+
+  // ── Webhook routing ──
+
+  getWebhookUrl() {
+    return this.#webhookUrl;
+  }
+
+  /** Set (http/https) or clear (null/empty) the alert webhook. Returns false on an invalid URL. */
+  setWebhookUrl(url) {
+    const next = url ? String(url).trim() : null;
+    if (next && !isValidWebhookUrl(next)) return false;
+    this.#webhookUrl = next;
+    repo
+      .saveWebhookUrl(next)
+      .catch((e) => console.warn(`[Sentinel] webhook persistence failed: ${e.message}`));
+    return true;
+  }
+
+  /** Send a test event so a receiver can be verified before relying on it. */
+  async testWebhook() {
+    if (!this.#webhookUrl) return { ok: false, error: 'no webhook configured' };
+    const payload = buildAlertPayload({
+      alerts: this.#alertStore.getActive().filter((a) => a.severity !== 'info'),
+      controllerUrl: this.#controllerUrl,
+      siteId: this.#siteId,
+      event: 'sentinel.test',
+    });
+    return dispatchWebhook(this.#webhookUrl, payload);
   }
 
   startPolling(intervalMs = DEFAULT_INTERVAL_MS, { immediate = true } = {}) {
@@ -227,6 +342,7 @@ export class SentinelEngine {
       // either way, the schedule the UI should display.
       intervalMs: this.#intervalMs ?? this.#pendingIntervalMs,
       siteId: this.#siteId,
+      webhookConfigured: !!this.#webhookUrl,
       lastPollAt: this.#lastPollAt,
       authExpired: this.#authExpired,
       activeAlerts: this.#alertStore.getActive().length,

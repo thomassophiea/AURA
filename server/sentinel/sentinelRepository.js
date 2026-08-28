@@ -48,6 +48,9 @@ CREATE TABLE IF NOT EXISTS sentinel_config (
   site_id     text,
   updated_at  timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE sentinel_alerts ADD COLUMN IF NOT EXISTS acknowledged_at timestamptz;
+ALTER TABLE sentinel_alerts ADD COLUMN IF NOT EXISTS acknowledged_by text;
+ALTER TABLE sentinel_config ADD COLUMN IF NOT EXISTS webhook_url text;
 `;
 
 let schemaPromise = null;
@@ -95,6 +98,8 @@ function rowToAlert(row) {
     firstSeenAt: row.first_seen_at.toISOString(),
     lastSeenAt: row.last_seen_at.toISOString(),
     resolvedAt: row.resolved_at ? row.resolved_at.toISOString() : null,
+    acknowledgedAt: row.acknowledged_at ? row.acknowledged_at.toISOString() : null,
+    acknowledgedBy: row.acknowledged_by ?? null,
     occurrences: row.occurrences,
   };
 }
@@ -120,7 +125,7 @@ export async function loadSentinelState() {
        ) ranked WHERE rn <= $1 ORDER BY ts ASC`,
       [TREND_POINTS_KEPT]
     ),
-    pool.query('SELECT interval_ms, site_id FROM sentinel_config WHERE singleton'),
+    pool.query('SELECT interval_ms, site_id, webhook_url FROM sentinel_config WHERE singleton'),
   ]);
 
   const trends = {};
@@ -133,7 +138,11 @@ export async function loadSentinelState() {
   }
 
   const config = configRows.rows[0]
-    ? { intervalMs: configRows.rows[0].interval_ms, siteId: configRows.rows[0].site_id }
+    ? {
+        intervalMs: configRows.rows[0].interval_ms,
+        siteId: configRows.rows[0].site_id,
+        webhookUrl: configRows.rows[0].webhook_url ?? null,
+      }
     : null;
 
   return { alerts: alertRows.rows.map(rowToAlert), trends, config };
@@ -151,8 +160,9 @@ export async function syncCheckAlerts(checkName, alerts) {
     await pool.query(
       `INSERT INTO sentinel_alerts
          (id, severity, check_name, message, target, context,
-          first_seen_at, last_seen_at, resolved_at, occurrences)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+          first_seen_at, last_seen_at, resolved_at, occurrences,
+          acknowledged_at, acknowledged_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
        ON CONFLICT (id) DO UPDATE SET
          severity = EXCLUDED.severity,
          message = EXCLUDED.message,
@@ -160,7 +170,9 @@ export async function syncCheckAlerts(checkName, alerts) {
          context = EXCLUDED.context,
          last_seen_at = EXCLUDED.last_seen_at,
          resolved_at = EXCLUDED.resolved_at,
-         occurrences = EXCLUDED.occurrences`,
+         occurrences = EXCLUDED.occurrences,
+         acknowledged_at = EXCLUDED.acknowledged_at,
+         acknowledged_by = EXCLUDED.acknowledged_by`,
       [
         a.id,
         a.severity,
@@ -172,6 +184,8 @@ export async function syncCheckAlerts(checkName, alerts) {
         a.lastSeenAt,
         a.resolvedAt,
         a.occurrences,
+        a.acknowledgedAt ?? null,
+        a.acknowledgedBy ?? null,
       ]
     );
   }
@@ -223,5 +237,29 @@ export async function saveSchedule(intervalMs, siteId) {
 
 export async function clearSchedule() {
   if (!(await ready())) return;
-  await getPool().query('DELETE FROM sentinel_config');
+  // Only the schedule is being forgotten — the webhook survives a stop.
+  await getPool().query(
+    'UPDATE sentinel_config SET interval_ms = NULL, site_id = NULL, updated_at = now()'
+  );
+}
+
+/** Persist an acknowledgement change (both directions). */
+export async function setAcknowledged(id, acknowledgedAt, acknowledgedBy) {
+  if (!(await ready())) return;
+  await getPool().query(
+    'UPDATE sentinel_alerts SET acknowledged_at = $2, acknowledged_by = $3 WHERE id = $1',
+    [id, acknowledgedAt, acknowledgedBy ?? null]
+  );
+}
+
+export async function saveWebhookUrl(url) {
+  if (!(await ready())) return;
+  await getPool().query(
+    `INSERT INTO sentinel_config (singleton, webhook_url, updated_at)
+     VALUES (true, $1, now())
+     ON CONFLICT (singleton) DO UPDATE SET
+       webhook_url = EXCLUDED.webhook_url,
+       updated_at = now()`,
+    [url]
+  );
 }
