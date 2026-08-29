@@ -31,6 +31,9 @@ import { createSsoRouter } from './server/identity/ssoRouter.js';
 import { getSetting as getIdentitySetting } from './server/identity/identityStore.js';
 import { getSession as getAuraSession } from './server/identity/sessionService.js';
 import { getServiceSession as getSentinelServiceSession } from './server/sentinel/sentinelServiceAuth.js';
+import { createConfigRouter } from './server/config/configRouter.js';
+import { startNightlyCapture } from './server/config/configSnapshotService.js';
+import { createEstateRouter } from './server/estate/estateRouter.js';
 import { createMonitoringRouter } from './server/monitoring/monitoringRouter.js';
 import { createEnergyRouter } from './server/energy/energyRouter.js';
 import { createLightAwareRouter } from './server/energy/lightAware/router.js';
@@ -2187,6 +2190,17 @@ app.use(
 );
 app.use('/api', createSleThresholdsRouter());
 
+// ==================== Config History & Estate Routes ====================
+// Configuration snapshots/diffs/compliance trend, and the multi-controller
+// estate rollup. Both carry their own RBAC (requireRole) — anonymous callers
+// are refused, session roles are enforced.
+const snapshotSessionFactory = () =>
+  getSentinelServiceSession(process.env.CAMPUS_CONTROLLER_URL) ?? null;
+app.use('/api', createConfigRouter({ sessionFactory: snapshotSessionFactory }));
+if (monitoringConfig) {
+  app.use('/api', createEstateRouter({ config: monitoringConfig }));
+}
+
 // ==================== Monitoring Persistence Routes ====================
 // Historical monitoring/SLE data served from PostgreSQL. These routes carry
 // their own authorization (requireControllerScope validates the caller's token
@@ -2547,6 +2561,10 @@ httpServer.listen(PORT, '0.0.0.0', async () => {
   } catch (error) {
     console.warn(`[Proxy Server] ⚠  Sentinel state restore failed: ${error.message}`);
   }
+
+  // Nightly config snapshot + compliance score (advisory-locked, at most one
+  // capture per ~day across instances). Needs the service account.
+  startNightlyCapture(snapshotSessionFactory);
 
   // Retention must actually run or the rolling window never trims. When no
   // scheduled service exists, run it here — it is advisory-locked, so adding a

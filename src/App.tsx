@@ -18,6 +18,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 const DashboardEnhanced = lazy(() =>
   import('./components/DashboardEnhanced').then((m) => ({ default: m.DashboardEnhanced }))
 );
+const ConfigHistory = lazy(() => import('./components/ConfigHistory'));
 const AccessPoints = lazy(() =>
   import('./components/AccessPoints').then((m) => ({ default: m.AccessPoints }))
 );
@@ -262,6 +263,10 @@ const pageInfo = {
   'event-alarm-dashboard': {
     title: 'Events & Alarms',
     description: 'Monitor system events and manage alarms',
+  },
+  'config-history': {
+    title: 'Config History',
+    description: 'Configuration snapshots, point-in-time diffs, and compliance trend',
   },
   'security-dashboard': {
     title: 'Security Dashboard',
@@ -1297,6 +1302,8 @@ export default function App() {
             <NetworkDiagnostics />
           </ErrorBoundary>
         );
+      case 'config-history':
+        return <ConfigHistory />;
       case 'event-alarm-dashboard':
         return (
           <ErrorBoundary fallbackTitle="Events & Alarms Error">

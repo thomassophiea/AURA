@@ -39,20 +39,26 @@ const USERNAME_RE = /^[A-Za-z0-9@._-]{1,128}$/;
  * RBAC middleware for browser-mutating routes.
  *
  * With a session cookie, the cookie's role is enforced (a disabled user or an
- * insufficient role is refused). Without one, a bearer-token caller passes —
- * they authenticated to the controller directly and predate the identity
- * layer (the QA pipeline, curl operators). req.auraActor is set either way so
- * audit entries always name someone.
+ * insufficient role is refused). Without one, a bearer-token caller passes
+ * ONLY after the token is validated against the controller (cached, with the
+ * monitoring layer's grace window) — holding a live controller token is the
+ * stronger secret, but a merely Bearer-shaped string is refused.
+ * req.auraActor is set either way so audit entries always name someone.
  */
 export function requireRole(minRole) {
   return async (req, res, next) => {
     const session = getSession(req);
     if (!session) {
-      // Bearer-token API clients pass (they hold controller credentials, the
-      // stronger secret) — but an anonymous caller with neither is refused.
-      const bearer = req.headers.authorization ?? '';
-      if (!bearer.startsWith('Bearer ') || bearer.length < 10) {
+      const token = extractBearerToken(req);
+      const controllerUrl = req.headers['x-controller-url'] || process.env.CAMPUS_CONTROLLER_URL;
+      if (!token || !controllerUrl) {
         return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const validation = await validateTokenAgainstController(token, controllerUrl);
+      if (!validation.valid) {
+        return res
+          .status(validation.unreachable ? 503 : 401)
+          .json({ error: validation.unreachable ? 'controller unreachable' : 'Unauthorized' });
       }
       req.auraActor = 'api-client';
       req.auraActorSource = 'bearer';

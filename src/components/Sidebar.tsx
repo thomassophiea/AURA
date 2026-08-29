@@ -34,6 +34,7 @@ import {
   Cpu,
   Radio,
   ScrollText,
+  History,
   Share2,
   Radar,
   LayoutGrid,
@@ -101,6 +102,7 @@ const operationsItems = [
   { id: 'security-dashboard', label: 'Security', icon: Shield },
   { id: 'diagnostics-system-health', label: 'System Health', icon: Stethoscope },
   { id: 'audit-logs', label: 'Audit Logs', icon: ScrollText },
+  { id: 'config-history', label: 'Config History', icon: History },
   { id: 'report-widgets', label: 'Report Widgets', icon: BarChart3 },
   { id: 'pci-report', label: 'PCI DSS Report', icon: FileCheck },
 ];

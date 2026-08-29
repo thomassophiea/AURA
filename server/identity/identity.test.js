@@ -27,6 +27,7 @@ import { createSessionToken, verifySessionToken } from './sessionService.js';
 import { requireRole } from './identityRouter.js';
 import { verifyIdToken } from './ssoRouter.js';
 import { getUser } from './identityStore.js';
+import { validateTokenAgainstController } from '../monitoring/requireControllerScope.js';
 
 function mockRes() {
   const res = { statusCode: 200, body: null };
@@ -66,7 +67,12 @@ describe('requireRole', () => {
   const reqWith = (cookie) => ({ headers: cookie ? { cookie } : {} });
 
   it('lets bearer-token API clients through, tagged as api-client', async () => {
-    const req = { headers: { authorization: 'Bearer real-controller-token' } };
+    const req = {
+      headers: {
+        authorization: 'Bearer real-controller-token',
+        'x-controller-url': 'https://controller.test',
+      },
+    };
     const res = mockRes();
     const next = vi.fn();
     await requireRole('operator')(req, res, next);
@@ -78,6 +84,21 @@ describe('requireRole', () => {
     const res = mockRes();
     const next = vi.fn();
     await requireRole('operator')(reqWith(null), res, next);
+    expect(next).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('refuses a bearer the controller rejects — Bearer-shaped is not enough', async () => {
+    vi.mocked(validateTokenAgainstController).mockResolvedValueOnce({ valid: false });
+    const req = {
+      headers: {
+        authorization: 'Bearer forged-nonsense',
+        'x-controller-url': 'https://controller.test',
+      },
+    };
+    const res = mockRes();
+    const next = vi.fn();
+    await requireRole('operator')(req, res, next);
     expect(next).not.toHaveBeenCalled();
     expect(res.statusCode).toBe(401);
   });

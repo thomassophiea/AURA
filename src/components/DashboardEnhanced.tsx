@@ -8,6 +8,7 @@ import { ClientDetailDialog } from './dashboard/ClientDetailDialog';
 import { ServiceClientsDialog } from './dashboard/ServiceClientsDialog';
 import { NetworkDashboardView } from './dashboard/NetworkDashboardView';
 import { ClientProtocolWidget } from './dashboard/ClientProtocolWidget';
+import { EstateOverview } from './dashboard/EstateOverview';
 import { UnifiedFilterBar, SelectorTab } from './UnifiedFilterBar';
 import { HistoricalScopeNotice } from './dashboard/HistoricalScopeNotice';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
@@ -315,6 +316,7 @@ function DashboardEnhancedComponent() {
 
       {selectorTab === 'ai-insights' && (
         <>
+          <EstateOverview />
           {stations.length > 0 && <ClientProtocolWidget stations={stations} />}
           <AIInsightsBranch
           apStats={apStats}
