@@ -36,6 +36,11 @@ interface AuditEntry {
   at: string;
 }
 
+interface GroupMapping {
+  group: string;
+  role: string;
+}
+
 interface IdentitySettings {
   sso: {
     enabled: boolean;
@@ -43,6 +48,8 @@ interface IdentitySettings {
     clientId: string;
     defaultRole: string;
     clientSecretSet: boolean;
+    groupsClaim: string;
+    groupMappings: GroupMapping[];
   };
   cortex: { enabled: boolean };
 }
@@ -121,7 +128,12 @@ export function IdentityAdminSection() {
       await api('/api/settings/identity', {
         method: 'PUT',
         body: JSON.stringify({
-          sso: { ...settings.sso, clientSecret: ssoSecret || undefined },
+          sso: {
+            ...settings.sso,
+            clientSecret: ssoSecret || undefined,
+            // Drop blank rows before saving.
+            groupMappings: settings.sso.groupMappings.filter((m) => m.group.trim()),
+          },
           cortex: settings.cortex,
         }),
       });
@@ -327,6 +339,98 @@ export function IdentityAdminSection() {
               Redirect URI to register with your identity provider:{' '}
               <code className="font-mono">{window.location.origin}/api/auth/sso/callback</code>
             </p>
+
+            {/* Group → role mapping */}
+            <div className="rounded-lg border border-border/40 p-3 space-y-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div>
+                  <div className="text-sm font-medium">Group → role mapping</div>
+                  <div className="text-xs text-muted-foreground">
+                    When set, a user&apos;s IdP groups decide their AURA role on every login
+                    (highest match wins). Otherwise new SSO users get the default role above.
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs whitespace-nowrap">Groups claim</Label>
+                  <Input
+                    value={settings.sso.groupsClaim}
+                    onChange={(e) =>
+                      setSettings({
+                        ...settings,
+                        sso: { ...settings.sso, groupsClaim: e.target.value },
+                      })
+                    }
+                    className="h-8 w-32"
+                    placeholder="groups"
+                  />
+                </div>
+              </div>
+
+              {settings.sso.groupMappings.map((m, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <Input
+                    value={m.group}
+                    placeholder="IdP group name"
+                    onChange={(e) => {
+                      const next = [...settings.sso.groupMappings];
+                      next[i] = { ...next[i], group: e.target.value };
+                      setSettings({ ...settings, sso: { ...settings.sso, groupMappings: next } });
+                    }}
+                    className="h-8 flex-1"
+                  />
+                  <span className="text-muted-foreground text-xs">→</span>
+                  <Select
+                    value={m.role}
+                    onValueChange={(role) => {
+                      const next = [...settings.sso.groupMappings];
+                      next[i] = { ...next[i], role };
+                      setSettings({ ...settings, sso: { ...settings.sso, groupMappings: next } });
+                    }}
+                  >
+                    <SelectTrigger className="h-8 w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {roles.map((role) => (
+                        <SelectItem key={role} value={role}>
+                          {role}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 text-muted-foreground"
+                    onClick={() => {
+                      const next = settings.sso.groupMappings.filter((_, j) => j !== i);
+                      setSettings({ ...settings, sso: { ...settings.sso, groupMappings: next } });
+                    }}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ))}
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  setSettings({
+                    ...settings,
+                    sso: {
+                      ...settings.sso,
+                      groupMappings: [
+                        ...settings.sso.groupMappings,
+                        { group: '', role: 'viewer' },
+                      ],
+                    },
+                  })
+                }
+              >
+                Add mapping
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}

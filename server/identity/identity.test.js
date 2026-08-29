@@ -25,7 +25,7 @@ vi.mock('../monitoring/requireControllerScope.js', () => ({
 
 import { createSessionToken, verifySessionToken } from './sessionService.js';
 import { requireRole, identityFromControllerToken } from './identityRouter.js';
-import { verifyIdToken } from './ssoRouter.js';
+import { verifyIdToken, roleFromGroups } from './ssoRouter.js';
 import { getUser } from './identityStore.js';
 import { validateTokenAgainstController } from '../monitoring/requireControllerScope.js';
 
@@ -168,6 +168,38 @@ describe('identityFromControllerToken — identity comes from the token, not the
     expect(identityFromControllerToken('a.b')).toBeNull();
     expect(identityFromControllerToken(jwt({ license: 'ok' }))).toBeNull(); // no username claim
     expect(identityFromControllerToken(null)).toBeNull();
+  });
+});
+
+describe('roleFromGroups — SSO group → role mapping', () => {
+  const mappings = [
+    { group: 'net-admins', role: 'admin' },
+    { group: 'noc', role: 'operator' },
+    { group: 'everyone', role: 'viewer' },
+  ];
+
+  it('maps a group claim to its role', () => {
+    expect(roleFromGroups({ groups: ['noc'] }, 'groups', mappings)).toBe('operator');
+  });
+
+  it('returns the highest-privilege role when several groups match', () => {
+    expect(roleFromGroups({ groups: ['everyone', 'net-admins', 'noc'] }, 'groups', mappings)).toBe(
+      'admin'
+    );
+  });
+
+  it('is case-insensitive and accepts a custom claim name and scalar value', () => {
+    expect(roleFromGroups({ roles: 'NET-Admins' }, 'roles', mappings)).toBe('admin');
+  });
+
+  it('returns null when nothing matches or nothing is configured', () => {
+    expect(roleFromGroups({ groups: ['randos'] }, 'groups', mappings)).toBeNull();
+    expect(roleFromGroups({ groups: ['noc'] }, 'groups', [])).toBeNull();
+    expect(roleFromGroups({}, 'groups', mappings)).toBeNull();
+  });
+
+  it('ignores mappings to unknown roles', () => {
+    expect(roleFromGroups({ groups: ['x'] }, 'groups', [{ group: 'x', role: 'superuser' }])).toBeNull();
   });
 });
 

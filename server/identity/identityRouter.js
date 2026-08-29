@@ -241,8 +241,18 @@ export function createIdentityRouter() {
             clientId: sso.clientId ?? '',
             defaultRole: sso.defaultRole ?? 'viewer',
             clientSecretSet: Boolean(sso.clientSecret),
+            groupsClaim: sso.groupsClaim ?? 'groups',
+            groupMappings: Array.isArray(sso.groupMappings) ? sso.groupMappings : [],
           }
-        : { enabled: false, issuer: '', clientId: '', defaultRole: 'viewer', clientSecretSet: false },
+        : {
+            enabled: false,
+            issuer: '',
+            clientId: '',
+            defaultRole: 'viewer',
+            clientSecretSet: false,
+            groupsClaim: 'groups',
+            groupMappings: [],
+          },
       cortex: { enabled: Boolean(cortex?.enabled) },
     });
   });
@@ -257,6 +267,26 @@ export function createIdentityRouter() {
       if (sso.defaultRole !== undefined && !ROLES.includes(sso.defaultRole)) {
         return res.status(400).json({ error: 'invalid default role' });
       }
+      // Normalize and validate group→role mappings (bounded, known roles only).
+      let groupMappings;
+      if (sso.groupMappings !== undefined) {
+        if (!Array.isArray(sso.groupMappings) || sso.groupMappings.length > 50) {
+          return res.status(400).json({ error: 'groupMappings must be an array (max 50)' });
+        }
+        groupMappings = [];
+        for (const m of sso.groupMappings) {
+          const group = String(m?.group ?? '').trim();
+          const role = String(m?.role ?? '');
+          if (!group) continue;
+          if (!ROLES.includes(role)) {
+            return res.status(400).json({ error: `invalid role in mapping: ${role}` });
+          }
+          if (group.length > 256) {
+            return res.status(400).json({ error: 'group name too long' });
+          }
+          groupMappings.push({ group, role });
+        }
+      }
       const existing = (await getSetting('sso')) ?? {};
       await setSetting(
         'sso',
@@ -266,6 +296,8 @@ export function createIdentityRouter() {
           clientId: String(sso.clientId ?? '').trim(),
           clientSecret: sso.clientSecret ? String(sso.clientSecret) : (existing.clientSecret ?? ''),
           defaultRole: sso.defaultRole ?? existing.defaultRole ?? 'viewer',
+          groupsClaim: (sso.groupsClaim ?? existing.groupsClaim ?? 'groups').trim() || 'groups',
+          groupMappings: groupMappings ?? existing.groupMappings ?? [],
         },
         req.auraActor
       );

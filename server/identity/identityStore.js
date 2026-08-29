@@ -98,19 +98,31 @@ function rowToUser(row) {
  * hold the controller's own credentials, so pretending they are less would be
  * theater. SSO users default to the configured default role.
  */
-export async function upsertLogin({ username, source, displayName, email, defaultRole }) {
+export async function upsertLogin({ username, source, displayName, email, defaultRole, forceRole }) {
+  const effectiveDefault = defaultRole ?? 'admin';
   if (!(await ready())) {
-    return { username, displayName, email, role: defaultRole ?? 'admin', source, disabled: false };
+    return {
+      username,
+      displayName,
+      email,
+      role: forceRole ?? effectiveDefault,
+      source,
+      disabled: false,
+    };
   }
+  // defaultRole applies only on first provision (INSERT). forceRole, when set
+  // (SSO group→role mapping), also updates the role on every login so an IdP
+  // group change or deprovision propagates — the IdP stays the source of truth.
   const { rows } = await getPool().query(
     `INSERT INTO aura_users (username, display_name, email, role, source, last_login_at)
      VALUES ($1, $2, $3, $4, $5, now())
      ON CONFLICT (username) DO UPDATE SET
        display_name = COALESCE(EXCLUDED.display_name, aura_users.display_name),
        email = COALESCE(EXCLUDED.email, aura_users.email),
+       role = COALESCE($6, aura_users.role),
        last_login_at = now()
      RETURNING *`,
-    [username, displayName ?? null, email ?? null, defaultRole ?? 'admin', source]
+    [username, displayName ?? null, email ?? null, effectiveDefault, source, forceRole ?? null]
   );
   return rowToUser(rows[0]);
 }

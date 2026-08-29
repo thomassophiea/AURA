@@ -14,8 +14,35 @@
 
 import { Router } from 'express';
 import crypto from 'node:crypto';
-import { getSetting, upsertLogin, audit } from './identityStore.js';
+import { getSetting, upsertLogin, audit, ROLES } from './identityStore.js';
 import { createSessionToken, sessionCookieHeader, readCookie } from './sessionService.js';
+
+/**
+ * Resolve an AURA role from an SSO user's group/role claim, given the admin's
+ * mappings. Returns the HIGHEST-privilege role among matched groups, or null
+ * when nothing matches (caller falls back to the default role). Pure — exported
+ * for testing.
+ *
+ * @param claims decoded id_token claims
+ * @param groupsClaim claim name holding the user's groups (default "groups")
+ * @param mappings [{ group, role }]
+ */
+export function roleFromGroups(claims, groupsClaim, mappings) {
+  if (!Array.isArray(mappings) || mappings.length === 0) return null;
+  const raw = claims?.[groupsClaim || 'groups'];
+  const groups = (Array.isArray(raw) ? raw : raw != null ? [raw] : []).map((g) =>
+    String(g).toLowerCase()
+  );
+  if (groups.length === 0) return null;
+  let best = null;
+  for (const { group, role } of mappings) {
+    if (!ROLES.includes(role)) continue;
+    if (groups.includes(String(group).toLowerCase())) {
+      if (best === null || ROLES.indexOf(role) > ROLES.indexOf(best)) best = role;
+    }
+  }
+  return best;
+}
 
 const STATE_COOKIE = 'aura_sso_state';
 const STATE_TTL_MS = 10 * 60 * 1000;
@@ -164,12 +191,16 @@ export function createSsoRouter() {
       });
 
       const username = claims.email ?? claims.preferred_username ?? claims.sub;
+      // Group→role mapping (when configured) is authoritative on every login;
+      // otherwise the role is set once from the default and managed in AURA.
+      const mappedRole = roleFromGroups(claims, sso.groupsClaim, sso.groupMappings);
       const user = await upsertLogin({
         username,
         source: 'sso',
         displayName: claims.name ?? null,
         email: claims.email ?? null,
         defaultRole: sso.defaultRole ?? 'viewer',
+        forceRole: mappedRole ?? undefined,
       });
       if (user.disabled) return fail('account disabled');
 
