@@ -296,7 +296,7 @@ function DashboardEnhancedComponent() {
           searchPlaceholder="Search widgets, metrics..."
           searchValue={dashboardSearch}
           onSearchChange={setDashboardSearch}
-          defaultContextTab="site"
+          defaultContextTab="ai-insights"
           showEnvironment={true}
           showTimeRange={true}
         />

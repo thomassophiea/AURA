@@ -165,7 +165,7 @@ export function UnifiedFilterBar({
   searchPlaceholder = 'Search...',
   searchValue,
   onSearchChange,
-  defaultContextTab = 'site',
+  defaultContextTab = 'ai-insights',
   showEnvironment = true,
   showTimeRange = true,
   extraFilters,
@@ -653,35 +653,12 @@ export function UnifiedFilterBar({
               </ScrollArea>
             )}
 
-            {/* AI Insights list (static, no search) */}
+            {/* Overview has nothing to pick — say what the tabs are for. */}
             {currentTab === 'ai-insights' && (
-              <ScrollArea className="h-[240px]">
-                <div className="p-1">
-                  {items.map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => handleItemSelect(item)}
-                      className={cn(
-                        'w-full text-left px-3 py-2.5 rounded-md transition-colors flex items-start gap-3',
-                        'hover:bg-muted focus:outline-none focus-visible:bg-muted',
-                        selectedItemId === item.id && 'bg-primary/5'
-                      )}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <span className="font-medium text-sm">{item.name}</span>
-                        {item.subtitle && (
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            {item.subtitle}
-                          </div>
-                        )}
-                      </div>
-                      {selectedItemId === item.id && (
-                        <Check className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </ScrollArea>
+              <div className="px-4 py-6 text-sm text-muted-foreground text-center">
+                Showing the whole network. Choose <strong>AP</strong> or <strong>Client</strong>{' '}
+                to inspect a specific device.
+              </div>
             )}
           </PopoverContent>
         </Popover>
