@@ -37,6 +37,9 @@ const MAX_ROWS = 6;
 function SitesAttentionWidgetImpl({ accessPoints, stations }: SitesAttentionWidgetProps) {
   const rows = useMemo<SiteHealthRow[]>(() => {
     const bySite = new Map<string, { total: number; down: number }>();
+    // Station rows carry only the AP identity (accessPointSerialNumber/-Name)
+    // and a site UUID, so client counts join through the AP inventory.
+    const siteByApKey = new Map<string, string>();
     for (const ap of accessPoints) {
       // The /v1/aps/query row names its site `hostSite`; older shapes use
       // siteName/location. Same fallback chain as the AP page.
@@ -49,10 +52,25 @@ function SitesAttentionWidgetImpl({ accessPoints, stations }: SitesAttentionWidg
       entry.total++;
       if (!isAccessPointOnline(ap)) entry.down++;
       bySite.set(site, entry);
+      if (ap.serialNumber) siteByApKey.set(ap.serialNumber, site);
+      const apName = ap.displayName || (ap as { apName?: string }).apName;
+      if (apName) siteByApKey.set(apName, site);
     }
     const clientsBySite = new Map<string, number>();
     for (const st of stations) {
-      const site = (st as { siteName?: string }).siteName;
+      const s = st as {
+        siteName?: string;
+        accessPointSerialNumber?: string;
+        apSerialNumber?: string;
+        accessPointName?: string;
+        apName?: string;
+      };
+      const site =
+        s.siteName ||
+        siteByApKey.get(s.accessPointSerialNumber ?? '') ||
+        siteByApKey.get(s.apSerialNumber ?? '') ||
+        siteByApKey.get(s.accessPointName ?? '') ||
+        siteByApKey.get(s.apName ?? '');
       if (site) clientsBySite.set(site, (clientsBySite.get(site) ?? 0) + 1);
     }
     return Array.from(bySite.entries())
