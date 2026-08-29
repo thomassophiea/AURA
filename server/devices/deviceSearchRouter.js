@@ -23,10 +23,18 @@ const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
 
 // Keep the AP payload small: only the columns this search actually reads.
-const AP_REQUESTED_COLUMNS = ['serialNumber', 'apName', 'hostname', 'ipAddress', 'siteName', 'hostSite', 'status'];
+const AP_REQUESTED_COLUMNS = [
+  'serialNumber',
+  'apName',
+  'hostname',
+  'ipAddress',
+  'siteName',
+  'hostSite',
+  'status',
+];
 
 const AP_SEARCH_FIELDS = ['name', 'serialNumber', 'ipAddress', 'siteName'];
-const CLIENT_SEARCH_FIELDS = ['name', 'macAddress', 'ssid', 'ipAddress'];
+const CLIENT_SEARCH_FIELDS = ['name', 'macAddress', 'ssid', 'apName', 'ipAddress'];
 
 /**
  * Snapshot cache, keyed by `${controllerUrl}::${type}::${mode}`.
@@ -68,14 +76,32 @@ function normalizeAp(ap) {
   };
 }
 
-function normalizeClient(client) {
+/**
+ * Normalize a controller STATION object.
+ *
+ * Real XCC station fields (verified live) are `dhcpHostName` and
+ * `accessPointName` — NOT `hostName`/`apName` — and SSID is not carried as a
+ * plain string; a station only carries `serviceId`, which must be resolved
+ * against `/v1/services` (see `fetchServiceNameMap`). Both the real fields
+ * and the more commonly-guessed alternate spellings are accepted, the same
+ * defensive-fallback style `evidenceNormalizer.js` uses for station data
+ * (`station.apName ?? station.accessPointName`, `station.ssid ?? station.serviceName`).
+ */
+function normalizeClient(client, ssidById = new Map()) {
   const macAddress = client?.macAddress ?? null;
+  const serviceId = client?.serviceId != null ? String(client.serviceId) : null;
+  const ssid =
+    client?.ssid ??
+    client?.serviceName ??
+    (serviceId ? ssidById.get(serviceId) : null) ??
+    serviceId ??
+    null;
   return {
     id: macAddress,
-    name: client?.hostName ?? macAddress ?? null,
+    name: client?.dhcpHostName ?? client?.hostName ?? macAddress ?? null,
     macAddress,
-    ssid: client?.ssid ?? null,
-    apName: client?.apName ?? null,
+    ssid,
+    apName: client?.accessPointName ?? client?.apName ?? null,
     ipAddress: client?.ipAddress ?? null,
   };
 }
@@ -114,9 +140,27 @@ export function filterDevices(items, { q = '', limit = DEFAULT_LIMIT, fields = [
 }
 
 function resolveController(req) {
-  const authToken = req.headers.authorization;
+  const authToken = req.headers.authorization || req.headers['x-controller-auth'];
   const controllerUrl = req.headers['x-controller-url'] || process.env.CAMPUS_CONTROLLER_URL;
   return { authToken, controllerUrl };
+}
+
+/**
+ * Cached serviceId → SSID name lookup, same pattern as
+ * `clientDhcpFailureCheck.js`'s `ssidById` map, built from `/v1/services`.
+ * Shares the 15s TTL cache so a station-search cache miss does not always
+ * pay for a second controller round-trip.
+ */
+async function fetchServiceNameMap({ authToken, controllerUrl }) {
+  const cacheKey = `${controllerUrl}::services`;
+  return getCachedList(cacheKey, async () => {
+    const data = await fetchXcc('/v1/services', { authToken, controllerUrl });
+    const map = new Map();
+    for (const svc of toArray(data)) {
+      if (svc?.id != null) map.set(String(svc.id), svc.serviceName ?? svc.name ?? svc.ssid);
+    }
+    return map;
+  });
 }
 
 export function createDeviceSearchRouter() {
@@ -161,8 +205,11 @@ export function createDeviceSearchRouter() {
 
     try {
       const items = await getCachedList(cacheKey, async () => {
-        const data = await fetchXcc('/v1/stations', { authToken, controllerUrl });
-        return toArray(data).map(normalizeClient);
+        const [data, ssidById] = await Promise.all([
+          fetchXcc('/v1/stations', { authToken, controllerUrl }),
+          fetchServiceNameMap({ authToken, controllerUrl }),
+        ]);
+        return toArray(data).map((client) => normalizeClient(client, ssidById));
       });
       res.json(filterDevices(items, { q, limit, fields: CLIENT_SEARCH_FIELDS }));
     } catch {
