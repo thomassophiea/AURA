@@ -99,6 +99,53 @@ describe('filterDevices', () => {
     expect(result.total).toBe(0);
     expect(result.capped).toBe(false);
   });
+
+  describe('presorted: true', () => {
+    // Same synthetic set, pre-sorted by name up front — as the AP/clients
+    // route fetchers now do once at cache-fill time — so `filterDevices`
+    // can skip its own sort.
+    const sortedItems = [...items].sort((a, b) =>
+      String(a?.name ?? '').localeCompare(String(b?.name ?? ''))
+    );
+
+    it('matches the default (sorting) path\'s items/total/capped on an already-sorted list', () => {
+      const presorted = filterDevices(sortedItems, {
+        q: '',
+        limit: 50,
+        fields: FIELDS,
+        presorted: true,
+      });
+      const defaultPath = filterDevices(items, { q: '', limit: 50, fields: FIELDS });
+      expect(presorted).toEqual(defaultPath);
+    });
+
+    it('does not reorder: filtered output follows input order, not a fresh sort', () => {
+      // Deliberately NOT sorted by name — reverse insertion order. If
+      // `presorted: true` actually sorted, this would come back ascending;
+      // instead it must preserve the (reverse) input order through filter.
+      const reversed = [...items].filter((i) => i.siteName === 'Building-A').reverse();
+      const result = filterDevices(reversed, {
+        q: 'building-a',
+        limit: reversed.length,
+        fields: FIELDS,
+        presorted: true,
+      });
+      expect(result.items.map((i) => i.id)).toEqual(reversed.map((i) => i.id));
+      expect(result.total).toBe(reversed.length);
+    });
+
+    it('still filters and caps correctly with presorted input', () => {
+      const result = filterDevices(sortedItems, {
+        q: 'findme123',
+        limit: 50,
+        fields: FIELDS,
+        presorted: true,
+      });
+      expect(result.total).toBe(1);
+      expect(result.items[0].id).toBe('SN-NEEDLE');
+      expect(result.capped).toBe(false);
+    });
+  });
 });
 
 // Real controller STATION shape uses `dhcpHostName` / `accessPointName` /

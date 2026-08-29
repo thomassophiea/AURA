@@ -115,6 +115,26 @@ describe('POST /api/config/restore — controller mismatch guard', () => {
     expect(res.body.applied.some((r) => r.op === 'create' && r.ok)).toBe(true);
   });
 
+  it('apply throws unexpectedly: responds 500 without hanging, raw error not forwarded', async () => {
+    process.env.CONFIG_RESTORE_ENABLED = 'true';
+    const { app, session } = buildApp({
+      sourceBaseUrl: 'https://ctrl-a.example',
+      sessionBaseUrl: 'https://ctrl-a.example',
+      write: vi.fn().mockRejectedValue(new Error('socket hang up: some internal detail')),
+    });
+
+    const res = await request(app, {
+      method: 'POST',
+      path: '/api/config/restore',
+      body: { snapshotId: 5, confirm: '5' },
+    });
+
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe('restore failed');
+    expect(JSON.stringify(res.body)).not.toContain('some internal detail');
+    expect(session.write).toHaveBeenCalled();
+  });
+
   it('mismatched source + confirm + enabled: rejects with 409 and never writes', async () => {
     process.env.CONFIG_RESTORE_ENABLED = 'true';
     const { app, session } = buildApp({
@@ -133,6 +153,43 @@ describe('POST /api/config/restore — controller mismatch guard', () => {
     expect(res.body.snapshotSource).toBe('https://ctrl-b.example');
     expect(res.body.target).toBe('https://ctrl-a.example');
     expect(res.body.plan).toBeDefined();
+    expect(session.write).not.toHaveBeenCalled();
+  });
+
+  it('unknown source (no sourceBaseUrl) + confirm + enabled: rejects with 409 and never writes', async () => {
+    process.env.CONFIG_RESTORE_ENABLED = 'true';
+    const { app, session } = buildApp({
+      sourceBaseUrl: null,
+      sessionBaseUrl: 'https://ctrl-a.example',
+    });
+
+    const res = await request(app, {
+      method: 'POST',
+      path: '/api/config/restore',
+      body: { snapshotId: 5, confirm: '5' },
+    });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toMatch(/no recorded source controller/i);
+    expect(res.body.plan).toBeDefined();
+    expect(session.write).not.toHaveBeenCalled();
+  });
+
+  it('unknown source, dry run: plan is returned with a refusal warning', async () => {
+    const { app, session } = buildApp({
+      sourceBaseUrl: null,
+      sessionBaseUrl: 'https://ctrl-a.example',
+    });
+
+    const res = await request(app, {
+      method: 'POST',
+      path: '/api/config/restore',
+      body: { snapshotId: 5 },
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.dryRun).toBe(true);
+    expect(res.body.warning).toMatch(/no recorded source controller/i);
     expect(session.write).not.toHaveBeenCalled();
   });
 

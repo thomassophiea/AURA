@@ -168,10 +168,14 @@ export function createConfigRouter({ sessionFactory }) {
     // A snapshot remembers the controller it was captured from. Applying it
     // to a different one is very likely a mistake (wrong environment, wrong
     // tenant) — the dry run still shows the plan (with a warning) so an
-    // admin can see it before confirming, but an actual apply refuses.
+    // admin can see it before confirming, but an actual apply refuses. A
+    // snapshot with no recorded source is treated the same way: this is a
+    // destructive path, so an unknown source must fail closed rather than
+    // silently proceed.
     const normalizeUrl = (u) => String(u ?? '').replace(/\/+$/, '');
+    const sourceUnknown = !target.sourceBaseUrl;
     const sourceMismatch =
-      Boolean(target.sourceBaseUrl) && normalizeUrl(target.sourceBaseUrl) !== normalizeUrl(session.baseUrl);
+      sourceUnknown || normalizeUrl(target.sourceBaseUrl) !== normalizeUrl(session.baseUrl);
 
     const { sections: currentSections, failures } = await captureCurrentSections(session);
     if (Object.keys(currentSections).length === 0) {
@@ -188,7 +192,9 @@ export function createConfigRouter({ sessionFactory }) {
         dryRun: true,
         plan,
         warning: sourceMismatch
-          ? `Snapshot was captured from a different controller (${target.sourceBaseUrl}) than the current target (${session.baseUrl}).`
+          ? sourceUnknown
+            ? 'Snapshot has no recorded source controller; refusing to apply.'
+            : `Snapshot was captured from a different controller (${target.sourceBaseUrl}) than the current target (${session.baseUrl}).`
           : null,
       });
     }
@@ -202,21 +208,28 @@ export function createConfigRouter({ sessionFactory }) {
 
     if (sourceMismatch) {
       return res.status(409).json({
-        error: `Snapshot was captured from a different controller (${target.sourceBaseUrl}) than the current target (${session.baseUrl}). Refusing to apply.`,
+        error: sourceUnknown
+          ? 'Snapshot has no recorded source controller; refusing to apply.'
+          : `Snapshot was captured from a different controller (${target.sourceBaseUrl}) than the current target (${session.baseUrl}). Refusing to apply.`,
         plan,
-        snapshotSource: target.sourceBaseUrl,
+        snapshotSource: target.sourceBaseUrl ?? null,
         target: session.baseUrl,
       });
     }
 
-    const applied = await applyRestorePlan(session, plan);
-    audit('config.restore', {
-      actor: req.auraActor,
-      source: req.auraActorSource,
-      target: String(id),
-      detail: { sections: sections ?? 'all', summary: summarizeApplied(applied) },
-    });
-    res.json({ dryRun: false, applied, plan });
+    try {
+      const applied = await applyRestorePlan(session, plan);
+      audit('config.restore', {
+        actor: req.auraActor,
+        source: req.auraActorSource,
+        target: String(id),
+        detail: { sections: sections ?? 'all', summary: summarizeApplied(applied) },
+      });
+      res.json({ dryRun: false, applied, plan });
+    } catch (error) {
+      console.error(`[Config] restore apply failed: ${error.message}`);
+      res.status(500).json({ error: 'restore failed' });
+    }
   });
 
   return router;

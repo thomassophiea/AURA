@@ -48,7 +48,12 @@ const snapshotCache = new Map();
 
 async function getCachedList(cacheKey, fetcher, now = Date.now()) {
   const cached = snapshotCache.get(cacheKey);
-  if (cached && cached.expiresAt > now) return cached.items;
+  if (cached) {
+    if (cached.expiresAt > now) return cached.items;
+    // Expired — evict so a decommissioned controller/source-set's entry
+    // doesn't sit in the Map for the rest of the process lifetime.
+    snapshotCache.delete(cacheKey);
+  }
   const items = await fetcher();
   snapshotCache.set(cacheKey, { items, expiresAt: now + DEVICE_CACHE_TTL_MS });
   return items;
@@ -106,6 +111,12 @@ function normalizeClient(client, ssidById = new Map()) {
   };
 }
 
+/** Same comparator `filterDevices` used to apply per-request; now used once,
+ * at cache-fill time, so the cached snapshot is stored already-sorted. */
+function byName(a, b) {
+  return String(a?.name ?? '').localeCompare(String(b?.name ?? ''));
+}
+
 function parseLimit(raw) {
   const parsed = Number.parseInt(raw, 10);
   if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_LIMIT;
@@ -117,20 +128,31 @@ function parseLimit(raw) {
  * the named `fields`; matches are sorted by name (asc) for stable pagination
  * before being capped at `limit`.
  *
+ * `presorted` (default false) lets a caller that already sorted `items` by
+ * name skip the re-sort entirely: `.filter()` preserves input order, so a
+ * pre-sorted input stays sorted through the filter step. This matters at
+ * ~100K-row scale, where a full O(N log N) re-sort on every request (the
+ * empty-query seed path in particular) is expensive enough to block the
+ * event loop. Default (no-arg) behavior is unchanged — callers relying on
+ * the implicit sort must keep passing unsorted input.
+ *
  * @param {Array<Record<string, unknown>>} items
- * @param {{ q?: string, limit?: number, fields: string[] }} options
+ * @param {{ q?: string, limit?: number, fields: string[], presorted?: boolean }} options
  * @returns {{ items: Array<Record<string, unknown>>, total: number, capped: boolean }}
  */
-export function filterDevices(items, { q = '', limit = DEFAULT_LIMIT, fields = [] } = {}) {
+export function filterDevices(
+  items,
+  { q = '', limit = DEFAULT_LIMIT, fields = [], presorted = false } = {}
+) {
   const needle = String(q ?? '').trim().toLowerCase();
   const matched = needle
     ? items.filter((item) =>
         fields.some((field) => String(item?.[field] ?? '').toLowerCase().includes(needle))
       )
     : items;
-  const sorted = [...matched].sort((a, b) =>
-    String(a?.name ?? '').localeCompare(String(b?.name ?? ''))
-  );
+  const sorted = presorted
+    ? matched
+    : [...matched].sort((a, b) => String(a?.name ?? '').localeCompare(String(b?.name ?? '')));
   const total = sorted.length;
   return {
     items: sorted.slice(0, limit),
@@ -185,9 +207,9 @@ export function createDeviceSearchRouter() {
           authToken,
           controllerUrl,
         });
-        return toArray(data).map(normalizeAp);
+        return toArray(data).map(normalizeAp).sort(byName);
       });
-      res.json(filterDevices(items, { q, limit, fields: AP_SEARCH_FIELDS }));
+      res.json(filterDevices(items, { q, limit, fields: AP_SEARCH_FIELDS, presorted: true }));
     } catch {
       // Controller error text is never forwarded verbatim to the browser.
       res.status(502).json({ error: 'failed to reach controller' });
@@ -214,9 +236,11 @@ export function createDeviceSearchRouter() {
         const ssidById = await fetchServiceNameMap({ authToken, controllerUrl }).catch(
           () => new Map()
         );
-        return toArray(data).map((client) => normalizeClient(client, ssidById));
+        return toArray(data)
+          .map((client) => normalizeClient(client, ssidById))
+          .sort(byName);
       });
-      res.json(filterDevices(items, { q, limit, fields: CLIENT_SEARCH_FIELDS }));
+      res.json(filterDevices(items, { q, limit, fields: CLIENT_SEARCH_FIELDS, presorted: true }));
     } catch {
       res.status(502).json({ error: 'failed to reach controller' });
     }

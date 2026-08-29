@@ -141,8 +141,13 @@ export function createEstateRouter({ config }) {
 
     const cacheKey = sourceSetKey(sources);
     const cached = estateSummaryCache.get(cacheKey);
-    if (cached && cached.expiresAt > Date.now()) {
-      return res.json({ ...cached.summary, cached: true });
+    if (cached) {
+      if (cached.expiresAt > Date.now()) {
+        return res.json({ ...cached.summary, cached: true });
+      }
+      // Expired — evict so a decommissioned source-set's entry doesn't sit
+      // in the Map for the rest of the process lifetime.
+      estateSummaryCache.delete(cacheKey);
     }
 
     const settled = await mapWithConcurrency(sources, ESTATE_PROBE_CONCURRENCY, (s) =>
