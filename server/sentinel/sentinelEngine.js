@@ -19,6 +19,10 @@ import { runApStatusCheck } from './checks/apStatusCheck.js';
 
 const DEFAULT_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
 const MAX_TREND_POINTS = 100;
+// How often the standalone escalation sweep runs, independent of poll cadence.
+// Poll-on-demand deployments (background polling Off) still need unacked
+// criticals to escalate on schedule.
+const ESCALATION_SWEEP_MS = 60_000;
 
 export class SentinelEngine {
   #alertStore = new AlertStore();
@@ -43,6 +47,9 @@ export class SentinelEngine {
   #lastPollAt = null;
   #polling = false;
   #trendStore = {};
+  // Standalone timer so escalation runs even when background polling is Off
+  // (poll-on-demand deployments). Separate from #timer — never reused.
+  #escalationTimer = null;
   #checkStatus = {
     vlan_trunk: { status: 'idle', lastRunAt: null, error: null },
     dhcp_reachability: { status: 'idle', lastRunAt: null, error: null },
@@ -54,6 +61,28 @@ export class SentinelEngine {
     ap_status: { status: 'idle', lastRunAt: null, error: null },
   };
   #checkEvidence = {};
+
+  constructor() {
+    // Runs independently of poll(): background polling Off must not stop
+    // unacknowledged criticals from escalating. unref() so this timer never
+    // holds the process (or the test runner) open by itself.
+    this.#escalationTimer = setInterval(() => {
+      try {
+        this.#escalationSweep();
+      } catch (err) {
+        console.warn(`[Sentinel] escalation sweep failed: ${err.message}`);
+      }
+    }, ESCALATION_SWEEP_MS);
+    this.#escalationTimer.unref?.();
+  }
+
+  /** Guarded tick for the standalone escalation timer — no-op until configured. */
+  #escalationSweep() {
+    if (!this.#webhookUrl || !this.#escalation?.enabled) return;
+    // Shares #escalatedIds with the poll-driven sweep in poll(), which is what
+    // prevents a double-dispatch when both fire for the same overdue alert.
+    this.#dispatchEscalations();
+  }
 
   configure({ authToken, controllerUrl, siteId, fetchFn } = {}) {
     if (authToken) this.#authToken = authToken;
@@ -467,6 +496,10 @@ export class SentinelEngine {
   destroy() {
     // Shutdown, not a user stop — the persisted schedule must survive it.
     this.stopPolling({ forget: false });
+    if (this.#escalationTimer) {
+      clearInterval(this.#escalationTimer);
+      this.#escalationTimer = null;
+    }
     this.#alertStore.destroy();
   }
 }
