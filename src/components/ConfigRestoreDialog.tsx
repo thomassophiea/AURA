@@ -46,6 +46,7 @@ interface RestoreAppliedItem {
 interface RestoreDryRunResponse {
   dryRun: true;
   plan: RestorePlanSection[];
+  warning?: string | null;
 }
 
 interface RestoreAppliedResponse {
@@ -78,18 +79,23 @@ function planHasChanges(plan: RestorePlanSection[]): boolean {
 
 interface ConfigRestoreDialogProps {
   snapshotId: number;
+  /** The controller this snapshot was captured from — shown so an admin can
+   * confirm it matches the controller they're about to restore onto. */
+  sourceBaseUrl?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
 export default function ConfigRestoreDialog({
   snapshotId,
+  sourceBaseUrl,
   open,
   onOpenChange,
 }: ConfigRestoreDialogProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [plan, setPlan] = useState<RestorePlanSection[] | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
   const [enabled, setEnabled] = useState(false);
   const [disabledMessage, setDisabledMessage] = useState<string | null>(null);
   const [confirmText, setConfirmText] = useState('');
@@ -110,6 +116,7 @@ export default function ConfigRestoreDialog({
         api<{ enabled: boolean }>('/api/config/restore/status'),
       ]);
       setPlan(dry.plan ?? []);
+      setWarning(dry.warning ?? null);
       setEnabled(Boolean(status.enabled));
       setDisabledMessage(null);
     } catch (err) {
@@ -130,7 +137,7 @@ export default function ConfigRestoreDialog({
         '/api/config/restore',
         {
           method: 'POST',
-          body: JSON.stringify({ snapshotId, confirm: String(snapshotId) }),
+          body: JSON.stringify({ snapshotId, confirm: confirmText }),
         }
       );
       if (result.dryRun === false) {
@@ -161,6 +168,11 @@ export default function ConfigRestoreDialog({
             Shows exactly what would be created, updated, or deleted on the live controller to
             match this snapshot. Nothing is written until you explicitly apply.
           </DialogDescription>
+          {sourceBaseUrl && (
+            <p className="text-xs text-muted-foreground">
+              Captured from <span className="font-mono">{sourceBaseUrl}</span>
+            </p>
+          )}
         </DialogHeader>
 
         {loading && (
@@ -247,6 +259,13 @@ export default function ConfigRestoreDialog({
                     {!item.skipped && !item.ok && <span>failed{item.error ? ` — ${item.error}` : ''}</span>}
                   </div>
                 ))}
+              </div>
+            )}
+
+            {warning && !applied && (
+              <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-400">
+                <ShieldAlert className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>{warning}</span>
               </div>
             )}
 

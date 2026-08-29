@@ -165,6 +165,14 @@ export function createConfigRouter({ sessionFactory }) {
       });
     }
 
+    // A snapshot remembers the controller it was captured from. Applying it
+    // to a different one is very likely a mistake (wrong environment, wrong
+    // tenant) — the dry run still shows the plan (with a warning) so an
+    // admin can see it before confirming, but an actual apply refuses.
+    const normalizeUrl = (u) => String(u ?? '').replace(/\/+$/, '');
+    const sourceMismatch =
+      Boolean(target.sourceBaseUrl) && normalizeUrl(target.sourceBaseUrl) !== normalizeUrl(session.baseUrl);
+
     const { sections: currentSections, failures } = await captureCurrentSections(session);
     if (Object.keys(currentSections).length === 0) {
       return res
@@ -176,13 +184,28 @@ export function createConfigRouter({ sessionFactory }) {
 
     const confirmed = confirm !== undefined && confirm !== null && String(confirm) === String(snapshotId);
     if (!confirmed) {
-      return res.json({ dryRun: true, plan });
+      return res.json({
+        dryRun: true,
+        plan,
+        warning: sourceMismatch
+          ? `Snapshot was captured from a different controller (${target.sourceBaseUrl}) than the current target (${session.baseUrl}).`
+          : null,
+      });
     }
 
     if (process.env.CONFIG_RESTORE_ENABLED !== 'true') {
       return res.status(403).json({
         error: 'Config restore is disabled. Set CONFIG_RESTORE_ENABLED=true to allow applying.',
         plan,
+      });
+    }
+
+    if (sourceMismatch) {
+      return res.status(409).json({
+        error: `Snapshot was captured from a different controller (${target.sourceBaseUrl}) than the current target (${session.baseUrl}). Refusing to apply.`,
+        plan,
+        snapshotSource: target.sourceBaseUrl,
+        target: session.baseUrl,
       });
     }
 

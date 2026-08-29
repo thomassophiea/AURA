@@ -86,7 +86,9 @@ export default function ConfigHistory() {
   const [loading, setLoading] = useState(true);
   const [capturing, setCapturing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [restoreTarget, setRestoreTarget] = useState<number | null>(null);
+  const [restoreTarget, setRestoreTarget] = useState<{ id: number; sourceBaseUrl: string } | null>(
+    null
+  );
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -125,7 +127,6 @@ export default function ConfigHistory() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected]);
 
   const toggleSelect = (id: number) => {
@@ -316,7 +317,7 @@ export default function ConfigHistory() {
                       title="Restore this snapshot"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setRestoreTarget(snap.id);
+                        setRestoreTarget({ id: snap.id, sourceBaseUrl: snap.sourceBaseUrl });
                       }}
                     >
                       <History className="h-3.5 w-3.5" />
@@ -394,7 +395,8 @@ export default function ConfigHistory() {
 
       {restoreTarget !== null && (
         <ConfigRestoreDialog
-          snapshotId={restoreTarget}
+          snapshotId={restoreTarget.id}
+          sourceBaseUrl={restoreTarget.sourceBaseUrl}
           open={restoreTarget !== null}
           onOpenChange={(next) => {
             if (!next) setRestoreTarget(null);
