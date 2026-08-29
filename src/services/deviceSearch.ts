@@ -46,10 +46,11 @@ function buildHeaders(): Record<string, string> {
   return headers;
 }
 
-async function deviceSearchFetch<T>(path: string): Promise<T> {
+async function deviceSearchFetch<T>(path: string, signal?: AbortSignal): Promise<T> {
   const resp = await fetch(path, {
     headers: buildHeaders(),
     credentials: 'include',
+    signal,
   });
 
   if (!resp.ok) {
@@ -72,14 +73,16 @@ function buildQuery(q: string, limit?: number): string {
 
 export async function searchAccessPoints(
   q: string,
-  limit?: number
+  limit?: number,
+  signal?: AbortSignal
 ): Promise<DeviceSearchResult<ApItem>> {
-  return deviceSearchFetch(`/api/devices/aps/search${buildQuery(q, limit)}`);
+  return deviceSearchFetch(`/api/devices/aps/search${buildQuery(q, limit)}`, signal);
 }
 
 export async function searchClients(
   q: string,
-  limit?: number
+  limit?: number,
+  signal?: AbortSignal
 ): Promise<DeviceSearchResult<ClientItem>> {
-  return deviceSearchFetch(`/api/devices/clients/search${buildQuery(q, limit)}`);
+  return deviceSearchFetch(`/api/devices/clients/search${buildQuery(q, limit)}`, signal);
 }

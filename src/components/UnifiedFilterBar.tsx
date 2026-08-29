@@ -7,7 +7,7 @@
  * dropdowns plus page-specific filter slots.
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
@@ -170,6 +170,16 @@ function mapClientSearchItem(client: ClientItem): SelectorItem {
 // enough that the list still feels live.
 const SEARCH_DEBOUNCE_MS = 250;
 
+/**
+ * True when `requestId` is not the most recently issued request. Guards every
+ * setState call in the typeahead's async path so an earlier, slower response
+ * (e.g. a stale query, or the AP tab's response landing after switching to
+ * Client) can never overwrite a newer one — the newest request always wins.
+ */
+export function isStaleRequest(requestId: number, latestRequestId: number): boolean {
+  return requestId !== latestRequestId;
+}
+
 // ── Component ──────────────────────────────────────────────────────────────
 
 export function UnifiedFilterBar({
@@ -216,20 +226,45 @@ export function UnifiedFilterBar({
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [selectedItemName, setSelectedItemName] = useState<string | null>(null);
   const [isContextModalOpen, setIsContextModalOpen] = useState(false);
+  const [popoverError, setPopoverError] = useState(false);
+
+  // Generation counter for the search-driven typeahead: each fired request
+  // captures the id current at send time, and every setState in its async
+  // path is guarded by isStaleRequest(...) against the ref's latest value —
+  // a superseded request (stale query, or a tab switch mid-flight) can never
+  // clobber a newer one's result.
+  const latestRequestIdRef = useRef(0);
+  // Flips false on unmount so an in-flight request's setState calls — which
+  // the generation guard alone would still let through, since nothing bumps
+  // the counter on unmount — are also suppressed.
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // Load items when popover opens or tab changes. The `access-point` /
   // `client` tabs are server-side typeahead: the search box value is also a
   // dependency here, debounced, so a fast typist does not fire one request
-  // per keystroke.
+  // per keystroke. The AbortController cancels an in-flight controller
+  // round-trip when a newer request supersedes it (search edited again, tab
+  // switched, or the popover closes) so it doesn't do wasted work.
   useEffect(() => {
     if (!popoverOpen) return;
 
     if (currentTab === 'access-point' || currentTab === 'client') {
       setLoading(true);
+      setPopoverError(false);
+      const controller = new AbortController();
       const handle = setTimeout(() => {
-        void loadSearchItems(currentTab, popoverSearch);
+        const requestId = ++latestRequestIdRef.current;
+        void loadSearchItems(currentTab, popoverSearch, requestId, controller.signal);
       }, SEARCH_DEBOUNCE_MS);
-      return () => clearTimeout(handle);
+      return () => {
+        clearTimeout(handle);
+        controller.abort();
+      };
     }
 
     loadItems(currentTab);
@@ -242,36 +277,50 @@ export function UnifiedFilterBar({
   // returns to the whole-network view, and site scoping is owned by the
   // standard site picker beside this control (SourceSiteSelector).
   const loadItems = (_tab: 'ai-insights' | 'site') => {
-    setLoading(true);
     setItems([]);
     setPopoverCapped(false);
     setPopoverTotal(0);
+    setPopoverError(false);
     setLoading(false);
   };
 
   // Server-side typeahead for the `access-point` / `client` tabs (Task 1
   // search endpoints). `q` empty returns the first N of the inventory.
-  const loadSearchItems = async (tab: 'access-point' | 'client', q: string) => {
-    setLoading(true);
+  // `requestId` + `signal` guard against a stale/superseded response (see
+  // isStaleRequest above) and against setState after unmount.
+  const loadSearchItems = async (
+    tab: 'access-point' | 'client',
+    q: string,
+    requestId: number,
+    signal: AbortSignal
+  ) => {
+    const canApply = () =>
+      isMountedRef.current && !isStaleRequest(requestId, latestRequestIdRef.current);
+
     try {
       if (tab === 'access-point') {
-        const result = await searchAccessPoints(q);
+        const result = await searchAccessPoints(q, undefined, signal);
+        if (!canApply()) return;
         setItems(result.items.map(mapApSearchItem));
         setPopoverCapped(result.capped);
         setPopoverTotal(result.total);
       } else {
-        const result = await searchClients(q);
+        const result = await searchClients(q, undefined, signal);
+        if (!canApply()) return;
         setItems(result.items.map(mapClientSearchItem));
         setPopoverCapped(result.capped);
         setPopoverTotal(result.total);
       }
+      setPopoverError(false);
     } catch (error) {
+      if (signal.aborted || !canApply()) return;
       console.warn('[UnifiedFilterBar] Failed to search devices:', error);
-      setItems([{ id: 'all', name: 'All', subtitle: 'Unable to load' }]);
+      setItems([]);
       setPopoverCapped(false);
       setPopoverTotal(0);
+      setPopoverError(true);
     } finally {
-      setLoading(false);
+      if (canApply()) setLoading(false);
     }
   };
 
@@ -473,7 +522,11 @@ export function UnifiedFilterBar({
                     </div>
                   ) : filteredItems.length === 0 ? (
                     <div className="flex items-center justify-center py-6 text-muted-foreground text-sm">
-                      {popoverSearch ? 'No matches found' : 'No items available'}
+                      {popoverError
+                        ? 'Unable to load — try again'
+                        : popoverSearch
+                          ? 'No matches found'
+                          : 'No items available'}
                     </div>
                   ) : (
                     filteredItems.map((item) => (
