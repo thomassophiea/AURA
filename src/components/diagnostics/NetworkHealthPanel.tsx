@@ -73,7 +73,7 @@ export function NetworkHealthPanel({ health }: { health: NetworkHealth }) {
             Switches
           </div>
           {health.totalSwitches === 0 ? (
-            <p className="text-sm text-muted-foreground">No switches managed by this controller.</p>
+            <p className="text-sm text-muted-foreground">No switches managed by this gateway.</p>
           ) : (
             <div className="grid grid-cols-3 gap-2">
               <Stat label="Active" value={health.activeSwitches} tone="success" />
@@ -91,8 +91,8 @@ export function NetworkHealthPanel({ health }: { health: NetworkHealth }) {
           <span className="font-medium text-foreground">
             Synchronization · Mobility · Availability
           </span>{' '}
-          are live cluster status and are not exposed by the controller config API — check the
-          controller directly.
+          are live cluster status and are not exposed by the gateway config API — check the
+          gateway directly.
         </div>
       </CardContent>
     </Card>

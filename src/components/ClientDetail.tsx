@@ -3,8 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-// Campus Controller API responses are untyped JSON; any is required for client detail fields
 import { ScrollArea } from './ui/scroll-area';
 import {
   Smartphone,
@@ -27,6 +25,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { apiService, Station, StationEvent, APEvent, RRMEvent } from '../services/api';
+import { DetailRow } from './ui/DetailRow';
 import { RoamingTrail } from './RoamingTrail';
 import { ClientInsights, ClientInsightsFullScreen } from './ClientInsights';
 import { trafficService, StationTrafficStats } from '../services/traffic';
@@ -373,40 +372,22 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
     );
   };
 
-  // Helper component for displaying field values
-  const FieldDisplay = ({
-    label,
-    value,
-    icon: Icon,
-    isMono = false,
-  }: {
-    label: string;
-    value: string;
-    icon?: any;
-    isMono?: boolean;
-  }) => (
-    <div className="flex justify-between">
-      <div className="flex items-center space-x-2">
-        {Icon && <Icon className="h-3 w-3 text-muted-foreground" />}
-        <span className="text-muted-foreground">{label}:</span>
-      </div>
-      <div className="flex items-center space-x-1">
-        <span
-          className={`font-medium ${isMono ? 'font-mono text-xs' : ''} ${value === 'N/A' ? 'text-muted-foreground' : ''}`}
-        >
-          {value}
-        </span>
-      </div>
-    </div>
-  );
+  const clientDisplayName = resolveClientIdentity(clientDetails).displayName;
 
   return (
     <div className="space-y-6">
       {/* Header Actions */}
       <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-2">
-          <Smartphone className="h-5 w-5 text-muted-foreground" />
-          <span className="font-medium">Client Details</span>
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Client
+          </p>
+          <div className="flex min-w-0 items-center space-x-2">
+            <Smartphone className="h-5 w-5 shrink-0 text-muted-foreground" />
+            <h2 className="truncate text-2xl font-semibold" title={clientDisplayName}>
+              {clientDisplayName}
+            </h2>
+          </div>
         </div>
         <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
           <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -476,61 +457,54 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid grid-cols-1 gap-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Hostname:</span>
-              <span className="font-medium">{clientDetails.hostName || 'N/A'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">MAC Address:</span>
-              <span className="font-mono text-xs">{clientDetails.macAddress}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">IP Address:</span>
-              <span className="font-mono text-xs">{clientDetails.ipAddress || 'N/A'}</span>
-            </div>
-            <div className="flex justify-between gap-2">
-              <span className="text-muted-foreground shrink-0">IPv6 Address:</span>
-              <span
-                className="font-mono text-xs truncate"
-                title={clientDetails.ipv6Address || 'N/A'}
-              >
-                {clientDetails.ipv6Address || 'N/A'}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Device Type:</span>
-              <span className="font-medium">{clientDetails.deviceType || 'N/A'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Manufacturer:</span>
-              <span className="font-medium">{clientDetails.manufacturer || 'N/A'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Username:</span>
-              <span className="font-medium">{clientDetails.username || 'N/A'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Role:</span>
-              <div className="flex items-center space-x-2">
-                {isLoadingRoleName ? (
-                  <div className="flex items-center space-x-1">
+          <div className="grid grid-cols-1 gap-3">
+            <DetailRow label="Hostname" value={clientDetails.hostName} />
+            <DetailRow
+              label="MAC Address"
+              value={clientDetails.macAddress}
+              mono
+              copyLabel="MAC address"
+            />
+            <DetailRow
+              label="IP Address"
+              value={clientDetails.ipAddress}
+              mono
+              copyLabel="IP address"
+            />
+            <DetailRow
+              label="IPv6 Address"
+              value={clientDetails.ipv6Address}
+              mono
+              copyLabel="IPv6 address"
+            />
+            <DetailRow label="Device Type" value={clientDetails.deviceType} />
+            <DetailRow label="Manufacturer" value={clientDetails.manufacturer} />
+            <DetailRow label="Username" value={clientDetails.username} />
+            <DetailRow
+              label="Role"
+              value={
+                isLoadingRoleName ? (
+                  <span className="flex items-center space-x-1">
                     <RefreshCw className="h-3 w-3 animate-spin text-muted-foreground" />
                     <span className="text-xs text-muted-foreground">Loading...</span>
-                  </div>
+                  </span>
                 ) : (
                   <span
-                    className={`font-medium ${getRole(clientDetails) === 'N/A' ? 'text-muted-foreground' : ''}`}
+                    className={`text-sm font-medium ${getRole(clientDetails) === 'N/A' ? 'text-muted-foreground' : ''}`}
                   >
                     {getRole(clientDetails)}
                   </span>
-                )}
-              </div>
-            </div>
-            <FieldDisplay
-              label="Last Seen"
+                )
+              }
+            />
+            <DetailRow
+              label={
+                <span className="flex items-center gap-2">
+                  <Clock className="h-3 w-3" />
+                  Last Seen
+                </span>
+              }
               value={formatDateTime(clientDetails.lastSeen)}
-              icon={Clock}
             />
           </div>
         </CardContent>
@@ -587,7 +561,15 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
                 )}
               </div>
             </div>
-            <FieldDisplay label="Channel" value={getChannel(clientDetails)} icon={Signal} />
+            <DetailRow
+              label={
+                <span className="flex items-center gap-2">
+                  <Signal className="h-3 w-3" />
+                  Channel
+                </span>
+              }
+              value={getChannel(clientDetails)}
+            />
             <div className="flex justify-between">
               <div className="flex items-center space-x-2">
                 <MapPin className="h-3 w-3 text-muted-foreground" />
@@ -606,11 +588,30 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
                 )}
               </div>
             </div>
-            <FieldDisplay
-              label="Access Point"
+            <DetailRow
+              label={
+                <span className="flex items-center gap-2">
+                  <Activity className="h-3 w-3" />
+                  Access Point
+                </span>
+              }
               value={getAccessPoint(clientDetails)}
-              icon={Activity}
             />
+            {clientDetails.snr !== undefined && (
+              <DetailRow label="SNR" value={`${clientDetails.snr} dB`} />
+            )}
+            {clientDetails.txRate !== undefined && clientDetails.txRate !== '' && (
+              <DetailRow label="Tx Rate" value={`${clientDetails.txRate} Mbps`} />
+            )}
+            {clientDetails.rxRate !== undefined && clientDetails.rxRate !== '' && (
+              <DetailRow label="Rx Rate" value={`${clientDetails.rxRate} Mbps`} />
+            )}
+            {clientDetails.authMethod && (
+              <DetailRow label="Auth Method" value={clientDetails.authMethod} />
+            )}
+            {clientDetails.roamCount !== undefined && (
+              <DetailRow label="Roams" value={clientDetails.roamCount} />
+            )}
           </div>
         </CardContent>
       </Card>

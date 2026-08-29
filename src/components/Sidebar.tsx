@@ -113,7 +113,7 @@ const controllerItems = [
   { id: 'firmware-manager', label: 'Firmware Manager', icon: Download },
   { id: 'network-diagnostics', label: 'Network Diagnostics', icon: Activity },
   { id: 'license-dashboard', label: 'License Management', icon: Key },
-  { id: 'site-group-settings', label: 'Controller Settings', icon: Cog },
+  { id: 'site-group-settings', label: 'Gateway Settings', icon: Cog },
   { id: 'guest-management', label: 'Guest Accounts', icon: UserPlus },
 ];
 
@@ -489,7 +489,7 @@ export function Sidebar({
               {!isCollapsed && siteGroup && (
                 <div className="px-3 py-1.5 mb-1">
                   <div className="text-xs text-sidebar-foreground/50 uppercase tracking-wider font-medium">
-                    Controller
+                    Gateway
                   </div>
                   <div className="text-xs text-sidebar-foreground font-medium truncate">
                     {siteGroup.name}
@@ -500,7 +500,7 @@ export function Sidebar({
               {/* Controller Management items */}
               {filteredControllerItems.length > 0 &&
                 renderCollapsibleSection({
-                  label: 'Controller Management',
+                  label: 'Gateway Management',
                   icon: HardDrive,
                   items: filteredControllerItems,
                   isActive: isControllerActive,

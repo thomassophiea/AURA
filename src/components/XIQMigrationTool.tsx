@@ -314,7 +314,7 @@ export function XIQMigrationTool() {
     setMigrationResult(null);
     setLogs([]);
     try {
-      addLog('Fetching existing topologies and services from controller...');
+      addLog('Fetching existing topologies and services from gateway...');
       const [existingTopos, existingServices] = await Promise.all([
         fetchExistingTopologies(),
         skipExisting ? fetchExistingServices() : Promise.resolve([]),
@@ -324,7 +324,7 @@ export function XIQMigrationTool() {
         vlanIds: vlanSel,
         radiusIds: radiusSel,
       };
-      addLog('Converting XIQ config to controller format...');
+      addLog('Converting XIQ config to gateway format...');
       const config = convertToControllerFormat(
         xiqData,
         selections,
@@ -338,7 +338,7 @@ export function XIQMigrationTool() {
       addLog(
         `Ready: ${config.topologies.length} topologies, ${config.aaaPolicies.length} AAA policies, ${config.services.length} new services` +
           (config.skippedExistingServices.length > 0
-            ? ` (${config.skippedExistingServices.length} already on controller, will skip)`
+            ? ` (${config.skippedExistingServices.length} already on gateway, will skip)`
             : '')
       );
       const result = await executeMigration(
@@ -362,11 +362,13 @@ export function XIQMigrationTool() {
       if (result.aborted) toast.warning(`Migration aborted — ${ok} of ${ok + fail} applied`);
       else if (ok > 0 && fail === 0)
         toast.success(
-          `${ok} SSID(s) migrated successfully${skipped ? ` (${skipped} skipped — already on controller)` : ''}`
+          `${ok} network${ok === 1 ? '' : 's'} migrated successfully${skipped ? ` (${skipped} skipped — already on gateway)` : ''}`
         );
       else if (ok > 0) toast.warning(`${ok} succeeded, ${fail} failed`);
       else if (skipped > 0 && config.services.length === 0)
-        toast.info(`Nothing to migrate — all ${skipped} SSID(s) already on controller`);
+        toast.info(
+          `Nothing to migrate — all ${skipped} network${skipped === 1 ? '' : 's'} already on gateway`
+        );
       else toast.error('Migration failed');
       if (downloadReportAfter) generateReport(xiqData, result, ssidSel);
     } catch (err) {
@@ -410,7 +412,7 @@ export function XIQMigrationTool() {
         const svc = byName.get(ssidName.toLowerCase());
         if (!svc?.id) {
           fail++;
-          addLog(`PSK fix-up: could not find "${ssidName}" on controller`, 'error');
+          addLog(`PSK fix-up: could not find "${ssidName}" on gateway`, 'error');
           continue;
         }
         try {
@@ -519,7 +521,7 @@ export function XIQMigrationTool() {
           <CardHeader>
             <CardTitle>Connect to ExtremeCloud IQ</CardTitle>
             <CardDescription>
-              Enter your XIQ credentials. Your Aura controller session is unchanged.
+              Enter your XIQ credentials. Your Aura gateway session is unchanged.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -589,7 +591,7 @@ export function XIQMigrationTool() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {(
               [
-                { label: 'SSIDs', count: xiqData.ssids.length },
+                { label: 'Networks', count: xiqData.ssids.length },
                 { label: 'VLANs', count: xiqData.vlans.length },
                 { label: 'RADIUS', count: xiqData.radius.length },
                 { label: 'Devices', count: xiqData.devices.length },
@@ -626,14 +628,14 @@ export function XIQMigrationTool() {
             <CardHeader>
               <CardTitle>Select Objects to Migrate</CardTitle>
               <CardDescription>
-                Choose which objects to import to the controller. Selected VLANs will be created as
-                topologies, RADIUS as AAA policies, SSIDs as disabled services.
+                Choose which objects to import to the gateway. Selected VLANs will be created as
+                topologies, RADIUS as AAA policies, networks as disabled services.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Tabs defaultValue="ssids">
                 <TabsList>
-                  <TabsTrigger value="ssids">SSIDs ({xiqData.ssids.length})</TabsTrigger>
+                  <TabsTrigger value="ssids">Networks ({xiqData.ssids.length})</TabsTrigger>
                   <TabsTrigger value="vlans">VLANs ({xiqData.vlans.length})</TabsTrigger>
                   <TabsTrigger value="radius">RADIUS ({xiqData.radius.length})</TabsTrigger>
                 </TabsList>
@@ -693,7 +695,7 @@ export function XIQMigrationTool() {
                 disabled={ssidSel.size === 0}
                 onClick={() => setStep(3)}
               >
-                Continue ({ssidSel.size} SSID{ssidSel.size !== 1 ? 's' : ''} selected)
+                Continue ({ssidSel.size} network{ssidSel.size !== 1 ? 's' : ''} selected)
               </Button>
             </CardContent>
           </Card>
@@ -704,9 +706,9 @@ export function XIQMigrationTool() {
       {step === 3 && (
         <Card>
           <CardHeader>
-            <CardTitle>Assign SSIDs to Profiles</CardTitle>
+            <CardTitle>Assign Networks to Profiles</CardTitle>
             <CardDescription>
-              Select which Associated Profiles each SSID should be assigned to, and which radios
+              Select which Associated Profiles each network should be assigned to, and which radios
               should broadcast them.
             </CardDescription>
           </CardHeader>
@@ -714,7 +716,7 @@ export function XIQMigrationTool() {
             {profilesLoading && (
               <div className="flex items-center gap-2 py-6 text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Fetching profiles from controller…
+                Fetching profiles from gateway…
               </div>
             )}
             {profilesError && (
@@ -725,14 +727,15 @@ export function XIQMigrationTool() {
             {!profilesLoading && (
               <>
                 <p className="text-sm text-muted-foreground">
-                  {profiles.length} Associated Profile(s) found on controller.
+                  {profiles.length} Associated Profile{profiles.length === 1 ? '' : 's'} found on
+                  gateway.
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <Button
                     variant={profileMode === 'all' ? 'default' : 'outline'}
                     onClick={() => setProfileMode('all')}
                   >
-                    Assign All SSIDs to All Profiles
+                    Assign All Networks to All Profiles
                   </Button>
                   <Button
                     variant={profileMode === 'custom' ? 'default' : 'outline'}
@@ -793,7 +796,7 @@ export function XIQMigrationTool() {
                 />
                 <div>
                   <span className="font-medium text-sm block">
-                    Skip SSIDs already on the controller
+                    Skip networks already on the gateway
                   </span>
                   <span className="text-xs text-muted-foreground">
                     Match by name (case-insensitive). Prevents duplicate services if you re-run a
@@ -935,7 +938,7 @@ export function XIQMigrationTool() {
                           {skipped > 0 && (
                             <span
                               className="text-amber-600 dark:text-amber-400 font-medium text-xs"
-                              title="Already on controller — skipped to avoid duplicates"
+                              title="Already on gateway — skipped to avoid duplicates"
                             >
                               {skipped} skipped
                             </span>
@@ -951,8 +954,8 @@ export function XIQMigrationTool() {
                 {migrationResult.aborted && (
                   <Alert variant="destructive">
                     <AlertDescription>
-                      Migration was cancelled. Objects already created on the controller were not
-                      rolled back — review the controller and re-run with "Skip existing" enabled to
+                      Migration was cancelled. Objects already created on the gateway were not
+                      rolled back — review the gateway and re-run with "Skip existing" enabled to
                       finish.
                     </AlertDescription>
                   </Alert>

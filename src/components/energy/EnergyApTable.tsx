@@ -19,7 +19,7 @@ function EnergyApTableComponent({ enabled, currencySymbol = '$' }: EnergyApTable
   return (
     <Card>
       <CardHeader className="pb-2">
-        <h3 className="text-sm font-semibold text-foreground">Access points</h3>
+        <h3 className="text-sm font-semibold text-foreground">Access Points</h3>
       </CardHeader>
       <CardContent>
         {error ? (

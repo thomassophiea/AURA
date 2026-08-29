@@ -103,7 +103,7 @@ describe('InsightCardsGrid — Capacity Planning card', () => {
     );
     // The "0" is rendered as the avg-clients value; assert presence loosely
     // since other zero-valued elements may exist.
-    expect(screen.getByText('Avg Clients per AP').nextElementSibling?.textContent).toBe('0');
+    expect(screen.getByText('Avg clients per AP').nextElementSibling?.textContent).toBe('0');
   });
 });
 

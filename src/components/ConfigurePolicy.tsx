@@ -489,13 +489,6 @@ export function ConfigurePolicy() {
                 <Gauge className="h-4 w-4 mr-2" />
                 Class of Service
               </TabsTrigger>
-              <TabsTrigger
-                value="firewall"
-                className="bg-transparent border-b-2 border-transparent data-[state=active]:border-primary rounded-none px-0 pb-3"
-              >
-                <Network className="h-4 w-4 mr-2" />
-                Firewall Rules
-              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -873,15 +866,6 @@ export function ConfigurePolicy() {
                   </Card>
                 ))}
               </div>
-            )}
-          </TabsContent>
-
-          {/* Firewall Rules Tab - Coming Soon */}
-          <TabsContent value="firewall" className="p-6">
-            {renderEmptyState(
-              'Firewall Rules — Coming Soon',
-              'Advanced per-role firewall rule configuration is under development. In the meantime, use the Network Roles tab to view and manage roles that include firewall filter assignments.',
-              <Network className="h-12 w-12" />
             )}
           </TabsContent>
         </Tabs>

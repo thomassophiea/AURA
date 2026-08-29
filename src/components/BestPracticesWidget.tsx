@@ -237,7 +237,7 @@ export function BestPracticesWidget() {
               </Badge>
             </div>
             <Select value={sortBy} onValueChange={(value: 'severity' | 'name') => setSortBy(value)}>
-              <SelectTrigger className="w-36">
+              <SelectTrigger className="w-40">
                 <ArrowUpDown className="h-3 w-3 mr-2" />
                 <SelectValue />
               </SelectTrigger>

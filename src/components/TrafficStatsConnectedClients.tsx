@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardHeader } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { AGGridWrapper } from '@/components/ui/AGGridWrapper';
@@ -8,9 +8,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Checkbox } from './ui/checkbox';
 import {
   AlertCircle,
+  ArrowUpDown,
   Users,
   RefreshCw,
-  Wifi,
   Activity,
   Shield,
   Trash2,
@@ -20,6 +20,7 @@ import {
   FileDown,
   Columns,
 } from 'lucide-react';
+import { MetricCard } from './ui/MetricCard';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
 import { apiService, Station } from '../services/api';
@@ -621,81 +622,44 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
-            <CardTitle className="text-sm font-semibold">Total Clients</CardTitle>
-            <div className="p-1.5 rounded-lg badge-gradient-violet shadow-md group-hover:scale-110 transition-transform">
-              <Users className="h-3.5 w-3.5 text-white" />
-            </div>
-          </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-foreground">{effectiveStations.length}</div>
-            <p className="text-xs text-muted-foreground">Connected devices</p>
-          </CardContent>
-        </Card>
-
-        <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
-            <CardTitle className="text-sm font-semibold">Active Connections</CardTitle>
-            <div className="p-1.5 rounded-lg badge-gradient-green shadow-md group-hover:scale-110 transition-transform">
-              <Wifi className="h-3.5 w-3.5 text-white" />
-            </div>
-          </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-foreground">{getActiveClientsCount()}</div>
-            <p className="text-xs text-muted-foreground">Currently active</p>
-          </CardContent>
-        </Card>
-
-        <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
-            <CardTitle className="text-sm font-semibold">Randomized MACs</CardTitle>
-            <div className="p-1.5 rounded-lg badge-gradient-pink shadow-md group-hover:scale-110 transition-transform">
-              <Shuffle className="h-3.5 w-3.5 text-white" />
-            </div>
-          </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-foreground">{getRandomizedMacCount()}</div>
-            <p className="text-xs text-muted-foreground">Privacy-enabled devices</p>
-          </CardContent>
-        </Card>
-
-        <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
-            <CardTitle className="text-sm font-semibold">Disconnected</CardTitle>
-            <div className="p-1.5 rounded-lg badge-gradient-red shadow-md group-hover:scale-110 transition-transform">
-              <WifiOff className="h-3.5 w-3.5 text-white" />
-            </div>
-          </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-foreground">
-              {getDisconnectedClientsCount()}
-            </div>
-            <p className="text-xs text-muted-foreground">Recently offline</p>
-          </CardContent>
-        </Card>
-
-        <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
-            <CardTitle className="text-sm font-semibold">Total Traffic</CardTitle>
-            <div className="p-1.5 rounded-lg badge-gradient-blue shadow-md group-hover:scale-110 transition-transform">
-              <Activity className="h-3.5 w-3.5 text-white animate-pulse" />
-            </div>
-          </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-foreground">
-              {formatBytes(getTotalTraffic())}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Data transferred {isLoadingTraffic && '(loading...)'}
-            </p>
-          </CardContent>
-        </Card>
+        <MetricCard
+          title="Total Clients"
+          value={effectiveStations.length}
+          subtitle="Connected devices"
+          icon={Users}
+        />
+        <MetricCard
+          title="Active Connections"
+          value={getActiveClientsCount()}
+          subtitle="Currently active"
+          icon={Activity}
+        />
+        <MetricCard
+          title="Randomized MACs"
+          value={getRandomizedMacCount()}
+          subtitle="Privacy-enabled devices"
+          icon={Shuffle}
+          tone="info"
+        />
+        <MetricCard
+          title="Disconnected"
+          value={getDisconnectedClientsCount()}
+          subtitle="Recently offline"
+          icon={WifiOff}
+          tone="offline"
+          toneValue={getDisconnectedClientsCount() > 0}
+        />
+        <MetricCard
+          title="Total Traffic"
+          value={formatBytes(getTotalTraffic())}
+          subtitle={`Data transferred${isLoadingTraffic ? ' (loading...)' : ''}`}
+          icon={ArrowUpDown}
+        />
       </div>
 
       {/* GDPR Data Rights Panel - Compact */}
       <Card className="border bg-muted/30">
-        <CardContent className="py-3 px-4">
+        <CardContent className="py-2 px-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <Shield className="h-4 w-4 text-muted-foreground" />
@@ -719,7 +683,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
               </Button>
               <Button
                 size="sm"
-                variant="destructive"
+                variant={selectedStations.size === 0 ? 'outline' : 'destructive'}
                 className="h-8"
                 onClick={() => setIsGdprDeleteDialogOpen(true)}
                 disabled={selectedStations.size === 0}
@@ -940,10 +904,8 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                 <AGGridWrapper
                   rowData={sortedStations}
                   columnDefs={agColDefs}
-                  height={620}
                   storageKey="traffic-stats-clients"
                   gridOptions={{
-                    rowHeight: 56,
                     getRowId: (p) => p.data.macAddress,
                     rowSelection: { mode: 'multiRow', checkboxes: true, headerCheckbox: true },
                     onSelectionChanged: (e) => {

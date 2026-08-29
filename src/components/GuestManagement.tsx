@@ -54,7 +54,7 @@ export function GuestManagement() {
     } catch (error) {
       console.error('Failed to load guests:', error);
       setGuestsApiAvailable(false);
-      toast.error('Guest accounts API unavailable on this controller');
+      toast.error('Guest accounts API unavailable on this gateway');
     } finally {
       setLoading(false);
     }
@@ -233,8 +233,8 @@ export function GuestManagement() {
               <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-30" />
               <p className="font-medium">Guest accounts API not available</p>
               <p className="text-sm mt-2 max-w-sm mx-auto">
-                The /v1/guests endpoint is not available on this controller. This feature may
-                require a different controller version or configuration.
+                The /v1/guests endpoint is not available on this gateway. This feature may
+                require a different gateway version or configuration.
               </p>
             </div>
           ) : guests.length === 0 ? (

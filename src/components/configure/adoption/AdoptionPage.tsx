@@ -125,7 +125,7 @@ export function AdoptionPage() {
           <div>
             <h1 className="text-2xl font-medium">AP Adoption</h1>
             <p className="text-sm text-muted-foreground">
-              Controller-wide AP registration settings (/v1/aps/registration)
+              Gateway-wide AP registration settings (/v1/aps/registration)
             </p>
           </div>
         </div>
@@ -170,7 +170,7 @@ export function AdoptionPage() {
               <Section title="AP SSH Credentials">
                 <FieldRow
                   label="SSH Password"
-                  description="Write-only — the controller redacts it on read. Leave blank to keep the current password."
+                  description="Write-only — the gateway redacts it on read. Leave blank to keep the current password."
                 >
                   <MaskedInput
                     className="w-72"
@@ -203,8 +203,8 @@ export function AdoptionPage() {
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title="Update controller-wide adoption settings?"
-        description="These settings govern how every AP registers with this controller. Changes take effect immediately for all future adoptions."
+        title="Update gateway-wide adoption settings?"
+        description="These settings govern how every AP registers with this gateway. Changes take effect immediately for all future adoptions."
         confirmLabel="Save"
         onConfirm={save}
       />

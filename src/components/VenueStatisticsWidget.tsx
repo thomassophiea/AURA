@@ -16,6 +16,8 @@ import {
 } from 'recharts';
 import { apiService } from '../services/api';
 import { formatCompactNumber } from '../lib/units';
+import { CHART_COLORS, EP1_EXTENDED_LIGHT, isDarkSurface } from '../config/colorPalette';
+import { usePaletteTheme } from '../hooks/usePaletteTheme';
 
 interface VenueStatisticsWidgetProps {
   siteId: string;
@@ -70,6 +72,15 @@ export function VenueStatisticsWidget({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<VenueStats | null>(null);
+
+  // Upload/download are a fixed series pair (teal/pink), contrast-corrected per theme.
+  const paletteTheme = usePaletteTheme();
+  const uploadColor = isDarkSurface(paletteTheme)
+    ? CHART_COLORS.series.upload
+    : EP1_EXTENDED_LIGHT.teal;
+  const downloadColor = isDarkSurface(paletteTheme)
+    ? CHART_COLORS.series.download
+    : EP1_EXTENDED_LIGHT.pink;
 
   const unavailableForRange = duration === null;
 
@@ -168,7 +179,7 @@ export function VenueStatisticsWidget({
         <CardContent>
           <div className="flex h-64 items-center justify-center px-6 text-center">
             <div className="max-w-sm text-sm text-muted-foreground">
-              The controller&apos;s venue report only covers a period ending now, so it cannot be
+              The gateway&apos;s venue report only covers a period ending now, so it cannot be
               retrieved for a past day. Switch to a recent range to see venue statistics.
             </div>
           </div>
@@ -260,7 +271,7 @@ export function VenueStatisticsWidget({
         </div>
 
         {/* Upload/Download Usage Chart */}
-        {stats.ulDlUsageTimeseries && stats.ulDlUsageTimeseries.length > 0 && (
+        {stats.ulDlUsageTimeseries && stats.ulDlUsageTimeseries.length > 0 ? (
           <div>
             <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
               <Activity className="h-4 w-4" />
@@ -284,7 +295,8 @@ export function VenueStatisticsWidget({
                   contentStyle={{
                     backgroundColor: 'var(--popover)',
                     border: '1px solid var(--border)',
-                    borderRadius: '6px',
+                    borderRadius: 8,
+                    color: 'var(--popover-foreground)',
                   }}
                   labelFormatter={(label) => formatTimestamp(Number(label))}
                   formatter={(value: any, name: any) => [
@@ -297,8 +309,8 @@ export function VenueStatisticsWidget({
                   type="monotone"
                   dataKey="upload"
                   stackId="1"
-                  stroke="#10b981"
-                  fill="#10b981"
+                  stroke={uploadColor}
+                  fill={uploadColor}
                   fillOpacity={0.6}
                   name="Upload"
                 />
@@ -306,18 +318,22 @@ export function VenueStatisticsWidget({
                   type="monotone"
                   dataKey="download"
                   stackId="1"
-                  stroke="#3b82f6"
-                  fill="#3b82f6"
+                  stroke={downloadColor}
+                  fill={downloadColor}
                   fillOpacity={0.6}
                   name="Download"
                 />
               </AreaChart>
             </ResponsiveContainer>
           </div>
+        ) : (
+          <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
+            No venue data for this window
+          </div>
         )}
 
         {/* Upload/Download Throughput Chart */}
-        {stats.ulDlThroughputTimeseries && stats.ulDlThroughputTimeseries.length > 0 && (
+        {stats.ulDlThroughputTimeseries && stats.ulDlThroughputTimeseries.length > 0 ? (
           <div>
             <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
@@ -341,7 +357,8 @@ export function VenueStatisticsWidget({
                   contentStyle={{
                     backgroundColor: 'var(--popover)',
                     border: '1px solid var(--border)',
-                    borderRadius: '6px',
+                    borderRadius: 8,
+                    color: 'var(--popover-foreground)',
                   }}
                   labelFormatter={(label) => formatTimestamp(Number(label))}
                   formatter={(value: any, name: any) => [
@@ -353,7 +370,7 @@ export function VenueStatisticsWidget({
                 <Line
                   type="monotone"
                   dataKey="uploadThroughput"
-                  stroke="#10b981"
+                  stroke={uploadColor}
                   strokeWidth={2}
                   dot={false}
                   name="Upload"
@@ -361,7 +378,7 @@ export function VenueStatisticsWidget({
                 <Line
                   type="monotone"
                   dataKey="downloadThroughput"
-                  stroke="#3b82f6"
+                  stroke={downloadColor}
                   strokeWidth={2}
                   dot={false}
                   name="Download"
@@ -369,12 +386,9 @@ export function VenueStatisticsWidget({
               </LineChart>
             </ResponsiveContainer>
           </div>
-        )}
-
-        {/* No Data Message */}
-        {!stats.ulDlUsageTimeseries?.length && !stats.ulDlThroughputTimeseries?.length && (
-          <div className="text-center py-8 text-muted-foreground">
-            No timeseries data available for this time period
+        ) : (
+          <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
+            No venue data for this window
           </div>
         )}
       </CardContent>

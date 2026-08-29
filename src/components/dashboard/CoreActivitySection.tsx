@@ -226,14 +226,14 @@ function CoreActivitySectionImpl({
                   <AreaChart data={throughputTrend.slice(-15)}>
                     <defs>
                       <linearGradient id="throughputGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#BB86FC" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#BB86FC" stopOpacity={0} />
+                        <stop offset="5%" stopColor="var(--chart-1)" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="var(--chart-1)" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <Area
                       type="monotone"
                       dataKey="total"
-                      stroke="#BB86FC"
+                      stroke="var(--chart-1)"
                       strokeWidth={1.5}
                       fill="url(#throughputGradient)"
                       isAnimationActive={false}

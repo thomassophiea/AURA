@@ -26,6 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { ScrollArea } from '../ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { DetailSlideOut } from '../DetailSlideOut';
+import { MonoCell } from '../ui/cells';
 import { formatBitsPerSecond, formatBytes as formatBytesUnit } from '../../lib/units';
 import { apiService, type StationEvent } from '../../services/api';
 
@@ -109,6 +110,12 @@ function ClientDetailDialogComponent({ isOpen, onClose, selectedClient }: Client
                   <p className="font-mono text-sm">{selectedClient.ipAddress}</p>
                 </div>
               )}
+              {selectedClient.ipv6Address && (
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">IPv6 Address</p>
+                  <MonoCell value={selectedClient.ipv6Address} label="IPv6 address" />
+                </div>
+              )}
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Authentication</p>
                 <Badge variant={selectedClient.authenticated !== false ? 'default' : 'secondary'}>
@@ -128,11 +135,20 @@ function ClientDetailDialogComponent({ isOpen, onClose, selectedClient }: Client
                     <div className="flex items-center gap-2">
                       <Network className="h-4 w-4 text-muted-foreground" />
                       <div>
-                        <p className="text-xs text-muted-foreground">SSID/Service</p>
+                        <p className="text-xs text-muted-foreground">Network (SSID)</p>
                         <p className="text-sm">
                           {selectedClient.ssid || selectedClient.serviceName}
                         </p>
                       </div>
+                    </div>
+                  )}
+                  {(selectedClient.vlan ?? selectedClient.vlanId ?? selectedClient.vlanTag) !==
+                    undefined && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">VLAN</p>
+                      <p className="text-sm font-medium">
+                        {selectedClient.vlan ?? selectedClient.vlanId ?? selectedClient.vlanTag}
+                      </p>
                     </div>
                   )}
                   {(selectedClient.apName || selectedClient.apSerialNumber) && (
@@ -277,7 +293,10 @@ function ClientDetailDialogComponent({ isOpen, onClose, selectedClient }: Client
             )}
 
             {/* Radio & Protocol Information */}
-            {(selectedClient.protocol || selectedClient.channel || selectedClient.radioId) && (
+            {(selectedClient.protocol ||
+              selectedClient.channel ||
+              selectedClient.radioId ||
+              selectedClient.band) && (
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm">Radio & Protocol</CardTitle>
@@ -306,6 +325,12 @@ function ClientDetailDialogComponent({ isOpen, onClose, selectedClient }: Client
                               ? '5 GHz'
                               : `Radio ${selectedClient.radioId}`}
                         </p>
+                      </div>
+                    )}
+                    {selectedClient.band && selectedClient.radioId === undefined && (
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground">Band</p>
+                        <p className="text-sm font-medium">{selectedClient.band}</p>
                       </div>
                     )}
                     {selectedClient.transmittedRate !== undefined && (

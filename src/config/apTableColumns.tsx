@@ -45,7 +45,7 @@ export const AP_TABLE_COLUMNS: ColumnConfig<AccessPoint>[] = [
   },
   {
     key: 'light',
-    label: 'Light',
+    label: 'LED State',
     category: 'basic',
     dataType: 'string',
     fieldPath: 'lightState',
@@ -72,7 +72,8 @@ export const AP_TABLE_COLUMNS: ColumnConfig<AccessPoint>[] = [
   },
   {
     key: 'clients',
-    label: 'Connected Clients',
+    label: 'Clients',
+    tooltip: 'Connected clients',
     category: 'basic',
     dataType: 'number',
     fieldPath: 'clientCount',

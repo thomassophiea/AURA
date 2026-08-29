@@ -445,7 +445,7 @@ export function IdentityAdminSection() {
                 <div>
                   <CardTitle className="text-base">AURA Cortex</CardTitle>
                   <CardDescription>
-                    Optional. Enables the AI network assistant (read-only controller tool catalog)
+                    Optional. Enables the AI network assistant (read-only gateway tool catalog)
                     and alert Diagnose buttons for all users. Requires an LLM provider key on the
                     server.
                   </CardDescription>
@@ -474,7 +474,7 @@ export function IdentityAdminSection() {
               <CardTitle className="text-base">AURA Audit Trail</CardTitle>
               <CardDescription>
                 Actions taken inside AURA — logins, acknowledgements, schedule and settings
-                changes — with who did them. Controller-side changes appear in Audit Logs.
+                changes — with who did them. Gateway-side changes appear in Audit Logs.
               </CardDescription>
             </div>
           </div>

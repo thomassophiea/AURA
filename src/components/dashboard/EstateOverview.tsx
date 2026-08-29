@@ -54,21 +54,34 @@ export function EstateOverview() {
   // Nothing registered (or the registry is unavailable) — say nothing.
   if (!loading && (!controllers || controllers.length === 0)) return null;
 
+  /**
+   * The registry names an unnamed default source after its env var
+   * ("Default controller (CAMPUS_CONTROLLER_URL)"). Users get the product
+   * word, never the env plumbing.
+   */
+  const displayName = (name: string) =>
+    name
+      .replace(/\s*\(([A-Z0-9_]+)\)\s*$/, '')
+      .replace(/\bcontroller\b/gi, 'gateway')
+      .replace(/^gateway$/i, 'Gateway') || 'Gateway';
+
   return (
     <Card>
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
-          <Server className="h-4 w-4 text-muted-foreground" />
-          <CardTitle className="text-sm font-medium">Estate</CardTitle>
+          <Server className="h-4 w-4 text-muted-foreground" aria-hidden />
+          <CardTitle className="text-sm font-medium">Gateways</CardTitle>
           <CardDescription className="text-xs">
-            {controllers ? `${controllers.length} controller(s), worst first` : ''}
+            {controllers
+              ? `${controllers.length} ${controllers.length === 1 ? 'gateway' : 'gateways'} · worst first`
+              : ''}
           </CardDescription>
         </div>
       </CardHeader>
       <CardContent className="pt-0">
         {loading ? (
           <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
-            <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Probing controllers...
+            <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Checking gateways...
           </div>
         ) : (
           <div className="space-y-1.5">
@@ -89,37 +102,44 @@ export function EstateOverview() {
                     }`}
                     aria-hidden
                   />
-                  <div className="flex-1 min-w-0">
-                    <span className="font-medium truncate">{c.name}</span>
-                    <span className="ml-2 text-xs text-muted-foreground font-mono truncate">
+                  {/* Both spans must be flex items for truncate to clamp — on
+                      inline children of a block parent it is a silent no-op. */}
+                  <div className="flex min-w-0 flex-1 items-baseline gap-2">
+                    <span className="truncate font-medium" title={displayName(c.name)}>
+                      {displayName(c.name)}
+                    </span>
+                    <span
+                      className="truncate font-mono text-xs text-muted-foreground"
+                      title={c.baseUrl}
+                    >
                       {c.baseUrl.replace(/^https?:\/\//, '')}
                     </span>
                   </div>
                   {c.reachable ? (
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0">
+                    <div className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
-                        <Wifi className="h-3.5 w-3.5" />
-                        {c.aps?.inService ?? 0}/{c.aps?.total ?? 0} APs
+                        <Wifi className="h-3.5 w-3.5" aria-hidden />
+                        <span className="tabular-nums">
+                          {c.aps?.inService ?? 0}/{c.aps?.total ?? 0}
+                        </span>{' '}
+                        APs
                       </span>
                       {c.clients !== null && (
-                        <span className="flex items-center gap-1">
-                          <Users className="h-3.5 w-3.5" />
-                          {c.clients}
+                        <span className="flex items-center gap-1" title="Connected clients">
+                          <Users className="h-3.5 w-3.5" aria-hidden />
+                          <span className="tabular-nums">{c.clients}</span>
                         </span>
                       )}
                       {c.sites !== null && (
-                        <span className="flex items-center gap-1">
-                          <Building2 className="h-3.5 w-3.5" />
-                          {c.sites}
+                        <span className="flex items-center gap-1" title="Sites">
+                          <Building2 className="h-3.5 w-3.5" aria-hidden />
+                          <span className="tabular-nums">{c.sites}</span>
                         </span>
                       )}
                     </div>
                   ) : (
-                    <Badge
-                      variant="outline"
-                      className="bg-red-500/15 text-red-500 border-red-500/30 text-[10px] shrink-0"
-                    >
-                      {c.error ?? 'unreachable'}
+                    <Badge variant="critical" className="shrink-0 text-[10px]">
+                      {c.error ?? 'Unreachable'}
                     </Badge>
                   )}
                 </div>

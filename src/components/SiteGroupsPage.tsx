@@ -231,7 +231,7 @@ export function SiteGroupsPage({ onNavigateToSites }: SiteGroupsPageProps) {
       {/* Page Header */}
       <PageHeader
         title="Site Groups"
-        subtitle={`Controller groups and site assignments${hasActiveSearch ? ` • ${filteredGroups.length} of ${siteGroups.length} results` : ` • ${siteGroups.length} groups`}`}
+        subtitle={`Gateway pairs and site assignments${hasActiveSearch ? ` • ${filteredGroups.length} of ${siteGroups.length} results` : ` • ${siteGroups.length} groups`}`}
         icon={Server}
         onRefresh={loadData}
         refreshing={loading}
@@ -272,7 +272,7 @@ export function SiteGroupsPage({ onNavigateToSites }: SiteGroupsPageProps) {
               </div>
             </div>
             <div className="text-2xl font-bold text-foreground">{siteGroups.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">Controller pairs</p>
+            <p className="text-xs text-muted-foreground mt-1">Gateway pairs</p>
           </div>
         </Card>
 
@@ -286,7 +286,7 @@ export function SiteGroupsPage({ onNavigateToSites }: SiteGroupsPageProps) {
               </div>
             </div>
             <div className="text-2xl font-bold text-foreground">{connectedCount}</div>
-            <p className="text-xs text-muted-foreground mt-1">Active controllers</p>
+            <p className="text-xs text-muted-foreground mt-1">Active gateways</p>
           </div>
         </Card>
 
@@ -300,7 +300,7 @@ export function SiteGroupsPage({ onNavigateToSites }: SiteGroupsPageProps) {
               </div>
             </div>
             <div className="text-2xl font-bold text-foreground">{disconnectedCount}</div>
-            <p className="text-xs text-muted-foreground mt-1">Offline controllers</p>
+            <p className="text-xs text-muted-foreground mt-1">Offline gateways</p>
           </div>
         </Card>
 
@@ -323,7 +323,7 @@ export function SiteGroupsPage({ onNavigateToSites }: SiteGroupsPageProps) {
       <Card>
         <CardHeader className="pb-3">
           <SearchFilterBar
-            searchPlaceholder="Search site groups by name, controller, region, status..."
+            searchPlaceholder="Search site groups by name, gateway, region, status..."
             searchValue={query}
             onSearchChange={setQuery}
             showTimeRange={false}
@@ -339,7 +339,7 @@ export function SiteGroupsPage({ onNavigateToSites }: SiteGroupsPageProps) {
               <p className="text-muted-foreground">
                 {hasActiveSearch
                   ? 'No site groups match your current search.'
-                  : 'No site groups are configured. Add a controller to create your first site group.'}
+                  : 'No site groups are configured. Add a gateway to create your first site group.'}
               </p>
             </div>
           ) : (
@@ -499,7 +499,7 @@ export function SiteGroupsPage({ onNavigateToSites }: SiteGroupsPageProps) {
         isOpen={isDetailOpen}
         onClose={() => setIsDetailOpen(false)}
         title={selectedGroup?.name || 'Site Group Details'}
-        description="Controller pair details and site assignments"
+        description="Gateway pair details and site assignments"
         width="lg"
       >
         {selectedGroup && (
@@ -569,14 +569,14 @@ function SiteGroupDetailContent({
       {/* Overview */}
       <div className="space-y-3 text-sm">
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Primary Controller</span>
+          <span className="text-muted-foreground">Primary Gateway</span>
           <span className="font-mono text-xs">
             {group.primary_controller || group.controller_url || '—'}
           </span>
         </div>
         {group.secondary_controller && (
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Secondary Controller</span>
+            <span className="text-muted-foreground">Secondary Gateway</span>
             <span className="font-mono text-xs">{group.secondary_controller}</span>
           </div>
         )}

@@ -29,7 +29,7 @@ const COLUMNS = [
   'MAC Address',
   'IP Address',
   'Status',
-  'WLAN',
+  'SSID',
   'Secure Wi-Fi',
   'Connected Since',
   'Last Seen',

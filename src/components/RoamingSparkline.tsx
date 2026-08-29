@@ -12,6 +12,19 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import type { SparklineBucket } from '../lib/roamingSparklineData';
+import { BAND_COLORS, CHART_COLORS, ROAMING_QUALITY_COLORS } from '@/config/colorPalette';
+import { withAlpha } from '@/lib/chartStyle';
+
+/** Series roles mapped onto the EP1 palette. */
+const SERIES_COLORS = {
+  good: CHART_COLORS.green,
+  failed: CHART_COLORS.red,
+  rssi: CHART_COLORS.amber,
+  dwell: CHART_COLORS.purple,
+  rate: CHART_COLORS.purpleLight,
+  throughput: CHART_COLORS.teal,
+  rtt: CHART_COLORS.slate,
+} as const;
 
 interface RoamingSparklineProps {
   data: SparklineBucket[];
@@ -57,11 +70,11 @@ function formatXTick(timeMs: number): string {
 function bandFill(bandCounts: SparklineBucket['bandCounts'], opacity = 0.7): string {
   const { '5GHz': g5, '6GHz': g6, '2.4GHz': g24 } = bandCounts;
   const max = Math.max(g5, g6, g24);
-  if (max === 0) return `rgba(34,197,94,${opacity})`;
-  if (g6 === max) return `rgba(129,140,248,${opacity})`; // 6GHz → indigo
-  if (g5 === max) return `rgba(34,197,94,${opacity})`; // 5GHz → green
-  if (g24 === max) return `rgba(251,191,36,${opacity})`; // 2.4GHz → amber
-  return `rgba(34,197,94,${opacity})`;
+  if (max === 0) return withAlpha(BAND_COLORS['5'], opacity);
+  if (g6 === max) return withAlpha(BAND_COLORS['6'], opacity); // 6GHz → purple
+  if (g5 === max) return withAlpha(BAND_COLORS['5'], opacity); // 5GHz → green
+  if (g24 === max) return withAlpha(BAND_COLORS['2.4'], opacity); // 2.4GHz → amber
+  return withAlpha(BAND_COLORS['5'], opacity);
 }
 
 /** Whether a bucket has band diversity data (events with known frequency). */
@@ -93,10 +106,10 @@ function computeConnectivityScore(data: SparklineBucket[]): number {
 }
 
 function scoreColor(score: number): string {
-  if (score >= 80) return 'rgba(74,222,128,0.9)';
-  if (score >= 60) return 'rgba(251,191,36,0.9)';
-  if (score >= 40) return 'rgba(249,115,22,0.9)';
-  return 'rgba(239,68,68,0.9)';
+  if (score >= 80) return ROAMING_QUALITY_COLORS.good.rgba;
+  if (score >= 60) return ROAMING_QUALITY_COLORS.fair.rgba;
+  if (score >= 40) return ROAMING_QUALITY_COLORS.poor.rgba;
+  return ROAMING_QUALITY_COLORS.critical.rgba;
 }
 
 function scoreLabel(score: number): string {
@@ -118,12 +131,12 @@ function SparklineTooltip({ active, payload }: TooltipProps) {
   return (
     <div
       style={{
-        backgroundColor: 'rgba(10,10,18,0.95)',
-        border: '1px solid rgba(255,255,255,0.12)',
-        borderRadius: '8px',
+        backgroundColor: 'var(--popover)',
+        border: '1px solid var(--border)',
+        borderRadius: 8,
         padding: '10px 13px',
         fontSize: '11px',
-        color: '#fff',
+        color: 'var(--popover-foreground)',
         backdropFilter: 'blur(12px)',
         lineHeight: '1.8',
         minWidth: 190,
@@ -133,7 +146,7 @@ function SparklineTooltip({ active, payload }: TooltipProps) {
       <div
         style={{
           fontWeight: 700,
-          color: 'rgba(255,255,255,0.55)',
+          color: 'var(--muted-foreground)',
           marginBottom: 6,
           fontSize: 10,
           letterSpacing: '0.06em',
@@ -143,11 +156,11 @@ function SparklineTooltip({ active, payload }: TooltipProps) {
         {bucket.label}
       </div>
       <div>
-        Events: <strong style={{ color: '#fff' }}>{bucket.total}</strong>{' '}
-        <span style={{ color: 'rgba(255,255,255,0.4)' }}>
+        Events: <strong style={{ color: 'var(--popover-foreground)' }}>{bucket.total}</strong>{' '}
+        <span style={{ color: 'var(--muted-foreground)' }}>
           ({bucket.good} good
           {bucket.failed > 0 && (
-            <span style={{ color: 'rgba(239,68,68,0.9)' }}>, {bucket.failed} failed</span>
+            <span style={{ color: 'var(--status-error)' }}>, {bucket.failed} failed</span>
           )}
           )
         </span>
@@ -155,7 +168,7 @@ function SparklineTooltip({ active, payload }: TooltipProps) {
       {bucket.avgRssi != null && (
         <div>
           Avg RSSI:{' '}
-          <strong style={{ color: 'rgba(251,191,36,0.95)' }}>
+          <strong style={{ color: withAlpha(SERIES_COLORS.rssi, 0.95) }}>
             {bucket.avgRssi.toFixed(0)} dBm
           </strong>
         </div>
@@ -163,13 +176,15 @@ function SparklineTooltip({ active, payload }: TooltipProps) {
       {bucket.avgDwell != null && (
         <div>
           Avg dwell:{' '}
-          <strong style={{ color: 'rgba(168,85,247,0.95)' }}>{formatDwell(bucket.avgDwell)}</strong>
+          <strong style={{ color: withAlpha(SERIES_COLORS.dwell, 0.95) }}>
+            {formatDwell(bucket.avgDwell)}
+          </strong>
         </div>
       )}
       {bucket.avgDataRate != null && (
         <div>
           PHY rate:{' '}
-          <strong style={{ color: 'rgba(99,102,241,0.95)' }}>
+          <strong style={{ color: withAlpha(SERIES_COLORS.rate, 0.95) }}>
             {bucket.avgDataRate.toFixed(0)} Mbps
           </strong>
         </div>
@@ -177,7 +192,7 @@ function SparklineTooltip({ active, payload }: TooltipProps) {
       {bucket.throughputBps != null && (
         <div>
           Throughput:{' '}
-          <strong style={{ color: 'rgba(20,184,166,0.95)' }}>
+          <strong style={{ color: withAlpha(SERIES_COLORS.throughput, 0.95) }}>
             {formatThroughput(bucket.throughputBps)}
           </strong>
         </div>
@@ -185,13 +200,13 @@ function SparklineTooltip({ active, payload }: TooltipProps) {
       {bucket.tcpRttMs != null && (
         <div>
           TCP RTT:{' '}
-          <strong style={{ color: 'rgba(56,189,248,0.95)' }}>
+          <strong style={{ color: withAlpha(SERIES_COLORS.rtt, 0.95) }}>
             {bucket.tcpRttMs.toFixed(0)} ms
           </strong>
         </div>
       )}
       {dominantBand && dominantBand[1] > 0 && (
-        <div style={{ color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>
+        <div style={{ color: 'var(--muted-foreground)', marginTop: 2 }}>
           Band: {dominantBand[0]} ({dominantBand[1]})
           {bucket.bandCounts['2.4GHz'] > 0 && bucket.bandCounts['5GHz'] > 0 && (
             <span> · mixed</span>
@@ -199,7 +214,7 @@ function SparklineTooltip({ active, payload }: TooltipProps) {
         </div>
       )}
       {bucket.lateRoamCount > 0 && (
-        <div style={{ color: 'rgba(239,68,68,0.85)', marginTop: 2 }}>
+        <div style={{ color: 'var(--status-error)', marginTop: 2 }}>
           ⚠ {bucket.lateRoamCount} late roam{bucket.lateRoamCount > 1 ? 's' : ''}
         </div>
       )}
@@ -273,19 +288,25 @@ export function RoamingSparkline({ data }: RoamingSparklineProps) {
   const legendItems = [
     ...(hasBands
       ? [
-          { color: 'rgba(34,197,94,0.8)', shape: 'square', label: '5GHz' },
-          { color: 'rgba(129,140,248,0.8)', shape: 'square', label: '6GHz' },
-          { color: 'rgba(251,191,36,0.8)', shape: 'square', label: '2.4GHz' },
+          { color: withAlpha(BAND_COLORS['5'], 0.8), shape: 'square', label: '5GHz' },
+          { color: withAlpha(BAND_COLORS['6'], 0.8), shape: 'square', label: '6GHz' },
+          { color: withAlpha(BAND_COLORS['2.4'], 0.8), shape: 'square', label: '2.4GHz' },
         ]
-      : [{ color: 'rgba(34,197,94,0.8)', shape: 'square', label: 'Good' }]),
-    { color: 'rgba(239,68,68,0.8)', shape: 'square', label: 'Failed' },
-    ...(hasRssi ? [{ color: 'rgba(251,191,36,0.9)', shape: 'area', label: 'RSSI' }] : []),
-    ...(hasDwell ? [{ color: 'rgba(168,85,247,0.9)', shape: 'area', label: 'Dwell' }] : []),
-    ...(hasRate ? [{ color: 'rgba(99,102,241,0.9)', shape: 'area', label: 'PHY rate' }] : []),
-    ...(hasThroughput
-      ? [{ color: 'rgba(20,184,166,0.9)', shape: 'area', label: 'Throughput' }]
+      : [{ color: withAlpha(SERIES_COLORS.good, 0.8), shape: 'square', label: 'Good' }]),
+    { color: withAlpha(SERIES_COLORS.failed, 0.8), shape: 'square', label: 'Failed' },
+    ...(hasRssi ? [{ color: withAlpha(SERIES_COLORS.rssi, 0.9), shape: 'area', label: 'RSSI' }] : []),
+    ...(hasDwell
+      ? [{ color: withAlpha(SERIES_COLORS.dwell, 0.9), shape: 'area', label: 'Dwell' }]
       : []),
-    ...(hasRtt ? [{ color: 'rgba(56,189,248,0.9)', shape: 'dashed', label: 'TCP RTT' }] : []),
+    ...(hasRate
+      ? [{ color: withAlpha(SERIES_COLORS.rate, 0.9), shape: 'area', label: 'PHY rate' }]
+      : []),
+    ...(hasThroughput
+      ? [{ color: withAlpha(SERIES_COLORS.throughput, 0.9), shape: 'area', label: 'Throughput' }]
+      : []),
+    ...(hasRtt
+      ? [{ color: withAlpha(SERIES_COLORS.rtt, 0.9), shape: 'dashed', label: 'TCP RTT' }]
+      : []),
   ];
 
   return (
@@ -368,7 +389,7 @@ export function RoamingSparkline({ data }: RoamingSparklineProps) {
           <span
             style={{
               fontSize: 10,
-              color: 'rgba(255,255,255,0.5)',
+              color: 'var(--muted-foreground)',
               letterSpacing: '0.05em',
               textTransform: 'uppercase',
             }}
@@ -382,27 +403,27 @@ export function RoamingSparkline({ data }: RoamingSparklineProps) {
         <ComposedChart data={chartData} margin={{ top: 4, right: 0, left: 0, bottom: 20 }}>
           <defs>
             <linearGradient id="gradRssi" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="rgba(251,191,36,1)" stopOpacity={0.25} />
-              <stop offset="95%" stopColor="rgba(251,191,36,1)" stopOpacity={0} />
+              <stop offset="5%" stopColor={SERIES_COLORS.rssi} stopOpacity={0.25} />
+              <stop offset="95%" stopColor={SERIES_COLORS.rssi} stopOpacity={0} />
             </linearGradient>
             <linearGradient id="gradDwell" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="rgba(168,85,247,1)" stopOpacity={0.22} />
-              <stop offset="95%" stopColor="rgba(168,85,247,1)" stopOpacity={0} />
+              <stop offset="5%" stopColor={SERIES_COLORS.dwell} stopOpacity={0.22} />
+              <stop offset="95%" stopColor={SERIES_COLORS.dwell} stopOpacity={0} />
             </linearGradient>
             <linearGradient id="gradRate" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="rgba(99,102,241,1)" stopOpacity={0.2} />
-              <stop offset="95%" stopColor="rgba(99,102,241,1)" stopOpacity={0} />
+              <stop offset="5%" stopColor={SERIES_COLORS.rate} stopOpacity={0.2} />
+              <stop offset="95%" stopColor={SERIES_COLORS.rate} stopOpacity={0} />
             </linearGradient>
             <linearGradient id="gradThroughput" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="rgba(20,184,166,1)" stopOpacity={0.25} />
-              <stop offset="95%" stopColor="rgba(20,184,166,1)" stopOpacity={0} />
+              <stop offset="5%" stopColor={SERIES_COLORS.throughput} stopOpacity={0.25} />
+              <stop offset="95%" stopColor={SERIES_COLORS.throughput} stopOpacity={0} />
             </linearGradient>
           </defs>
 
           <XAxis
             dataKey="timeMs"
             tickFormatter={formatXTick}
-            tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 9 }}
+            tick={{ fill: 'var(--muted-foreground)', fontSize: 9 }}
             axisLine={false}
             tickLine={false}
             interval="preserveStartEnd"
@@ -422,14 +443,14 @@ export function RoamingSparkline({ data }: RoamingSparklineProps) {
                 yAxisId="right"
                 y1={0}
                 y2={33}
-                fill="rgba(239,68,68,0.04)"
+                fill={withAlpha(SERIES_COLORS.failed, 0.04)}
                 ifOverflow="hidden"
               />
               <ReferenceArea
                 yAxisId="right"
                 y1={33}
                 y2={66}
-                fill="rgba(251,191,36,0.03)"
+                fill={withAlpha(SERIES_COLORS.rssi, 0.03)}
                 ifOverflow="hidden"
               />
             </>
@@ -440,7 +461,7 @@ export function RoamingSparkline({ data }: RoamingSparklineProps) {
             yAxisId="left"
             dataKey="good"
             stackId="events"
-            fill="rgba(34,197,94,0.6)"
+            fill={withAlpha(SERIES_COLORS.good, 0.6)}
             isAnimationActive={false}
           >
             {hasBands &&
@@ -452,7 +473,7 @@ export function RoamingSparkline({ data }: RoamingSparklineProps) {
             yAxisId="left"
             dataKey="failed"
             stackId="events"
-            fill="rgba(239,68,68,0.7)"
+            fill={withAlpha(SERIES_COLORS.failed, 0.7)}
             isAnimationActive={false}
           />
 
@@ -462,7 +483,7 @@ export function RoamingSparkline({ data }: RoamingSparklineProps) {
               yAxisId="right"
               dataKey="normRssi"
               type="monotone"
-              stroke="rgba(251,191,36,0.9)"
+              stroke={withAlpha(SERIES_COLORS.rssi, 0.9)}
               fill="url(#gradRssi)"
               strokeWidth={1.5}
               dot={false}
@@ -477,7 +498,7 @@ export function RoamingSparkline({ data }: RoamingSparklineProps) {
               yAxisId="right"
               dataKey="normDwell"
               type="monotone"
-              stroke="rgba(168,85,247,0.9)"
+              stroke={withAlpha(SERIES_COLORS.dwell, 0.9)}
               fill="url(#gradDwell)"
               strokeWidth={1.5}
               dot={false}
@@ -492,7 +513,7 @@ export function RoamingSparkline({ data }: RoamingSparklineProps) {
               yAxisId="right"
               dataKey="normRate"
               type="monotone"
-              stroke="rgba(99,102,241,0.85)"
+              stroke={withAlpha(SERIES_COLORS.rate, 0.85)}
               fill="url(#gradRate)"
               strokeWidth={1.5}
               dot={false}
@@ -507,7 +528,7 @@ export function RoamingSparkline({ data }: RoamingSparklineProps) {
               yAxisId="right"
               dataKey="normThroughput"
               type="monotone"
-              stroke="rgba(20,184,166,0.9)"
+              stroke={withAlpha(SERIES_COLORS.throughput, 0.9)}
               fill="url(#gradThroughput)"
               strokeWidth={1.5}
               dot={false}
@@ -522,7 +543,7 @@ export function RoamingSparkline({ data }: RoamingSparklineProps) {
               yAxisId="right"
               dataKey="normRtt"
               type="monotone"
-              stroke="rgba(56,189,248,0.85)"
+              stroke={withAlpha(SERIES_COLORS.rtt, 0.85)}
               strokeWidth={1.5}
               strokeDasharray="4 3"
               dot={false}
@@ -540,12 +561,12 @@ export function RoamingSparkline({ data }: RoamingSparklineProps) {
           gap: '20px',
           marginTop: 4,
           fontSize: '11px',
-          color: 'rgba(255,255,255,0.4)',
+          color: 'var(--muted-foreground)',
           flexWrap: 'wrap',
         }}
       >
         <span>
-          <strong style={{ color: 'rgba(255,255,255,0.8)' }}>{total}</strong> events
+          <strong style={{ color: 'var(--foreground)' }}>{total}</strong> events
         </span>
         <span>
           Success{' '}
@@ -553,10 +574,10 @@ export function RoamingSparkline({ data }: RoamingSparklineProps) {
             style={{
               color:
                 successPct >= 90
-                  ? 'rgba(74,222,128,0.9)'
+                  ? 'var(--status-success)'
                   : successPct >= 70
-                    ? 'rgba(251,191,36,0.9)'
-                    : 'rgba(239,68,68,0.9)',
+                    ? 'var(--status-warning)'
+                    : 'var(--status-error)',
             }}
           >
             {successPct}%
@@ -565,13 +586,15 @@ export function RoamingSparkline({ data }: RoamingSparklineProps) {
         {avgRssi != null && (
           <span>
             Avg RSSI{' '}
-            <strong style={{ color: 'rgba(251,191,36,0.9)' }}>{avgRssi.toFixed(0)} dBm</strong>
+            <strong style={{ color: withAlpha(SERIES_COLORS.rssi, 0.9) }}>
+              {avgRssi.toFixed(0)} dBm
+            </strong>
           </span>
         )}
         {avgThroughputBps != null && (
           <span>
             Avg throughput{' '}
-            <strong style={{ color: 'rgba(20,184,166,0.9)' }}>
+            <strong style={{ color: withAlpha(SERIES_COLORS.throughput, 0.9) }}>
               {formatThroughput(avgThroughputBps)}
             </strong>
           </span>
@@ -584,7 +607,7 @@ export function RoamingSparkline({ data }: RoamingSparklineProps) {
           style={{
             marginTop: 6,
             fontSize: '11px',
-            color: 'rgba(239,68,68,0.8)',
+            color: 'var(--status-error)',
             display: 'flex',
             alignItems: 'center',
             gap: 5,

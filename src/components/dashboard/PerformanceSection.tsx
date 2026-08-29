@@ -342,8 +342,8 @@ function PerformanceSectionImpl({
                   <Radar
                     name="Performance"
                     dataKey="value"
-                    stroke="#BB86FC"
-                    fill="#BB86FC"
+                    stroke="var(--chart-1)"
+                    fill="var(--chart-1)"
                     fillOpacity={0.6}
                   />
                   <Tooltip

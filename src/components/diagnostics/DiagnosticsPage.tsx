@@ -42,7 +42,7 @@ export function DiagnosticsPage() {
               {!loading && result && <Badge variant={badge.variant}>{badge.label}</Badge>}
             </div>
             <p className="text-sm text-muted-foreground">
-              Controller health checks computed from live configuration (/v1/aps, /v3/profiles,
+              Gateway health checks computed from live configuration (/v1/aps, /v3/profiles,
               /v1/aps/query, /v1/switches, /v1/aaapolicy). No health endpoint exists — every status
               is derived, and runtime-only items are labelled.
             </p>

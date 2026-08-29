@@ -166,10 +166,10 @@ export function QuickWLANDialog({ open, onOpenChange, onSuccess }: QuickWLANDial
           {/* SSID + VLAN row */}
           <div className="grid grid-cols-3 gap-3">
             <div className="col-span-2 space-y-1.5">
-              <Label htmlFor="qw-ssid">SSID Name</Label>
+              <Label htmlFor="qw-ssid">SSID</Label>
               <Input
                 id="qw-ssid"
-                placeholder="Network name"
+                placeholder="Broadcast name (visible to clients)"
                 value={ssid}
                 onChange={(e) => setSsid(e.target.value)}
               />

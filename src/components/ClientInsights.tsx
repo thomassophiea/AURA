@@ -48,6 +48,7 @@ import { useTimelineNavigation } from '../hooks/useTimelineNavigation';
 import { useSelectedTimeRange } from '../hooks/useSelectedTimeRange';
 import { useClientInsightsData } from '../hooks/useClientInsightsData';
 import { controllerDurationFor } from '../lib/timeRange';
+import { COMPACT_TOOLTIP_STYLE } from '../lib/chartStyle';
 import { TimeRangeSelector } from './TimeRangeSelector';
 import { SelectedRangeLabel } from './SelectedRangeLabel';
 import { TimelineControls } from './timeline';
@@ -65,15 +66,6 @@ interface ClientInsightsProps {
  * no longer resets the range you were looking at.
  */
 
-// Compact tooltip styling for consistency
-const COMPACT_TOOLTIP_STYLE = {
-  backgroundColor: 'color-mix(in srgb, var(--background) 90%, transparent)',
-  border: '1px solid color-mix(in srgb, var(--border) 30%, transparent)',
-  borderRadius: '4px',
-  padding: '4px 6px',
-  fontSize: '9px',
-  backdropFilter: 'blur(8px)',
-};
 
 // Format timestamp for chart
 function formatTime(timestamp: number, duration: string): string {

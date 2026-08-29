@@ -74,7 +74,7 @@ export function AdminEditor({
           {!isNew && <Badge variant="secondary">{form.adminRole}</Badge>}
         </span>
       }
-      description="Controller administrator account (/v1/administrators)"
+      description="Gateway administrator account (/v1/administrators)"
       dirty={dirty}
       valid={valid}
       saving={saving}
@@ -102,7 +102,7 @@ export function AdminEditor({
               isBuiltinAdmin
                 ? 'The built-in admin account is always Full access.'
                 : form.adminRole === 'CUSTOM'
-                  ? 'Custom scopes are managed on the controller (per-scope editing deferred).'
+                  ? 'Custom scopes are managed on the gateway (per-scope editing deferred).'
                   : undefined
             }
           />

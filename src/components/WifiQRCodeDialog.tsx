@@ -181,7 +181,7 @@ export function WifiQRCodeDialog({ open, onOpenChange, wlan }: WifiQRCodeDialogP
           <ol className="list-decimal list-inside space-y-1 ml-2">
             <li>Open your phone's camera app</li>
             <li>Point it at the QR code above</li>
-            <li>Tap the WiFi notification that appears</li>
+            <li>Tap the Wi-Fi notification that appears</li>
             <li>Your device will connect automatically</li>
           </ol>
         </div>

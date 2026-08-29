@@ -44,6 +44,15 @@ import { useGridMode } from '@/contexts/GridModeContext';
 import { AGGridWrapper } from '@/components/ui/AGGridWrapper';
 import type { ColDef } from 'ag-grid-community';
 
+/** Short, scannable date-time (e.g. "Aug 29, 03:15 PM") for table cells. */
+const formatShortDateTime = (value: string | number | Date) =>
+  new Date(value).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
 export function ConfigureGuest() {
   const { navigationScope, siteGroups } = useAppContext();
   const isOrgScope = navigationScope === 'global';
@@ -141,7 +150,7 @@ export function ConfigureGuest() {
       valueGetter: (params: { data?: any }) =>
         params.data?.createdDate || params.data?.createTime || '',
       valueFormatter: (params: { value?: string }) =>
-        params.value ? new Date(params.value).toLocaleString() : '-',
+        params.value ? formatShortDateTime(params.value) : '-',
     },
     {
       colId: 'expires',
@@ -150,7 +159,7 @@ export function ConfigureGuest() {
       valueGetter: (params: { data?: any }) =>
         params.data?.expiryDate || params.data?.expireTime || '',
       valueFormatter: (params: { value?: string }) =>
-        params.value ? new Date(params.value).toLocaleString() : 'Never',
+        params.value ? formatShortDateTime(params.value) : 'Never',
     },
     {
       colId: '__actions',
@@ -490,7 +499,7 @@ export function ConfigureGuest() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl">{guestNetworks.length}</div>
-            <p className="text-xs text-muted-foreground">Active guest SSIDs</p>
+            <p className="text-xs text-muted-foreground">Active guest networks</p>
           </CardContent>
         </Card>
 
@@ -575,7 +584,7 @@ export function ConfigureGuest() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>SSID / Service Name</TableHead>
+                      <TableHead>Network Name</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Security</TableHead>
                       <TableHead>VLAN</TableHead>
@@ -861,12 +870,12 @@ export function ConfigureGuest() {
                           </TableCell>
                           <TableCell className="text-xs">
                             {guest.createdDate || guest.createTime
-                              ? new Date(guest.createdDate || guest.createTime).toLocaleString()
+                              ? formatShortDateTime(guest.createdDate || guest.createTime)
                               : '-'}
                           </TableCell>
                           <TableCell className="text-xs">
                             {guest.expiryDate || guest.expireTime
-                              ? new Date(guest.expiryDate || guest.expireTime).toLocaleString()
+                              ? formatShortDateTime(guest.expiryDate || guest.expireTime)
                               : 'Never'}
                           </TableCell>
                           <TableCell className="text-right">

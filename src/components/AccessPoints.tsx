@@ -57,7 +57,6 @@ import {
   Trash2,
   Cloud,
   Power,
-  WifiOff,
   CheckCircle2,
   XCircle,
   Info,
@@ -86,6 +85,10 @@ import { useAppContext } from '@/contexts/AppContext';
 import { useGridMode } from '@/contexts/GridModeContext';
 import { useCortexContext } from '@/contexts/CortexContext';
 import { AGGridWrapper, type AGGridWrapperHandle } from '@/components/ui/AGGridWrapper';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { MonoCell } from '@/components/ui/cells';
+import { MetricCard } from '@/components/ui/MetricCard';
+import { DetailRow } from '@/components/ui/DetailRow';
 import type { ColDef, GridApi } from 'ag-grid-community';
 import { Server } from 'lucide-react';
 import { Sun, Moon } from 'lucide-react';
@@ -1159,26 +1162,6 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
     }
   }, []);
 
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'online':
-      case 'connected':
-      case 'up':
-      case 'in-service':
-      case 'inservice':
-        return 'default';
-      case 'offline':
-      case 'disconnected':
-      case 'down':
-        return 'destructive';
-      case 'warning':
-      case 'limited':
-        return 'secondary';
-      default:
-        return 'outline';
-    }
-  };
-
   // Derive unique site names from loaded APs
   // Load XIQ access points when an XIQ site is selected (cleared otherwise).
   useEffect(() => {
@@ -1715,8 +1698,10 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
       case 'apName': {
         const apCableHealth = cableHealthMap[ap.serialNumber];
         return (
-          <div className="flex items-center gap-2">
-            <span>{getAPName(ap)}</span>
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="truncate" title={getAPName(ap)}>
+              {getAPName(ap)}
+            </span>
             {isAfcAnchor(ap) && (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -1795,7 +1780,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
         );
       }
       case 'serialNumber':
-        return <span className="font-mono text-sm">{ap.serialNumber}</span>;
+        return <MonoCell value={ap.serialNumber} label="Serial number" />;
       case 'hostSite':
         // An AP the Gateway has not placed yet reads as Staging — the OS1 name
         // for that state — rather than blank or "Unknown Location".
@@ -1831,7 +1816,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
         return <span className="text-muted-foreground">—</span>;
       }
       case 'ipAddress':
-        return <span className="font-mono text-sm">{ap.ipAddress || '-'}</span>;
+        return <MonoCell value={ap.ipAddress} label="IP address" />;
       case 'clients': {
         const count = getClientCount(ap);
         const numericCount = typeof count === 'number' ? count : 0;
@@ -1867,7 +1852,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
         );
       }
       case 'macAddress':
-        return <span className="font-mono text-sm">{ap.macAddress || '-'}</span>;
+        return <MonoCell value={ap.macAddress} label="MAC address" />;
       case 'ethMode':
         return <span className="text-sm">{(ap as any).ethMode || '-'}</span>;
       case 'ethSpeed': {
@@ -1987,7 +1972,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
         return <span className="text-sm">{(ap as any).wiredClients || '0'}</span>;
       case 'status': {
         const liveStatus = apStates[ap.serialNumber] || ap.status || '-';
-        return <Badge variant={getStatusBadgeVariant(liveStatus)}>{liveStatus}</Badge>;
+        return <StatusBadge status={liveStatus} />;
       }
       case 'uptime':
         return <span className="text-sm">{ap.uptime || '-'}</span>;
@@ -2240,6 +2225,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
       defs.push({
         colId: columnKey,
         headerName: col?.label || columnKey,
+        headerTooltip: col?.tooltip,
         field: columnKey as any,
         sortable: col?.sortable ?? true,
         width: sizing.width,
@@ -2429,6 +2415,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
+          <h2 className="text-2xl font-semibold">Access Points</h2>
           <p className="text-muted-foreground">
             Configure and monitor access points across your network infrastructure
           </p>
@@ -2580,109 +2567,37 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
       })()}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
-            <CardTitle className="text-sm font-semibold">Total Access Points</CardTitle>
-            <div className="p-1.5 rounded-lg badge-gradient-blue shadow-md group-hover:scale-110 transition-transform">
-              <Wifi className="h-3.5 w-3.5 text-white" />
-            </div>
-          </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-foreground">{cardStats.total}</div>
-            <p className="text-xs text-muted-foreground mb-2">Managed devices</p>
-            <div className="space-y-0.5">
-              {(['Wi-Fi 7', 'Wi-Fi 6E', 'Wi-Fi 6', 'Wi-Fi 5'] as const).map(
-                (gen) =>
-                  cardStats.wifiGen[gen] > 0 && (
-                    <div key={gen} className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">{gen}</span>
-                      <span className="font-medium tabular-nums">{cardStats.wifiGen[gen]}</span>
-                    </div>
-                  )
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
-            <CardTitle className="text-sm font-semibold">AP Status</CardTitle>
-            <div className="p-1.5 rounded-lg badge-gradient-green shadow-md group-hover:scale-110 transition-transform">
-              <Activity className="h-3.5 w-3.5 text-white animate-pulse" />
-            </div>
-          </CardHeader>
-          <CardContent className="relative">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-[color:var(--status-success)]" />
-                  <span className="text-sm font-medium">Online</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xl font-bold text-foreground">{cardStats.online}</span>
-                  <span className="text-xs text-muted-foreground">
-                    (
-                    {cardStats.total > 0
-                      ? `${Math.round((cardStats.online / cardStats.total) * 100)}%`
-                      : '0%'}
-                    )
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <WifiOff className="h-4 w-4 text-[color:var(--status-error)]" />
-                  <span className="text-sm font-medium">Offline</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xl font-bold text-[color:var(--status-error)]">
-                    {cardStats.offline}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    (
-                    {cardStats.total > 0
-                      ? `${Math.round((cardStats.offline / cardStats.total) * 100)}%`
-                      : '0%'}
-                    )
-                  </span>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
-            <CardTitle className="text-sm font-semibold">Total Clients</CardTitle>
-            <div className="p-1.5 rounded-lg badge-gradient-violet shadow-md group-hover:scale-110 transition-transform">
-              <Users className="h-3.5 w-3.5 text-white" />
-            </div>
-          </CardHeader>
-          <CardContent className="relative">
-            <div className="flex items-center space-x-2">
-              <div className="text-2xl font-bold text-foreground">{cardStats.clients}</div>
-              {isLoadingClients && (
-                <div className="animate-pulse">
-                  <Activity className="h-4 w-4 text-muted-foreground" />
-                </div>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">Connected devices</p>
-          </CardContent>
-        </Card>
-
-        <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
-            <CardTitle className="text-sm font-semibold">Hardware Types</CardTitle>
-            <div className="p-1.5 rounded-lg badge-gradient-amber shadow-md group-hover:scale-110 transition-transform">
-              <Wifi className="h-3.5 w-3.5 text-white" />
-            </div>
-          </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-foreground">{cardStats.models}</div>
-            <p className="text-xs text-muted-foreground">Different models</p>
-          </CardContent>
-        </Card>
+        <MetricCard
+          title="Total Access Points"
+          value={cardStats.total}
+          subtitle={
+            (['Wi-Fi 7', 'Wi-Fi 6E', 'Wi-Fi 6', 'Wi-Fi 5'] as const)
+              .filter((gen) => cardStats.wifiGen[gen] > 0)
+              .map((gen) => `${cardStats.wifiGen[gen]} ${gen}`)
+              .join(' · ') || 'Managed devices'
+          }
+          icon={Wifi}
+        />
+        <MetricCard
+          title="AP Status"
+          value={`${cardStats.online}/${cardStats.total}`}
+          subtitle={`${cardStats.online} online · ${cardStats.offline} offline`}
+          icon={Activity}
+          tone={cardStats.offline > 0 ? 'critical' : 'default'}
+          toneValue={cardStats.offline > 0}
+        />
+        <MetricCard
+          title="Total Clients"
+          value={cardStats.clients}
+          subtitle={isLoadingClients ? 'Connected devices (loading…)' : 'Connected devices'}
+          icon={Users}
+        />
+        <MetricCard
+          title="Hardware Types"
+          value={cardStats.models}
+          subtitle="Different models"
+          icon={Cpu}
+        />
       </div>
 
       {/* E911 BSSID Live Sync Panel - Compact */}
@@ -2969,47 +2884,8 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
                                       <Key className="mr-2 h-4 w-4" />
                                       Generate CSR
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        toast.info('Certificate upload feature coming soon');
-                                      }}
-                                    >
-                                      <Shield className="mr-2 h-4 w-4" />
-                                      Apply Signed Certificates
-                                    </DropdownMenuItem>
                                   </DropdownMenuSubContent>
                                 </DropdownMenuSub>
-
-                                <DropdownMenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toast.info('Site assignment dialog coming soon');
-                                  }}
-                                >
-                                  <MapPin className="mr-2 h-4 w-4" />
-                                  Assign to Site
-                                </DropdownMenuItem>
-
-                                <DropdownMenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toast.info('Adoption preference dialog coming soon');
-                                  }}
-                                >
-                                  <Settings className="mr-2 h-4 w-4" />
-                                  Adoption Preference
-                                </DropdownMenuItem>
-
-                                <DropdownMenuItem
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toast.info('Event level dialog coming soon');
-                                  }}
-                                >
-                                  <AlertTriangle className="mr-2 h-4 w-4" />
-                                  Event Level
-                                </DropdownMenuItem>
 
                                 <DropdownMenuItem
                                   onClick={async (e) => {
@@ -3492,47 +3368,71 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
               <TabsContent value="technical" className="space-y-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-base">Technical Details</CardTitle>
+                    <CardTitle className="text-base">Device details</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-2 text-sm">
-                      {Object.entries(selectedAP).map(([key, value]) => {
-                        // Skip showing certain fields we already display elsewhere
-                        if (
-                          [
-                            'serialNumber',
-                            'displayName',
-                            'model',
-                            'hardwareType',
-                            'ipAddress',
-                            'macAddress',
-                            'location',
-                            'site',
-                            'status',
-                          ].includes(key)
-                        ) {
-                          return null;
-                        }
-
-                        // Skip null/undefined values
-                        if (value === null || value === undefined || value === '') {
-                          return null;
-                        }
-
-                        return (
-                          <div
-                            key={key}
-                            className="flex justify-between py-1 border-b border-border last:border-b-0"
-                          >
-                            <span className="text-muted-foreground capitalize">
-                              {key.replace(/([A-Z])/g, ' $1').trim()}:
-                            </span>
-                            <span className="font-mono text-xs">
-                              {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                            </span>
-                          </div>
-                        );
-                      })}
+                    <div className="space-y-2">
+                      {(() => {
+                        const apDetails = selectedAP as any;
+                        const ethernet =
+                          [apDetails?.ethSpeed, apDetails?.ethMode].filter(Boolean).join(' · ') ||
+                          undefined;
+                        const rows: Array<{
+                          label: string;
+                          value: string | number | undefined;
+                          mono?: boolean;
+                        }> = [
+                          { label: 'Serial', value: apDetails?.serialNumber, mono: true },
+                          { label: 'MAC', value: apDetails?.macAddress, mono: true },
+                          { label: 'IP', value: apDetails?.ipAddress, mono: true },
+                          { label: 'Model', value: apDetails?.model || apDetails?.hardwareType },
+                          { label: 'Firmware', value: apDetails?.softwareVersion },
+                          {
+                            label: 'Uptime',
+                            value:
+                              apDetails?.sysUptime != null
+                                ? formatUptime(Number(apDetails.sysUptime))
+                                : undefined,
+                          },
+                          { label: 'Power source', value: apDetails?.pwrSource },
+                          {
+                            label: 'Power draw',
+                            value:
+                              apDetails?.pwrUsage != null
+                                ? `${apDetails.pwrUsage} W`
+                                : undefined,
+                          },
+                          { label: 'Ethernet', value: ethernet },
+                          {
+                            label: 'CPU',
+                            value:
+                              apDetails?.cpuUsage != null ? `${apDetails.cpuUsage}%` : undefined,
+                          },
+                          {
+                            label: 'Memory',
+                            value:
+                              apDetails?.memoryUsage != null
+                                ? `${apDetails.memoryUsage}%`
+                                : undefined,
+                          },
+                          { label: 'RF policy', value: apDetails?.rfMgmtPolicyName },
+                          { label: 'Adopted by', value: apDetails?.adoptedBy },
+                        ];
+                        return rows
+                          .filter(
+                            (row) =>
+                              row.value !== undefined && row.value !== null && row.value !== ''
+                          )
+                          .map((row) => (
+                            <DetailRow
+                              key={row.label}
+                              label={row.label}
+                              value={row.value}
+                              mono={row.mono}
+                              copyLabel={row.mono ? row.label : undefined}
+                            />
+                          ));
+                      })()}
                     </div>
                   </CardContent>
                 </Card>

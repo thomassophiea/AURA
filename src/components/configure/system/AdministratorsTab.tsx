@@ -90,7 +90,7 @@ export function AdministratorsTab() {
     <>
       <ResourceGridPage<Administrator>
         title="Administrators"
-        description="Controller administrator accounts"
+        description="Gateway administrator accounts"
         icon={Users}
         rows={crud.items}
         columnDefs={columnDefs}

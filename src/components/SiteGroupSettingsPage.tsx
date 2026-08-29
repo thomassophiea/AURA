@@ -104,11 +104,11 @@ export function SiteGroupSettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Connection Settings</CardTitle>
-              <CardDescription>Configure how AURA connects to this controller</CardDescription>
+              <CardDescription>Configure how AURA connects to this gateway</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>Controller URL</Label>
+                <Label>Gateway URL</Label>
                 <Input value={siteGroup.controller_url} disabled className="font-mono text-sm" />
                 <p className="text-xs text-muted-foreground">
                   Read-only — managed in Site Groups configuration
@@ -239,7 +239,7 @@ export function SiteGroupSettingsPage() {
             <CardHeader>
               <CardTitle className="text-base">Deployment Preferences</CardTitle>
               <CardDescription>
-                Configure how templates are deployed to this controller
+                Configure how templates are deployed to this gateway
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -314,7 +314,7 @@ export function SiteGroupSettingsPage() {
               <div className="space-y-3">
                 <InfoRow label="Name" value={siteGroup.name} />
                 <InfoRow label="ID" value={siteGroup.id} mono />
-                <InfoRow label="Controller URL" value={siteGroup.controller_url} mono />
+                <InfoRow label="Gateway URL" value={siteGroup.controller_url} mono />
                 {siteGroup.controller_port && (
                   <InfoRow label="Port" value={String(siteGroup.controller_port)} />
                 )}

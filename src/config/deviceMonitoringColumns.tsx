@@ -36,6 +36,8 @@ import {
 } from 'lucide-react';
 import { isRandomizedMac } from '@/services/macAddressUtils';
 import { resolveClientIdentity } from '@/lib/clientIdentity';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { MonoCell, NumericCell, TimestampCell, TruncatedCell } from '@/components/ui/cells';
 
 // Re-export Station type for component use
 export type { Station };
@@ -151,23 +153,14 @@ function getSignalStrengthIndicator(rss: number | undefined, radioId: number | u
 }
 
 /**
- * Get status badge variant
+ * Normalize a station data rate to a plain Mbps number. The API reports the
+ * rate as a number in Mbps; legacy responses carry a string (possibly with a
+ * unit suffix), so parse rather than render raw to avoid "6 Mbps Mbps".
  */
-function getStatusBadgeVariant(status: string) {
-  switch (status?.toLowerCase()) {
-    case 'connected':
-    case 'associated':
-    case 'active':
-      return 'default';
-    case 'disconnected':
-    case 'inactive':
-      return 'destructive';
-    case 'idle':
-    case 'low':
-      return 'secondary';
-    default:
-      return 'outline';
-  }
+function parseRateMbps(rate: number | string | undefined): number | undefined {
+  if (rate === undefined || rate === null || rate === '') return undefined;
+  const parsed = typeof rate === 'number' ? rate : parseFloat(rate);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 /**
@@ -231,28 +224,12 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     renderCell: (station) => {
       return (
         <div className="flex flex-col gap-0.5 items-start">
-          {station.status ? (
-            <Badge
-              variant={getStatusBadgeVariant(station.status)}
-              className="text-xs px-1.5 py-0 h-4 font-medium uppercase tracking-wide"
-            >
-              {station.status}
-            </Badge>
-          ) : (
-            <span className="text-xs text-muted-foreground">—</span>
-          )}
+          <StatusBadge status={station.status} />
           {station.status?.toLowerCase() === 'disconnected' && station.lastSeen && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center gap-1 text-muted-foreground">
-                  <Clock className="h-2.5 w-2.5 flex-shrink-0" />
-                  <span className="text-xs leading-none">{formatLastSeen(station.lastSeen)}</span>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Last seen: {new Date(station.lastSeen).toLocaleString()}</p>
-              </TooltipContent>
-            </Tooltip>
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <Clock className="h-2.5 w-2.5 flex-shrink-0" />
+              <TimestampCell value={station.lastSeen} className="text-xs leading-none" />
+            </div>
           )}
         </div>
       );
@@ -277,7 +254,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
             <TooltipTrigger asChild>
               <span
                 className={`text-xs leading-tight cursor-help truncate ${
-                  isDerived ? 'text-muted-foreground italic' : 'font-medium text-foreground'
+                  isDerived ? 'text-muted-foreground' : 'font-medium text-foreground'
                 }`}
               >
                 {identity.displayName}
@@ -291,9 +268,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
                   <p className="text-muted-foreground">{identity.manufacturer}</p>
                 )}
                 {isDerived && (
-                  <p className="text-xs text-muted-foreground italic">
-                    Derived from OUI vendor lookup
-                  </p>
+                  <p className="text-xs text-muted-foreground">Derived from OUI vendor lookup</p>
                 )}
               </div>
             </TooltipContent>
@@ -324,24 +299,12 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     tooltip: 'Hardware MAC address',
     renderCell: (station) => {
       return (
-        <div className="flex items-center gap-1.5">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="font-mono text-xs leading-tight cursor-help">
-                {station.macAddress || '—'}
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="font-mono">{station.macAddress}</p>
-              {isRandomizedMac(station.macAddress) && (
-                <p className="text-purple-500 mt-1">Randomized MAC Address</p>
-              )}
-            </TooltipContent>
-          </Tooltip>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <MonoCell value={station.macAddress} label="MAC address" />
           {isRandomizedMac(station.macAddress) && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Shuffle className="h-3 w-3 text-purple-500 flex-shrink-0" />
+                <Shuffle className="h-3 w-3 text-[color:var(--status-info)] flex-shrink-0" />
               </TooltipTrigger>
               <TooltipContent>
                 <p className="font-medium">Randomized MAC Address</p>
@@ -363,9 +326,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     defaultVisible: true,
     sortable: true,
     tooltip: 'IPv4 address',
-    renderCell: (station) => (
-      <span className="font-mono text-xs leading-tight">{station.ipAddress || '—'}</span>
-    ),
+    renderCell: (station) => <MonoCell value={station.ipAddress} label="IP address" />,
   },
 
   {
@@ -378,9 +339,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     sortable: true,
     tooltip: 'IPv6 address',
     renderCell: (station) => (
-      <span className="font-mono text-xs leading-tight truncate max-w-[200px]">
-        {station.ipv6Address || '—'}
-      </span>
+      <MonoCell value={station.ipv6Address} label="IPv6 address" className="max-w-[200px]" />
     ),
   },
 
@@ -457,7 +416,9 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     defaultVisible: false,
     sortable: true,
     tooltip: 'Authenticated username',
-    renderCell: (station) => <span className="text-xs">{station.username || '—'}</span>,
+    renderCell: (station) => (
+      <TruncatedCell value={station.username} maxWidthClass="max-w-[150px]" className="text-xs" />
+    ),
   },
 
   {
@@ -469,7 +430,9 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     defaultVisible: false,
     sortable: true,
     tooltip: 'User/device role',
-    renderCell: (station) => <span className="text-xs">{station.role || '—'}</span>,
+    renderCell: (station) => (
+      <TruncatedCell value={station.role} maxWidthClass="max-w-[150px]" className="text-xs" />
+    ),
   },
 
   {
@@ -493,9 +456,11 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
             </div>
           )}
           {station.apSerial && (
-            <div className="font-mono text-xs text-muted-foreground truncate leading-tight">
-              {station.apSerial}
-            </div>
+            <MonoCell
+              value={station.apSerial}
+              label="AP serial"
+              className="text-muted-foreground"
+            />
           )}
           {lastSeenLabel && (
             <Tooltip>
@@ -525,7 +490,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     sortable: true,
     tooltip: 'Access Point serial number',
     renderCell: (station) => (
-      <code className="text-xs font-mono">{station.apSerial || station.apSerialNumber || '—'}</code>
+      <MonoCell value={station.apSerial || station.apSerialNumber} label="AP serial" />
     ),
   },
 
@@ -538,20 +503,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     defaultVisible: false,
     sortable: true,
     tooltip: 'Last activity timestamp',
-    renderCell: (station) => {
-      const label = formatLastSeen(station.lastSeen);
-      if (!label) return <span className="text-xs text-muted-foreground">—</span>;
-      return (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="text-xs cursor-help">{label}</span>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{new Date(station.lastSeen!).toLocaleString()}</p>
-          </TooltipContent>
-        </Tooltip>
-      );
-    },
+    renderCell: (station) => <TimestampCell value={station.lastSeen} className="text-xs" />,
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -680,8 +632,10 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     fieldPath: 'rxRate',
     defaultVisible: false,
     sortable: true,
-    tooltip: 'Receive data rate',
-    renderCell: (station) => <span className="text-xs">{station.rxRate || '—'}</span>,
+    tooltip: 'Receive data rate (Mbps)',
+    renderCell: (station) => (
+      <NumericCell value={parseRateMbps(station.rxRate)} unit="Mbps" className="text-xs" />
+    ),
   },
 
   {
@@ -692,8 +646,10 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     fieldPath: 'txRate',
     defaultVisible: false,
     sortable: true,
-    tooltip: 'Transmit data rate',
-    renderCell: (station) => <span className="text-xs">{station.txRate || '—'}</span>,
+    tooltip: 'Transmit data rate (Mbps)',
+    renderCell: (station) => (
+      <NumericCell value={parseRateMbps(station.txRate)} unit="Mbps" className="text-xs" />
+    ),
   },
 
   {
@@ -760,7 +716,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
 
   {
     key: 'inBytes',
-    label: 'In Bytes',
+    label: 'Data In',
     category: 'performance',
     dataType: 'number',
     fieldPath: 'inBytes',
@@ -775,7 +731,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
 
   {
     key: 'outBytes',
-    label: 'Out Bytes',
+    label: 'Data Out',
     category: 'performance',
     dataType: 'number',
     fieldPath: 'outBytes',
@@ -820,7 +776,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
 
   {
     key: 'dlLostRetriesPackets',
-    label: 'Dl Lost Retries Packets',
+    label: 'Downlink Retries',
     category: 'performance',
     dataType: 'number',
     fieldPath: 'dlLostRetriesPackets',

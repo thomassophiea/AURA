@@ -42,11 +42,11 @@ function TrendTooltip({ active, payload }: TrendTooltipProps) {
   if (!active || !payload?.length) return null;
   const point = payload[0].payload;
   return (
-    <div className="rounded-md bg-black/80 px-2.5 py-1.5 text-xs text-white shadow-lg">
+    <div className="rounded-md border border-border bg-popover px-2.5 py-1.5 text-xs text-popover-foreground shadow-lg">
       <div className="font-medium">{point.time}</div>
       <div>{point.successRate.toFixed(1)}%</div>
       {point.affectedClients > 0 && (
-        <div className="text-white/60">{point.affectedClients} affected</div>
+        <div className="text-muted-foreground">{point.affectedClients} affected</div>
       )}
     </div>
   );
@@ -66,13 +66,13 @@ export function SLETrendStrip({ sle }: SLETrendStripProps) {
   return (
     <div className="px-2">
       <div className="flex items-center justify-between px-3 pb-1">
-        <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-white/60">
+        <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-muted-foreground">
           Trend
         </span>
         {delta !== null && Math.abs(delta) >= 0.1 && (
           <span
             className="text-xs font-semibold"
-            style={{ color: delta >= 0 ? '#4ade80' : '#f87171' }}
+            style={{ color: delta >= 0 ? 'var(--status-success)' : 'var(--status-error)' }}
           >
             {delta >= 0 ? '▲' : '▼'} {Math.abs(delta).toFixed(1)} pts over this window
           </span>
@@ -89,7 +89,7 @@ export function SLETrendStrip({ sle }: SLETrendStripProps) {
             </defs>
             <XAxis
               dataKey="time"
-              tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 10 }}
+              tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
               axisLine={false}
               tickLine={false}
               minTickGap={48}
@@ -97,13 +97,13 @@ export function SLETrendStrip({ sle }: SLETrendStripProps) {
             <YAxis
               domain={[domainMin, 100]}
               width={34}
-              tick={{ fill: 'rgba(255,255,255,0.45)', fontSize: 10 }}
+              tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
               tickFormatter={(v: number) => `${v}%`}
               axisLine={false}
               tickLine={false}
             />
             <Tooltip content={<TrendTooltip />} />
-            <ReferenceLine y={100} stroke="rgba(255,255,255,0.15)" strokeDasharray="2 4" />
+            <ReferenceLine y={100} stroke="var(--border)" strokeDasharray="2 4" />
             <Area
               type="monotone"
               dataKey="successRate"

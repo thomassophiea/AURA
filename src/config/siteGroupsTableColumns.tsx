@@ -23,11 +23,11 @@ export const SITE_GROUPS_TABLE_COLUMNS: ColumnConfig<SiteGroup>[] = [
     sortable: true,
     lockVisible: true,
     defaultWidth: 200,
-    tooltip: 'Site group name',
+    tooltip: 'Site Group Name',
   },
   {
     key: 'controllerPair',
-    label: 'Controller Pair',
+    label: 'Gateway Pair',
     category: 'basic',
     dataType: 'string',
     fieldPath: 'controller_url',
@@ -46,7 +46,7 @@ export const SITE_GROUPS_TABLE_COLUMNS: ColumnConfig<SiteGroup>[] = [
         )}
       </div>
     ),
-    tooltip: 'Primary and secondary controller addresses',
+    tooltip: 'Primary and secondary gateway addresses',
   },
   {
     key: 'siteCount',
@@ -118,7 +118,7 @@ export const SITE_GROUPS_TABLE_COLUMNS: ColumnConfig<SiteGroup>[] = [
         </div>
       );
     },
-    tooltip: 'Controller connection status',
+    tooltip: 'Gateway connection status',
   },
   {
     key: 'region',

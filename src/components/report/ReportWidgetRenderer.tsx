@@ -85,31 +85,34 @@ const METRIC_ICONS: Record<string, React.ComponentType<{ className?: string }>> 
   _metric_bp_summary: CheckCircle,
 };
 
+// Icon-chip backgrounds keyed by metric. Status-bearing metrics use the semantic
+// status vars; the rest cycle the theme-correct chart ramp. Values are CSS colors
+// applied via inline style, not Tailwind classes.
 const METRIC_COLORS: Record<string, string> = {
-  _metric_aps: 'bg-blue-500',
-  _metric_total_aps: 'bg-blue-500',
-  _metric_online_aps: 'bg-emerald-500',
-  _metric_offline_aps: 'bg-red-500',
-  _metric_clients: 'bg-violet-500',
-  _metric_total_clients: 'bg-violet-500',
-  _metric_authenticated: 'bg-emerald-500',
-  _metric_active_clients: 'bg-violet-500',
-  _metric_throughput: 'bg-emerald-500',
-  _metric_total_throughput: 'bg-emerald-500',
-  _metric_upload: 'bg-blue-500',
-  _metric_download: 'bg-cyan-500',
-  _metric_health: 'bg-emerald-500',
-  _metric_sites: 'bg-sky-500',
-  _metric_total_sites: 'bg-sky-500',
-  _metric_networks: 'bg-indigo-500',
-  _metric_client_networks: 'bg-indigo-500',
-  _metric_avg_rssi: 'bg-emerald-500',
-  _metric_avg_signal: 'bg-emerald-500',
-  _metric_ap_models: 'bg-orange-500',
-  _metric_band_24: 'bg-amber-500',
-  _metric_band_5: 'bg-blue-500',
-  _metric_band_6: 'bg-violet-500',
-  _metric_bp_summary: 'bg-emerald-500',
+  _metric_aps: 'var(--chart-1)',
+  _metric_total_aps: 'var(--chart-1)',
+  _metric_online_aps: 'var(--status-success)',
+  _metric_offline_aps: 'var(--status-error)',
+  _metric_clients: 'var(--chart-2)',
+  _metric_total_clients: 'var(--chart-2)',
+  _metric_authenticated: 'var(--status-success)',
+  _metric_active_clients: 'var(--chart-2)',
+  _metric_throughput: 'var(--chart-3)',
+  _metric_total_throughput: 'var(--chart-3)',
+  _metric_upload: 'var(--chart-4)',
+  _metric_download: 'var(--chart-5)',
+  _metric_health: 'var(--status-success)',
+  _metric_sites: 'var(--chart-6)',
+  _metric_total_sites: 'var(--chart-6)',
+  _metric_networks: 'var(--chart-7)',
+  _metric_client_networks: 'var(--chart-7)',
+  _metric_avg_rssi: 'var(--status-success)',
+  _metric_avg_signal: 'var(--status-success)',
+  _metric_ap_models: 'var(--chart-8)',
+  _metric_band_24: 'var(--status-warning)',
+  _metric_band_5: 'var(--status-success)',
+  _metric_band_6: 'var(--chart-1)',
+  _metric_bp_summary: 'var(--status-success)',
 };
 
 export interface ReportMetrics {
@@ -188,7 +191,7 @@ export function ReportWidgetRenderer({ widget, widgetData, metrics, platformLoad
 function renderScorecard(widget: ReportWidgetConfig, m: ReportMetrics) {
   const key = widget.widgetKey;
   const Icon = METRIC_ICONS[key] || Activity;
-  const color = METRIC_COLORS[key] || 'bg-slate-500';
+  const color = METRIC_COLORS[key] || 'var(--chart-9)';
 
   let value: string = '—';
   let sub: string | undefined;
@@ -274,7 +277,7 @@ function renderScorecard(widget: ReportWidgetConfig, m: ReportMetrics) {
             <p className="text-2xl font-bold">{value}</p>
             {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
           </div>
-          <div className={cn('p-2 rounded-lg', color)}>
+          <div className="p-2 rounded-lg" style={{ backgroundColor: color }}>
             <Icon className="h-5 w-5 text-white" />
           </div>
         </div>
@@ -310,7 +313,18 @@ function renderTimeseries(
     !parsed[0]?.statistics?.length ||
     !parsed[0].statistics.some((s: any) => s.values?.length > 0)
   ) {
-    return null;
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">{widget.title || widget.widgetKey}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
+            No data for this window
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   const stats = parsed[0].statistics;
@@ -338,14 +352,15 @@ function renderTimeseries(
         <ResponsiveContainer width="100%" height={200}>
           <AreaChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-border/30" />
-            <XAxis dataKey="time" tick={{ fontSize: 10 }} />
-            <YAxis tick={{ fontSize: 10 }} />
+            <XAxis dataKey="time" tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} />
+            <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} />
             <Tooltip
               contentStyle={{
                 fontSize: 11,
-                background: 'var(--card)',
+                backgroundColor: 'var(--popover)',
                 border: '1px solid var(--border)',
                 borderRadius: 8,
+                color: 'var(--popover-foreground)',
               }}
             />
             {stats.map((s: any, i: number) => (
@@ -557,11 +572,12 @@ function renderBarChart(widget: ReportWidgetConfig, m: ReportMetrics) {
   }
 
   if (key === '_metric_rssi_distribution') {
+    // Signal-quality ramp: excellent/good/fair/poor, per SNR_QUALITY_COLORS semantics.
     const data = [
-      { range: 'Excellent', count: m.rssiRanges.excellent, fill: '#10b981' },
-      { range: 'Good', count: m.rssiRanges.good, fill: '#22d3ee' },
-      { range: 'Fair', count: m.rssiRanges.fair, fill: '#f59e0b' },
-      { range: 'Poor', count: m.rssiRanges.poor, fill: '#ef4444' },
+      { range: 'Excellent', count: m.rssiRanges.excellent, fill: 'var(--status-success)' },
+      { range: 'Good', count: m.rssiRanges.good, fill: 'var(--chart-1)' },
+      { range: 'Fair', count: m.rssiRanges.fair, fill: 'var(--status-warning)' },
+      { range: 'Poor', count: m.rssiRanges.poor, fill: 'var(--status-error)' },
     ];
     return (
       <Card>
@@ -572,14 +588,15 @@ function renderBarChart(widget: ReportWidgetConfig, m: ReportMetrics) {
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={data}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border/30" />
-              <XAxis dataKey="range" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} />
+              <XAxis dataKey="range" tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} />
+              <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} />
               <Tooltip
                 contentStyle={{
                   fontSize: 11,
-                  background: 'var(--card)',
+                  backgroundColor: 'var(--popover)',
                   border: '1px solid var(--border)',
                   borderRadius: 8,
+                  color: 'var(--popover-foreground)',
                 }}
               />
               <Bar dataKey="count" radius={[4, 4, 0, 0]}>
@@ -596,12 +613,27 @@ function renderBarChart(widget: ReportWidgetConfig, m: ReportMetrics) {
 
   if (key === '_metric_band_distribution') {
     const totalBandClients = Object.values(m.bands).reduce((s, v) => s + v, 0);
+    // Band roles per BAND_COLORS: 2.4 GHz amber, 5 GHz green, 6 GHz purple.
+    // The status/chart vars carry the theme-correct values of that mapping.
     const data = [
-      { name: '2.4 GHz', count: m.bands['2.4 GHz'] || 0, color: '#f59e0b' },
-      { name: '5 GHz', count: m.bands['5 GHz'] || 0, color: '#3b82f6' },
-      { name: '6 GHz', count: m.bands['6 GHz'] || 0, color: '#8b5cf6' },
+      { name: '2.4 GHz', count: m.bands['2.4 GHz'] || 0, color: 'var(--status-warning)' },
+      { name: '5 GHz', count: m.bands['5 GHz'] || 0, color: 'var(--status-success)' },
+      { name: '6 GHz', count: m.bands['6 GHz'] || 0, color: 'var(--chart-1)' },
     ].filter((d) => d.count > 0);
-    if (!data.length) return null;
+    if (!data.length) {
+      return (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">{widget.title || 'Client Band Distribution'}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
+              No data for this window
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
     return (
       <Card>
         <CardHeader className="pb-2">
@@ -700,7 +732,13 @@ function renderDistribution(widget: ReportWidgetConfig, m: ReportMetrics) {
                   cy="18"
                   r="15.9"
                   fill="none"
-                  stroke={m.bpScore >= 80 ? '#10b981' : m.bpScore >= 60 ? '#f59e0b' : '#ef4444'}
+                  stroke={
+                    m.bpScore >= 80
+                      ? 'var(--status-success)'
+                      : m.bpScore >= 60
+                        ? 'var(--status-warning)'
+                        : 'var(--status-error)'
+                  }
                   strokeWidth="3"
                   strokeDasharray={`${m.bpScore} ${100 - m.bpScore}`}
                   strokeLinecap="round"

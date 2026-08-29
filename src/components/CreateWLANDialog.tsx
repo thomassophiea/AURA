@@ -952,7 +952,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                           setFormData({ ...formData, serviceName: newName });
                         }
                       }}
-                      placeholder="e.g. Corporate WiFi"
+                      placeholder="e.g. Corporate Wi-Fi"
                       className={
                         !formData.serviceName?.trim()
                           ? 'border-[color:var(--status-error)]/50 focus-visible:border-[color:var(--status-error)]'
@@ -1040,7 +1040,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                       <SelectContent>
                         <SelectItem value="2.4GHz">2.4 GHz</SelectItem>
                         <SelectItem value="5GHz">5 GHz</SelectItem>
-                        <SelectItem value="6GHz">6 GHz (WiFi 6E)</SelectItem>
+                        <SelectItem value="6GHz">6 GHz (Wi-Fi 6E)</SelectItem>
                         <SelectItem value="dual">Dual Band (2.4 + 5 GHz)</SelectItem>
                         <SelectItem value="all">All Bands (2.4 + 5 + 6 GHz)</SelectItem>
                       </SelectContent>
@@ -1052,7 +1052,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     <Alert className="border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning-bg)]">
                       <AlertCircle className="h-4 w-4 text-[color:var(--status-warning)]" />
                       <AlertDescription className="text-[color:var(--status-warning)]">
-                        6GHz (Radio 3) requires WPA3 or OWE security. The controller may reject this
+                        6GHz (Radio 3) requires WPA3 or OWE security. The gateway may reject this
                         configuration.
                       </AlertDescription>
                     </Alert>

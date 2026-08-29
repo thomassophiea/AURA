@@ -158,7 +158,7 @@ export default defineConfig(({ mode }) => ({
             '@radix-ui/react-tooltip',
             '@radix-ui/react-popover',
           ],
-          'vendor-charts': ['recharts', 'chart.js', 'react-chartjs-2'],
+          'vendor-charts': ['recharts'],
           'vendor-supabase': ['@supabase/supabase-js'],
           'vendor-icons': ['lucide-react'],
           // Feature-specific vendors — only loaded when the relevant section is used

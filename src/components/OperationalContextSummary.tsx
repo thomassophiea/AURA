@@ -795,7 +795,7 @@ function OperationalContextSummaryComponent() {
             {/* Organization Context Details */}
             <div>
               <h4 className="font-semibold mb-2">Organization Context Breakdown</h4>
-              <div className="grid grid-cols-4 gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-4 text-sm lg:grid-cols-4">
                 <div>
                   <span className="text-muted-foreground">AP Uptime:</span>
                   <span className="ml-2 font-medium">
@@ -822,7 +822,7 @@ function OperationalContextSummaryComponent() {
                   </span>
                 </div>
               </div>
-              <div className="grid grid-cols-4 gap-4 text-sm mt-2">
+              <div className="grid grid-cols-2 gap-4 text-sm mt-2 lg:grid-cols-4">
                 <div>
                   <span className="text-muted-foreground">Avg SNR:</span>
                   <span className="ml-2 font-medium">
@@ -855,7 +855,7 @@ function OperationalContextSummaryComponent() {
             {/* Client Experience Details */}
             <div>
               <h4 className="font-semibold mb-2">Client Experience Breakdown</h4>
-              <div className="grid grid-cols-3 gap-4 text-sm">
+              <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
                 <div>
                   <span className="text-muted-foreground">Avg Signal:</span>
                   <span className="ml-2 font-medium">
@@ -1086,7 +1086,7 @@ function OperationalContextSummaryComponent() {
                 </div>
                 {metrics.organizationContext.details.busiestSSIDs.length > 0 && (
                   <div className="p-3 rounded-lg border bg-card">
-                    <div className="text-xs text-muted-foreground mb-2">Busiest SSIDs</div>
+                    <div className="text-xs text-muted-foreground mb-2">Busiest networks</div>
                     <div className="space-y-2">
                       {metrics.organizationContext.details.busiestSSIDs.map((ssid, idx) => (
                         <div key={idx} className="flex justify-between items-center">
@@ -1165,7 +1165,7 @@ function OperationalContextSummaryComponent() {
               {/* Coverage */}
               <div className="space-y-3">
                 <h4 className="font-semibold border-b pb-2">Coverage</h4>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <div className="p-3 rounded-lg border bg-card">
                     <div className="text-xs text-muted-foreground">Weak Signal Clients</div>
                     <div
@@ -1196,7 +1196,7 @@ function OperationalContextSummaryComponent() {
               {/* Security */}
               <div className="space-y-3">
                 <h4 className="font-semibold border-b pb-2">Security</h4>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <div className="p-3 rounded-lg border bg-card">
                     <div className="text-xs text-muted-foreground">Failed Auth (24h)</div>
                     <div
@@ -1225,7 +1225,7 @@ function OperationalContextSummaryComponent() {
               {/* Network */}
               <div className="space-y-3">
                 <h4 className="font-semibold border-b pb-2">Network</h4>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <div className="p-3 rounded-lg border bg-card">
                     <div className="text-xs text-muted-foreground">Avg Latency</div>
                     {metrics.organizationContext.details.avgLatency > 0 ? (

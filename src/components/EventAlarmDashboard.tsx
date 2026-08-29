@@ -1,13 +1,23 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { Badge } from './ui/badge';
 import { Skeleton } from './ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Bell, AlertTriangle, Info, CheckCircle, XCircle, Clock, RefreshCw } from 'lucide-react';
+import { AGGridWrapper } from './ui/AGGridWrapper';
+import { MetricCard } from './ui/MetricCard';
+import {
+  AlertCircle,
+  AlertTriangle,
+  Archive,
+  Bell,
+  CheckCircle,
+  Info,
+  RefreshCw,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { apiService } from '../services/api';
+import { buildAlarmColumns, buildEventColumns } from '../config/eventAlarmColumns';
 
 export function EventAlarmDashboard() {
   const [events, setEvents] = useState<any[]>([]);
@@ -16,11 +26,7 @@ export function EventAlarmDashboard() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('alarms');
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       // Use /v1/auditlogs (Swagger-documented) instead of /v1/events (non-Swagger)
@@ -35,7 +41,13 @@ export function EventAlarmDashboard() {
 
       if (auditLogs.status === 'fulfilled') {
         const mapped = auditLogs.value.map((log: any) => ({
-          type: log.action || log.actionType || log.resourceType || 'Audit Event',
+          type:
+            log.action ||
+            log.actionType ||
+            log.category ||
+            log.origin ||
+            log.resourceType ||
+            'Audit',
           severity:
             log.severity || (log.status?.toLowerCase().includes('error') ? 'critical' : undefined),
           message:
@@ -67,62 +79,52 @@ export function EventAlarmDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleAcknowledgeAlarm = async (alarmId: string) => {
-    try {
-      await apiService.acknowledgeAlarm(alarmId);
-      toast.success('Alarm acknowledged');
-      await loadData();
-    } catch (error) {
-      console.error('Failed to acknowledge alarm:', error);
-      toast.error('Failed to acknowledge alarm');
-    }
-  };
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
-  const handleClearAlarm = async (alarmId: string) => {
-    try {
-      await apiService.clearAlarm(alarmId);
-      toast.success('Alarm cleared');
-      await loadData();
-    } catch (error) {
-      console.error('Failed to clear alarm:', error);
-      toast.error('Failed to clear alarm');
-    }
-  };
+  const handleAcknowledgeAlarm = useCallback(
+    async (alarmId: string) => {
+      try {
+        await apiService.acknowledgeAlarm(alarmId);
+        toast.success('Alarm acknowledged');
+        await loadData();
+      } catch (error) {
+        console.error('Failed to acknowledge alarm:', error);
+        toast.error('Failed to acknowledge alarm');
+      }
+    },
+    [loadData]
+  );
 
-  const getSeverityIcon = (severity: string) => {
-    switch (severity?.toLowerCase()) {
-      case 'critical':
-        return <XCircle className="h-5 w-5 text-[color:var(--status-error)]" />;
-      case 'warning':
-        return <AlertTriangle className="h-5 w-5 text-[color:var(--status-warning)]" />;
-      case 'info':
-        return <Info className="h-5 w-5 text-[color:var(--status-info)]" />;
-      default:
-        return <Bell className="h-5 w-5 text-muted-foreground" />;
-    }
-  };
+  const handleClearAlarm = useCallback(
+    async (alarmId: string) => {
+      try {
+        await apiService.clearAlarm(alarmId);
+        toast.success('Alarm cleared');
+        await loadData();
+      } catch (error) {
+        console.error('Failed to clear alarm:', error);
+        toast.error('Failed to clear alarm');
+      }
+    },
+    [loadData]
+  );
 
-  const getSeverityBadge = (severity: string) => {
-    switch (severity?.toLowerCase()) {
-      case 'critical':
-        return <Badge variant="destructive">Critical</Badge>;
-      case 'warning':
-        return (
-          <Badge
-            variant="outline"
-            className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30"
-          >
-            Warning
-          </Badge>
-        );
-      case 'info':
-        return <Badge variant="secondary">Info</Badge>;
-      default:
-        return <Badge variant="outline">{severity}</Badge>;
-    }
-  };
+  const eventColumns = useMemo(() => buildEventColumns(), []);
+  const alarmColumns = useMemo(() => buildAlarmColumns(), []);
+  const activeAlarmColumns = useMemo(
+    () =>
+      buildAlarmColumns({
+        onAcknowledge: (id) => void handleAcknowledgeAlarm(id),
+        onClear: (id) => void handleClearAlarm(id),
+      }),
+    [handleAcknowledgeAlarm, handleClearAlarm]
+  );
+
+  const criticalCount = alarms.filter((a) => a.severity?.toLowerCase() === 'critical').length;
 
   if (loading) {
     return (
@@ -137,7 +139,7 @@ export function EventAlarmDashboard() {
     <div className="space-y-6 p-4 md:p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold flex items-center gap-2">
+          <h2 className="text-2xl font-semibold flex items-center gap-2">
             <Bell className="h-6 w-6" />
             Events & Alarms
           </h2>
@@ -156,63 +158,22 @@ export function EventAlarmDashboard() {
 
       {/* Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Active Alarms
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <Bell className="h-5 w-5 text-primary" />
-              <span className="text-2xl font-bold">{activeAlarms.length}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Alarms
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-[color:var(--status-warning)]" />
-              <span className="text-2xl font-bold">{alarms.length}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Recent Events
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <Info className="h-5 w-5 text-[color:var(--status-info)]" />
-              <span className="text-2xl font-bold">{events.length}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Critical Issues
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <XCircle className="h-5 w-5 text-[color:var(--status-error)]" />
-              <span className="text-2xl font-bold">
-                {alarms.filter((a) => a.severity?.toLowerCase() === 'critical').length}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+        <MetricCard
+          title="Active Alarms"
+          value={activeAlarms.length}
+          icon={Bell}
+          tone={activeAlarms.length > 0 ? 'critical' : 'default'}
+          toneValue={activeAlarms.length > 0}
+        />
+        <MetricCard title="Total Alarms" value={alarms.length} icon={Archive} />
+        <MetricCard title="Recent Events" value={events.length} icon={Info} />
+        <MetricCard
+          title="Critical Issues"
+          value={criticalCount}
+          icon={AlertCircle}
+          tone={criticalCount > 0 ? 'critical' : 'default'}
+          toneValue={criticalCount > 0}
+        />
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -245,49 +206,11 @@ export function EventAlarmDashboard() {
                   <p className="text-sm mt-2">All systems operating normally</p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {activeAlarms.map((alarm) => (
-                    <div
-                      key={alarm.id}
-                      className="flex items-start justify-between p-4 border rounded-lg"
-                    >
-                      <div className="flex items-start gap-3">
-                        {getSeverityIcon(alarm.severity)}
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold">{alarm.title || alarm.type}</h3>
-                            {getSeverityBadge(alarm.severity)}
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-2">
-                            {alarm.message || alarm.description}
-                          </p>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Clock className="h-3 w-3" />
-                            <span>{new Date(alarm.timestamp).toLocaleString()}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleAcknowledgeAlarm(alarm.id)}
-                          aria-label={`Acknowledge alarm: ${alarm.title || alarm.type}`}
-                        >
-                          Acknowledge
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleClearAlarm(alarm.id)}
-                          aria-label={`Clear alarm: ${alarm.title || alarm.type}`}
-                        >
-                          Clear
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <AGGridWrapper
+                  rowData={activeAlarms}
+                  columnDefs={activeAlarmColumns}
+                  storageKey="active-alarms"
+                />
               )}
             </CardContent>
           </Card>
@@ -309,31 +232,11 @@ export function EventAlarmDashboard() {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {alarms.map((alarm) => (
-                    <div key={alarm.id} className="flex items-start gap-3 p-3 border rounded-lg">
-                      {getSeverityIcon(alarm.severity)}
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-sm">{alarm.title || alarm.type}</span>
-                          {getSeverityBadge(alarm.severity)}
-                          {alarm.status && (
-                            <Badge variant="outline" className="text-xs">
-                              {alarm.status}
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {alarm.message || alarm.description}
-                        </p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                          <Clock className="h-3 w-3" />
-                          <span>{new Date(alarm.timestamp).toLocaleString()}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <AGGridWrapper
+                  rowData={alarms}
+                  columnDefs={alarmColumns}
+                  storageKey="all-alarms"
+                />
               )}
             </CardContent>
           </Card>
@@ -355,29 +258,7 @@ export function EventAlarmDashboard() {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {events.map((event, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-                    >
-                      <Info className="h-4 w-4 text-[color:var(--status-info)] mt-0.5" />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-sm">{event.type || 'Event'}</span>
-                          {event.severity && getSeverityBadge(event.severity)}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {event.message || event.description}
-                        </p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                          <Clock className="h-3 w-3" />
-                          <span>{new Date(event.timestamp).toLocaleString()}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <AGGridWrapper rowData={events} columnDefs={eventColumns} storageKey="events" />
               )}
             </CardContent>
           </Card>

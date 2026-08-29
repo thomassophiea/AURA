@@ -25,7 +25,7 @@ const badgeVariants = cva(
         offline:
           'bg-[var(--status-offline,#666b85)]/15 text-[var(--status-offline,#666b85)] border-[var(--status-offline,#666b85)]/30',
         neutral:
-          'bg-[var(--status-neutral,#6b7280)]/15 text-[var(--status-neutral,#6b7280)] border-[var(--status-neutral,#6b7280)]/30',
+          'bg-[var(--status-neutral,#6a6f7f)]/15 text-[var(--status-neutral,#6a6f7f)] border-[var(--status-neutral,#6a6f7f)]/30',
       },
     },
     defaultVariants: {

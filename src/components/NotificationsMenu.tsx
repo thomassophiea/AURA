@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Campus Controller notification API responses are untyped JSON
 import { useState, useEffect } from 'react';
-import { Bell, Search, Settings, Filter, AlertTriangle, Info, AlertCircle } from 'lucide-react';
+import { Bell, Search, Filter, AlertTriangle, Info, AlertCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import {
   Sheet,
@@ -18,7 +18,6 @@ import { ScrollArea } from './ui/scroll-area';
 import { apiService } from '../services/api';
 import { notificationService } from '../services/notificationService';
 import type { AppNotification } from '../services/notificationService';
-import { toast } from 'sonner';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
 import { useContextScope } from '../hooks/useContextScope';
 
@@ -631,20 +630,7 @@ export function NotificationsMenu({ onNavigate }: NotificationsMenuProps = {}) {
 
           {/* Footer */}
           <div className="mt-auto border-t border-border/50 p-4">
-            <div className="flex items-center justify-between">
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2"
-                onClick={() =>
-                  toast.info('Feature coming soon', {
-                    description: 'Notification settings will be available in a future update.',
-                  })
-                }
-              >
-                <Settings className="h-4 w-4" />
-                Notification Settings
-              </Button>
+            <div className="flex items-center justify-end">
               <Button
                 variant="outline"
                 size="sm"

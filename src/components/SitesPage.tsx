@@ -405,7 +405,7 @@ export function SitesPage({ siteGroupFilter, onClearFilter, onShowDetail }: Site
               </div>
             </div>
             <div className="text-2xl font-bold text-foreground">{totalAPs}</div>
-            <p className="text-xs text-muted-foreground mt-1">Access points</p>
+            <p className="text-xs text-muted-foreground mt-1">Access Points</p>
           </div>
         </Card>
 

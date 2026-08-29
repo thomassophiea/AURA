@@ -580,7 +580,7 @@ export function UnifiedFilterBar({
                             <div className="mt-1 space-y-0.5">
                               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                                 {item.model && (
-                                  <span className="truncate max-w-[120px]">{item.model}</span>
+                                  <span className="truncate max-w-[160px]" title={item.model}>{item.model}</span>
                                 )}
                                 {item.ipAddress && (
                                   <span className="font-mono text-xs">{item.ipAddress}</span>
@@ -590,7 +590,7 @@ export function UnifiedFilterBar({
                                 {item.siteName && (
                                   <span className="flex items-center gap-1">
                                     <MapPin className="h-3 w-3" />
-                                    <span className="truncate max-w-[100px]">{item.siteName}</span>
+                                    <span className="truncate max-w-[160px]" title={item.siteName}>{item.siteName}</span>
                                   </span>
                                 )}
                                 {typeof item.clients === 'number' && (
@@ -616,7 +616,7 @@ export function UnifiedFilterBar({
                                 {item.ssid && (
                                   <span className="flex items-center gap-1">
                                     <Wifi className="h-3 w-3" />
-                                    <span className="truncate max-w-[100px]">{item.ssid}</span>
+                                    <span className="truncate max-w-[160px]" title={item.ssid}>{item.ssid}</span>
                                   </span>
                                 )}
                                 {item.rssi !== undefined && (
@@ -638,7 +638,7 @@ export function UnifiedFilterBar({
                               {item.apName && (
                                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                   <Radio className="h-3 w-3" />
-                                  <span className="truncate max-w-[140px]">{item.apName}</span>
+                                  <span className="truncate max-w-[200px]" title={item.apName}>{item.apName}</span>
                                 </div>
                               )}
                               {item.ipAddress && (
@@ -706,7 +706,7 @@ export function UnifiedFilterBar({
             value={filters.environment}
             onValueChange={(value) => updateFilter('environment', value)}
           >
-            <SelectTrigger className="w-44 h-10">
+            <SelectTrigger className="w-48 h-10">
               <Globe className="mr-2 h-4 w-4 flex-shrink-0" />
               <SelectValue placeholder="Environment" />
             </SelectTrigger>

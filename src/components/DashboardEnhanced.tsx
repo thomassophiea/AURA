@@ -177,7 +177,15 @@ function DashboardEnhancedComponent() {
     return stations.filter((station) => getServiceNameForStation(station) === selectedService);
   };
 
-  const COLORS = ['#BB86FC', '#03DAC5', '#CF6679', '#3700B3', '#018786', '#B00020'];
+  // Theme-correct categorical ramp for the client-distribution pie.
+  const COLORS = [
+    'var(--chart-1)',
+    'var(--chart-2)',
+    'var(--chart-3)',
+    'var(--chart-4)',
+    'var(--chart-5)',
+    'var(--chart-6)',
+  ];
 
   const calculatePerformanceMetrics = () => {
     if (stations.length === 0) return null;

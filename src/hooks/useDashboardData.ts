@@ -17,6 +17,38 @@ import {
   RANGED_STAT_METRICS,
   type RangedNetworkStats,
 } from '../lib/rangedNetworkStats';
+import { BAND_COLORS, SNR_QUALITY_COLORS } from '../config/colorPalette';
+
+/**
+ * Band attribution for a station, most-trustworthy source first:
+ * controller-reported band → channel number → PHY-rate heuristic.
+ * Returns null when nothing usable is present.
+ */
+function deriveStationBand(station: any): '2.4 GHz' | '5 GHz' | '6 GHz' | null {
+  const reported = station.band || station.frequencyBand;
+  if (typeof reported === 'string' && reported.length > 0) {
+    if (reported.includes('6')) return '6 GHz';
+    if (reported.includes('5')) return '5 GHz';
+    return '2.4 GHz';
+  }
+  const channelNum = parseInt(String(station.channel ?? '').split('/')[0], 10);
+  if (!Number.isNaN(channelNum) && channelNum > 0) {
+    if (channelNum <= 14) return '2.4 GHz';
+    if (channelNum <= 177) return '5 GHz';
+    return '6 GHz';
+  }
+  const rate = Math.max(
+    station.transmittedRate || station.txRate || 0,
+    station.receivedRate || station.rxRate || 0
+  );
+  if (rate > 0) {
+    const rateMbps = rate / 1_000_000;
+    if (rateMbps > 1200) return '6 GHz';
+    if (rateMbps > 150) return '5 GHz';
+    return '2.4 GHz';
+  }
+  return null;
+}
 
 export interface AccessPoint {
   serialNumber: string;
@@ -600,6 +632,12 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
               .sort((a: any, b: any) => a.timestamp - b.timestamp)
               .slice(-24);
             setRfqiData(sortedData);
+            // Surface the newest sample as the headline RFQI — this field was
+            // initialised to 0 and never written, leaving a permanent NoData cell.
+            const latest = sortedData[sortedData.length - 1];
+            if (latest && Number.isFinite(latest.healthy)) {
+              setClientStats((prev) => ({ ...prev, avgRfqi: Math.round(latest.healthy) }));
+            }
             return;
           }
         }
@@ -644,6 +682,7 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
               needsAttention: 100 - compositeScore,
             },
           ]);
+          setClientStats((prev) => ({ ...prev, avgRfqi: Math.round(compositeScore) }));
           return;
         }
       }
@@ -668,6 +707,8 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
       models: {} as Record<string, number>,
       avgChannelUtil: 0,
     };
+    let chUtilSum = 0;
+    let chUtilCount = 0;
 
     aps.forEach((ap) => {
       const status = (
@@ -720,7 +761,17 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
         (ap as any).deviceModel ||
         'Unknown Model';
       stats.models[model] = (stats.models[model] || 0) + 1;
+
+      // channelUtilization arrives on the /v1/aps/query row; it was previously
+      // fetched and dropped, leaving avgChannelUtil permanently 0 (a NoData cell).
+      const chUtil = Number((ap as any).channelUtilization);
+      if (Number.isFinite(chUtil) && chUtil > 0) {
+        chUtilSum += chUtil;
+        chUtilCount++;
+      }
     });
+
+    stats.avgChannelUtil = chUtilCount > 0 ? Math.round(chUtilSum / chUtilCount) : 0;
 
     setApStats(stats);
   }, []);
@@ -966,11 +1017,8 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
           download: existing.download + rx,
         });
 
-        let band = 'Unknown';
-        if (station.txRate || station.rxRate) {
-          const rate = Math.max(station.txRate || 0, station.rxRate || 0);
-          band = rate > 200 ? '5 GHz' : '2.4 GHz';
-        }
+        // Prefer the band the controller reports over guessing from rates.
+        const band = deriveStationBand(station) ?? 'Unknown';
 
         clientThroughput.push({
           name: station.hostName || station.macAddress,
@@ -1035,71 +1083,49 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
       let rssiCount = 0;
 
       stns.forEach((station) => {
-        const channel = (station as any).channel || '';
-        const channelNum = parseInt(channel.toString().split('/')[0], 10);
-        const stationBand = (station as any).band || (station as any).frequencyBand;
-        const rate = Math.max(
-          (station as any).transmittedRate || station.txRate || 0,
-          (station as any).receivedRate || station.rxRate || 0
-        );
-
-        if (stationBand) {
-          if (stationBand.includes('6') || stationBand.includes('6E')) {
-            bandCounts['6 GHz']++;
-          } else if (stationBand.includes('5')) {
-            bandCounts['5 GHz']++;
-          } else {
-            bandCounts['2.4 GHz']++;
-          }
-        } else if (!isNaN(channelNum) && channelNum > 0) {
-          if (channelNum >= 1 && channelNum <= 14) {
-            bandCounts['2.4 GHz']++;
-          } else if (channelNum >= 36 && channelNum <= 177) {
-            bandCounts['5 GHz']++;
-          } else if (channelNum > 177) {
-            bandCounts['6 GHz']++;
-          }
-        } else if (rate > 0) {
-          const rateMbps = rate / 1000000;
-          if (rateMbps > 1200) {
-            bandCounts['6 GHz']++;
-          } else if (rateMbps > 150) {
-            bandCounts['5 GHz']++;
-          } else {
-            bandCounts['2.4 GHz']++;
-          }
-        }
+        const band = deriveStationBand(station);
+        if (band) bandCounts[band]++;
 
         const rssi = station.rssi || (station as any).rss || 0;
         if (rssi < 0) {
           totalRssi += rssi;
           rssiCount++;
-          const estimatedSnr = rssi - -95;
-          if (estimatedSnr > 0) {
-            totalSnr += estimatedSnr;
-            snrCount++;
-            if (estimatedSnr >= 40) snrCounts['Excellent']++;
-            else if (estimatedSnr >= 25) snrCounts['Good']++;
-            else if (estimatedSnr >= 15) snrCounts['Fair']++;
-            else snrCounts['Poor']++;
-          }
+        }
+        // Prefer the SNR the controller reports; only estimate from RSSI
+        // (assumed -95 dBm noise floor) when the field is absent.
+        const reportedSnr = Number((station as any).snr);
+        const snr =
+          Number.isFinite(reportedSnr) && reportedSnr > 0
+            ? reportedSnr
+            : rssi < 0
+              ? rssi + 95
+              : 0;
+        if (snr > 0) {
+          totalSnr += snr;
+          snrCount++;
+          if (snr >= 40) snrCounts['Excellent']++;
+          else if (snr >= 25) snrCounts['Good']++;
+          else if (snr >= 15) snrCounts['Fair']++;
+          else snrCounts['Poor']++;
         }
       });
 
+      // Colors come from the contrast-tested palette (dark base values);
+      // OrgSiteHealthOverview re-resolves per theme at render time.
       setBandDistribution(
         [
-          { band: '2.4 GHz', count: bandCounts['2.4 GHz'], color: '#f59e0b' },
-          { band: '5 GHz', count: bandCounts['5 GHz'], color: '#3b82f6' },
-          { band: '6 GHz', count: bandCounts['6 GHz'], color: '#8b5cf6' },
+          { band: '2.4 GHz', count: bandCounts['2.4 GHz'], color: BAND_COLORS['2.4'] },
+          { band: '5 GHz', count: bandCounts['5 GHz'], color: BAND_COLORS['5'] },
+          { band: '6 GHz', count: bandCounts['6 GHz'], color: BAND_COLORS['6'] },
         ].filter((b) => b.count > 0)
       );
 
       setSnrDistribution(
         [
-          { category: 'Excellent', count: snrCounts['Excellent'], color: '#10b981' },
-          { category: 'Good', count: snrCounts['Good'], color: '#22d3ee' },
-          { category: 'Fair', count: snrCounts['Fair'], color: '#f59e0b' },
-          { category: 'Poor', count: snrCounts['Poor'], color: '#ef4444' },
+          { category: 'Excellent', count: snrCounts['Excellent'], color: SNR_QUALITY_COLORS.excellent },
+          { category: 'Good', count: snrCounts['Good'], color: SNR_QUALITY_COLORS.good },
+          { category: 'Fair', count: snrCounts['Fair'], color: SNR_QUALITY_COLORS.fair },
+          { category: 'Poor', count: snrCounts['Poor'], color: SNR_QUALITY_COLORS.poor },
         ].filter((s) => s.count > 0)
       );
 

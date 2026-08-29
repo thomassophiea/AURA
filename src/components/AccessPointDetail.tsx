@@ -33,6 +33,8 @@ import {
   XCircle,
 } from 'lucide-react';
 import { apiService, APDetails, APStation, APAlarm, APAlarmCategory } from '../services/api';
+import { DetailRow } from './ui/DetailRow';
+import { formatDuration } from '@/lib/units';
 import { APEventsTimeline } from './APEventsTimeline';
 import { APInsights, APInsightsFullScreen } from './APInsights';
 import { toast } from 'sonner';
@@ -392,7 +394,7 @@ export function AccessPointDetail({ serialNumber, apData }: AccessPointDetailPro
         softwareVersion: d.softwareVersion,
         cpuUsage: d.cpuUsage,
         memoryUsage: d.memoryUsage,
-        uptime: d._xiq?.system_up_time ? formatUptime(d._xiq.system_up_time) : undefined,
+        uptime: d._xiq?.system_up_time ? formatDuration(d._xiq.system_up_time) : undefined,
         radios: [],
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
@@ -414,7 +416,7 @@ export function AccessPointDetail({ serialNumber, apData }: AccessPointDetailPro
       const enrichedDetails = {
         ...details,
         uptime: (details as any).sysUptime
-          ? formatUptime((details as any).sysUptime)
+          ? formatDuration((details as any).sysUptime)
           : details.uptime,
         // Calculate average channel utilization from all radios
         channelUtilization:
@@ -515,24 +517,6 @@ export function AccessPointDetail({ serialNumber, apData }: AccessPointDetailPro
 
 
 
-  // Helper function to format uptime from seconds
-  const formatUptime = (seconds: number): string => {
-    if (seconds === 0 || !seconds) return 'N/A';
-
-    const days = Math.floor(seconds / 86400);
-    const hours = Math.floor((seconds % 86400) / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-
-    const parts: string[] = [];
-    if (days > 0) parts.push(`${days}d`);
-    if (hours > 0) parts.push(`${hours}h`);
-    if (minutes > 0) parts.push(`${minutes}m`);
-    if (secs > 0 && days === 0 && hours === 0) parts.push(`${secs}s`);
-
-    return parts.length > 0 ? parts.join(' ') : 'N/A';
-  };
-
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -615,10 +599,18 @@ export function AccessPointDetail({ serialNumber, apData }: AccessPointDetailPro
     <div className="space-y-6">
       {/* Header Actions */}
       <div className="flex justify-between items-center">
-        <div>
-          <div className="flex items-center space-x-2">
-            <Wifi className="h-5 w-5 text-muted-foreground" />
-            <span className="font-medium">Access Point Details</span>
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Access point
+          </p>
+          <div className="flex min-w-0 items-center space-x-2">
+            <Wifi className="h-5 w-5 shrink-0 text-muted-foreground" />
+            <h2
+              className="truncate text-2xl font-semibold"
+              title={apDetails.apName || apDetails.serialNumber}
+            >
+              {apDetails.apName || apDetails.serialNumber}
+            </h2>
           </div>
           {lastRefreshTime && (
             <p className="text-xs text-muted-foreground mt-1 ml-7">
@@ -720,38 +712,24 @@ export function AccessPointDetail({ serialNumber, apData }: AccessPointDetailPro
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid grid-cols-1 gap-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Display Name:</span>
-              <span className="font-medium">{apDetails.apName || 'N/A'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Serial Number:</span>
-              <span className="font-mono text-xs">{apDetails.serialNumber}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Model:</span>
-              <span className="font-medium">
-                {apDetails.model || apDetails.hardwareType || 'N/A'}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">MAC Address:</span>
-              <span className="font-mono text-xs">{apDetails.macAddress || 'N/A'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">IP Address:</span>
-              <span className="font-mono text-xs">{apDetails.ipAddress || 'N/A'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Firmware:</span>
-              <span className="font-medium">{apDetails.softwareVersion || 'N/A'}</span>
-            </div>
-
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Site:</span>
-              <span className="font-medium">{apDetails.hostSite || 'N/A'}</span>
-            </div>
+          <div className="grid grid-cols-1 gap-3">
+            <DetailRow label="Display Name" value={apDetails.apName} />
+            <DetailRow
+              label="Serial Number"
+              value={apDetails.serialNumber}
+              mono
+              copyLabel="Serial number"
+            />
+            <DetailRow label="Model" value={apDetails.model || apDetails.hardwareType} />
+            <DetailRow
+              label="MAC Address"
+              value={apDetails.macAddress}
+              mono
+              copyLabel="MAC address"
+            />
+            <DetailRow label="IP Address" value={apDetails.ipAddress} mono copyLabel="IP address" />
+            <DetailRow label="Firmware" value={apDetails.softwareVersion} />
+            <DetailRow label="Site" value={apDetails.hostSite} />
           </div>
         </CardContent>
       </Card>

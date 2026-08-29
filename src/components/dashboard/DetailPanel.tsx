@@ -136,18 +136,21 @@ function DetailPanelImpl({
               </button>
               {/* Selected Event Tab */}
               {selectedNetworkEvent && (
-                <div className="pb-2 px-3 text-purple-600 border-b-2 border-purple-600">
+                <div className="pb-2 px-3 text-primary border-b-2 border-primary">
                   <div className="flex items-center gap-2">
                     <AlertCircle className="w-4 h-4" />
                     <div className="text-left">
-                      <div className="text-sm font-medium truncate max-w-[200px]">
+                      <div
+                        className="text-sm font-medium truncate max-w-[200px]"
+                        title={selectedNetworkEvent.description}
+                      >
                         {selectedNetworkEvent.description}
                       </div>
                       <div className="text-xs opacity-75">Event Details</div>
                     </div>
                     <button
                       onClick={() => setSelectedNetworkEvent(null)}
-                      className="ml-2 hover:bg-purple-100 rounded-full p-1"
+                      className="ml-2 hover:bg-primary/10 rounded-full p-1"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -179,10 +182,10 @@ function DetailPanelImpl({
                   <div>
                     <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                       Network Status
-                      <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                      </span>
+                      <span
+                        className="inline-flex h-2 w-2 rounded-full bg-[color:var(--status-success)]"
+                        aria-hidden
+                      />
                     </h3>
                     <p className="text-xs text-muted-foreground">Live summary of current state</p>
                   </div>
@@ -297,18 +300,21 @@ function DetailPanelImpl({
                   /* Healthy Summary View */
                   <div className="grid grid-cols-2 gap-3">
                     {/* Access Points Card */}
-                    <div className="bg-[color:var(--status-success-bg)] border border-[color:var(--status-success)]/30 rounded-lg p-4 backdrop-blur-sm">
+                    <div className="rounded-lg border border-border bg-muted/50 p-4">
                       <div className="flex items-center justify-between mb-2">
-                        <div className="bg-[color:var(--status-success-bg)] p-2 rounded-md">
-                          <Wifi className="w-5 h-5 text-[color:var(--status-success)]" />
+                        <div className="rounded-md bg-[color:var(--status-success)]/12 p-2">
+                          <Wifi
+                            className="w-5 h-5 text-[color:var(--status-success)]"
+                            aria-hidden
+                          />
                         </div>
                         <AnimatedValue
                           value={apStats.online}
-                          className="text-2xl font-bold text-[color:var(--status-success)]"
-                          pulseColor="bg-[color:var(--status-success-bg)]"
+                          className="text-2xl font-semibold tabular-nums text-foreground"
+                          pulseColor="bg-muted"
                         />
                       </div>
-                      <div className="text-sm text-[color:var(--status-success)] font-medium">
+                      <div className="text-sm font-medium text-foreground">
                         Access Points Online
                       </div>
                       <div className="mt-3">
@@ -316,12 +322,12 @@ function DetailPanelImpl({
                           <span>Availability</span>
                           <AnimatedValue
                             value={`${apStats.total > 0 ? Math.round((apStats.online / apStats.total) * 100) : 0}%`}
-                            pulseColor="bg-[color:var(--status-success-bg)]"
+                            pulseColor="bg-muted"
                           />
                         </div>
                         <div className="h-2 bg-muted rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-500"
+                            className="h-full rounded-full bg-[color:var(--status-success)] transition-all duration-500"
                             style={{
                               width: `${apStats.total > 0 ? (apStats.online / apStats.total) * 100 : 0}%`,
                             }}
@@ -331,18 +337,18 @@ function DetailPanelImpl({
                     </div>
 
                     {/* Clients Card */}
-                    <div className="bg-[color:var(--status-info-bg)] border border-[color:var(--status-info)]/30 rounded-lg p-4 backdrop-blur-sm">
+                    <div className="rounded-lg border border-border bg-muted/50 p-4">
                       <div className="flex items-center justify-between mb-2">
-                        <div className="bg-[color:var(--status-info-bg)] p-2 rounded-md">
-                          <Users className="w-5 h-5 text-[color:var(--status-info)]" />
+                        <div className="rounded-md bg-[color:var(--status-info)]/12 p-2">
+                          <Users className="w-5 h-5 text-[color:var(--status-info)]" aria-hidden />
                         </div>
                         <AnimatedValue
                           value={clientStats.authenticated}
-                          className="text-2xl font-bold text-[color:var(--status-info)]"
-                          pulseColor="bg-[color:var(--status-info-bg)]"
+                          className="text-2xl font-semibold tabular-nums text-foreground"
+                          pulseColor="bg-muted"
                         />
                       </div>
-                      <div className="text-sm text-[color:var(--status-info)] font-medium">
+                      <div className="text-sm font-medium text-foreground">
                         Clients Authenticated
                       </div>
                       <div className="mt-3">
@@ -350,12 +356,12 @@ function DetailPanelImpl({
                           <span>Auth Rate</span>
                           <AnimatedValue
                             value={`${clientStats.total > 0 ? Math.round((clientStats.authenticated / clientStats.total) * 100) : 0}%`}
-                            pulseColor="bg-[color:var(--status-info-bg)]"
+                            pulseColor="bg-muted"
                           />
                         </div>
                         <div className="h-2 bg-muted rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full transition-all duration-500"
+                            className="h-full rounded-full bg-[color:var(--status-info)] transition-all duration-500"
                             style={{
                               width: `${clientStats.total > 0 ? (clientStats.authenticated / clientStats.total) * 100 : 0}%`,
                             }}
@@ -366,49 +372,35 @@ function DetailPanelImpl({
 
                     {/* Throughput Card - Full Width */}
                     <div className="col-span-2 bg-muted/50 border border-border rounded-lg p-3">
-                      <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <div className="bg-primary/10 p-1.5 rounded-md">
-                            <Activity className="w-4 h-4 text-primary" />
+                            <Activity className="w-4 h-4 text-primary" aria-hidden />
                           </div>
                           <span className="text-xs text-foreground font-medium">
                             Network Throughput
                           </span>
                         </div>
-                        <span className="text-sm font-bold text-foreground">
+                        <span className="text-sm font-semibold tabular-nums text-foreground">
                           {formatBitsPerSecond(
                             clientStats.throughputUpload + clientStats.throughputDownload
                           )}
                         </span>
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-3 text-xs">
                         <div className="flex items-center gap-2">
-                          <ArrowUp className="w-3 h-3 text-[color:var(--status-success)]" />
-                          <div className="flex-1">
-                            <div className="flex justify-between text-xs mb-1">
-                              <span className="text-muted-foreground">Upload</span>
-                              <span className="text-[color:var(--status-success)] font-medium">
-                                {formatBitsPerSecond(clientStats.throughputUpload)}
-                              </span>
-                            </div>
-                            <div className="h-1 bg-muted rounded-full overflow-hidden">
-                              <div className="h-full bg-gradient-to-r from-green-500 to-green-400 rounded-full w-3/5" />
-                            </div>
-                          </div>
+                          <ArrowUp className="w-3 h-3 text-muted-foreground" aria-hidden />
+                          <span className="text-muted-foreground">Upload</span>
+                          <span className="ml-auto font-medium tabular-nums">
+                            {formatBitsPerSecond(clientStats.throughputUpload)}
+                          </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <ArrowDown className="w-3 h-3 text-[color:var(--status-info)]" />
-                          <div className="flex-1">
-                            <div className="flex justify-between text-xs mb-1">
-                              <span className="text-muted-foreground">Download</span>
-                              <span className="text-[color:var(--status-info)] font-medium">
-                                {formatBitsPerSecond(clientStats.throughputDownload)}
-                              </span>
-                            </div>
-                            <div className="h-1 bg-muted rounded-full overflow-hidden">
-                              <div className="h-full bg-gradient-to-r from-cyan-500 to-cyan-400 rounded-full w-2/5" />
-                            </div>
-                          </div>
+                          <ArrowDown className="w-3 h-3 text-muted-foreground" aria-hidden />
+                          <span className="text-muted-foreground">Download</span>
+                          <span className="ml-auto font-medium tabular-nums">
+                            {formatBitsPerSecond(clientStats.throughputDownload)}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -468,7 +460,7 @@ function DetailPanelImpl({
                     {aiActiveHealthTab === 'needsAttention' ? (
                       <>
                         {apStats.offline > 0 && (
-                          <tr className="border-b hover:bg-teal-500/5 transition-colors">
+                          <tr className="border-b hover:bg-muted/50 transition-colors">
                             <td className="px-4 py-3 text-sm text-muted-foreground">
                               {new Date().toLocaleTimeString([], {
                                 hour: '2-digit',
@@ -477,7 +469,7 @@ function DetailPanelImpl({
                             </td>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-red-500" />
+                                <span className="w-2 h-2 rounded-full bg-[color:var(--status-error)]" />
                                 <span className="text-sm">Access Points Offline</span>
                               </div>
                             </td>
@@ -515,7 +507,7 @@ function DetailPanelImpl({
                           </tr>
                         )}
                         {alertCounts.critical > 0 && (
-                          <tr className="border-b hover:bg-teal-500/5 transition-colors">
+                          <tr className="border-b hover:bg-muted/50 transition-colors">
                             <td className="px-4 py-3 text-sm text-muted-foreground">
                               {new Date().toLocaleTimeString([], {
                                 hour: '2-digit',
@@ -524,7 +516,7 @@ function DetailPanelImpl({
                             </td>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-red-500" />
+                                <span className="w-2 h-2 rounded-full bg-[color:var(--status-error)]" />
                                 <span className="text-sm">Critical Alerts Active</span>
                               </div>
                             </td>
@@ -562,7 +554,7 @@ function DetailPanelImpl({
                           </tr>
                         )}
                         {clientStats.total > clientStats.authenticated && (
-                          <tr className="border-b hover:bg-teal-500/5 transition-colors">
+                          <tr className="border-b hover:bg-muted/50 transition-colors">
                             <td className="px-4 py-3 text-sm text-muted-foreground">
                               {new Date().toLocaleTimeString([], {
                                 hour: '2-digit',
@@ -571,7 +563,7 @@ function DetailPanelImpl({
                             </td>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                                <span className="w-2 h-2 rounded-full bg-[color:var(--status-warning)]" />
                                 <span className="text-sm">Unauthenticated Clients</span>
                               </div>
                             </td>
@@ -624,7 +616,7 @@ function DetailPanelImpl({
                       </>
                     ) : (
                       <>
-                        <tr className="border-b hover:bg-teal-500/5 transition-colors">
+                        <tr className="border-b hover:bg-muted/50 transition-colors">
                           <td className="px-4 py-3 text-sm text-muted-foreground">
                             {new Date().toLocaleTimeString([], {
                               hour: '2-digit',
@@ -633,7 +625,7 @@ function DetailPanelImpl({
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-green-500" />
+                              <span className="w-2 h-2 rounded-full bg-[color:var(--status-success)]" />
                               <span className="text-sm">Access Points Online</span>
                             </div>
                           </td>
@@ -658,7 +650,7 @@ function DetailPanelImpl({
                             </button>
                           </td>
                         </tr>
-                        <tr className="border-b hover:bg-teal-500/5 transition-colors">
+                        <tr className="border-b hover:bg-muted/50 transition-colors">
                           <td className="px-4 py-3 text-sm text-muted-foreground">
                             {new Date().toLocaleTimeString([], {
                               hour: '2-digit',
@@ -667,7 +659,7 @@ function DetailPanelImpl({
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-green-500" />
+                              <span className="w-2 h-2 rounded-full bg-[color:var(--status-success)]" />
                               <span className="text-sm">Authenticated Clients</span>
                             </div>
                           </td>
@@ -692,7 +684,7 @@ function DetailPanelImpl({
                             </button>
                           </td>
                         </tr>
-                        <tr className="border-b hover:bg-teal-500/5 transition-colors">
+                        <tr className="border-b hover:bg-muted/50 transition-colors">
                           <td className="px-4 py-3 text-sm text-muted-foreground">
                             {new Date().toLocaleTimeString([], {
                               hour: '2-digit',
@@ -701,7 +693,7 @@ function DetailPanelImpl({
                           </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
-                              <span className="w-2 h-2 rounded-full bg-green-500" />
+                              <span className="w-2 h-2 rounded-full bg-[color:var(--status-success)]" />
                               <span className="text-sm">Network Throughput Normal</span>
                             </div>
                           </td>
@@ -756,10 +748,10 @@ function DetailPanelImpl({
                 <div
                   className={`w-1 h-full rounded-full min-h-[80px] ${
                     selectedNetworkEvent.severity === 'high'
-                      ? 'bg-red-600'
+                      ? 'bg-[color:var(--status-error)]'
                       : selectedNetworkEvent.severity === 'medium'
-                        ? 'bg-amber-500'
-                        : 'bg-teal-600'
+                        ? 'bg-[color:var(--status-warning)]'
+                        : 'bg-[color:var(--status-info)]'
                   }`}
                 />
                 <div className="flex-1">
@@ -767,10 +759,10 @@ function DetailPanelImpl({
                     <span
                       className={`text-sm px-2 py-1 text-white rounded ${
                         selectedNetworkEvent.severity === 'high'
-                          ? 'bg-red-600'
+                          ? 'bg-[color:var(--status-error)]'
                           : selectedNetworkEvent.severity === 'medium'
-                            ? 'bg-amber-500'
-                            : 'bg-teal-600'
+                            ? 'bg-[color:var(--status-warning)]'
+                            : 'bg-[color:var(--status-info)]'
                       }`}
                     >
                       {selectedNetworkEvent.type === 'infrastructure'

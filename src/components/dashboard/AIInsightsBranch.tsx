@@ -11,13 +11,14 @@
 import { memo, useCallback } from 'react';
 import { Card, CardContent } from '../ui/card';
 import { AlertTriangle, Activity, Wifi, Users, Gauge } from 'lucide-react';
-import { formatBitsPerSecond } from '../../lib/units';
+import { formatBitsPerSecond, formatCount } from '../../lib/units';
+import { MetricCard } from '../ui/MetricCard';
 import type { RangedNetworkStats } from '../../lib/rangedNetworkStats';
 import type { ResolvedTimeRange } from '../../lib/timeRange';
 import { DriftStrip } from './DriftStrip';
 import { InsightCardsGrid } from './InsightCardsGrid';
-import { RecentEventsSummary } from './RecentEventsSummary';
 import { OrgSiteHealthOverview } from './OrgSiteHealthOverview';
+import { SitesAttentionWidget } from './SitesAttentionWidget';
 import { DetailPanel } from './DetailPanel';
 import { BestPracticesWidget } from '../BestPracticesWidget';
 import { AuditLogsWidget } from '../AuditLogsWidget';
@@ -172,152 +173,71 @@ function AIInsightsBranchComponent({
   const goAccessPoint = useCallback(() => setSelectorTab('access-point'), [setSelectorTab]);
   const goClient = useCallback(() => setSelectorTab('client'), [setSelectorTab]);
 
-  const onKpiKeyDown = (handler: () => void) => (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      handler();
-    }
-  };
-
-  const totalTp = formatBps(tpUp + tpDown);
-  const [tpNum, ...tpUnit] = totalTp.split(' ');
+  const apOffline = Math.max(0, apTotal - apOnline);
+  const totalAlerts = alertCounts.critical + alertCounts.warning;
 
   return (
     <div className="space-y-4">
       {/* Drift Detection Strip — Wave 4A */}
       <DriftStrip />
 
-      {/* Observatory Instrument Panels — see .aura-kpi in index.css */}
-      <div className="aura-kpi-grid">
-        <div
-          className="aura-kpi"
+      {/* Headline KPIs. The basis suffix ("avg · last 24 hours" vs "now") is
+          deliberate: a mean over a window and an instantaneous reading are
+          different quantities, and a tile that silently switched between them
+          would be worse than one that never moved. */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          title="Access points"
+          value={formatCount(apTotal)}
+          icon={Wifi}
+          tone={apOffline > 0 ? 'warning' : 'default'}
+          subtitle={`${apOnline} online · ${apOffline} offline · ${basisFor(
+            useWindow && rangedStats.apTotal !== null
+          )}`}
           onClick={goAccessPoint}
-          onKeyDown={onKpiKeyDown(goAccessPoint)}
-          role="button"
-          tabIndex={0}
           aria-label="View Access Points details"
-        >
-          <div className="aura-kpi-eyebrow">
-            <span>
-              <span className="aura-kpi-eyebrow-channel">CH-01</span> · Access Points
-              <span className="aura-kpi-eyebrow-basis">
-                {basisFor(useWindow && rangedStats.apTotal !== null)}
-              </span>
-            </span>
-            <Wifi className="aura-kpi-icon" />
-          </div>
-          <div className="aura-kpi-figure">
-            {apTotal}
-            <span className="aura-kpi-figure-unit">AP</span>
-          </div>
-          <div className="aura-kpi-foot">
-            <span className="aura-kpi-foot-good">
-              <span className="aura-kpi-foot-mark">●</span>
-              {apOnline} online
-            </span>
-            <span>{Math.max(0, apTotal - apOnline)} offline</span>
-          </div>
-          <span className="aura-kpi-corner-br" aria-hidden="true" />
-        </div>
-
-        <div
-          className="aura-kpi"
+        />
+        <MetricCard
+          title="Clients"
+          value={formatCount(clientTotal)}
+          icon={Users}
+          subtitle={
+            useWindow && rangedStats.clientPeak !== null
+              ? `${clientAuth} authenticated · peak ${rangedStats.clientPeak} · ${basisFor(true)}`
+              : `${clientAuth} authenticated · ${Math.max(0, clientTotal - clientAuth)} pending · ${basisFor(
+                  useWindow && rangedStats.clientTotal !== null
+                )}`
+          }
           onClick={goClient}
-          onKeyDown={onKpiKeyDown(goClient)}
-          role="button"
-          tabIndex={0}
           aria-label="View Connected Clients details"
-        >
-          <div className="aura-kpi-eyebrow">
-            <span>
-              <span className="aura-kpi-eyebrow-channel">CH-02</span> · Clients
-              <span className="aura-kpi-eyebrow-basis">
-                {basisFor(useWindow && rangedStats.clientTotal !== null)}
-              </span>
-            </span>
-            <Users className="aura-kpi-icon" />
-          </div>
-          <div className="aura-kpi-figure">
-            {clientTotal}
-            <span className="aura-kpi-figure-unit">CLNT</span>
-          </div>
-          <div className="aura-kpi-foot">
-            <span className="aura-kpi-foot-good">
-              <span className="aura-kpi-foot-mark">●</span>
-              {clientAuth} authenticated
-            </span>
-            {/* Peak is the figure an operator actually plans capacity against;
-                a mean alone hides the busiest moment of the window. */}
-            {useWindow && rangedStats.clientPeak !== null ? (
-              <span>peak {rangedStats.clientPeak}</span>
-            ) : (
-              <span>{Math.max(0, clientTotal - clientAuth)} pending</span>
-            )}
-          </div>
-          <span className="aura-kpi-corner-br" aria-hidden="true" />
-        </div>
-
-        <div className="aura-kpi" tabIndex={-1}>
-          <div className="aura-kpi-eyebrow">
-            <span>
-              <span className="aura-kpi-eyebrow-channel">CH-03</span> · Throughput
-              <span className="aura-kpi-eyebrow-basis">
-                {basisFor(useWindow && rangedStats.throughputUpload !== null)}
-              </span>
-            </span>
-            <Activity className="aura-kpi-icon" />
-          </div>
-          <div className="aura-kpi-figure">
-            {tpNum}
-            <span className="aura-kpi-figure-unit">{tpUnit.join(' ')}</span>
-          </div>
-          <div className="aura-kpi-foot">
-            <span>↑ {formatBps(tpUp)}</span>
-            <span>↓ {formatBps(tpDown)}</span>
-          </div>
-          <span className="aura-kpi-corner-br" aria-hidden="true" />
-        </div>
-
-        <div className="aura-kpi" tabIndex={-1}>
-          <div className="aura-kpi-eyebrow">
-            <span>
-              <span className="aura-kpi-eyebrow-channel">CH-04</span> · Alerts
-              {/* Alarms are not persisted, so this tile is always current state
-                  and must not imply otherwise. */}
-              <span className="aura-kpi-eyebrow-basis">now</span>
-            </span>
-            <AlertTriangle className="aura-kpi-icon" />
-          </div>
-          <div className="aura-kpi-figure">
-            {alertCounts.critical + alertCounts.warning}
-            <span className="aura-kpi-figure-unit">EVT</span>
-          </div>
-          <div className="aura-kpi-foot">
-            <span className="aura-kpi-foot-bad">
-              <span className="aura-kpi-foot-mark">●</span>
-              {alertCounts.critical} critical
-            </span>
-            {alertCounts.warning > 0 && (
-              <span className="aura-kpi-foot-warn">
-                <span className="aura-kpi-foot-mark">●</span>
-                {alertCounts.warning} warning
-              </span>
-            )}
-          </div>
-          <span className="aura-kpi-corner-br" aria-hidden="true" />
-        </div>
+        />
+        <MetricCard
+          title="Throughput"
+          value={formatBps(tpUp + tpDown)}
+          icon={Activity}
+          subtitle={`Up ${formatBps(tpUp)} · Down ${formatBps(tpDown)} · ${basisFor(
+            useWindow && rangedStats.throughputUpload !== null
+          )}`}
+        />
+        <MetricCard
+          title="Active alerts"
+          value={formatCount(totalAlerts)}
+          icon={AlertTriangle}
+          tone={
+            alertCounts.critical > 0 ? 'critical' : alertCounts.warning > 0 ? 'warning' : 'default'
+          }
+          toneValue={alertCounts.critical > 0}
+          subtitle={
+            totalAlerts > 0
+              ? `${alertCounts.critical} critical · ${alertCounts.warning} warning · now`
+              : 'No active alerts · now'
+          }
+        />
       </div>
 
-      {/* Best Practice Evaluation */}
-      <div className="space-y-4">
-        <div className="border-b pb-2">
-          <h3 className="text-lg font-semibold">Best Practice Evaluation</h3>
-          <p className="text-sm text-muted-foreground">
-            Network configuration and optimization recommendations
-          </p>
-        </div>
-        <BestPracticesWidget />
-      </div>
+      <SitesAttentionWidget />
+
+      <BestPracticesWidget />
 
       <InsightCardsGrid
         apStats={apStats}
@@ -325,12 +245,6 @@ function AIInsightsBranchComponent({
         alertCounts={alertCounts}
         poorServices={poorServices}
         lastUpdate={lastUpdate}
-      />
-
-      <RecentEventsSummary
-        offlineApCount={apStats.offline}
-        criticalCount={alertCounts.critical}
-        warningCount={alertCounts.warning}
       />
 
       <OrgSiteHealthOverview
@@ -358,15 +272,7 @@ function AIInsightsBranchComponent({
         />
       )}
 
-      <div className="space-y-4">
-        <div className="border-b pb-2">
-          <h3 className="text-lg font-semibold">Audit Logs</h3>
-          <p className="text-sm text-muted-foreground">
-            Recent configuration and operational changes
-          </p>
-        </div>
-        <AuditLogsWidget />
-      </div>
+      <AuditLogsWidget />
 
       <Card className="bg-muted/30 border-dashed">
         <CardContent className="py-4">

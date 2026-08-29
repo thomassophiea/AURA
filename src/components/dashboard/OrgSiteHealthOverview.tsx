@@ -2,6 +2,14 @@ import { memo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { AnimatedValue } from '../ui/animated-value';
 import { Activity, Radio, Signal, Users, Wifi } from 'lucide-react';
+import { usePaletteTheme } from '../../hooks/usePaletteTheme';
+import {
+  isDarkSurface,
+  resolveBandColor,
+  resolveStatusColor,
+  SNR_QUALITY_COLORS,
+  type PaletteTheme,
+} from '../../config/colorPalette';
 
 interface RfqiSample {
   timestamp: number;
@@ -33,10 +41,37 @@ interface OrgSiteHealthOverviewProps {
   snrDistribution: SnrSlice[];
 }
 
+/** Theme-correct color per band label. Falls back to the precomputed color. */
+function bandColor(band: string, theme: PaletteTheme, fallback: string): string {
+  if (band.startsWith('2.4')) return resolveBandColor('2.4', theme);
+  if (band.startsWith('5')) return resolveBandColor('5', theme);
+  if (band.startsWith('6')) return resolveBandColor('6', theme);
+  return fallback;
+}
+
+/** Theme-correct color per SNR quality bucket. */
+function snrColor(category: string, theme: PaletteTheme, fallback: string): string {
+  if (isDarkSurface(theme)) {
+    const key = category.toLowerCase() as keyof typeof SNR_QUALITY_COLORS;
+    return SNR_QUALITY_COLORS[key] ?? fallback;
+  }
+  switch (category.toLowerCase()) {
+    case 'excellent':
+      return resolveStatusColor('success', theme);
+    case 'good':
+      return resolveStatusColor('info', theme);
+    case 'fair':
+      return resolveStatusColor('warning', theme);
+    case 'poor':
+      return resolveStatusColor('critical', theme);
+    default:
+      return fallback;
+  }
+}
+
 /**
- * OrgSiteHealthOverview — comprehensive RF intelligence card. KPI quartet
- * (RFQI / Avg RSSI / Avg SNR / Clients) over a 2-up grid of band + SNR
- * distribution bars.
+ * OrgSiteHealthOverview — RF health card. KPI quartet (RFQI / Avg RSSI /
+ * Avg SNR / Clients) over a 2-up grid of band + SNR distribution bars.
  */
 function OrgSiteHealthOverviewImpl({
   siteScope,
@@ -47,6 +82,7 @@ function OrgSiteHealthOverviewImpl({
   bandDistribution,
   snrDistribution,
 }: OrgSiteHealthOverviewProps) {
+  const theme = usePaletteTheme();
   const rfqiAvg =
     rfqiData.length > 0
       ? Math.round(
@@ -56,92 +92,78 @@ function OrgSiteHealthOverviewImpl({
       : null;
   const snrTotal = snrDistribution.reduce((acc, s) => acc + s.count, 0);
 
+  const kpis = [
+    {
+      key: 'rfqi',
+      label: 'RFQI',
+      icon: Signal,
+      value: rfqiAvg !== null ? `${rfqiAvg}%` : '--',
+      degraded: rfqiAvg !== null && rfqiAvg < 70,
+    },
+    {
+      key: 'rssi',
+      label: 'Avg RSSI',
+      icon: Wifi,
+      value: avgRssi !== 0 ? `${avgRssi} dBm` : '--',
+      degraded: false,
+    },
+    {
+      key: 'snr',
+      label: 'Avg SNR',
+      icon: Activity,
+      value: avgSnr > 0 ? `${avgSnr} dB` : '--',
+      degraded: avgSnr > 0 && avgSnr < 15,
+    },
+    {
+      key: 'clients',
+      label: 'Connected clients',
+      icon: Users,
+      value: String(totalClients),
+      degraded: false,
+    },
+  ];
+
   return (
-    <Card className="relative overflow-hidden border-slate-700/50 bg-gradient-to-br from-background via-background to-slate-900/50">
-      <CardHeader className="pb-2 relative z-10">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Radio className="h-6 w-6 text-[color:var(--status-info)] animate-pulse" />
-              <div className="absolute inset-0 h-6 w-6 bg-cyan-400/30 blur-md animate-pulse" />
-            </div>
-            <div>
-              <CardTitle className="text-lg font-bold text-foreground">
-                {siteScope === 'all' ? 'Org' : 'Site'} Health Overview
-              </CardTitle>
-              <p className="text-xs text-muted-foreground">Real-time RF Quality Intelligence</p>
-            </div>
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <Radio className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+            <CardTitle className="truncate text-base">
+              {siteScope === 'all' ? 'RF Health' : 'Site RF Health'}
+            </CardTitle>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-cyan-400 animate-ping" />
-            <span className="text-sm font-medium text-[color:var(--status-info)]">LIVE</span>
-            <span className="text-xs text-muted-foreground border-l border-border pl-2 ml-1">
-              24h
-            </span>
-          </div>
+          <span className="shrink-0 text-xs text-muted-foreground">Last 24h</span>
         </div>
+        <p className="text-xs text-muted-foreground">RF quality and client signal distribution</p>
       </CardHeader>
-      <CardContent className="relative z-10 space-y-4">
+      <CardContent className="space-y-4">
         {/* Top Row: Key RF Metrics */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20">
-            <div className="flex items-center gap-2 mb-1">
-              <Signal className="h-4 w-4 text-purple-400" />
-              <span className="text-xs font-medium text-muted-foreground">RFQI Score</span>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {kpis.map(({ key, label, icon: Icon, value, degraded }) => (
+            <div key={key} className="rounded-lg border border-border bg-muted/50 p-3">
+              <div className="mb-1 flex items-center gap-2">
+                <Icon className="h-4 w-4 text-muted-foreground" aria-hidden />
+                <span className="truncate text-xs font-medium text-muted-foreground">{label}</span>
+              </div>
+              <AnimatedValue
+                value={value}
+                className={`text-2xl font-semibold tabular-nums ${
+                  degraded ? 'text-[color:var(--status-warning)]' : 'text-foreground'
+                }`}
+                pulseColor="bg-muted"
+              />
             </div>
-            <AnimatedValue
-              value={rfqiAvg !== null ? `${rfqiAvg}%` : '--'}
-              className="text-2xl font-bold text-purple-400 tabular-nums"
-              pulseColor="bg-purple-500/30"
-            />
-          </div>
-
-          <div className="p-3 rounded-xl bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border border-[color:var(--status-info)]/20">
-            <div className="flex items-center gap-2 mb-1">
-              <Wifi className="h-4 w-4 text-[color:var(--status-info)]" />
-              <span className="text-xs font-medium text-muted-foreground">Avg RSSI</span>
-            </div>
-            <AnimatedValue
-              value={avgRssi !== 0 ? `${avgRssi} dBm` : '--'}
-              className="text-2xl font-bold text-[color:var(--status-info)] tabular-nums"
-              pulseColor="bg-[color:var(--status-info-bg)]"
-            />
-          </div>
-
-          <div className="p-3 rounded-xl bg-[color:var(--status-success-bg)] border border-[color:var(--status-success)]/20">
-            <div className="flex items-center gap-2 mb-1">
-              <Activity className="h-4 w-4 text-[color:var(--status-success)]" />
-              <span className="text-xs font-medium text-muted-foreground">Avg SNR</span>
-            </div>
-            <AnimatedValue
-              value={avgSnr > 0 ? `${avgSnr} dB` : '--'}
-              className="text-2xl font-bold text-[color:var(--status-success)] tabular-nums"
-              pulseColor="bg-[color:var(--status-success-bg)]"
-            />
-          </div>
-
-          <div className="p-3 rounded-xl bg-[color:var(--status-warning-bg)] border border-[color:var(--status-warning)]/20">
-            <div className="flex items-center gap-2 mb-1">
-              <Users className="h-4 w-4 text-[color:var(--status-warning)]" />
-              <span className="text-xs font-medium text-muted-foreground">Connected</span>
-            </div>
-            <AnimatedValue
-              value={totalClients}
-              className="text-2xl font-bold text-[color:var(--status-warning)] tabular-nums"
-              pulseColor="bg-[color:var(--status-warning-bg)]"
-            />
-          </div>
+          ))}
         </div>
 
         {/* Middle Row: Band Distribution & SNR Quality */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="p-4 rounded-xl bg-muted/50 border border-border">
-            <div className="flex items-center justify-between mb-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="rounded-lg border border-border bg-muted/50 p-4">
+            <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Radio className="h-4 w-4 text-[color:var(--status-info)]" />
-                <span className="text-sm font-semibold text-foreground">
-                  Client Distribution by Band
-                </span>
+                <Radio className="h-4 w-4 text-muted-foreground" aria-hidden />
+                <span className="text-sm font-semibold text-foreground">Clients by band</span>
               </div>
               <span className="text-xs text-muted-foreground">{totalClients} total</span>
             </div>
@@ -149,18 +171,19 @@ function OrgSiteHealthOverviewImpl({
               <div className="space-y-2">
                 {bandDistribution.map((band) => {
                   const percentage = totalClients > 0 ? (band.count / totalClients) * 100 : 0;
+                  const color = bandColor(band.band, theme, band.color);
                   return (
                     <div key={band.band} className="space-y-1">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-foreground font-medium">{band.band}</span>
-                        <span className="tabular-nums" style={{ color: band.color }}>
+                        <span className="font-medium text-foreground">{band.band}</span>
+                        <span className="tabular-nums text-muted-foreground">
                           {band.count} ({Math.round(percentage)}%)
                         </span>
                       </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div className="h-2 overflow-hidden rounded-full bg-muted">
                         <div
                           className="h-full rounded-full transition-all duration-500"
-                          style={{ width: `${percentage}%`, backgroundColor: band.color }}
+                          style={{ width: `${percentage}%`, backgroundColor: color }}
                         />
                       </div>
                     </div>
@@ -168,17 +191,17 @@ function OrgSiteHealthOverviewImpl({
                 })}
               </div>
             ) : (
-              <div className="flex items-center justify-center h-16 text-muted-foreground text-sm">
+              <div className="flex h-16 items-center justify-center text-sm text-muted-foreground">
                 No band data available
               </div>
             )}
           </div>
 
-          <div className="p-4 rounded-xl bg-muted/50 border border-border">
-            <div className="flex items-center justify-between mb-3">
+          <div className="rounded-lg border border-border bg-muted/50 p-4">
+            <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Activity className="h-4 w-4 text-[color:var(--status-success)]" />
-                <span className="text-sm font-semibold text-foreground">Signal Quality (SNR)</span>
+                <Activity className="h-4 w-4 text-muted-foreground" aria-hidden />
+                <span className="text-sm font-semibold text-foreground">Signal quality (SNR)</span>
               </div>
               <span className="text-xs text-muted-foreground">{snrTotal} clients</span>
             </div>
@@ -186,18 +209,19 @@ function OrgSiteHealthOverviewImpl({
               <div className="space-y-2">
                 {snrDistribution.map((snr) => {
                   const percentage = snrTotal > 0 ? (snr.count / snrTotal) * 100 : 0;
+                  const color = snrColor(snr.category, theme, snr.color);
                   return (
                     <div key={snr.category} className="space-y-1">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-foreground font-medium">{snr.category}</span>
-                        <span className="tabular-nums" style={{ color: snr.color }}>
+                        <span className="font-medium text-foreground">{snr.category}</span>
+                        <span className="tabular-nums text-muted-foreground">
                           {snr.count} ({Math.round(percentage)}%)
                         </span>
                       </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div className="h-2 overflow-hidden rounded-full bg-muted">
                         <div
                           className="h-full rounded-full transition-all duration-500"
-                          style={{ width: `${percentage}%`, backgroundColor: snr.color }}
+                          style={{ width: `${percentage}%`, backgroundColor: color }}
                         />
                       </div>
                     </div>
@@ -205,7 +229,7 @@ function OrgSiteHealthOverviewImpl({
                 })}
               </div>
             ) : (
-              <div className="flex items-center justify-center h-16 text-muted-foreground text-sm">
+              <div className="flex h-16 items-center justify-center text-sm text-muted-foreground">
                 No SNR data available
               </div>
             )}

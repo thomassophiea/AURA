@@ -5,7 +5,7 @@ import { ConnectionError } from './ConnectionError';
 describe('ConnectionError', () => {
   it('renders the default title when none provided', () => {
     render(<ConnectionError />);
-    expect(screen.getByText('Controller unreachable')).toBeInTheDocument();
+    expect(screen.getByText('Gateway unreachable')).toBeInTheDocument();
   });
 
   it('renders a custom title when provided', () => {

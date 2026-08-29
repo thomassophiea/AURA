@@ -1,11 +1,13 @@
 /**
- * DashboardHero — Observatory aesthetic hero block for the dashboard.
- * Lives at the top of DashboardEnhanced and shows the branding eyebrow,
- * title, persona label, connection state, sync time, and refresh button.
+ * DashboardHero — the Network Overview page header. Title, live/historical
+ * state, selected range, connection state, sync time, and refresh — in the
+ * standard enterprise page-header layout (no display serif, no letterspaced
+ * eyebrows: this is an operations console, not a landing page).
  */
 
 import { memo } from 'react';
 import { RefreshCw } from 'lucide-react';
+import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { RelativeTime } from '../ui/RelativeTime';
 import { ConnectionState } from '../ui/ConnectionState';
@@ -38,47 +40,40 @@ function DashboardHeroComponent({
   const isHistorical = !timeRange.isLive;
 
   return (
-    <div className="aura-hero">
-      <div className="aura-hero-title-block">
-        <div className="aura-eyebrow">
-          {/* The live dot and the word "Live" are only honest for a window that
-              ends at now. A finished day is history, and saying otherwise is the
-              one claim this header must never make. */}
-          {!isHistorical && <span className="aura-live-dot" aria-hidden="true" />}
-          <span>
-            {isHistorical ? 'Network Monitoring — Historical' : 'Network Monitoring — Live Telemetry'}
-          </span>
-          <span className="aura-eyebrow-rule" aria-hidden="true" />
+    <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+      <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <h1 className="truncate text-2xl font-semibold tracking-tight">Network Overview</h1>
+          {/* "Live" is only honest for a window that ends at now. A finished
+              day is history, and saying otherwise is the one claim this
+              header must never make. */}
+          {isHistorical ? (
+            <Badge variant="neutral">Historical</Badge>
+          ) : (
+            <Badge variant="success" className="gap-1.5">
+              <span
+                aria-hidden
+                className="h-1.5 w-1.5 rounded-full bg-[color:var(--status-success)]"
+              />
+              Live
+            </Badge>
+          )}
         </div>
-        <h2 className="aura-hero-title flex items-center gap-3">
-          <em>Network Overview</em>
-        </h2>
         {activePersona !== 'super-user' && personaConfig && (
-          <span className="aura-hero-coord">{personaConfig.dashboardLabel}</span>
+          <p className="mt-0.5 text-sm text-muted-foreground">{personaConfig.dashboardLabel}</p>
         )}
-        <SelectedRangeLabel
-          range={timeRange}
-          coverage={timeRangeCoverage}
-          className="mt-2"
-        />
+        <SelectedRangeLabel range={timeRange} coverage={timeRangeCoverage} className="mt-1.5" />
       </div>
-      <div className="aura-hero-meta">
+      <div className="flex shrink-0 items-center gap-3">
         <ConnectionState />
         {lastUpdate && (
-          <div className="aura-hero-meta-row">
-            <span className="aura-hero-meta-key">SYNC</span>
-            <RelativeTime date={lastUpdate} />
-          </div>
+          <span className="whitespace-nowrap text-xs text-muted-foreground">
+            Updated <RelativeTime date={lastUpdate} />
+          </span>
         )}
-        <Button
-          onClick={onRefresh}
-          variant="outline"
-          size="sm"
-          disabled={refreshing}
-          className="aura-refresh"
-        >
+        <Button onClick={onRefresh} variant="outline" size="sm" disabled={refreshing}>
           <RefreshCw className={`mr-2 h-3 w-3 ${refreshing ? 'animate-spin' : ''}`} />
-          {refreshing ? 'Syncing' : 'Refresh'}
+          {refreshing ? 'Refreshing' : 'Refresh'}
         </Button>
       </div>
     </div>

@@ -1143,7 +1143,7 @@ export function ConfigureNetworks() {
       <Card>
         <CardHeader>
           <CardTitle>Configure Networks</CardTitle>
-          <CardDescription>Direct Mode — changes apply on save</CardDescription>
+          <CardDescription>Changes apply on save</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col items-center justify-center gap-4 py-16 text-center">
           <Server className="h-10 w-10 text-muted-foreground" />
@@ -1266,37 +1266,8 @@ export function ConfigureNetworks() {
                   epicTitle="WLAN Configuration"
                   jiraUrl="https://extremenetworks.atlassian.net/browse/NVO-7242"
                 />
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    letterSpacing: '0.04em',
-                    padding: '2px 7px',
-                    borderRadius: '4px',
-                    backgroundColor: 'rgba(234,179,8,0.12)',
-                    color: '#eab308',
-                    border: '1px solid rgba(234,179,8,0.3)',
-                  }}
-                >
-                  <span
-                    style={{
-                      width: '6px',
-                      height: '6px',
-                      borderRadius: '50%',
-                      backgroundColor: '#eab308',
-                      display: 'inline-block',
-                    }}
-                  />
-                  DIRECT MODE
-                </span>
                 {activeControllerIdentity && (
-                  <ControllerIdentityBadge
-                    identity={activeControllerIdentity}
-                    className="ml-3"
-                  />
+                  <ControllerIdentityBadge identity={activeControllerIdentity} className="ml-3" />
                 )}
               </CardTitle>
               <CardDescription>
@@ -1886,7 +1857,7 @@ export function ConfigureNetworks() {
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => handleToggleExpanded(network.id)}
-                                  title="Edit WLAN"
+                                  title="Edit Network"
                                 >
                                   {expandedNetworkId === network.id ? (
                                     <ChevronUp className="h-4 w-4" />
@@ -1919,7 +1890,7 @@ export function ConfigureNetworks() {
                                   onClick={() => handleDeleteWlan(network)}
                                   disabled={isDeleting}
                                   className="text-destructive hover:text-destructive"
-                                  title="Delete WLAN"
+                                  title="Delete Network"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>

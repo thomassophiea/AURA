@@ -3,7 +3,7 @@ import { AlertOctagon } from 'lucide-react';
 import { cn } from './utils';
 
 interface ConnectionErrorProps {
-  /** Title shown to the user. Default: "Controller unreachable". */
+  /** Title shown to the user. Default: "Gateway unreachable". */
   title?: string;
   /** Detail text shown below title. */
   description?: ReactNode;
@@ -21,7 +21,7 @@ interface ConnectionErrorProps {
  * lists (use EmptyChannel for those).
  */
 export function ConnectionError({
-  title = 'Controller unreachable',
+  title = 'Gateway unreachable',
   description,
   action,
   scale = 'inline',

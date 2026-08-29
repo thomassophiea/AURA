@@ -76,7 +76,7 @@ export function SystemAdministration({
   onToggleNetworkAssistant,
 }: SystemAdministrationProps) {
   const [config, setConfig] = useState<SystemConfig>({
-    hostname: 'extreme-controller',
+    hostname: 'extreme-gateway',
     domain: 'local',
     contactEmail: 'admin@example.com',
     location: 'Data Center',
@@ -238,7 +238,7 @@ export function SystemAdministration({
         <Alert className="border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning-bg)]">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            System configuration API endpoints are not available on this controller version. This
+            System configuration API endpoints are not available on this gateway version. This
             feature requires API v1/system/config support.
           </AlertDescription>
         </Alert>
@@ -390,7 +390,7 @@ export function SystemAdministration({
                   <Input
                     value={config.hostname}
                     onChange={(e) => handleUpdateConfig('hostname', e.target.value)}
-                    placeholder="controller-01"
+                    placeholder="gateway-01"
                   />
                 </div>
                 <div className="space-y-2">

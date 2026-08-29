@@ -89,13 +89,15 @@ function TopClientsSectionImpl({
                   className="border rounded-lg p-4 hover:bg-muted/50 cursor-pointer transition-colors"
                 >
                   <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-start gap-3">
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-sm flex-shrink-0">
+                    <div className="flex min-w-0 flex-1 items-start gap-3">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-semibold text-sm flex-shrink-0">
                         #{idx + 1}
                       </div>
-                      <div className="flex-1">
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium">{client.name}</span>
+                          <span className="max-w-full truncate font-medium" title={client.name}>
+                            {client.name}
+                          </span>
                           {client.vendor && (
                             <Badge variant="secondary" className="text-xs">
                               {getShortVendor(client.vendor)}
@@ -118,7 +120,7 @@ function TopClientsSectionImpl({
                           )}
                         </div>
                         <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
-                          <span>{client.mac}</span>
+                          <span className="font-mono">{client.mac}</span>
                           {client.ipAddress !== 'N/A' && (
                             <>
                               <span>•</span>
@@ -134,8 +136,8 @@ function TopClientsSectionImpl({
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-lg font-bold text-primary">
+                    <div className="shrink-0 text-right">
+                      <div className="text-lg font-semibold tabular-nums text-primary">
                         {formatBitsPerSecond(client.throughput)}
                       </div>
                       <div className="text-xs text-muted-foreground">Total</div>

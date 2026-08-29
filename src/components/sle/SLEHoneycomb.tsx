@@ -236,7 +236,7 @@ export function SLEHoneycomb({
                         dominantBaseline="middle"
                         fontSize={Math.max(8, hexR * 0.14)}
                         fontWeight="600"
-                        fill={delta >= 0 ? '#4ade80' : '#f87171'}
+                        fill={delta >= 0 ? 'var(--status-success)' : 'var(--status-error)'}
                       >
                         {delta >= 0 ? '▲' : '▼'} {Math.abs(delta).toFixed(1)}
                       </text>

@@ -64,7 +64,7 @@ describe('QuickWLANDialog', () => {
 
   it('Create button is enabled after SSID and passphrase are filled', () => {
     renderDialog();
-    fireEvent.change(screen.getByPlaceholderText(/network name/i), {
+    fireEvent.change(screen.getByPlaceholderText(/broadcast name/i), {
       target: { value: 'Corp-WiFi' },
     });
     fireEvent.change(screen.getByPlaceholderText(/passphrase/i), {

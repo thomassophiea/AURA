@@ -156,7 +156,7 @@ function severityIcon(severity: string) {
     case 'warning':
       return <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)]" />;
     default:
-      return <Info className="h-4 w-4 text-[color:var(--status-info,#3b82f6)]" />;
+      return <Info className="h-4 w-4 text-[color:var(--status-info,#665cdd)]" />;
   }
 }
 
@@ -410,7 +410,7 @@ function CertEvidence({ evidence }: { evidence: CheckEvidence }) {
   return (
     <div className="rounded border border-border/30 overflow-hidden">
       <div className="bg-muted/40 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
-        Controller Certificate
+        Gateway Certificate
       </div>
       <table className="w-full text-[11px]">
         <tbody>
@@ -1641,10 +1641,10 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
                     height={16}
                     stroke={
                       checkAlertData?.critical
-                        ? '#ef4444'
+                        ? 'var(--status-error)'
                         : checkAlertData?.warning
-                          ? '#f59e0b'
-                          : '#10b981'
+                          ? 'var(--status-warning)'
+                          : 'var(--status-success)'
                     }
                     ariaLabel={`${config.label} alert trend`}
                   />

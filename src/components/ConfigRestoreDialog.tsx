@@ -165,7 +165,7 @@ export default function ConfigRestoreDialog({
         <DialogHeader>
           <DialogTitle>Restore snapshot #{snapshotId}</DialogTitle>
           <DialogDescription>
-            Shows exactly what would be created, updated, or deleted on the live controller to
+            Shows exactly what would be created, updated, or deleted on the live gateway to
             match this snapshot. Nothing is written until you explicitly apply.
           </DialogDescription>
           {sourceBaseUrl && (
@@ -284,7 +284,7 @@ export default function ConfigRestoreDialog({
                     <div className="flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400">
                       <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
                       <span>
-                        This writes directly to the live controller and cannot be undone by AURA.
+                        This writes directly to the live gateway and cannot be undone by AURA.
                         Type <strong>{snapshotId}</strong> to confirm.
                       </span>
                     </div>

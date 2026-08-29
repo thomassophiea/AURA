@@ -80,7 +80,7 @@ export function DeployButton({
                 <Badge variant="secondary">{template.element_type}</Badge>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Controller</span>
+                <span className="text-muted-foreground">Gateway</span>
                 <span className="font-mono text-xs">{siteGroup.controller_url}</span>
               </div>
               <div className="flex justify-between">

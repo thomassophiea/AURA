@@ -17,8 +17,8 @@ import { resolveTimeRange } from '../../lib/timeRange';
 // under test here and all of it is slow or network-bound in jsdom.
 vi.mock('./DriftStrip', () => ({ DriftStrip: () => null }));
 vi.mock('./InsightCardsGrid', () => ({ InsightCardsGrid: () => null }));
-vi.mock('./RecentEventsSummary', () => ({ RecentEventsSummary: () => null }));
 vi.mock('./OrgSiteHealthOverview', () => ({ OrgSiteHealthOverview: () => null }));
+vi.mock('./SitesAttentionWidget', () => ({ SitesAttentionWidget: () => null }));
 vi.mock('./DetailPanel', () => ({ DetailPanel: () => null }));
 vi.mock('../AuditLogsWidget', () => ({ AuditLogsWidget: () => null }));
 vi.mock('../BestPracticesWidget', () => ({ BestPracticesWidget: () => null }));
@@ -103,10 +103,10 @@ function renderBranch({
   );
 }
 
-/** The tile whose eyebrow contains `label`. */
+/** The MetricCard whose title matches `label`. */
 function tile(label: string): HTMLElement {
-  const eyebrow = screen.getByText(new RegExp(`· ${label}`, 'i'));
-  const element = eyebrow.closest('.aura-kpi');
+  const title = screen.getByText(new RegExp(`^${label}$`, 'i'));
+  const element = title.closest('[data-slot="card"]');
   if (!element) throw new Error(`No KPI tile found for ${label}`);
   return element as HTMLElement;
 }
@@ -114,7 +114,7 @@ function tile(label: string): HTMLElement {
 describe('KPI tiles reflect the selected window', () => {
   it('shows the window AP count, not the live snapshot', () => {
     renderBranch();
-    const aps = tile('Access Points');
+    const aps = tile('Access points');
     expect(within(aps).getByText('6')).toBeInTheDocument();
     expect(within(aps).queryByText('99')).not.toBeInTheDocument();
   });
@@ -151,7 +151,7 @@ describe('KPI tiles say which basis they are on', () => {
   it('labels window figures with the range', () => {
     renderBranch({ token: 'day-1' });
     expect(within(tile('Clients')).getByText(/avg · yesterday/i)).toBeInTheDocument();
-    expect(within(tile('Access Points')).getByText(/avg · yesterday/i)).toBeInTheDocument();
+    expect(within(tile('Access points')).getByText(/avg · yesterday/i)).toBeInTheDocument();
   });
 
   it('tracks the selected range in the label', () => {
@@ -161,7 +161,7 @@ describe('KPI tiles say which basis they are on', () => {
 
   it('always marks alerts as current state, since alarms are not persisted', () => {
     renderBranch();
-    expect(within(tile('Alerts')).getByText('now')).toBeInTheDocument();
+    expect(within(tile('Active alerts')).getByText(/· now$/)).toBeInTheDocument();
   });
 });
 
@@ -171,7 +171,7 @@ describe('KPI tiles fall back honestly when nothing was stored', () => {
 
     const clients = tile('Clients');
     expect(within(clients).getByText('777')).toBeInTheDocument();
-    expect(within(clients).getByText('now')).toBeInTheDocument();
+    expect(within(clients).getByText(/· now$/)).toBeInTheDocument();
     expect(within(clients).queryByText(/avg ·/i)).not.toBeInTheDocument();
   });
 
@@ -186,6 +186,6 @@ describe('KPI tiles fall back honestly when nothing was stored', () => {
       rangedStats: windowStats({ throughputUpload: null, throughputDownload: null }),
     });
     expect(within(tile('Clients')).getByText(/avg ·/i)).toBeInTheDocument();
-    expect(within(tile('Throughput')).getByText('now')).toBeInTheDocument();
+    expect(within(tile('Throughput')).getByText(/· now$/)).toBeInTheDocument();
   });
 });

@@ -191,8 +191,8 @@ export function EnvironmentalReportCard({
             </div>
           </div>
           {latest ? (
-            <p className="text-xs text-muted-foreground">
-              Latest: {new Date(latest.generatedAt).toLocaleString()} · {latest.reportId}
+            <p className="text-xs text-muted-foreground" title={latest.reportId}>
+              Latest: {new Date(latest.generatedAt).toLocaleString()}
             </p>
           ) : null}
           {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}

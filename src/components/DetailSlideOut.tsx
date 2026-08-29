@@ -49,7 +49,9 @@ export function DetailSlideOut({
         <SheetHeader className="px-6 py-4 border-b border-border">
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
-              <SheetTitle className="text-lg font-semibold truncate">{title}</SheetTitle>
+              <SheetTitle className="text-lg font-semibold truncate" title={typeof title === 'string' ? title : undefined}>
+                {title}
+              </SheetTitle>
               {description && (
                 <SheetDescription className="mt-1 text-sm text-muted-foreground">
                   {description}

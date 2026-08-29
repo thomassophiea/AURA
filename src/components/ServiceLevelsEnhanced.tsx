@@ -1155,16 +1155,16 @@ export function ServiceLevelsEnhanced() {
                       <Radar
                         name="Performance"
                         dataKey="value"
-                        stroke="#BB86FC"
-                        fill="#BB86FC"
+                        stroke="var(--chart-1)"
+                        fill="var(--chart-1)"
                         fillOpacity={0.6}
                       />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: 'var(--background)',
+                          backgroundColor: 'var(--popover)',
                           border: '1px solid var(--border)',
-                          borderRadius: '6px',
-                          color: 'var(--foreground)',
+                          borderRadius: 8,
+                          color: 'var(--popover-foreground)',
                         }}
                       />
                     </RadarChart>
@@ -1200,17 +1200,17 @@ export function ServiceLevelsEnhanced() {
                       <YAxis tick={{ fill: 'var(--foreground)' }} />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: 'var(--background)',
+                          backgroundColor: 'var(--popover)',
                           border: '1px solid var(--border)',
-                          borderRadius: '6px',
-                          color: 'var(--foreground)',
+                          borderRadius: 8,
+                          color: 'var(--popover-foreground)',
                         }}
                       />
                       <Legend wrapperStyle={{ color: 'var(--foreground)' }} />
                       <Line
                         type="monotone"
                         dataKey="clientCount"
-                        stroke="#03DAC5"
+                        stroke="var(--chart-2)"
                         strokeWidth={2}
                         name="Clients"
                       />
@@ -1235,17 +1235,17 @@ export function ServiceLevelsEnhanced() {
                       <Tooltip
                         formatter={(value) => `${Number(value).toFixed(2)} ms`}
                         contentStyle={{
-                          backgroundColor: 'var(--background)',
+                          backgroundColor: 'var(--popover)',
                           border: '1px solid var(--border)',
-                          borderRadius: '6px',
-                          color: 'var(--foreground)',
+                          borderRadius: 8,
+                          color: 'var(--popover-foreground)',
                         }}
                       />
                       <Legend wrapperStyle={{ color: 'var(--foreground)' }} />
                       <Line
                         type="monotone"
                         dataKey="latency"
-                        stroke="#CF6679"
+                        stroke="var(--status-error)"
                         strokeWidth={2}
                         name="Latency (ms)"
                       />
@@ -1270,18 +1270,18 @@ export function ServiceLevelsEnhanced() {
                       <Tooltip
                         formatter={(value) => `${Number(value).toFixed(2)}%`}
                         contentStyle={{
-                          backgroundColor: 'var(--background)',
+                          backgroundColor: 'var(--popover)',
                           border: '1px solid var(--border)',
-                          borderRadius: '6px',
-                          color: 'var(--foreground)',
+                          borderRadius: 8,
+                          color: 'var(--popover-foreground)',
                         }}
                       />
                       <Legend wrapperStyle={{ color: 'var(--foreground)' }} />
                       <Area
                         type="monotone"
                         dataKey="reliability"
-                        stroke="#03DAC5"
-                        fill="#03DAC5"
+                        stroke="var(--chart-2)"
+                        fill="var(--chart-2)"
                         fillOpacity={0.6}
                         name="Reliability (%)"
                       />
@@ -1353,7 +1353,7 @@ export function ServiceLevelsEnhanced() {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-sm">Client Distribution by Protocol</CardTitle>
-                  <CardDescription>WiFi standards (802.11)</CardDescription>
+                  <CardDescription>Wi-Fi standards (802.11)</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">

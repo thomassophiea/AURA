@@ -395,16 +395,15 @@ export function RFQualityWidgetAnchored() {
             <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop
                 offset="0%"
-                className={status.bgColor.replace('from-', 'stop-color: var(--')}
                 style={{
                   stopColor:
                     percent >= 80
-                      ? '#22c55e'
+                      ? 'var(--status-success)'
                       : percent >= 60
-                        ? '#3b82f6'
+                        ? 'var(--status-info)'
                         : percent >= 40
-                          ? '#f59e0b'
-                          : '#ef4444',
+                          ? 'var(--status-warning)'
+                          : 'var(--status-error)',
                 }}
               />
               <stop
@@ -412,12 +411,13 @@ export function RFQualityWidgetAnchored() {
                 style={{
                   stopColor:
                     percent >= 80
-                      ? '#10b981'
+                      ? 'var(--status-success)'
                       : percent >= 60
-                        ? '#06b6d4'
+                        ? 'var(--status-info)'
                         : percent >= 40
-                          ? '#fbbf24'
-                          : '#f87171',
+                          ? 'var(--status-warning)'
+                          : 'var(--status-error)',
+                  stopOpacity: 0.7,
                 }}
               />
             </linearGradient>
@@ -531,7 +531,7 @@ export function RFQualityWidgetAnchored() {
                 {metrics.channelUtilization !== null && (
                   <div className="flex items-center gap-1.5">
                     <Activity className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Ch. Util</span>
+                    <span className="text-xs text-muted-foreground">Channel Utilization</span>
                     <span
                       className={`text-sm font-bold tabular-nums ${metrics.channelUtilization > 70 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-success)]'}`}
                     >
@@ -577,7 +577,7 @@ export function RFQualityWidgetAnchored() {
         </div>
 
         {/* Time Series Chart */}
-        {timeSeries.length > 0 && (
+        {timeSeries.length > 0 ? (
           <div className="h-32">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
@@ -595,25 +595,31 @@ export function RFQualityWidgetAnchored() {
               >
                 <defs>
                   <linearGradient id="rfqiGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                    <stop offset="5%" stopColor="var(--chart-1)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--chart-1)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                <XAxis dataKey="time" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} />
+                <XAxis
+                  dataKey="time"
+                  tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
+                  tickLine={false}
+                  axisLine={false}
+                />
                 <YAxis
                   domain={[0, 5]}
                   ticks={[1, 2, 3, 4, 5]}
-                  tick={{ fontSize: 10 }}
+                  tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
                   tickLine={false}
                   axisLine={false}
                   width={30}
                 />
                 <RechartsTooltip
                   contentStyle={{
-                    backgroundColor: 'var(--background)',
+                    backgroundColor: 'var(--popover)',
                     border: '1px solid var(--border)',
-                    borderRadius: '8px',
+                    borderRadius: 8,
+                    color: 'var(--popover-foreground)',
                     fontSize: '12px',
                   }}
                   formatter={(value: any) => [
@@ -622,22 +628,36 @@ export function RFQualityWidgetAnchored() {
                   ]}
                 />
                 {/* Good threshold line (3.5 = 70%) */}
-                <ReferenceLine y={3.5} stroke="#22c55e" strokeDasharray="3 3" strokeOpacity={0.5} />
+                <ReferenceLine
+                  y={3.5}
+                  stroke="var(--status-success)"
+                  strokeDasharray="3 3"
+                  strokeOpacity={0.5}
+                />
                 {/* Fair threshold line (2.5 = 50%) */}
-                <ReferenceLine y={2.5} stroke="#f59e0b" strokeDasharray="3 3" strokeOpacity={0.5} />
+                <ReferenceLine
+                  y={2.5}
+                  stroke="var(--status-warning)"
+                  strokeDasharray="3 3"
+                  strokeOpacity={0.5}
+                />
                 {/* Cursor line */}
                 {ctx.timeCursor && valueAtCursor && (
-                  <ReferenceLine x={valueAtCursor.time} stroke="#8b5cf6" strokeWidth={2} />
+                  <ReferenceLine x={valueAtCursor.time} stroke="var(--chart-1)" strokeWidth={2} />
                 )}
                 <Area
                   type="monotone"
                   dataKey="rfqi"
-                  stroke="#8b5cf6"
+                  stroke="var(--chart-1)"
                   fill="url(#rfqiGradient)"
                   strokeWidth={2}
                 />
               </AreaChart>
             </ResponsiveContainer>
+          </div>
+        ) : (
+          <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
+            No RF quality data for this window
           </div>
         )}
 

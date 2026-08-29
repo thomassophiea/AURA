@@ -217,7 +217,7 @@ export function SystemBackupManager() {
         <span>
           Backup features require Platform Manager API access. These endpoints
           (/platformmanager/v1/*) are not part of the standard Swagger specification and may not be
-          available on all controller versions.
+          available on all gateway versions.
         </span>
       </div>
 
@@ -295,7 +295,7 @@ export function SystemBackupManager() {
                 Configuration Backups
               </CardTitle>
               <CardDescription className="mt-1">
-                Backup and restore controller configuration
+                Backup and restore gateway configuration
               </CardDescription>
             </div>
             <div className="flex gap-2">
@@ -329,7 +329,7 @@ export function SystemBackupManager() {
               </div>
               <p className="text-lg font-semibold mb-2">No configuration backups found</p>
               <p className="text-sm max-w-md mx-auto">
-                Create your first backup to safeguard your controller configuration and enable quick
+                Create your first backup to safeguard your gateway configuration and enable quick
                 restore capabilities
               </p>
             </div>
@@ -515,7 +515,7 @@ export function SystemBackupManager() {
           <DialogHeader>
             <DialogTitle>Restore Configuration</DialogTitle>
             <DialogDescription>
-              Are you sure you want to restore from this backup? The controller will be restarted
+              Are you sure you want to restore from this backup? The gateway will be restarted
               and current configuration will be replaced.
             </DialogDescription>
           </DialogHeader>
@@ -523,7 +523,7 @@ export function SystemBackupManager() {
             <div className="flex items-center gap-2 p-3 bg-[color:var(--status-warning-bg)] border border-[color:var(--status-warning)]/30 rounded-md">
               <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)]" />
               <p className="text-sm text-[color:var(--status-warning)]">
-                <strong>Warning:</strong> This action will restart the controller and may cause
+                <strong>Warning:</strong> This action will restart the gateway and may cause
                 temporary service disruption.
               </p>
             </div>

@@ -84,7 +84,9 @@ export const SITES_TABLE_COLUMNS: ColumnConfig<Site>[] = [
     defaultWidth: 180,
     renderCell: (site: Site) =>
       site.site_group_name ? (
-        <span className="text-xs">{site.site_group_name}</span>
+        <span className="block max-w-[180px] truncate text-xs" title={site.site_group_name}>
+          {site.site_group_name}
+        </span>
       ) : (
         <span className="text-xs text-muted-foreground">—</span>
       ),

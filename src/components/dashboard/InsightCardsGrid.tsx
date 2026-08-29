@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Progress } from '../ui/progress';
 import { NoData } from '../ui/NoData';
@@ -17,7 +17,8 @@ import {
   WifiOff,
   Zap,
 } from 'lucide-react';
-import { formatBitsPerSecond } from '../../lib/units';
+import { formatBitsPerSecond, formatPercent } from '../../lib/units';
+import { apiService } from '../../services/api';
 
 interface ApStatsShape {
   total: number;
@@ -53,11 +54,26 @@ interface InsightCardsGridProps {
   lastUpdate: Date | null;
 }
 
+interface GatewayLoad {
+  cpu: number | null;
+  memory: number | null;
+}
+
+/** Standard muted icon chip for card headers — semantic tints are reserved for state. */
+function HeaderChip({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg bg-muted/60 p-2 text-muted-foreground" aria-hidden>
+      {children}
+    </div>
+  );
+}
+
 /**
  * InsightCardsGrid — second-tier 4-card grid below the hero KPIs in the
  * Overview: Network Health, Capacity Planning, Active Issues, Maintenance
- * Watch. Each card uses the .aura-section instrument chrome and the
- * <NoData /> primitive.
+ * Watch. Every figure is live data or an explicit <NoData />; this grid
+ * previously shipped hardcoded CPU/memory/coverage strings styled as
+ * telemetry.
  */
 function InsightCardsGridImpl({
   apStats,
@@ -72,51 +88,79 @@ function InsightCardsGridImpl({
   const allClearAnomaly = apStats.offline === 0 && alertCounts.critical === 0;
   const allClearMaintenance = apStats.lowPower === 0 && poorServices.length === 0;
 
+  // Real gateway load — replaces the hardcoded "5.5% CPU / 38% Memory".
+  const [gatewayLoad, setGatewayLoad] = useState<GatewayLoad | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    apiService
+      .getOSOneInfo()
+      .then((info) => {
+        if (cancelled) return;
+        const system = info?.system;
+        setGatewayLoad({
+          cpu: Number.isFinite(system?.cpuUtilization) ? system!.cpuUtilization : null,
+          memory: Number.isFinite(system?.memoryFreePercent)
+            ? 100 - system!.memoryFreePercent
+            : null,
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setGatewayLoad({ cpu: null, memory: null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const modelNames = Object.keys(apStats.models);
+
   return (
     <div className="grid gap-6 md:grid-cols-2">
       {/* Network Health */}
       <Card className="aura-section">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-[color:var(--status-success-bg)]">
-              <Activity className="h-5 w-5 text-[color:var(--status-success)]" />
-            </div>
+            <HeaderChip>
+              <Activity className="h-5 w-5" />
+            </HeaderChip>
             <div>
               <CardTitle className="text-base">Network Health</CardTitle>
               <CardDescription>Infrastructure status overview</CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="flex flex-col h-full space-y-4">
+        <CardContent className="flex h-full flex-col space-y-4">
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span>AP Availability</span>
-              <span className="font-medium">{Math.round(apAvailability)}%</span>
+              <span>AP availability</span>
+              <span
+                className={
+                  apAvailability < 95
+                    ? 'font-medium text-[color:var(--status-warning)]'
+                    : 'font-medium'
+                }
+              >
+                {Math.round(apAvailability)}%
+              </span>
             </div>
             <Progress value={apAvailability} className="h-2" />
-            <p className="text-xs text-muted-foreground">Target: &gt;95% availability</p>
-          </div>
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span>OS ONE Coverage</span>
-              <span className="font-medium">100%</span>
-            </div>
-            <Progress value={100} className="h-2" />
-            <p className="text-xs text-muted-foreground">All APs running OS ONE</p>
+            <p className="text-xs text-muted-foreground">
+              {apStats.online} of {apStats.total} APs online · target &gt;95%
+            </p>
           </div>
 
           <div className="flex-1" />
 
-          <div className="pt-3 border-t">
-            <div className="flex items-center gap-2 mb-3">
-              <Signal className="h-4 w-4 text-[color:var(--status-success)]" />
+          <div className="border-t pt-3">
+            <div className="mb-3 flex items-center gap-2">
+              <Signal className="h-4 w-4 text-muted-foreground" aria-hidden />
               <span className="text-sm font-medium">RF Quality</span>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-lg bg-gradient-to-br from-green-500/10 to-green-600/5 border border-[color:var(--status-success)]/20">
-                <div className="flex items-center justify-between mb-2">
+              <div className="rounded-lg border border-border bg-muted/50 p-3">
+                <div className="mb-2 flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">RFQI</span>
-                  <span className="text-lg font-bold text-[color:var(--status-success)]">
+                  <span className="text-lg font-semibold tabular-nums">
                     {Number.isFinite(clientStats.avgRfqi) && clientStats.avgRfqi > 0 ? (
                       `${clientStats.avgRfqi}%`
                     ) : (
@@ -133,10 +177,14 @@ function InsightCardsGridImpl({
                   className="h-1.5"
                 />
               </div>
-              <div className="p-3 rounded-lg bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-[color:var(--status-warning)]/20">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-muted-foreground">Ch. Util</span>
-                  <span className="text-lg font-bold text-[color:var(--status-warning)]">
+              <div className="rounded-lg border border-border bg-muted/50 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Channel utilization</span>
+                  <span
+                    className={`text-lg font-semibold tabular-nums ${
+                      apStats.avgChannelUtil > 60 ? 'text-[color:var(--status-warning)]' : ''
+                    }`}
+                  >
                     {Number.isFinite(apStats.avgChannelUtil) && apStats.avgChannelUtil > 0 ? (
                       `${apStats.avgChannelUtil}%`
                     ) : (
@@ -162,40 +210,40 @@ function InsightCardsGridImpl({
       <Card className="aura-section">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-blue-500/10">
-              <BarChart3 className="h-5 w-5 text-blue-600" />
-            </div>
+            <HeaderChip>
+              <BarChart3 className="h-5 w-5" />
+            </HeaderChip>
             <div>
               <CardTitle className="text-base">Capacity Planning</CardTitle>
               <CardDescription>Resource utilization trends</CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="flex flex-col h-full space-y-4">
+        <CardContent className="flex h-full flex-col space-y-4">
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span>Avg Clients per AP</span>
-              <span className="font-medium">{avgClientsPerAp}</span>
+              <span>Avg clients per AP</span>
+              <span className="font-medium tabular-nums">{avgClientsPerAp}</span>
             </div>
             <Progress value={capacityUtilization} className="h-2" />
             <p className="text-xs text-muted-foreground">Recommended: &lt;50 clients per AP</p>
           </div>
           <div className="grid grid-cols-2 gap-3 pt-2">
-            <div className="p-3 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2 mb-1">
-                <Upload className="h-4 w-4 text-[color:var(--status-info)]" />
+            <div className="rounded-lg bg-muted/50 p-3">
+              <div className="mb-1 flex items-center gap-2">
+                <Upload className="h-4 w-4 text-muted-foreground" aria-hidden />
                 <span className="text-xs text-muted-foreground">Upload</span>
               </div>
-              <p className="text-lg font-semibold">
+              <p className="text-lg font-semibold tabular-nums">
                 {formatBitsPerSecond(clientStats.throughputUpload)}
               </p>
             </div>
-            <div className="p-3 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2 mb-1">
-                <Download className="h-4 w-4 text-[color:var(--status-success)]" />
+            <div className="rounded-lg bg-muted/50 p-3">
+              <div className="mb-1 flex items-center gap-2">
+                <Download className="h-4 w-4 text-muted-foreground" aria-hidden />
                 <span className="text-xs text-muted-foreground">Download</span>
               </div>
-              <p className="text-lg font-semibold">
+              <p className="text-lg font-semibold tabular-nums">
                 {formatBitsPerSecond(clientStats.throughputDownload)}
               </p>
             </div>
@@ -203,25 +251,49 @@ function InsightCardsGridImpl({
 
           <div className="flex-1" />
 
-          <div className="pt-3 border-t">
-            <div className="flex items-center gap-2 mb-3">
-              <Server className="h-4 w-4 text-purple-500" />
-              <span className="text-sm font-medium">OS ONE Control</span>
+          <div className="border-t pt-3">
+            <div className="mb-3 flex items-center gap-2">
+              <Server className="h-4 w-4 text-muted-foreground" aria-hidden />
+              <span className="text-sm font-medium">Gateway load</span>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-lg bg-muted/50 border border-border">
-                <div className="flex items-center justify-between mb-2">
+              <div className="rounded-lg border border-border bg-muted/50 p-3">
+                <div className="mb-2 flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">CPU</span>
-                  <span className="text-lg font-bold text-primary">5.5%</span>
+                  <span
+                    className={`text-lg font-semibold tabular-nums ${
+                      (gatewayLoad?.cpu ?? 0) > 80 ? 'text-[color:var(--status-error)]' : ''
+                    }`}
+                  >
+                    {gatewayLoad === null ? (
+                      <span className="inline-block h-5 w-12 animate-pulse rounded bg-muted" />
+                    ) : gatewayLoad.cpu !== null ? (
+                      formatPercent(gatewayLoad.cpu)
+                    ) : (
+                      <NoData field="system.cpuUtilization" />
+                    )}
+                  </span>
                 </div>
-                <Progress value={5.5} className="h-1.5" />
+                <Progress value={gatewayLoad?.cpu ?? 0} className="h-1.5" />
               </div>
-              <div className="p-3 rounded-lg bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border border-[color:var(--status-info)]/20">
-                <div className="flex items-center justify-between mb-2">
+              <div className="rounded-lg border border-border bg-muted/50 p-3">
+                <div className="mb-2 flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Memory</span>
-                  <span className="text-lg font-bold text-[color:var(--status-info)]">38%</span>
+                  <span
+                    className={`text-lg font-semibold tabular-nums ${
+                      (gatewayLoad?.memory ?? 0) > 85 ? 'text-[color:var(--status-error)]' : ''
+                    }`}
+                  >
+                    {gatewayLoad === null ? (
+                      <span className="inline-block h-5 w-12 animate-pulse rounded bg-muted" />
+                    ) : gatewayLoad.memory !== null ? (
+                      formatPercent(gatewayLoad.memory, 0)
+                    ) : (
+                      <NoData field="system.memoryFreePercent" />
+                    )}
+                  </span>
                 </div>
-                <Progress value={38} className="h-1.5" />
+                <Progress value={gatewayLoad?.memory ?? 0} className="h-1.5" />
               </div>
             </div>
           </div>
@@ -232,9 +304,9 @@ function InsightCardsGridImpl({
       <Card className="aura-section">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-[color:var(--status-warning-bg)]">
-              <AlertCircle className="h-5 w-5 text-[color:var(--status-warning)]" />
-            </div>
+            <HeaderChip>
+              <AlertCircle className="h-5 w-5" />
+            </HeaderChip>
             <div>
               <CardTitle className="text-base">Active Issues</CardTitle>
               <CardDescription>Offline devices and critical alerts</CardDescription>
@@ -243,34 +315,44 @@ function InsightCardsGridImpl({
         </CardHeader>
         <CardContent className="space-y-3">
           {apStats.offline > 0 && (
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-[color:var(--status-error-bg)] border border-[color:var(--status-error)]/30">
-              <WifiOff className="h-5 w-5 text-[color:var(--status-error)] mt-0.5" />
+            <div className="flex items-start gap-3 rounded-lg border border-[color:var(--status-error)]/30 bg-[color:var(--status-error-bg)] p-3">
+              <WifiOff className="mt-0.5 h-5 w-5 text-[color:var(--status-error)]" aria-hidden />
               <div>
                 <p className="text-sm font-medium text-[color:var(--status-error)]">
                   Offline Access Points
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {apStats.offline} AP(s) are currently offline and require attention
+                  {apStats.offline === 1
+                    ? '1 AP is currently offline and requires attention'
+                    : `${apStats.offline} APs are currently offline and require attention`}
                 </p>
               </div>
             </div>
           )}
           {alertCounts.critical > 0 && (
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-[color:var(--status-error-bg)] border border-[color:var(--status-error)]/30">
-              <AlertTriangle className="h-5 w-5 text-[color:var(--status-error)] mt-0.5" />
+            <div className="flex items-start gap-3 rounded-lg border border-[color:var(--status-error)]/30 bg-[color:var(--status-error-bg)] p-3">
+              <AlertTriangle
+                className="mt-0.5 h-5 w-5 text-[color:var(--status-error)]"
+                aria-hidden
+              />
               <div>
                 <p className="text-sm font-medium text-[color:var(--status-error)]">
                   Critical Alerts
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {alertCounts.critical} critical issue(s) need immediate attention
+                  {alertCounts.critical === 1
+                    ? '1 critical issue needs immediate attention'
+                    : `${alertCounts.critical} critical issues need immediate attention`}
                 </p>
               </div>
             </div>
           )}
           {allClearAnomaly && (
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-[color:var(--status-success-bg)] border border-[color:var(--status-success)]/30">
-              <CheckCircle className="h-5 w-5 text-[color:var(--status-success)] mt-0.5" />
+            <div className="flex items-start gap-3 rounded-lg border border-[color:var(--status-success)]/30 bg-[color:var(--status-success-bg)] p-3">
+              <CheckCircle
+                className="mt-0.5 h-5 w-5 text-[color:var(--status-success)]"
+                aria-hidden
+              />
               <div>
                 <p className="text-sm font-medium text-[color:var(--status-success)]">All Clear</p>
                 <p className="text-xs text-muted-foreground">
@@ -289,9 +371,9 @@ function InsightCardsGridImpl({
       <Card className="aura-section">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-purple-500/10">
-              <Timer className="h-5 w-5 text-purple-600" />
-            </div>
+            <HeaderChip>
+              <Timer className="h-5 w-5" />
+            </HeaderChip>
             <div>
               <CardTitle className="text-base">Maintenance Watch</CardTitle>
               <CardDescription>Power, RF and service warnings</CardDescription>
@@ -300,34 +382,41 @@ function InsightCardsGridImpl({
         </CardHeader>
         <CardContent className="space-y-3">
           {apStats.lowPower > 0 && (
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-[color:var(--status-warning-bg)] border border-[color:var(--status-warning)]/30">
-              <Zap className="h-5 w-5 text-[color:var(--status-warning)] mt-0.5" />
+            <div className="flex items-start gap-3 rounded-lg border border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning-bg)] p-3">
+              <Zap className="mt-0.5 h-5 w-5 text-[color:var(--status-warning)]" aria-hidden />
               <div>
                 <p className="text-sm font-medium text-[color:var(--status-warning)]">
                   Low Power APs
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {apStats.lowPower} AP(s) running in low power mode - check PoE budget
+                  {apStats.lowPower === 1
+                    ? '1 AP is running in low power mode — check PoE budget'
+                    : `${apStats.lowPower} APs are running in low power mode — check PoE budget`}
                 </p>
               </div>
             </div>
           )}
           {poorServices.length > 0 && (
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-[color:var(--status-warning-bg)] border border-[color:var(--status-warning)]/30">
-              <Network className="h-5 w-5 text-[color:var(--status-warning)] mt-0.5" />
+            <div className="flex items-start gap-3 rounded-lg border border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning-bg)] p-3">
+              <Network className="mt-0.5 h-5 w-5 text-[color:var(--status-warning)]" aria-hidden />
               <div>
                 <p className="text-sm font-medium text-[color:var(--status-warning)]">
                   Service Degradation
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {poorServices.length} service(s) showing performance issues
+                  {poorServices.length === 1
+                    ? '1 network is showing performance issues'
+                    : `${poorServices.length} networks are showing performance issues`}
                 </p>
               </div>
             </div>
           )}
           {allClearMaintenance && (
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-[color:var(--status-success-bg)] border border-[color:var(--status-success)]/30">
-              <CheckCircle className="h-5 w-5 text-[color:var(--status-success)] mt-0.5" />
+            <div className="flex items-start gap-3 rounded-lg border border-[color:var(--status-success)]/30 bg-[color:var(--status-success-bg)] p-3">
+              <CheckCircle
+                className="mt-0.5 h-5 w-5 text-[color:var(--status-success)]"
+                aria-hidden
+              />
               <div>
                 <p className="text-sm font-medium text-[color:var(--status-success)]">
                   Systems Healthy
@@ -338,17 +427,14 @@ function InsightCardsGridImpl({
               </div>
             </div>
           )}
-          <div className="pt-2">
-            <p className="text-xs text-muted-foreground">
-              AP models deployed:{' '}
-              {Object.entries(apStats.models)
-                .slice(0, 3)
-                .map(([m]) => m)
-                .join(', ')}
-              {Object.keys(apStats.models).length > 3 &&
-                ` +${Object.keys(apStats.models).length - 3} more`}
-            </p>
-          </div>
+          {modelNames.length > 0 && (
+            <div className="pt-2">
+              <p className="text-xs text-muted-foreground">
+                AP models deployed: {modelNames.slice(0, 3).join(', ')}
+                {modelNames.length > 3 && ` +${modelNames.length - 3} more`}
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

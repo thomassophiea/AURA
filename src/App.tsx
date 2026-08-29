@@ -201,7 +201,7 @@ const pageInfo = {
     description: 'Service levels & infrastructure health monitoring',
   },
   'app-insights': {
-    title: 'App Insights',
+    title: 'App Analytics',
     description: 'Application visibility and traffic analytics',
   },
   'energy-optimization': {
@@ -213,7 +213,7 @@ const pageInfo = {
     description: 'User and system activity across OS-ONE and XIQ',
   },
   'connected-clients': {
-    title: 'Connected Clients',
+    title: 'Clients',
     description: 'View and manage connected devices',
   },
   'access-points': {
@@ -226,7 +226,7 @@ const pageInfo = {
     description: 'Configure authentication, authorization, and accounting',
   },
   'configure-devices': { title: 'Devices', description: 'Configure switches and access points' },
-  'configure-policy': { title: 'Policies', description: 'Configure network policies' },
+  'configure-policy': { title: 'Policy', description: 'Configure network policies' },
   'configure-guest': { title: 'Guest Access', description: 'Configure guest network settings' },
   'performance-analytics': {
     title: 'Performance Analytics',
@@ -269,15 +269,15 @@ const pageInfo = {
     description: 'Configuration snapshots, point-in-time diffs, and compliance trend',
   },
   'security-dashboard': {
-    title: 'Security Dashboard',
+    title: 'Security',
     description: 'Rogue AP detection and security threat monitoring',
   },
   'diagnostics-system-health': {
-    title: 'System Health & Diagnostics',
-    description: 'Computed controller health checks and network health',
+    title: 'System Health',
+    description: 'Computed gateway health checks and network health',
   },
   'guest-management': {
-    title: 'Guest Access',
+    title: 'Guest Accounts',
     description: 'Manage guest wireless access accounts',
   },
   administration: {
@@ -298,7 +298,7 @@ const pageInfo = {
     description: 'Manage site groups, gateway pairs, and network sites',
   },
   'configure-networks': {
-    title: 'Configure Networks',
+    title: 'Networks',
     description: 'Set up and manage network configurations',
   },
   'configure-profiles': {
@@ -1547,7 +1547,7 @@ export default function App() {
                     className="text-sm font-semibold text-foreground"
                     style={{ flexShrink: 0, letterSpacing: '-0.01em' }}
                   >
-                    <span style={{ fontWeight: 700 }}>Extreme</span>{' '}
+                    <span style={{ fontWeight: 600 }}>Extreme</span>{' '}
                     <span className="text-muted-foreground" style={{ fontWeight: 400 }}>
                       Platform ONE™ | Integration
                     </span>
@@ -1558,12 +1558,14 @@ export default function App() {
                     const controller = tenantService.getCurrentController();
                     const org = tenantService.getCurrentOrganization();
                     if (navigationScope === 'global') {
+                      const orgLabel = (org?.name || 'AURA').toUpperCase();
                       return (
                         <span
-                          className="text-muted-foreground text-xs font-semibold bg-background border border-border rounded px-2 py-0.5"
-                          style={{ letterSpacing: '0.08em', flexShrink: 0 }}
+                          className="text-muted-foreground text-xs font-semibold bg-background border border-border rounded px-2 py-0.5 truncate max-w-[220px]"
+                          style={{ letterSpacing: '0.08em' }}
+                          title={orgLabel}
                         >
-                          {(org?.name || 'AURA').toUpperCase()}
+                          {orgLabel}
                         </span>
                       );
                     }
@@ -1574,8 +1576,9 @@ export default function App() {
                     ).toUpperCase();
                     return (
                       <span
-                        className="text-xs font-semibold bg-primary/10 text-primary border border-primary/20 rounded px-2 py-0.5"
-                        style={{ letterSpacing: '0.08em', flexShrink: 0 }}
+                        className="text-xs font-semibold bg-primary/10 text-primary border border-primary/20 rounded px-2 py-0.5 truncate max-w-[220px]"
+                        style={{ letterSpacing: '0.08em' }}
+                        title={siteLabel}
                       >
                         {siteLabel}
                       </span>

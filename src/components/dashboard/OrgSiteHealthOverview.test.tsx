@@ -12,7 +12,7 @@ const snr = [
 ];
 
 describe('OrgSiteHealthOverview', () => {
-  it('renders "Org Health Overview" when scope is "all"', () => {
+  it('renders "RF Health" when scope is "all"', () => {
     render(
       <OrgSiteHealthOverview
         siteScope="all"
@@ -24,10 +24,10 @@ describe('OrgSiteHealthOverview', () => {
         snrDistribution={[]}
       />
     );
-    expect(screen.getByText('Org Health Overview')).toBeInTheDocument();
+    expect(screen.getByText('RF Health')).toBeInTheDocument();
   });
 
-  it('renders "Site Health Overview" when scope is a site id', () => {
+  it('renders "Site RF Health" when scope is a site id', () => {
     render(
       <OrgSiteHealthOverview
         siteScope="site-1"
@@ -39,7 +39,7 @@ describe('OrgSiteHealthOverview', () => {
         snrDistribution={[]}
       />
     );
-    expect(screen.getByText('Site Health Overview')).toBeInTheDocument();
+    expect(screen.getByText('Site RF Health')).toBeInTheDocument();
   });
 
   it('shows -- placeholders when metrics are zero/empty', () => {

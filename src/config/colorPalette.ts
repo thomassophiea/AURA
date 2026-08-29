@@ -131,7 +131,7 @@ export const STATUS_COLORS_LIGHT = {
   info: '#665cdd',
   /** [derived] neutral-ramp grays for white surfaces: offline 5.24:1, neutral 4.83:1. */
   offline: '#666b85',
-  neutral: '#6b7280',
+  neutral: '#6a6f7f',
 } as const;
 
 /**

@@ -434,7 +434,7 @@ export function AppInsights({ api }: AppInsightsProps) {
             <SaveToWorkspace
               widgetId={widgetId}
               widgetType="topn_table"
-              title={`App Insights: ${title}`}
+              title={`App Analytics: ${title}`}
               endpointRefs={[endpointRef]}
               sourcePage="app-insights"
               catalogId={`app_insights_by_${unit === 'bytes' ? 'throughput' : unit === 'bps' ? 'throughput' : 'impact'}`}
@@ -598,7 +598,7 @@ export function AppInsights({ api }: AppInsightsProps) {
     <div className="p-4 space-y-3">
       {/* Header */}
       <PageHeader
-        title="App Insights"
+        title="App Analytics"
         subtitle={`Application visibility and traffic analytics${selectedSite !== 'all' ? ` • ${systemSiteLabel(selectedSite) || sites.find((s) => s.id === selectedSite)?.name || selectedSite}` : ''}`}
         icon={AppWindow}
         onRefresh={fetchData}

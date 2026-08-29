@@ -911,7 +911,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
       baselineFormDataRef.current = formData;
 
       toast.success('Network configuration saved successfully', {
-        description: `Settings for ${formData.name} have been updated with all controller features.`,
+        description: `Settings for ${formData.name} have been updated with all gateway features.`,
       });
 
       // Call onSave callback to refresh parent component
@@ -954,7 +954,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
       let userFriendlyError = errorMessage;
       if (errorMessage.includes('422')) {
         userFriendlyError =
-          'Validation failed. The controller rejected the update. Check that all field values are valid (e.g., valid VLAN range, proper passphrase length, valid UUIDs for roles/topologies).';
+          'Validation failed. The gateway rejected the update. Check that all field values are valid (e.g., valid VLAN range, proper passphrase length, valid UUIDs for roles/topologies).';
       } else if (errorMessage.includes('404')) {
         userFriendlyError =
           'Service not found. The network configuration may have been deleted by another user.';
