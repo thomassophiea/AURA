@@ -38,7 +38,13 @@ function SitesAttentionWidgetImpl({ accessPoints, stations }: SitesAttentionWidg
   const rows = useMemo<SiteHealthRow[]>(() => {
     const bySite = new Map<string, { total: number; down: number }>();
     for (const ap of accessPoints) {
-      const site = ap.siteName || 'Unassigned';
+      // The /v1/aps/query row names its site `hostSite`; older shapes use
+      // siteName/location. Same fallback chain as the AP page.
+      const site =
+        (ap as { hostSite?: string }).hostSite ||
+        ap.siteName ||
+        (ap as { location?: string }).location ||
+        'Unassigned';
       const entry = bySite.get(site) ?? { total: 0, down: 0 };
       entry.total++;
       if (!isAccessPointOnline(ap)) entry.down++;
