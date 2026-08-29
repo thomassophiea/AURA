@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * UnifiedFilterBar Component
  *
@@ -31,7 +30,12 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from './ui/utils';
-import { apiService } from '../services/api';
+import {
+  searchAccessPoints,
+  searchClients,
+  type ApItem,
+  type ClientItem,
+} from '../services/deviceSearch';
 import { SourceSiteSelector } from './SourceSiteSelector';
 import { useSourceSites } from '../hooks/useSourceSites';
 import { ContextConfigModal } from './ContextConfigModal';
@@ -123,15 +127,6 @@ const MODE_MAP: Record<SelectorTab, 'AI_INSIGHTS' | 'SITE' | 'AP' | 'CLIENT'> = 
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function formatUptime(seconds: number): string {
-  if (!seconds || seconds <= 0) return '';
-  const days = Math.floor(seconds / 86400);
-  const hours = Math.floor((seconds % 86400) / 3600);
-  if (days > 0) return `${days}d ${hours}h`;
-  const mins = Math.floor((seconds % 3600) / 60);
-  return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-}
-
 function isDeviceOnline(statusStr: string, isUp?: boolean, online?: boolean): boolean {
   const s = (statusStr || '').toLowerCase();
   return (
@@ -145,19 +140,35 @@ function isDeviceOnline(statusStr: string, isUp?: boolean, online?: boolean): bo
   );
 }
 
-function getBandFromChannel(channel: number | undefined, freq: string | undefined): string {
-  if (freq) {
-    if (freq.includes('2.4') || freq.includes('2G')) return '2.4G';
-    if (freq.includes('5') && !freq.includes('6')) return '5G';
-    if (freq.includes('6')) return '6G';
-  }
-  if (channel) {
-    if (channel >= 1 && channel <= 14) return '2.4G';
-    if (channel >= 36 && channel <= 165) return '5G';
-    if (channel > 165) return '6G';
-  }
-  return '';
+function mapApSearchItem(ap: ApItem): SelectorItem {
+  return {
+    id: ap.id,
+    name: ap.name,
+    subtitle: ap.siteName || undefined,
+    status: isDeviceOnline(ap.status || '') ? 'online' : 'offline',
+    ipAddress: ap.ipAddress || undefined,
+    siteName: ap.siteName || undefined,
+    serialNumber: ap.serialNumber,
+  };
 }
+
+function mapClientSearchItem(client: ClientItem): SelectorItem {
+  return {
+    id: client.id,
+    name: client.name,
+    subtitle: client.ssid || undefined,
+    status: 'online',
+    ssid: client.ssid || undefined,
+    apName: client.apName || undefined,
+    macAddress: client.macAddress,
+    ipAddress: client.ipAddress || undefined,
+  };
+}
+
+// Debounce window for the popover's search-driven typeahead requests — long
+// enough that a fast typist does not fire one request per keystroke, short
+// enough that the list still feels live.
+const SEARCH_DEBOUNCE_MS = 250;
 
 // ── Component ──────────────────────────────────────────────────────────────
 
@@ -200,118 +211,65 @@ export function UnifiedFilterBar({
   const [popoverSearch, setPopoverSearch] = useState('');
   const [items, setItems] = useState<SelectorItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [popoverCapped, setPopoverCapped] = useState(false);
+  const [popoverTotal, setPopoverTotal] = useState(0);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [selectedItemName, setSelectedItemName] = useState<string | null>(null);
   const [isContextModalOpen, setIsContextModalOpen] = useState(false);
 
-  // Load items when popover opens or tab changes
+  // Load items when popover opens or tab changes. The `access-point` /
+  // `client` tabs are server-side typeahead: the search box value is also a
+  // dependency here, debounced, so a fast typist does not fire one request
+  // per keystroke.
   useEffect(() => {
-    if (popoverOpen) {
-      loadItems(currentTab);
+    if (!popoverOpen) return;
+
+    if (currentTab === 'access-point' || currentTab === 'client') {
+      setLoading(true);
+      const handle = setTimeout(() => {
+        void loadSearchItems(currentTab, popoverSearch);
+      }, SEARCH_DEBOUNCE_MS);
+      return () => clearTimeout(handle);
     }
-  }, [currentTab, popoverOpen]);
+
+    loadItems(currentTab);
+    return undefined;
+  }, [currentTab, popoverOpen, popoverSearch]);
 
   // ── Data Loading ───────────────────────────────────────────────────────
 
-  const loadItems = async (tab: SelectorTab) => {
+  // 'ai-insights' / 'site' have nothing to pick from this popover — Overview
+  // returns to the whole-network view, and site scoping is owned by the
+  // standard site picker beside this control (SourceSiteSelector).
+  const loadItems = (_tab: 'ai-insights' | 'site') => {
     setLoading(true);
     setItems([]);
+    setPopoverCapped(false);
+    setPopoverTotal(0);
+    setLoading(false);
+  };
 
+  // Server-side typeahead for the `access-point` / `client` tabs (Task 1
+  // search endpoints). `q` empty returns the first N of the inventory.
+  const loadSearchItems = async (tab: 'access-point' | 'client', q: string) => {
+    setLoading(true);
     try {
-      switch (tab) {
-        // Overview has nothing to pick — selecting the tab returns to the
-        // whole-network view. Site scoping is owned by the standard site
-        // picker beside this control.
-        case 'ai-insights':
-        case 'site':
-          break;
-
-        case 'access-point': {
-          const aps = await apiService.getAccessPoints();
-          let stationsForAPs: any[] = [];
-          try {
-            stationsForAPs = await apiService.getStations();
-          } catch {
-            console.warn('[UnifiedFilterBar] Could not fetch stations for client count');
-          }
-
-          const clientCountByAP: Record<string, number> = {};
-          stationsForAPs.forEach((station: any) => {
-            const apSerial = station.apSerialNumber || station.apSerial;
-            if (apSerial) {
-              clientCountByAP[apSerial] = (clientCountByAP[apSerial] || 0) + 1;
-            }
-          });
-
-          const onlineCount = aps.filter((ap: any) =>
-            isDeviceOnline(
-              ap.status || ap.connectionState || ap.operationalState || '',
-              ap.isUp,
-              ap.online
-            )
-          ).length;
-
-          const apItems: SelectorItem[] = [
-            {
-              id: 'all',
-              name: 'All Access Points',
-              subtitle: `${aps.length} APs (${onlineCount} online)`,
-            },
-          ];
-
-          aps.forEach((ap: any) => {
-            const apName = ap.displayName || ap.name || ap.hostname || ap.serialNumber;
-            const statusStr = ap.status || ap.connectionState || ap.operationalState || '';
-            const apIsOnline = isDeviceOnline(statusStr, ap.isUp, ap.online);
-            const serialNum = ap.serialNumber || ap.id;
-            const clientCount = clientCountByAP[serialNum] || 0;
-            const uptimeStr = formatUptime(ap.sysUptime || ap.uptime || 0);
-
-            apItems.push({
-              id: serialNum,
-              name: apName,
-              subtitle: ap.siteName || ap.hostSite || undefined,
-              status: apIsOnline ? 'online' : 'offline',
-              model: ap.model || ap.hardwareType || ap.platformName,
-              ipAddress: ap.ipAddress,
-              clients: clientCount,
-              siteName: ap.siteName || ap.hostSite,
-              uptime: uptimeStr,
-              serialNumber: serialNum,
-            });
-          });
-          setItems(apItems);
-          break;
-        }
-
-        case 'client': {
-          const clients = await apiService.getStations();
-          const clientItems: SelectorItem[] = [
-            { id: 'all', name: 'All Clients', subtitle: `${clients.length} connected` },
-          ];
-          clients.forEach((client: any) => {
-            const mac = client.macAddress || client.id;
-            const band = getBandFromChannel(client.channel, client.band || client.frequency);
-            clientItems.push({
-              id: mac,
-              name: client.hostName || mac,
-              subtitle: client.ssid || client.serviceName || undefined,
-              status: 'online' as const,
-              ssid: client.ssid || client.serviceName,
-              apName: client.apName || client.apHostname,
-              rssi: client.rssi || client.signalStrength,
-              macAddress: mac,
-              band: band,
-              ipAddress: client.ipAddress,
-            });
-          });
-          setItems(clientItems);
-          break;
-        }
+      if (tab === 'access-point') {
+        const result = await searchAccessPoints(q);
+        setItems(result.items.map(mapApSearchItem));
+        setPopoverCapped(result.capped);
+        setPopoverTotal(result.total);
+      } else {
+        const result = await searchClients(q);
+        setItems(result.items.map(mapClientSearchItem));
+        setPopoverCapped(result.capped);
+        setPopoverTotal(result.total);
       }
     } catch (error) {
-      console.warn('[UnifiedFilterBar] Failed to load items:', error);
+      console.warn('[UnifiedFilterBar] Failed to search devices:', error);
       setItems([{ id: 'all', name: 'All', subtitle: 'Unable to load' }]);
+      setPopoverCapped(false);
+      setPopoverTotal(0);
     } finally {
       setLoading(false);
     }
@@ -380,6 +338,10 @@ export function UnifiedFilterBar({
   // ── Derived State ──────────────────────────────────────────────────────
 
   const filteredItems = useMemo(() => {
+    // access-point / client are server-side typeahead now — `items` already
+    // matches `popoverSearch` (see loadSearchItems), so render it as-is.
+    if (currentTab === 'access-point' || currentTab === 'client') return items;
+
     if (!popoverSearch.trim()) return items;
     const query = popoverSearch.toLowerCase();
     return items.filter(
@@ -395,7 +357,7 @@ export function UnifiedFilterBar({
         item.vendor?.toLowerCase().includes(query) ||
         item.macAddress?.toLowerCase().includes(query)
     );
-  }, [items, popoverSearch]);
+  }, [items, popoverSearch, currentTab]);
 
   const currentTabInfo = TABS.find((t) => t.id === currentTab);
   const CurrentIcon = currentTabInfo?.icon || Gauge;
@@ -635,12 +597,11 @@ export function UnifiedFilterBar({
                           )}
 
                           {/* All-items subtitle */}
-                          {item.id === 'all' &&
-                            item.subtitle && (
-                              <div className="text-xs text-muted-foreground truncate mt-0.5">
-                                {item.subtitle}
-                              </div>
-                            )}
+                          {item.id === 'all' && item.subtitle && (
+                            <div className="text-xs text-muted-foreground truncate mt-0.5">
+                              {item.subtitle}
+                            </div>
+                          )}
                         </div>
 
                         {selectedItemId === item.id && (
@@ -653,11 +614,21 @@ export function UnifiedFilterBar({
               </ScrollArea>
             )}
 
+            {/* Server-side search truncated the result set — say so, rather
+                than silently implying the list is complete. */}
+            {(currentTab === 'access-point' || currentTab === 'client') &&
+              !loading &&
+              popoverCapped && (
+                <div className="px-3 py-1.5 border-t text-xs text-muted-foreground text-center">
+                  Showing first {items.length} of {popoverTotal} — refine search
+                </div>
+              )}
+
             {/* Overview has nothing to pick — say what the tabs are for. */}
             {currentTab === 'ai-insights' && (
               <div className="px-4 py-6 text-sm text-muted-foreground text-center">
-                Showing the whole network. Choose <strong>AP</strong> or <strong>Client</strong>{' '}
-                to inspect a specific device.
+                Showing the whole network. Choose <strong>AP</strong> or <strong>Client</strong> to
+                inspect a specific device.
               </div>
             )}
           </PopoverContent>
