@@ -5,7 +5,16 @@ import * as React from "react";
 import { cn } from "./utils";
 import { useDragScroll } from "@/hooks/useDragScroll";
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+interface TableProps extends React.ComponentProps<"table"> {
+  /**
+   * Use `table-layout: fixed`. Without it, `truncate` inside cells is inert —
+   * auto layout grows the column to fit content instead of clamping. Opt in
+   * when columns declare widths and long values must ellipsize.
+   */
+  fixed?: boolean;
+}
+
+function Table({ className, fixed = false, ...props }: TableProps) {
   const containerRef = React.useRef<HTMLDivElement>(null);
   useDragScroll(() => containerRef.current);
 
@@ -17,7 +26,7 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
     >
       <table
         data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
+        className={cn("w-full caption-bottom text-sm", fixed && "table-fixed", className)}
         {...props}
       />
     </div>

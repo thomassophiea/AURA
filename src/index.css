@@ -36,6 +36,19 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
+  /* Semantic status namespace — the canonical tokens applyTheme() writes.
+     Generates text-status-success / bg-status-warning-bg / border-status-error
+     etc. Prefer these (or lib/statusColors.ts) over raw palette classes. */
+  --color-status-success: var(--status-success);
+  --color-status-success-bg: var(--status-success-bg);
+  --color-status-warning: var(--status-warning);
+  --color-status-warning-bg: var(--status-warning-bg);
+  --color-status-error: var(--status-error);
+  --color-status-error-bg: var(--status-error-bg);
+  --color-status-info: var(--status-info);
+  --color-status-info-bg: var(--status-info-bg);
+  --color-status-offline: var(--status-offline);
+  --color-status-neutral: var(--status-neutral);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-input-background: var(--input-background);
@@ -213,17 +226,22 @@
   --input: #fff;
   --input-background: #fff;
   --ring: #6200ee;
-  --chart-1: #6200ee;
-  --chart-2: #018786;
-  --chart-3: #ff6f00;
-  --chart-4: #b00020;
-  --chart-5: #00c853;
-  --success: #00c853;
+  /* EP1 light categorical + status — aligned with applyTheme('default') so the
+     pre-hydration paint matches what the theme system writes. The previous
+     Material values (#00c853 etc.) measured 1.4-2.2:1 on white. */
+  --chart-1: #7066df;
+  --chart-2: #438035;
+  --chart-3: #946b18;
+  --chart-4: #d92317;
+  --chart-5: #307d7d;
+  --success: #438035;
   --success-foreground: #fff;
-  --warning: #ff6f00;
+  --warning: #946b18;
   --warning-foreground: #fff;
-  --info: #018786;
+  --info: #665cdd;
   --info-foreground: #fff;
+  --status-offline: #666b85;
+  --status-neutral: #6b7280;
   --sidebar: #fff;
   --sidebar-foreground: #000000de;
   --sidebar-primary: #6200ee;

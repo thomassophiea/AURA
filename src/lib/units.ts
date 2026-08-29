@@ -113,3 +113,41 @@ export function formatCompactNumber(num: number | undefined | null): string {
   if (num >= 1_000) return (num / 1_000).toFixed(1).replace(/\.?0+$/, '') + 'K';
   return num.toLocaleString();
 }
+
+/**
+ * Percentage with fixed precision (default 1 decimal). Clamps NaN/undefined to
+ * an em dash so raw floats never render as `87.33333333333333%`.
+ */
+export function formatPercent(value: number | undefined | null, digits = 1): string {
+  if (value === undefined || value === null || Number.isNaN(value)) return '—';
+  return `${value.toFixed(digits)}%`;
+}
+
+/**
+ * Whole-number count with locale separators. Use for KPI tiles so 5000 reads
+ * as 5,000 everywhere (use formatCompactNumber where space is tight).
+ */
+export function formatCount(value: number | undefined | null): string {
+  if (value === undefined || value === null || Number.isNaN(value)) return '—';
+  return Math.round(value).toLocaleString();
+}
+
+/**
+ * Human duration from seconds: "45s", "12m", "3h 20m", "5d 4h".
+ * The single replacement for the five per-page formatDuration copies.
+ */
+export function formatDuration(seconds: number | undefined | null): string {
+  if (seconds === undefined || seconds === null || Number.isNaN(seconds) || seconds < 0) {
+    return '—';
+  }
+  const s = Math.floor(seconds);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  const remM = m % 60;
+  if (h < 24) return remM > 0 ? `${h}h ${remM}m` : `${h}h`;
+  const d = Math.floor(h / 24);
+  const remH = h % 24;
+  return remH > 0 ? `${d}d ${remH}h` : `${d}d`;
+}

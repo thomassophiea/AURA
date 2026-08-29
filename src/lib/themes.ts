@@ -3,6 +3,13 @@
  * Supports: Default, Dark, and EP1 themes
  */
 
+import {
+  STATUS_COLORS,
+  STATUS_COLORS_LIGHT,
+  EP1_CATEGORICAL,
+  EP1_CATEGORICAL_LIGHT,
+} from '../config/colorPalette';
+
 export type ThemeMode = 'default' | 'dark' | 'ep1' | 'dev';
 
 export interface Theme {
@@ -68,6 +75,18 @@ export interface Theme {
     statusErrorBg?: string;
     statusInfo?: string;
     statusInfoBg?: string;
+    statusOffline?: string;
+    statusNeutral?: string;
+
+    // Tailwind-facing status tokens (`text-success` etc. read --success/--warning/--info).
+    // These MUST agree with the status* values above — they are the same semantic
+    // color exposed under the name the Tailwind @theme block maps.
+    success?: string;
+    successForeground?: string;
+    warning?: string;
+    warningForeground?: string;
+    info?: string;
+    infoForeground?: string;
 
     // Semantic tokens - Table
     tableHeaderBg?: string;
@@ -120,6 +139,8 @@ export interface Theme {
     linkVisited?: string;
     linkActive?: string;
   };
+  /** Chart series ramp — written as --chart-1..--chart-N by applyTheme. */
+  charts?: readonly string[];
   emoji?: string;
 }
 
@@ -158,6 +179,14 @@ export const themes: Record<ThemeMode, Theme> = {
       statusErrorBg: '#1f0a0d',
       statusInfo: '#03DAC5',
       statusInfoBg: '#031f1e',
+      statusOffline: '#9e9e9e',
+      statusNeutral: '#8a8a8a',
+      success: '#81C784',
+      successForeground: 'rgba(0,0,0,0.87)',
+      warning: '#FFB74D',
+      warningForeground: 'rgba(0,0,0,0.87)',
+      info: '#03DAC5',
+      infoForeground: 'rgba(0,0,0,0.87)',
       // Sidebar
       navBackground: '#1d1d1d',
       navText: 'rgba(255,255,255,0.87)',
@@ -165,7 +194,20 @@ export const themes: Record<ThemeMode, Theme> = {
       navItemHover: '#BB86FC',
       navItemActive: '#BB86FC',
       navBorder: 'rgba(255,255,255,0.12)',
-    }
+    },
+    // Material chart ramp — the dev theme is deliberately Material (OS-ONE look).
+    charts: [
+      '#bb86fc',
+      '#03dac5',
+      '#ffb74d',
+      '#cf6679',
+      '#81c784',
+      '#f48fb1',
+      '#80deea',
+      '#ffcc80',
+      '#a5d6a7',
+      '#90caf9',
+    ],
   },
   default: {
     name: 'default',
@@ -193,15 +235,25 @@ export const themes: Record<ThemeMode, Theme> = {
       ring: '#0f172a',
       // EP1 brand hues darkened for legibility on white — the EP1 base values measure
       // 1.85-3.3:1 here and fail. See STATUS_COLORS_LIGHT in config/colorPalette.
-      statusSuccess: '#438035',
+      statusSuccess: STATUS_COLORS_LIGHT.success,
       statusSuccessBg: '#f4faf2',
-      statusWarning: '#946b18',
+      statusWarning: STATUS_COLORS_LIGHT.warning,
       statusWarningBg: '#fbf8f1',
-      statusError: '#d92317',
+      statusError: STATUS_COLORS_LIGHT.critical,
       statusErrorBg: '#fbf1f1',
-      statusInfo: '#665cdd',
+      statusInfo: STATUS_COLORS_LIGHT.info,
       statusInfoBg: '#f2f1fb',
-    }
+      statusOffline: STATUS_COLORS_LIGHT.offline,
+      statusNeutral: STATUS_COLORS_LIGHT.neutral,
+      // Tailwind-facing mirrors — white text clears 4.8:1 on all four fills.
+      success: STATUS_COLORS_LIGHT.success,
+      successForeground: '#ffffff',
+      warning: STATUS_COLORS_LIGHT.warning,
+      warningForeground: '#ffffff',
+      info: STATUS_COLORS_LIGHT.info,
+      infoForeground: '#ffffff',
+    },
+    charts: EP1_CATEGORICAL_LIGHT.slice(0, 10),
   },
   dark: {
     name: 'dark',
@@ -228,15 +280,25 @@ export const themes: Record<ThemeMode, Theme> = {
       input: '#1e1f2a',
       ring: '#cbd5e1',
       // EP1 brand hues at their base values — tuned for dark surfaces.
-      statusSuccess: '#75bf63',
+      statusSuccess: STATUS_COLORS.success,
       statusSuccessBg: '#13240f',
-      statusWarning: '#E5B85C',
+      statusWarning: STATUS_COLORS.warning,
       statusWarningBg: '#281e0b',
-      statusError: '#ed5f56',
+      statusError: STATUS_COLORS.critical,
       statusErrorBg: '#280d0b',
-      statusInfo: '#8981e5',
+      statusInfo: STATUS_COLORS.info,
       statusInfoBg: '#0e0b28',
-    }
+      statusOffline: STATUS_COLORS.offline,
+      statusNeutral: STATUS_COLORS.neutral,
+      // Navy text clears 4.9:1 on all four EP1 status fills.
+      success: STATUS_COLORS.success,
+      successForeground: '#1e1a46',
+      warning: STATUS_COLORS.warning,
+      warningForeground: '#1e1a46',
+      info: STATUS_COLORS.info,
+      infoForeground: '#1e1a46',
+    },
+    charts: EP1_CATEGORICAL.slice(0, 10),
   },
   ep1: {
     name: 'ep1',
@@ -291,6 +353,14 @@ export const themes: Record<ThemeMode, Theme> = {
       statusErrorBg: '#3D1A1E',
       statusInfo: '#8981e5',
       statusInfoBg: '#1e1a46',
+      statusOffline: STATUS_COLORS.offline,
+      statusNeutral: STATUS_COLORS.neutral,
+      success: STATUS_COLORS.success,
+      successForeground: '#1e1a46',
+      warning: STATUS_COLORS.warning,
+      warningForeground: '#1e1a46',
+      info: STATUS_COLORS.info,
+      infoForeground: '#1e1a46',
       tableHeaderBg: '#30344B',
       tableHeaderText: '#D7D9E6',
       tableHeaderBorder: 'rgba(255,255,255,0.08)',
@@ -332,7 +402,8 @@ export const themes: Record<ThemeMode, Theme> = {
       linkHover: '#aba3fb',
       linkVisited: '#7b74d4',
       linkActive: '#7b74d4'
-    }
+    },
+    charts: EP1_CATEGORICAL.slice(0, 10),
   }
 };
 
@@ -346,11 +417,16 @@ export function applyTheme(theme: ThemeMode) {
     root.style.setProperty(cssVar, value);
   });
 
+  // Chart series ramp — theme-correct categorical colors for --chart-N consumers.
+  (selectedTheme.charts ?? []).forEach((color, i) => {
+    root.style.setProperty(`--chart-${i + 1}`, color);
+  });
+
   // Store preference
   localStorage.setItem('theme', theme);
 
   // Add theme class for additional styling
-  root.classList.remove('theme-default', 'theme-dark', 'theme-ep1');
+  root.classList.remove('theme-default', 'theme-dark', 'theme-ep1', 'theme-dev');
   root.classList.add(`theme-${theme}`);
 }
 

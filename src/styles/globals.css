@@ -175,6 +175,8 @@
   --status-error-bg: rgba(207, 102, 121, 0.12);
   --status-info: #03dac5;
   --status-info-bg: rgba(3, 218, 197, 0.12);
+  --status-offline: #9ea1b8;
+  --status-neutral: #8e91a8;
   --table-header-bg: #252637;
   --table-header-text: rgba(255, 255, 255, 0.7);
   --table-header-border: rgba(255, 255, 255, 0.2);
@@ -298,6 +300,8 @@
   --status-error-bg: #ffebee;
   --status-info: #01579b;
   --status-info-bg: #e3f2fd;
+  --status-offline: #666b85;
+  --status-neutral: #6b7280;
   --table-header-bg: #f4f4f5;
   --table-header-text: rgba(0, 0, 0, 0.6);
   --table-header-border: rgba(0, 0, 0, 0.18);

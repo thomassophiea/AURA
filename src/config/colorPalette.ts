@@ -93,6 +93,26 @@ export const STATUS_COLORS = {
   infoBg: '#f2f1fb', // [derived]
   infoBgDark: '#0e0b28', // [derived] 5.77:1 vs base
   infoBgEp1: EP1_BRAND.navy, // [captured] 4.91:1 vs base
+
+  /**
+   * Offline — a device/system *state*, distinct from the critical alarm
+   * severity. [derived] from the EP1 neutral ramp: desaturated so an offline
+   * device reads as absent rather than alarming. 6.42:1 on base, 5.19:1 on card.
+   */
+  offline: '#9ea1b8',
+  offlineBg: '#f1f2f5', // [derived] light tint
+  offlineBgDark: '#262837', // [derived]
+  offlineBgEp1: '#31344a', // [derived]
+
+  /**
+   * Neutral — no semantic meaning (unknown/disabled/none). [derived], one step
+   * dimmer than offline. 5.27:1 on base; use for dots and secondary text only
+   * on elevated cards (4.26:1 there).
+   */
+  neutral: '#8e91a8',
+  neutralBg: '#f3f3f6', // [derived]
+  neutralBgDark: '#242634', // [derived]
+  neutralBgEp1: '#2f3245', // [derived]
 } as const;
 
 /**
@@ -109,6 +129,9 @@ export const STATUS_COLORS_LIGHT = {
   warning: '#946b18',
   critical: '#d92317',
   info: '#665cdd',
+  /** [derived] neutral-ramp grays for white surfaces: offline 5.24:1, neutral 4.83:1. */
+  offline: '#666b85',
+  neutral: '#6b7280',
 } as const;
 
 /**

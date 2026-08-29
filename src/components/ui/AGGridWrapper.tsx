@@ -4,6 +4,7 @@ import type { ColDef, GridApi, GridOptions, GridReadyEvent } from 'ag-grid-commu
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from 'ag-grid-community';
 import { AgGridReact } from 'ag-grid-react';
 import { useDragScroll } from '@/hooks/useDragScroll';
+import { normalizeStatus, statusDisplayLabel, STATUS_TONES } from '@/lib/statusColors';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -20,8 +21,11 @@ const darkTheme = themeQuartz.withParams({
   foregroundColor: 'var(--foreground)',
   borderColor: 'var(--border)',
   chromeBackgroundColor: 'var(--card)',
-  headerBackgroundColor: 'var(--card)',
+  // Match ui/table.tsx: muted header band + subtle zebra so AG grids and
+  // shared-table pages read as one product.
+  headerBackgroundColor: 'color-mix(in srgb, var(--muted) 40%, var(--card))',
   headerTextColor: 'var(--muted-foreground)',
+  oddRowBackgroundColor: 'color-mix(in srgb, var(--muted) 14%, transparent)',
   accentColor: 'var(--primary)',
   rowHoverColor: 'color-mix(in srgb, var(--primary) 10%, transparent)',
   selectedRowBackgroundColor: 'color-mix(in srgb, var(--primary) 15%, transparent)',
@@ -66,35 +70,18 @@ const COLUMN_TYPES: NonNullable<GridOptions['columnTypes']> = {
   },
 };
 
-const STATUS_TONES: Record<string, string> = {
-  // tone -> css color; keys matched case-insensitively by StatusCellRenderer
-  connected: 'var(--success, #75bf63)',
-  online: 'var(--success, #75bf63)',
-  up: 'var(--success, #75bf63)',
-  active: 'var(--success, #75bf63)',
-  enabled: 'var(--success, #75bf63)',
-  healthy: 'var(--success, #75bf63)',
-  approved: 'var(--success, #75bf63)',
-  warning: 'var(--warning, #E5B85C)',
-  degraded: 'var(--warning, #E5B85C)',
-  pending: 'var(--warning, #E5B85C)',
-  disconnected: 'var(--destructive, #ed5f56)',
-  offline: 'var(--destructive, #ed5f56)',
-  down: 'var(--destructive, #ed5f56)',
-  critical: 'var(--destructive, #ed5f56)',
-  failed: 'var(--destructive, #ed5f56)',
-  denied: 'var(--destructive, #ed5f56)',
-  disabled: 'var(--muted-foreground, #babcce)',
-  inactive: 'var(--muted-foreground, #babcce)',
-  unknown: 'var(--muted-foreground, #babcce)',
-};
-
-/** Dot + label status cell. Unmapped values render with a muted dot. */
+/**
+ * Dot + label status cell. Vocabulary + colors come from lib/statusColors so
+ * this grid renders states identically to StatusBadge/StatusDot elsewhere.
+ * Machine-speak values ("InService", "up") are rewritten to display labels.
+ */
 export function StatusCellRenderer(params: { value?: unknown }) {
-  const label = params.value == null || params.value === '' ? '—' : String(params.value);
-  const tone =
-    STATUS_TONES[label.toLowerCase()] ?? 'var(--muted-foreground, #babcce)';
-  if (label === '—') return <span style={{ color: 'var(--muted-foreground)' }}>—</span>;
+  const raw = params.value == null || params.value === '' ? null : String(params.value);
+  if (!raw || raw === '-' || raw === '—') {
+    return <span style={{ color: 'var(--muted-foreground)' }}>—</span>;
+  }
+  const tone = STATUS_TONES[normalizeStatus(raw)];
+  const label = statusDisplayLabel(raw);
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
       <span
@@ -103,7 +90,7 @@ export function StatusCellRenderer(params: { value?: unknown }) {
           width: 8,
           height: 8,
           borderRadius: '50%',
-          backgroundColor: tone,
+          backgroundColor: tone.color,
           flexShrink: 0,
         }}
       />
@@ -303,6 +290,9 @@ function AGGridWrapperInner<TData>(
         }}
         animateRows
         pagination
+        overlayNoRowsTemplate={
+          '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--muted-foreground);padding:24px"><span style="font-size:13px;font-weight:600">No results</span><span style="font-size:12px">Adjust filters or search to see rows</span></div>'
+        }
         paginationPageSize={50}
         paginationPageSizeSelector={[25, 50, 100, 250]}
         popupParent={typeof document !== 'undefined' ? document.body : undefined}

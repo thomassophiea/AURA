@@ -16,10 +16,16 @@ const badgeVariants = cva(
         outline:
           'border-border text-foreground bg-transparent [a&]:hover:bg-accent [a&]:hover:text-accent-foreground',
         success:
-          'border-transparent bg-[var(--status-success,#2E7D32)]/15 text-[var(--status-success,#2E7D32)] border-[var(--status-success,#2E7D32)]/30',
+          'bg-[var(--status-success,#438035)]/15 text-[var(--status-success,#438035)] border-[var(--status-success,#438035)]/30',
         warning:
-          'border-transparent bg-[var(--status-warning,#E65100)]/15 text-[var(--status-warning,#E65100)] border-[var(--status-warning,#E65100)]/30',
-        info: 'border-transparent bg-[var(--status-info,#01579B)]/15 text-[var(--status-info,#01579B)] border-[var(--status-info,#01579B)]/30',
+          'bg-[var(--status-warning,#946b18)]/15 text-[var(--status-warning,#946b18)] border-[var(--status-warning,#946b18)]/30',
+        info: 'bg-[var(--status-info,#665cdd)]/15 text-[var(--status-info,#665cdd)] border-[var(--status-info,#665cdd)]/30',
+        critical:
+          'bg-[var(--status-error,#d92317)]/15 text-[var(--status-error,#d92317)] border-[var(--status-error,#d92317)]/30',
+        offline:
+          'bg-[var(--status-offline,#666b85)]/15 text-[var(--status-offline,#666b85)] border-[var(--status-offline,#666b85)]/30',
+        neutral:
+          'bg-[var(--status-neutral,#6b7280)]/15 text-[var(--status-neutral,#6b7280)] border-[var(--status-neutral,#6b7280)]/30',
       },
     },
     defaultVariants: {
