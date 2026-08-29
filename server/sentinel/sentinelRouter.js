@@ -156,6 +156,26 @@ export function createSentinelRouter() {
     res.json({ url: sentinelEngine.getWebhookUrl() });
   });
 
+  // GET /sentinel/routing — quiet-hours and escalation policy
+  router.get('/sentinel/routing', (_req, res) => {
+    res.json(sentinelEngine.getRoutingPolicy());
+  });
+
+  // POST /sentinel/routing — set quiet-hours and/or escalation policy
+  router.post('/sentinel/routing', operator, jsonBody, (req, res) => {
+    const accepted = sentinelEngine.setRoutingPolicy({
+      quietHours: req.body?.quietHours,
+      escalation: req.body?.escalation,
+    });
+    if (!accepted) return res.status(400).json({ error: 'invalid routing policy' });
+    audit('sentinel.routing', {
+      actor: req.auraActor,
+      source: req.auraActorSource,
+      detail: sentinelEngine.getRoutingPolicy(),
+    });
+    res.json(sentinelEngine.getRoutingPolicy());
+  });
+
   // POST /sentinel/webhook/test — send a test event to the configured webhook
   router.post('/sentinel/webhook/test', operator, async (_req, res) => {
     const result = await sentinelEngine.testWebhook();

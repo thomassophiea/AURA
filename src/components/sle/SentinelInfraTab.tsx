@@ -59,8 +59,14 @@ import {
   setWebhook,
   testWebhook,
   getAnalytics,
+  getRoutingPolicy,
+  setRoutingPolicy,
 } from '../../services/sentinelService';
-import type { SentinelAnalytics } from '../../services/sentinelService';
+import type {
+  SentinelAnalytics,
+  QuietHours,
+  Escalation,
+} from '../../services/sentinelService';
 import { useAuraSession } from '../../hooks/useAuraSession';
 import type {
   SentinelStatus,
@@ -881,21 +887,55 @@ function VlanTrunkEvidence({ evidence }: { evidence: CheckEvidence }) {
 
 // ── Webhook settings ──
 
+const HOUR_OPTIONS = Array.from({ length: 24 }, (_, h) => ({
+  value: String(h),
+  label: `${String(h).padStart(2, '0')}:00`,
+}));
+
+// A small, sensible timezone list plus the browser's own zone.
+const TZ_OPTIONS = Array.from(
+  new Set([
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
+    'UTC',
+    'America/New_York',
+    'America/Chicago',
+    'America/Denver',
+    'America/Los_Angeles',
+    'Europe/London',
+    'Europe/Berlin',
+    'Asia/Singapore',
+    'Australia/Sydney',
+  ])
+).filter(Boolean);
+
 function SentinelWebhookButton({ configured, disabled }: { configured: boolean; disabled?: boolean }) {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState('');
   const [minSeverity, setMinSeverity] = useState<'warning' | 'critical'>('warning');
+  const [quiet, setQuiet] = useState<QuietHours>({
+    enabled: false,
+    startHour: 22,
+    endHour: 7,
+    tz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+    allowCritical: true,
+  });
+  const [escalation, setEscalation] = useState<Escalation>({ enabled: false, afterMinutes: 30 });
   const [busy, setBusy] = useState(false);
 
   const handleOpen = async (next: boolean) => {
     setOpen(next);
     if (next) {
       try {
-        const { url: current, minSeverity: currentMin } = await getWebhook();
+        const [{ url: current, minSeverity: currentMin }, policy] = await Promise.all([
+          getWebhook(),
+          getRoutingPolicy(),
+        ]);
         setUrl(current ?? '');
         if (currentMin === 'critical' || currentMin === 'warning') setMinSeverity(currentMin);
+        if (policy.quietHours) setQuiet(policy.quietHours);
+        if (policy.escalation) setEscalation(policy.escalation);
       } catch {
-        // Leave the field as typed; saving will surface any real problem.
+        // Leave the fields as typed; saving will surface any real problem.
       }
     }
   };
@@ -905,10 +945,11 @@ function SentinelWebhookButton({ configured, disabled }: { configured: boolean; 
     try {
       const trimmed = url.trim();
       await setWebhook(trimmed || null, minSeverity);
-      toast.success(trimmed ? 'Alert webhook saved' : 'Alert webhook removed');
+      await setRoutingPolicy({ quietHours: quiet, escalation });
+      toast.success(trimmed ? 'Alert routing saved' : 'Alert webhook removed');
       setOpen(false);
     } catch (err) {
-      toast.error(`Webhook not saved: ${(err as Error).message}`);
+      toast.error(`Not saved: ${(err as Error).message}`);
     } finally {
       setBusy(false);
     }
@@ -951,9 +992,9 @@ function SentinelWebhookButton({ configured, disabled }: { configured: boolean; 
               Alert Webhook
             </DialogTitle>
             <DialogDescription>
-              New or reopened critical and warning alerts are POSTed as JSON to this URL — one
-              request per poll cycle. Works with Slack/Teams relays, PagerDuty events, or any
-              HTTP receiver. Leave empty to disable.
+              New or reopened alerts are POSTed as JSON to this URL — one request per poll cycle.
+              Works with Slack/Teams relays, PagerDuty events, or any HTTP receiver. Quiet hours
+              and escalation shape when alerts page you. Leave the URL empty to disable.
             </DialogDescription>
           </DialogHeader>
           <Input
@@ -977,6 +1018,109 @@ function SentinelWebhookButton({ configured, disabled }: { configured: boolean; 
               </SelectContent>
             </Select>
           </div>
+
+          {/* Quiet hours */}
+          <div className="rounded-lg border border-border/40 p-3 space-y-2">
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={quiet.enabled}
+                onChange={(e) => setQuiet({ ...quiet, enabled: e.target.checked })}
+              />
+              Quiet hours
+              <span className="text-xs font-normal text-muted-foreground">
+                suppress warnings; criticals still page
+              </span>
+            </label>
+            {quiet.enabled && (
+              <div className="flex items-center gap-2 flex-wrap text-xs pl-6">
+                <span className="text-muted-foreground">From</span>
+                <Select
+                  value={String(quiet.startHour)}
+                  onValueChange={(v) => setQuiet({ ...quiet, startHour: Number(v) })}
+                >
+                  <SelectTrigger className="h-8 w-24">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {HOUR_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="text-muted-foreground">to</span>
+                <Select
+                  value={String(quiet.endHour)}
+                  onValueChange={(v) => setQuiet({ ...quiet, endHour: Number(v) })}
+                >
+                  <SelectTrigger className="h-8 w-24">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {HOUR_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={quiet.tz} onValueChange={(v) => setQuiet({ ...quiet, tz: v })}>
+                  <SelectTrigger className="h-8 w-44">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TZ_OPTIONS.map((tz) => (
+                      <SelectItem key={tz} value={tz}>
+                        {tz}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <label className="flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    checked={quiet.allowCritical}
+                    onChange={(e) => setQuiet({ ...quiet, allowCritical: e.target.checked })}
+                  />
+                  still page criticals
+                </label>
+              </div>
+            )}
+          </div>
+
+          {/* Escalation */}
+          <div className="rounded-lg border border-border/40 p-3 space-y-2">
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={escalation.enabled}
+                onChange={(e) => setEscalation({ ...escalation, enabled: e.target.checked })}
+              />
+              Escalation
+              <span className="text-xs font-normal text-muted-foreground">
+                re-notify unacknowledged criticals
+              </span>
+            </label>
+            {escalation.enabled && (
+              <div className="flex items-center gap-2 text-xs pl-6">
+                <span className="text-muted-foreground">After</span>
+                <Input
+                  type="number"
+                  min={1}
+                  max={1440}
+                  value={escalation.afterMinutes}
+                  onChange={(e) =>
+                    setEscalation({ ...escalation, afterMinutes: Number(e.target.value) })
+                  }
+                  className="h-8 w-20"
+                />
+                <span className="text-muted-foreground">minutes unacknowledged</span>
+              </div>
+            )}
+          </div>
+
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="ghost" onClick={handleTest} disabled={busy || !url.trim()}>
               Send test event

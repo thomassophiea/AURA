@@ -29,6 +29,11 @@ const svc = vi.hoisted(() => ({
   acknowledgeAlert: vi.fn(),
   unacknowledgeAlert: vi.fn(),
   getWebhook: vi.fn().mockResolvedValue({ url: null, minSeverity: 'warning' }),
+  getRoutingPolicy: vi.fn().mockResolvedValue({
+    quietHours: { enabled: false, startHour: 22, endHour: 7, tz: 'UTC', allowCritical: true },
+    escalation: { enabled: false, afterMinutes: 30 },
+  }),
+  setRoutingPolicy: vi.fn(),
   setWebhook: vi.fn(),
   testWebhook: vi.fn(),
   getAnalytics: vi.fn().mockRejectedValue(new Error('no persistence in tests')),

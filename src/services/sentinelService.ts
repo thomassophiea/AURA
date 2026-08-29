@@ -172,6 +172,37 @@ export async function testWebhook(): Promise<{ ok: boolean; status?: number; err
   return sentinelFetch('/api/sentinel/webhook/test', { method: 'POST' });
 }
 
+// ── Alert routing policy (quiet hours + escalation) ──
+
+export interface QuietHours {
+  enabled: boolean;
+  startHour: number;
+  endHour: number;
+  tz: string;
+  allowCritical: boolean;
+}
+
+export interface Escalation {
+  enabled: boolean;
+  afterMinutes: number;
+}
+
+export interface RoutingPolicy {
+  quietHours: QuietHours;
+  escalation: Escalation;
+}
+
+export async function getRoutingPolicy(): Promise<RoutingPolicy> {
+  return sentinelFetch('/api/sentinel/routing');
+}
+
+export async function setRoutingPolicy(policy: Partial<RoutingPolicy>): Promise<RoutingPolicy> {
+  return sentinelFetch('/api/sentinel/routing', {
+    method: 'POST',
+    body: JSON.stringify(policy),
+  });
+}
+
 // ── Trends ──
 
 export interface TrendEntry {

@@ -55,6 +55,8 @@ ALTER TABLE sentinel_alerts ADD COLUMN IF NOT EXISTS acknowledged_at timestamptz
 ALTER TABLE sentinel_alerts ADD COLUMN IF NOT EXISTS acknowledged_by text;
 ALTER TABLE sentinel_config ADD COLUMN IF NOT EXISTS webhook_url text;
 ALTER TABLE sentinel_config ADD COLUMN IF NOT EXISTS webhook_min_severity text NOT NULL DEFAULT 'warning';
+ALTER TABLE sentinel_config ADD COLUMN IF NOT EXISTS webhook_quiet_hours jsonb;
+ALTER TABLE sentinel_config ADD COLUMN IF NOT EXISTS webhook_escalation jsonb;
 `;
 
 let schemaPromise = null;
@@ -130,7 +132,9 @@ export async function loadSentinelState() {
       [TREND_POINTS_KEPT]
     ),
     pool.query(
-      'SELECT interval_ms, site_id, webhook_url, webhook_min_severity FROM sentinel_config WHERE singleton'
+      `SELECT interval_ms, site_id, webhook_url, webhook_min_severity,
+              webhook_quiet_hours, webhook_escalation
+       FROM sentinel_config WHERE singleton`
     ),
   ]);
 
@@ -149,6 +153,8 @@ export async function loadSentinelState() {
         siteId: configRows.rows[0].site_id,
         webhookUrl: configRows.rows[0].webhook_url ?? null,
         webhookMinSeverity: configRows.rows[0].webhook_min_severity ?? 'warning',
+        quietHours: configRows.rows[0].webhook_quiet_hours ?? null,
+        escalation: configRows.rows[0].webhook_escalation ?? null,
       }
     : null;
 
@@ -269,6 +275,19 @@ export async function saveWebhookUrl(url, minSeverity = 'warning') {
        webhook_min_severity = EXCLUDED.webhook_min_severity,
        updated_at = now()`,
     [url, minSeverity]
+  );
+}
+
+export async function saveRoutingPolicy(quietHours, escalation) {
+  if (!(await ready())) return;
+  await getPool().query(
+    `INSERT INTO sentinel_config (singleton, webhook_quiet_hours, webhook_escalation, updated_at)
+     VALUES (true, $1, $2, now())
+     ON CONFLICT (singleton) DO UPDATE SET
+       webhook_quiet_hours = EXCLUDED.webhook_quiet_hours,
+       webhook_escalation = EXCLUDED.webhook_escalation,
+       updated_at = now()`,
+    [quietHours ? JSON.stringify(quietHours) : null, escalation ? JSON.stringify(escalation) : null]
   );
 }
 

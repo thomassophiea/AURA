@@ -2,6 +2,12 @@ import { AlertStore } from './alertStore.js';
 import * as repo from './sentinelRepository.js';
 import { getServiceSession } from './sentinelServiceAuth.js';
 import { dispatchWebhook, buildAlertPayload, isValidWebhookUrl } from './sentinelWebhook.js';
+import {
+  DEFAULT_QUIET_HOURS,
+  DEFAULT_ESCALATION,
+  filterForRouting,
+  alertsToEscalate,
+} from './alertRouting.js';
 import { runRadiusReachabilityCheck } from './checks/radiusReachabilityCheck.js';
 import { runDhcpReachabilityCheck } from './checks/dhcpReachabilityCheck.js';
 import { runClientDhcpFailureCheck } from './checks/clientDhcpFailureCheck.js';
@@ -29,6 +35,10 @@ export class SentinelEngine {
   // Minimum severity routed to the webhook ('warning' routes both, 'critical'
   // routes criticals only).
   #webhookMinSeverity = 'warning';
+  #quietHours = { ...DEFAULT_QUIET_HOURS };
+  #escalation = { ...DEFAULT_ESCALATION };
+  // Alert ids already escalated, so each unacknowledged critical escalates once.
+  #escalatedIds = new Set();
   #authExpired = false;
   #lastPollAt = null;
   #polling = false;
@@ -74,6 +84,12 @@ export class SentinelEngine {
     if (state.config?.webhookUrl) this.#webhookUrl = state.config.webhookUrl;
     if (state.config?.webhookMinSeverity) {
       this.#webhookMinSeverity = state.config.webhookMinSeverity;
+    }
+    if (state.config?.quietHours) {
+      this.#quietHours = { ...DEFAULT_QUIET_HOURS, ...state.config.quietHours };
+    }
+    if (state.config?.escalation) {
+      this.#escalation = { ...DEFAULT_ESCALATION, ...state.config.escalation };
     }
     if (state.config?.intervalMs) {
       this.#pendingIntervalMs = state.config.intervalMs;
@@ -159,10 +175,9 @@ export class SentinelEngine {
           const stored = this.#alertStore.upsert(alert);
           if (stored) {
             storedAlerts.push(stored);
-            const routable =
-              stored.severity === 'critical' ||
-              (stored.severity === 'warning' && this.#webhookMinSeverity !== 'critical');
-            if (routable && (!before || before.resolvedAt)) {
+            // New or reopened actionable alerts are the notification candidates;
+            // min-severity and quiet-hours are applied once below.
+            if (stored.severity !== 'info' && (!before || before.resolvedAt)) {
               notifiable.push(stored);
             }
           }
@@ -217,19 +232,50 @@ export class SentinelEngine {
     this.#lastPollAt = new Date().toISOString();
     this.#polling = false;
 
-    // Route new/reopened actionable alerts, one POST per poll cycle.
-    if (notifiable.length > 0 && this.#webhookUrl) {
-      const payload = buildAlertPayload({
-        alerts: notifiable,
-        controllerUrl: this.#controllerUrl,
-        siteId: this.#siteId,
+    // Route new/reopened actionable alerts, honoring min-severity and quiet
+    // hours; then escalate criticals that have gone unacknowledged too long.
+    if (this.#webhookUrl) {
+      const toRoute = filterForRouting(notifiable, {
+        minSeverity: this.#webhookMinSeverity,
+        quiet: this.#quietHours,
       });
-      dispatchWebhook(this.#webhookUrl, payload).then((r) => {
-        if (!r.ok) console.warn(`[Sentinel] webhook dispatch failed: ${r.error ?? r.status}`);
-      });
+      if (toRoute.length > 0) {
+        this.#dispatch(toRoute, 'sentinel.alerts');
+      }
+      this.#dispatchEscalations();
     }
 
     return results;
+  }
+
+  #dispatch(alerts, event) {
+    const payload = buildAlertPayload({
+      alerts,
+      controllerUrl: this.#controllerUrl,
+      siteId: this.#siteId,
+      event,
+    });
+    dispatchWebhook(this.#webhookUrl, payload).then((r) => {
+      if (!r.ok) console.warn(`[Sentinel] webhook dispatch failed: ${r.error ?? r.status}`);
+    });
+  }
+
+  /** Re-notify unacknowledged criticals past the escalation threshold, once each. */
+  #dispatchEscalations() {
+    const active = this.#alertStore.getActive();
+    // Forget escalations for alerts that are no longer active-and-unacked, so a
+    // later reopen (or an ack-then-reopen) can escalate afresh.
+    const stillEscalatable = new Set(
+      active.filter((a) => !a.acknowledgedAt).map((a) => a.id)
+    );
+    for (const id of this.#escalatedIds) {
+      if (!stillEscalatable.has(id)) this.#escalatedIds.delete(id);
+    }
+
+    const due = alertsToEscalate(active, this.#escalation, this.#escalatedIds);
+    if (due.length === 0) return;
+    for (const a of due) this.#escalatedIds.add(a.id);
+    this.#dispatch(due, 'sentinel.escalation');
   }
 
   // ── Acknowledgement ──
@@ -262,6 +308,38 @@ export class SentinelEngine {
 
   getWebhookMinSeverity() {
     return this.#webhookMinSeverity;
+  }
+
+  getRoutingPolicy() {
+    return { quietHours: { ...this.#quietHours }, escalation: { ...this.#escalation } };
+  }
+
+  /** Update quiet-hours and/or escalation policy. Returns false on invalid input. */
+  setRoutingPolicy({ quietHours, escalation } = {}) {
+    if (quietHours !== undefined) {
+      if (quietHours === null || typeof quietHours !== 'object') return false;
+      const merged = { ...DEFAULT_QUIET_HOURS, ...quietHours };
+      const inRange = (h) => Number.isInteger(h) && h >= 0 && h <= 23;
+      if (!inRange(merged.startHour) || !inRange(merged.endHour)) return false;
+      this.#quietHours = {
+        enabled: Boolean(merged.enabled),
+        startHour: merged.startHour,
+        endHour: merged.endHour,
+        tz: String(merged.tz || 'UTC'),
+        allowCritical: merged.allowCritical !== false,
+      };
+    }
+    if (escalation !== undefined) {
+      if (escalation === null || typeof escalation !== 'object') return false;
+      const merged = { ...DEFAULT_ESCALATION, ...escalation };
+      const mins = Number(merged.afterMinutes);
+      if (!Number.isFinite(mins) || mins < 1 || mins > 1440) return false;
+      this.#escalation = { enabled: Boolean(merged.enabled), afterMinutes: Math.round(mins) };
+    }
+    repo
+      .saveRoutingPolicy(this.#quietHours, this.#escalation)
+      .catch((e) => console.warn(`[Sentinel] routing policy persistence failed: ${e.message}`));
+    return true;
   }
 
   /** Set (http/https) or clear (null/empty) the alert webhook. Returns false on an invalid URL. */

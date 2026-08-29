@@ -15,6 +15,7 @@ vi.mock('./sentinelRepository.js', () => ({
   clearSchedule: vi.fn().mockResolvedValue(undefined),
   setAcknowledged: vi.fn().mockResolvedValue(undefined),
   saveWebhookUrl: vi.fn().mockResolvedValue(undefined),
+  saveRoutingPolicy: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock('./sentinelWebhook.js', async (importOriginal) => {
   const actual = await importOriginal();
