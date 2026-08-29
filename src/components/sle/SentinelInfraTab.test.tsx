@@ -26,8 +26,17 @@ const svc = vi.hoisted(() => ({
   configure: vi.fn(),
   stop: vi.fn(),
   clearAlerts: vi.fn(),
+  acknowledgeAlert: vi.fn(),
+  unacknowledgeAlert: vi.fn(),
+  getWebhook: vi.fn().mockResolvedValue({ url: null, minSeverity: 'warning' }),
+  setWebhook: vi.fn(),
+  testWebhook: vi.fn(),
+  getAnalytics: vi.fn().mockRejectedValue(new Error('no persistence in tests')),
 }));
 vi.mock('../../services/sentinelService', () => svc);
+vi.mock('../../hooks/useAuraSession', () => ({
+  useAuraSession: () => ({ user: null, loaded: true, canOperate: true, isAdmin: true }),
+}));
 
 const idleChecks = {
   vlan_trunk: { status: 'idle', lastRunAt: null, error: null },

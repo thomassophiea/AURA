@@ -26,6 +26,9 @@ export class SentinelEngine {
   // resumes as soon as fresh controller auth arrives via configure().
   #pendingIntervalMs = null;
   #webhookUrl = process.env.SENTINEL_WEBHOOK_URL ?? null;
+  // Minimum severity routed to the webhook ('warning' routes both, 'critical'
+  // routes criticals only).
+  #webhookMinSeverity = 'warning';
   #authExpired = false;
   #lastPollAt = null;
   #polling = false;
@@ -69,6 +72,9 @@ export class SentinelEngine {
       this.#trendStore[check] = entries;
     }
     if (state.config?.webhookUrl) this.#webhookUrl = state.config.webhookUrl;
+    if (state.config?.webhookMinSeverity) {
+      this.#webhookMinSeverity = state.config.webhookMinSeverity;
+    }
     if (state.config?.intervalMs) {
       this.#pendingIntervalMs = state.config.intervalMs;
       if (state.config.siteId) this.#siteId = state.config.siteId;
@@ -153,7 +159,10 @@ export class SentinelEngine {
           const stored = this.#alertStore.upsert(alert);
           if (stored) {
             storedAlerts.push(stored);
-            if (stored.severity !== 'info' && (!before || before.resolvedAt)) {
+            const routable =
+              stored.severity === 'critical' ||
+              (stored.severity === 'warning' && this.#webhookMinSeverity !== 'critical');
+            if (routable && (!before || before.resolvedAt)) {
               notifiable.push(stored);
             }
           }
@@ -251,13 +260,21 @@ export class SentinelEngine {
     return this.#webhookUrl;
   }
 
+  getWebhookMinSeverity() {
+    return this.#webhookMinSeverity;
+  }
+
   /** Set (http/https) or clear (null/empty) the alert webhook. Returns false on an invalid URL. */
-  setWebhookUrl(url) {
+  setWebhookUrl(url, minSeverity) {
     const next = url ? String(url).trim() : null;
     if (next && !isValidWebhookUrl(next)) return false;
+    if (minSeverity !== undefined) {
+      if (!['warning', 'critical'].includes(minSeverity)) return false;
+      this.#webhookMinSeverity = minSeverity;
+    }
     this.#webhookUrl = next;
     repo
-      .saveWebhookUrl(next)
+      .saveWebhookUrl(next, this.#webhookMinSeverity)
       .catch((e) => console.warn(`[Sentinel] webhook persistence failed: ${e.message}`));
     return true;
   }

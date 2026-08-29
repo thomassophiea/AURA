@@ -135,15 +135,37 @@ export async function unacknowledgeAlert(id: string): Promise<{ alert: SentinelA
 
 // ── Webhook alert routing ──
 
-export async function getWebhook(): Promise<{ url: string | null }> {
+export async function getWebhook(): Promise<{ url: string | null; minSeverity?: string }> {
   return sentinelFetch('/api/sentinel/webhook');
 }
 
-export async function setWebhook(url: string | null): Promise<{ url: string | null }> {
+export async function setWebhook(
+  url: string | null,
+  minSeverity?: 'warning' | 'critical'
+): Promise<{ url: string | null }> {
   return sentinelFetch('/api/sentinel/webhook', {
     method: 'POST',
-    body: JSON.stringify({ url }),
+    body: JSON.stringify({ url, minSeverity }),
   });
+}
+
+// ── Alert analytics ──
+
+export interface SentinelAnalytics {
+  windowDays: number;
+  total: number;
+  bySeverity: { critical: number; warning: number };
+  open: number;
+  acknowledged: number;
+  resolved: number;
+  mttaSeconds: number | null;
+  mttrSeconds: number | null;
+  noisiestChecks: Array<{ check_name: string; count: number; occurrences: number }>;
+  noisiestTargets: Array<{ target: string; count: number }>;
+}
+
+export async function getAnalytics(days = 30): Promise<SentinelAnalytics> {
+  return sentinelFetch(`/api/sentinel/analytics?days=${days}`);
 }
 
 export async function testWebhook(): Promise<{ ok: boolean; status?: number; error?: string }> {

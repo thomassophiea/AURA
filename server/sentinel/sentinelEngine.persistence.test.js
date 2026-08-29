@@ -179,7 +179,7 @@ describe('SentinelEngine persistence', () => {
   it('dispatches the webhook for new actionable alerts, and only for news', async () => {
     engine.configure({ authToken: 'Bearer t', controllerUrl: 'https://controller.local' });
     expect(engine.setWebhookUrl('https://hooks.example.com/aura')).toBe(true);
-    expect(repo.saveWebhookUrl).toHaveBeenCalledWith('https://hooks.example.com/aura');
+    expect(repo.saveWebhookUrl).toHaveBeenCalledWith('https://hooks.example.com/aura', 'warning');
 
     const critical = {
       id: 'r:1', severity: 'critical', checkName: 'radius_reachability',

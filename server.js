@@ -26,6 +26,11 @@ import { registerResolver } from './server/cortex/toolDispatcher.js';
 import { sentinelEngine } from './server/sentinel/sentinelEngine.js';
 import { createSentinelRouter } from './server/sentinel/sentinelRouter.js';
 import { createSleThresholdsRouter } from './server/sle/thresholdsRouter.js';
+import { createIdentityRouter } from './server/identity/identityRouter.js';
+import { createSsoRouter } from './server/identity/ssoRouter.js';
+import { getSetting as getIdentitySetting } from './server/identity/identityStore.js';
+import { getSession as getAuraSession } from './server/identity/sessionService.js';
+import { getServiceSession as getSentinelServiceSession } from './server/sentinel/sentinelServiceAuth.js';
 import { createMonitoringRouter } from './server/monitoring/monitoringRouter.js';
 import { createEnergyRouter } from './server/energy/energyRouter.js';
 import { createLightAwareRouter } from './server/energy/lightAware/router.js';
@@ -2111,12 +2116,59 @@ app.post('/xiq/api/*', rateLimit({ windowMs: 60_000, max: 120 }), jsonParser, (r
   xiqReq.end();
 });
 
+// ==================== SSO Data Plane ====================
+/**
+ * An SSO-authenticated browser has no controller token of its own (its
+ * Authorization header carries the "aura-session" placeholder). When a valid
+ * SSO session cookie is present, the deployment's service-account token is
+ * injected here — ahead of every API router and the controller proxy — so all
+ * downstream consumers see real auth. Requests carrying a genuine bearer
+ * token are untouched. Mounted first on /api on purpose.
+ */
+app.use('/api', async (req, _res, next) => {
+  const auth = req.headers.authorization ?? '';
+  if (auth && auth !== 'Bearer aura-session') return next();
+  const session = getAuraSession(req);
+  if (!session || session.source !== 'sso') return next();
+  try {
+    const service = getSentinelServiceSession(getControllerUrl(req));
+    if (service?.hasCredentials()) {
+      req.headers.authorization = `Bearer ${await service.getToken()}`;
+    }
+  } catch {
+    // No service credentials or controller unreachable — the upstream 401
+    // says so more accurately than anything fabricated here.
+  }
+  next();
+});
+
 // ==================== Validation Engine Routes ====================
 // Must appear before the /api proxy middleware so requests are handled server-side.
 // requireAuth is scoped to the validation engine prefixes only — mounting it on
 // the whole /api namespace would block /api/management/v1/oauth2/token (login).
 app.use(['/api/validate', '/api/drift', '/api/rollback'], requireAuth);
 app.use('/api', createValidationRouter());
+
+// ==================== Identity / SSO Routes ====================
+// Session establishment validates the presented controller token itself, and
+// /auth/me & the SSO flow work from cookies — so no requireAuth here; each
+// route carries its own authorization.
+app.use('/api', createIdentityRouter());
+app.use('/api', createSsoRouter());
+
+// AURA Cortex is an admin-enabled capability. Until the flag is on, its API
+// answers with a clear enablement message rather than pretending to be absent.
+app.use('/api/cortex', async (req, res, next) => {
+  try {
+    const cortex = await getIdentitySetting('cortex');
+    if (cortex?.enabled) return next();
+  } catch {
+    // Settings store unavailable — fall through to disabled.
+  }
+  res.status(403).json({
+    error: 'AURA Cortex is disabled. An administrator can enable it under Administration.',
+  });
+});
 
 // ==================== Sentinel Engine Routes ====================
 app.use(['/api/sentinel'], requireAuth);

@@ -16,7 +16,10 @@ import { getPool, isDatabaseConfigured } from '../db/pool.js';
 // Distinct from the migration runner's lock key.
 const SENTINEL_SCHEMA_LOCK_KEY = '8270119004461007';
 const TREND_POINTS_KEPT = 100;
-const RESOLVED_RETENTION = "interval '30 minutes'";
+// The engine's working set only re-loads recently resolved alerts; the table
+// keeps resolved rows far longer so MTTA/MTTR analytics have history.
+const HYDRATE_RESOLVED_WINDOW = "interval '30 minutes'";
+const RESOLVED_RETENTION = "interval '90 days'";
 
 const DDL = `
 CREATE TABLE IF NOT EXISTS sentinel_alerts (
@@ -51,6 +54,7 @@ CREATE TABLE IF NOT EXISTS sentinel_config (
 ALTER TABLE sentinel_alerts ADD COLUMN IF NOT EXISTS acknowledged_at timestamptz;
 ALTER TABLE sentinel_alerts ADD COLUMN IF NOT EXISTS acknowledged_by text;
 ALTER TABLE sentinel_config ADD COLUMN IF NOT EXISTS webhook_url text;
+ALTER TABLE sentinel_config ADD COLUMN IF NOT EXISTS webhook_min_severity text NOT NULL DEFAULT 'warning';
 `;
 
 let schemaPromise = null;
@@ -116,7 +120,7 @@ export async function loadSentinelState() {
   const [alertRows, trendRows, configRows] = await Promise.all([
     pool.query(
       `SELECT * FROM sentinel_alerts
-       WHERE resolved_at IS NULL OR resolved_at > now() - ${RESOLVED_RETENTION}`
+       WHERE resolved_at IS NULL OR resolved_at > now() - ${HYDRATE_RESOLVED_WINDOW}`
     ),
     pool.query(
       `SELECT check_name, ts, alert_count, status FROM (
@@ -125,7 +129,9 @@ export async function loadSentinelState() {
        ) ranked WHERE rn <= $1 ORDER BY ts ASC`,
       [TREND_POINTS_KEPT]
     ),
-    pool.query('SELECT interval_ms, site_id, webhook_url FROM sentinel_config WHERE singleton'),
+    pool.query(
+      'SELECT interval_ms, site_id, webhook_url, webhook_min_severity FROM sentinel_config WHERE singleton'
+    ),
   ]);
 
   const trends = {};
@@ -142,6 +148,7 @@ export async function loadSentinelState() {
         intervalMs: configRows.rows[0].interval_ms,
         siteId: configRows.rows[0].site_id,
         webhookUrl: configRows.rows[0].webhook_url ?? null,
+        webhookMinSeverity: configRows.rows[0].webhook_min_severity ?? 'warning',
       }
     : null;
 
@@ -252,14 +259,84 @@ export async function setAcknowledged(id, acknowledgedAt, acknowledgedBy) {
   );
 }
 
-export async function saveWebhookUrl(url) {
+export async function saveWebhookUrl(url, minSeverity = 'warning') {
   if (!(await ready())) return;
   await getPool().query(
-    `INSERT INTO sentinel_config (singleton, webhook_url, updated_at)
-     VALUES (true, $1, now())
+    `INSERT INTO sentinel_config (singleton, webhook_url, webhook_min_severity, updated_at)
+     VALUES (true, $1, $2, now())
      ON CONFLICT (singleton) DO UPDATE SET
        webhook_url = EXCLUDED.webhook_url,
+       webhook_min_severity = EXCLUDED.webhook_min_severity,
        updated_at = now()`,
-    [url]
+    [url, minSeverity]
   );
+}
+
+/**
+ * Alert analytics over the retained history: volumes, MTTA (first seen →
+ * acknowledged) and MTTR (first seen → resolved), and the noisiest checks and
+ * targets. Null when persistence is unavailable.
+ */
+export async function getAlertAnalytics({ days = 30 } = {}) {
+  if (!(await ready())) return null;
+  const pool = getPool();
+  const window = Math.min(Math.max(1, Number(days) || 30), 90);
+
+  const [totals, timing, byCheck, byTarget] = await Promise.all([
+    pool.query(
+      `SELECT severity, count(*)::int AS count,
+              count(*) FILTER (WHERE resolved_at IS NULL)::int AS open
+       FROM sentinel_alerts
+       WHERE first_seen_at > now() - ($1 || ' days')::interval AND severity <> 'info'
+       GROUP BY severity`,
+      [window]
+    ),
+    pool.query(
+      `SELECT
+         avg(EXTRACT(EPOCH FROM (acknowledged_at - first_seen_at)))
+           FILTER (WHERE acknowledged_at IS NOT NULL) AS mtta_seconds,
+         avg(EXTRACT(EPOCH FROM (resolved_at - first_seen_at)))
+           FILTER (WHERE resolved_at IS NOT NULL) AS mttr_seconds,
+         count(*) FILTER (WHERE acknowledged_at IS NOT NULL)::int AS acknowledged,
+         count(*) FILTER (WHERE resolved_at IS NOT NULL)::int AS resolved
+       FROM sentinel_alerts
+       WHERE first_seen_at > now() - ($1 || ' days')::interval AND severity <> 'info'`,
+      [window]
+    ),
+    pool.query(
+      `SELECT check_name, count(*)::int AS count, sum(occurrences)::int AS occurrences
+       FROM sentinel_alerts
+       WHERE first_seen_at > now() - ($1 || ' days')::interval AND severity <> 'info'
+       GROUP BY check_name ORDER BY count DESC LIMIT 5`,
+      [window]
+    ),
+    pool.query(
+      `SELECT target, count(*)::int AS count
+       FROM sentinel_alerts
+       WHERE first_seen_at > now() - ($1 || ' days')::interval
+         AND severity <> 'info' AND target IS NOT NULL
+       GROUP BY target ORDER BY count DESC LIMIT 5`,
+      [window]
+    ),
+  ]);
+
+  const severityCounts = { critical: 0, warning: 0 };
+  let open = 0;
+  for (const row of totals.rows) {
+    severityCounts[row.severity] = row.count;
+    open += row.open;
+  }
+  const t = timing.rows[0] ?? {};
+  return {
+    windowDays: window,
+    total: (severityCounts.critical ?? 0) + (severityCounts.warning ?? 0),
+    bySeverity: severityCounts,
+    open,
+    acknowledged: t.acknowledged ?? 0,
+    resolved: t.resolved ?? 0,
+    mttaSeconds: t.mtta_seconds !== null && t.mtta_seconds !== undefined ? Number(t.mtta_seconds) : null,
+    mttrSeconds: t.mttr_seconds !== null && t.mttr_seconds !== undefined ? Number(t.mttr_seconds) : null,
+    noisiestChecks: byCheck.rows,
+    noisiestTargets: byTarget.rows,
+  };
 }

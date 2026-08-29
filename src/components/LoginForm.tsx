@@ -116,6 +116,15 @@ export function LoginForm({
   // Login step state
   const [step, setStep] = useState<LoginStep>('controller');
 
+  // Whether an admin has enabled OIDC SSO for this deployment.
+  const [ssoAvailable, setSsoAvailable] = useState(false);
+  useEffect(() => {
+    fetch('/api/auth/sso/status')
+      .then((r) => (r.ok ? r.json() : { enabled: false }))
+      .then((body) => setSsoAvailable(Boolean(body.enabled)))
+      .catch(() => setSsoAvailable(false));
+  }, []);
+
   // Controller state
   const [controllers, setControllers] = useState<Controller[]>([]);
   const [selectedController, setSelectedController] = useState<Controller | null>(null);
@@ -671,6 +680,21 @@ export function LoginForm({
                       'Sign In'
                     )}
                   </Button>
+
+                  {/* Optional enterprise SSO — the button only exists when an
+                      administrator has enabled and configured it. */}
+                  {ssoAvailable && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        window.location.href = '/api/auth/sso/login';
+                      }}
+                    >
+                      Sign in with SSO
+                    </Button>
+                  )}
                 </form>
               </div>
             )}

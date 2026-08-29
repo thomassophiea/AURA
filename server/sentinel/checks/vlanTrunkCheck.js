@@ -66,20 +66,26 @@ function mapWlansToVlans(services, topologies) {
 async function fetchLldpBatched(aps, opts) {
   // An AP without a resolvable serial cannot be queried (the URL would be
   // /v1/aps/undefined/lldp) and would surface as a bogus "undefined" alert.
-  const apList = toArray(aps)
-    .filter((ap) => apSerial(ap))
-    .slice(0, LLDP_BATCH_SIZE);
-  return Promise.all(
-    apList.map(async (ap) => {
-      const serial = apSerial(ap);
-      try {
-        const neighbors = await fetchXcc(`/v1/aps/${encodeURIComponent(serial)}/lldp`, opts);
-        return { apSerial: serial, neighbors: Array.isArray(neighbors) ? neighbors : [] };
-      } catch {
-        return { apSerial: serial, neighbors: [] };
-      }
-    }),
-  );
+  // ALL APs are probed — in waves of LLDP_BATCH_SIZE so a large estate does
+  // not open hundreds of concurrent controller requests.
+  const apList = toArray(aps).filter((ap) => apSerial(ap));
+  const results = [];
+  for (let i = 0; i < apList.length; i += LLDP_BATCH_SIZE) {
+    const wave = apList.slice(i, i + LLDP_BATCH_SIZE);
+    const waveResults = await Promise.all(
+      wave.map(async (ap) => {
+        const serial = apSerial(ap);
+        try {
+          const neighbors = await fetchXcc(`/v1/aps/${encodeURIComponent(serial)}/lldp`, opts);
+          return { apSerial: serial, neighbors: Array.isArray(neighbors) ? neighbors : [] };
+        } catch {
+          return { apSerial: serial, neighbors: [] };
+        }
+      })
+    );
+    results.push(...waveResults);
+  }
+  return results;
 }
 
 /**
@@ -148,7 +154,7 @@ export async function runVlanTrunkCheck(opts) {
         vlanId: matched?.vlanId ?? null,
       };
     }),
-    apsScanned: apList.slice(0, LLDP_BATCH_SIZE).map((ap) => ({
+    apsScanned: apList.map((ap) => ({
       name: apName(ap) ?? apSerial(ap),
     })),
     totalAps: apList.length,

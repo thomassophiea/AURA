@@ -352,6 +352,18 @@ interface DetailPanelState {
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Admin-enabled platform capabilities (fetched post-auth; default off).
+  const [cortexEnabled, setCortexEnabled] = useState(false);
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    fetch('/api/settings/public', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((flags) => {
+        if (flags) setCortexEnabled(Boolean(flags.cortexEnabled));
+      })
+      .catch(() => undefined);
+  }, [isAuthenticated]);
   const [currentPage, setCurrentPage] = useState('service-levels');
   const [navigationScope, setNavigationScope] = useState<NavigationScope>('global');
   const [adminRole, setAdminRole] = useState<string | null>(null);
@@ -459,9 +471,26 @@ export default function App() {
 
     // Check if user is already authenticated - trust stored tokens
     const initializeAuth = async () => {
+      // SSO sessions authenticate via an httpOnly cookie instead of a stored
+      // controller token: the server injects its service-account token for
+      // valid SSO sessions, so the client only needs session mode enabled.
+      if (!apiService.isAuthenticated()) {
+        try {
+          const resp = await fetch('/api/auth/me', { credentials: 'include' });
+          if (resp.ok) {
+            const { user } = await resp.json();
+            if (user?.source === 'sso') {
+              apiService.enableSessionMode();
+              setAdminRole(user.role === 'viewer' ? 'READ_ONLY' : 'FULL');
+            }
+          }
+        } catch {
+          // No identity service — classic login flow applies.
+        }
+      }
       if (apiService.isAuthenticated()) {
         setIsAuthenticated(true);
-        setAdminRole(apiService.getAdminRole());
+        if (!apiService.isSessionMode()) setAdminRole(apiService.getAdminRole());
 
         // Load site information — use first available site from the account
         try {
@@ -1664,8 +1693,10 @@ export default function App() {
                 {renderDetailPanel()}
               </div>
 
-              {/* Floating shell bar + slideout — Dev-mode only. */}
-              {theme === 'dev' && networkAssistantEnabled && (
+              {/* Floating shell bar + slideout. Available in Dev mode, or for
+                  everyone once an administrator enables AURA Cortex under
+                  Administration (the server refuses Cortex calls otherwise). */}
+              {(theme === 'dev' || cortexEnabled) && networkAssistantEnabled && (
                 <AgentCoworker
                   onShowClientDetail={handleShowClientDetail}
                   onShowAccessPointDetail={handleShowAccessPointDetail}

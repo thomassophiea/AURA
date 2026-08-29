@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { IdentityAdminSection } from './admin/IdentityAdminSection';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -321,6 +322,7 @@ export function SystemAdministration({
           <TabsTrigger value="snmp">SNMP</TabsTrigger>
           <TabsTrigger value="syslog">Syslog</TabsTrigger>
           <TabsTrigger value="audit">Audit Logs</TabsTrigger>
+          <TabsTrigger value="identity">Access & Identity</TabsTrigger>
         </TabsList>
 
         {/* Preferences */}
@@ -747,6 +749,9 @@ export function SystemAdministration({
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+        <TabsContent value="identity" className="space-y-4">
+          <IdentityAdminSection />
         </TabsContent>
       </Tabs>
     </div>

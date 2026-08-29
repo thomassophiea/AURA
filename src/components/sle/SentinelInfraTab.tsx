@@ -58,7 +58,10 @@ import {
   getWebhook,
   setWebhook,
   testWebhook,
+  getAnalytics,
 } from '../../services/sentinelService';
+import type { SentinelAnalytics } from '../../services/sentinelService';
+import { useAuraSession } from '../../hooks/useAuraSession';
 import type {
   SentinelStatus,
   SentinelAlert,
@@ -273,6 +276,15 @@ function formatPollTimestamp(iso: string): string {
   return d.toDateString() === new Date().toDateString()
     ? d.toLocaleTimeString()
     : d.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+/** "3m 20s" / "1h 4m" — for MTTA/MTTR figures. */
+function formatDuration(seconds: number | null): string {
+  if (seconds === null || !Number.isFinite(seconds)) return '—';
+  const s = Math.round(seconds);
+  if (s < 60) return `${s}s`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ${s % 60}s`;
+  return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
 }
 
 // ── Callbacks for the badge poller (exposed to parent) ──
@@ -869,17 +881,19 @@ function VlanTrunkEvidence({ evidence }: { evidence: CheckEvidence }) {
 
 // ── Webhook settings ──
 
-function SentinelWebhookButton({ configured }: { configured: boolean }) {
+function SentinelWebhookButton({ configured, disabled }: { configured: boolean; disabled?: boolean }) {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState('');
+  const [minSeverity, setMinSeverity] = useState<'warning' | 'critical'>('warning');
   const [busy, setBusy] = useState(false);
 
   const handleOpen = async (next: boolean) => {
     setOpen(next);
     if (next) {
       try {
-        const { url: current } = await getWebhook();
+        const { url: current, minSeverity: currentMin } = await getWebhook();
         setUrl(current ?? '');
+        if (currentMin === 'critical' || currentMin === 'warning') setMinSeverity(currentMin);
       } catch {
         // Leave the field as typed; saving will surface any real problem.
       }
@@ -890,7 +904,7 @@ function SentinelWebhookButton({ configured }: { configured: boolean }) {
     setBusy(true);
     try {
       const trimmed = url.trim();
-      await setWebhook(trimmed || null);
+      await setWebhook(trimmed || null, minSeverity);
       toast.success(trimmed ? 'Alert webhook saved' : 'Alert webhook removed');
       setOpen(false);
     } catch (err) {
@@ -904,7 +918,7 @@ function SentinelWebhookButton({ configured }: { configured: boolean }) {
     setBusy(true);
     try {
       // Test what is typed, not what was last saved.
-      await setWebhook(url.trim() || null);
+      await setWebhook(url.trim() || null, minSeverity);
       const result = await testWebhook();
       if (result.ok) toast.success(`Webhook responded ${result.status}`);
       else toast.error(`Webhook test failed: ${result.error ?? result.status}`);
@@ -920,6 +934,7 @@ function SentinelWebhookButton({ configured }: { configured: boolean }) {
       <Button
         variant="outline"
         size="sm"
+        disabled={disabled}
         onClick={() => handleOpen(true)}
         title="Route new critical/warning alerts to a webhook"
       >
@@ -947,6 +962,21 @@ function SentinelWebhookButton({ configured }: { configured: boolean }) {
             placeholder="https://hooks.example.com/aura-alerts"
             aria-label="Webhook URL"
           />
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">Route</span>
+            <Select
+              value={minSeverity}
+              onValueChange={(v) => setMinSeverity(v as 'warning' | 'critical')}
+            >
+              <SelectTrigger className="h-8 text-xs w-56">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="warning">Critical and warning alerts</SelectItem>
+                <SelectItem value="critical">Critical alerts only</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button variant="ghost" onClick={handleTest} disabled={busy || !url.trim()}>
               Send test event
@@ -1034,6 +1064,10 @@ function SentinelExportButton({
 }
 
 export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProps) {
+  // Viewer-role sessions get a read-only board; server-side RBAC enforces the
+  // same rule, this just keeps the UI honest about it.
+  const { canOperate } = useAuraSession();
+  const [analytics, setAnalytics] = useState<SentinelAnalytics | null>(null);
   const [pollRunning, setPollRunning] = useState(false);
   const [schedule, setSchedule] = useState('0');
   const [expandedCheck, setExpandedCheck] = useState<string | null>(null);
@@ -1092,6 +1126,22 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
     const match = SCHEDULE_OPTIONS.find((o) => o.value === String(status.intervalMs));
     if (match) setSchedule(match.value);
   }, [status]);
+
+  // Alert analytics from the persisted 90-day history. Loaded once per mount;
+  // a fresh poll changes it too slowly to justify re-fetching every cycle.
+  useEffect(() => {
+    let cancelled = false;
+    getAnalytics(30)
+      .then((a) => {
+        if (!cancelled) setAnalytics(a);
+      })
+      .catch(() => {
+        // No persistence — the strip simply doesn't render.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Auto-run one poll when the tab opens with no results, or with results old
   // enough to mislead. The engine is idle until something triggers it, so
@@ -1245,7 +1295,7 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
             variant="outline"
             size="sm"
             onClick={handleRunNowWithEvidence}
-            disabled={pollRunning}
+            disabled={pollRunning || !canOperate}
           >
             {pollRunning ? (
               <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -1255,7 +1305,7 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
             Run Now
           </Button>
 
-          <Select value={schedule} onValueChange={handleScheduleChange}>
+          <Select value={schedule} onValueChange={handleScheduleChange} disabled={!canOperate}>
             <SelectTrigger className="w-32 h-8 text-xs">
               <Clock className="h-3.5 w-3.5 mr-1.5" />
               <SelectValue />
@@ -1274,6 +1324,7 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
               variant="ghost"
               size="sm"
               onClick={handleClearAlerts}
+              disabled={!canOperate}
               className="text-muted-foreground"
             >
               <Trash2 className="mr-1.5 h-3.5 w-3.5" />
@@ -1283,7 +1334,7 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
 
           <SentinelExportButton disabled={!status?.lastPollAt} status={status} alerts={alerts} />
 
-          <SentinelWebhookButton configured={!!status?.webhookConfigured} />
+          <SentinelWebhookButton configured={!!status?.webhookConfigured} disabled={!canOperate} />
         </div>
 
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -1306,6 +1357,30 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
           {status?.lastPollAt && <span>Last poll: {formatPollTimestamp(status.lastPollAt)}</span>}
         </div>
       </div>
+
+      {/* Alert analytics — the persisted history turned into the numbers an
+          ops team reports on. Renders only when history is available. */}
+      {analytics && analytics.total > 0 && (
+        <div className="flex items-center gap-2 flex-wrap text-xs">
+          <span className="text-muted-foreground">Last {analytics.windowDays} days:</span>
+          <Badge variant="outline" className="text-[11px]">
+            {analytics.total} alerts ({analytics.bySeverity.critical ?? 0} critical)
+          </Badge>
+          <Badge variant="outline" className="text-[11px]">
+            MTTA {formatDuration(analytics.mttaSeconds)}
+          </Badge>
+          <Badge variant="outline" className="text-[11px]">
+            MTTR {formatDuration(analytics.mttrSeconds)}
+          </Badge>
+          {analytics.noisiestChecks[0] && (
+            <span className="text-muted-foreground">
+              noisiest: {CHECK_CONFIG[analytics.noisiestChecks[0].check_name]?.label ??
+                analytics.noisiestChecks[0].check_name}{' '}
+              ({analytics.noisiestChecks[0].count})
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Check cards grid — items-start so expanding one card's evidence does
           not stretch its row neighbor into dead space. */}
@@ -1524,6 +1599,7 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
                               variant="ghost"
                               size="sm"
                               className="h-7 px-2 text-muted-foreground"
+                              disabled={!canOperate}
                               title={acked ? 'Reopen this alert' : 'Acknowledge — being handled'}
                               onClick={() => handleAcknowledge(alert.id, acked)}
                             >

@@ -14,6 +14,8 @@
 
 import { Router, json as expressJson } from 'express';
 import { getPool, isDatabaseConfigured } from '../db/pool.js';
+import { requireRole } from '../identity/identityRouter.js';
+import { audit } from '../identity/identityStore.js';
 
 const THRESHOLDS_SCHEMA_LOCK_KEY = '8270119004461009';
 const SITE_KEY_RE = /^[A-Za-z0-9:_-]{1,128}$/;
@@ -112,7 +114,7 @@ export function createSleThresholdsRouter() {
   });
 
   // PUT /sle/thresholds/:siteKey — replace stored thresholds for the site
-  router.put('/sle/thresholds/:siteKey', jsonBody, async (req, res) => {
+  router.put('/sle/thresholds/:siteKey', requireRole('operator'), jsonBody, async (req, res) => {
     const { siteKey } = req.params;
     if (!SITE_KEY_RE.test(siteKey)) return res.status(400).json({ error: 'invalid site key' });
     const thresholds = req.body?.thresholds;
@@ -131,6 +133,11 @@ export function createSleThresholdsRouter() {
            updated_at = now()`,
         [siteKey, JSON.stringify(thresholds)]
       );
+      audit('sle.thresholds', {
+        actor: req.auraActor,
+        source: req.auraActorSource,
+        target: siteKey,
+      });
       res.json({ ok: true, siteKey });
     } catch (error) {
       // Internal detail stays in the server log, not the response.

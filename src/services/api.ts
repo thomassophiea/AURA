@@ -419,6 +419,11 @@ class ApiService {
           localStorage.setItem('admin_role', authResponse.adminRole);
           localStorage.setItem('user_email', userId.trim()); // Store the username/email
 
+          // Exchange the fresh controller login for an AURA session cookie
+          // (identity, role, audit attribution). Fire-and-forget: identity
+          // trouble must never block a working controller login.
+          this.establishAuraSession(userId.trim(), authResponse.adminRole).catch(() => undefined);
+
           logger.log(`✅ Login successful`);
           return authResponse;
         } else {
@@ -895,6 +900,48 @@ class ApiService {
 
   getAccessToken(): string | null {
     return this.accessToken;
+  }
+
+  /**
+   * Exchange a controller login for an AURA identity session (httpOnly
+   * cookie). Best-effort — resolves the session user, or null.
+   */
+  async establishAuraSession(
+    userId: string,
+    adminRole?: string | null
+  ): Promise<{ username: string; role: string } | null> {
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.accessToken}`,
+      };
+      const controllerUrl = getDynamicControllerUrl();
+      if (controllerUrl) headers['X-Controller-URL'] = controllerUrl;
+      const resp = await fetch('/api/auth/session', {
+        method: 'POST',
+        credentials: 'include',
+        headers,
+        body: JSON.stringify({ userId, adminRole: adminRole ?? null }),
+      });
+      if (!resp.ok) return null;
+      const body = await resp.json();
+      return body.user ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * SSO session mode: there is no controller token in the browser. Requests
+   * carry the "aura-session" placeholder; the server swaps in its
+   * service-account token for valid SSO sessions.
+   */
+  enableSessionMode(): void {
+    this.accessToken = 'aura-session';
+  }
+
+  isSessionMode(): boolean {
+    return this.accessToken === 'aura-session';
   }
 
   getAdminRole(): string | null {
