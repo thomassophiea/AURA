@@ -80,11 +80,41 @@ export function requireRole(minRole) {
   };
 }
 
-/** Map the controller's adminRole claim onto AURA roles. */
+/** Map the controller's role claim onto AURA roles. */
 function defaultRoleForControllerRole(adminRole) {
   const r = String(adminRole ?? '').toLowerCase();
   if (r.includes('read')) return 'viewer';
   return 'admin';
+}
+
+/**
+ * Derive the TRUSTED identity from a controller access token.
+ *
+ * Extreme controller access tokens are RS256 JWTs whose claims carry the
+ * authenticated principal: `jti` is the login username and `extreme_role` is
+ * the role. We do NOT verify the signature here — the caller has already
+ * proven the token is genuine and live by validating it against the controller
+ * (validateTokenAgainstController), so its claims are authoritative. Reading
+ * identity from the token, never from the request body, is what prevents a
+ * low-privilege token holder from claiming to be "admin".
+ *
+ * Returns { username, roleClaim } or null when the token is not a JWT whose
+ * claims establish a username — in which case the session is refused rather
+ * than trusting anything client-supplied.
+ */
+export function identityFromControllerToken(token) {
+  if (typeof token !== 'string') return null;
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  try {
+    const seg = parts[1] + '='.repeat((4 - (parts[1].length % 4)) % 4);
+    const claims = JSON.parse(Buffer.from(seg, 'base64url').toString('utf8'));
+    const username = claims.jti ?? claims.username ?? claims.preferred_username ?? claims.sub;
+    if (typeof username !== 'string' || !username) return null;
+    return { username, roleClaim: claims.extreme_role ?? claims.role ?? null };
+  } catch {
+    return null;
+  }
 }
 
 export function createIdentityRouter() {
@@ -92,14 +122,12 @@ export function createIdentityRouter() {
   const jsonBody = expressJson({ limit: '16kb' });
 
   // POST /auth/session — exchange a fresh controller login for an AURA session.
+  // The client body is NOT trusted for identity: username and role come from
+  // the controller-issued token's claims after the controller validates it.
   router.post('/auth/session', jsonBody, async (req, res) => {
     const token = extractBearerToken(req);
     const controllerUrl = req.headers['x-controller-url'] || process.env.CAMPUS_CONTROLLER_URL;
-    const { userId, adminRole } = req.body ?? {};
     if (!token || !controllerUrl) return res.status(401).json({ error: 'Unauthorized' });
-    if (typeof userId !== 'string' || !USERNAME_RE.test(userId)) {
-      return res.status(400).json({ error: 'invalid userId' });
-    }
 
     const validation = await validateTokenAgainstController(token, controllerUrl);
     if (!validation.valid) {
@@ -108,10 +136,18 @@ export function createIdentityRouter() {
         .json({ error: validation.unreachable ? 'controller unreachable' : 'Unauthorized' });
     }
 
+    // Identity is derived from the (now controller-verified) token, never the
+    // request body — otherwise a valid low-privilege token holder could claim
+    // userId "admin" and be handed an admin session on the conflict path.
+    const identity = identityFromControllerToken(token);
+    if (!identity || !USERNAME_RE.test(identity.username)) {
+      return res.status(401).json({ error: 'could not establish identity from token' });
+    }
+
     const user = await upsertLogin({
-      username: userId,
+      username: identity.username,
       source: 'controller',
-      defaultRole: defaultRoleForControllerRole(adminRole),
+      defaultRole: defaultRoleForControllerRole(identity.roleClaim),
     });
     if (user.disabled) return res.status(403).json({ error: 'account disabled' });
 

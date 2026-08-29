@@ -24,7 +24,7 @@ vi.mock('../monitoring/requireControllerScope.js', () => ({
 }));
 
 import { createSessionToken, verifySessionToken } from './sessionService.js';
-import { requireRole } from './identityRouter.js';
+import { requireRole, identityFromControllerToken } from './identityRouter.js';
 import { verifyIdToken } from './ssoRouter.js';
 import { getUser } from './identityStore.js';
 import { validateTokenAgainstController } from '../monitoring/requireControllerScope.js';
@@ -139,6 +139,35 @@ describe('requireRole', () => {
     await requireRole('viewer')(reqWith(`aura_session=${token}`), res, next);
     expect(next).not.toHaveBeenCalled();
     expect(res.statusCode).toBe(403);
+  });
+});
+
+describe('identityFromControllerToken — identity comes from the token, not the client', () => {
+  // Builds a controller-style JWT (signature irrelevant: identity is only read
+  // AFTER the controller validates the token is genuine).
+  function jwt(claims) {
+    const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+    const payload = Buffer.from(JSON.stringify(claims)).toString('base64url');
+    return `${header}.${payload}.sig`;
+  }
+
+  it('reads the username from jti and the role from extreme_role', () => {
+    const id = identityFromControllerToken(jwt({ jti: 'alice', extreme_role: 'FULL: 0' }));
+    expect(id).toEqual({ username: 'alice', roleClaim: 'FULL: 0' });
+  });
+
+  it('a read-only token holder cannot become admin — jti is theirs, not "admin"', () => {
+    // Even if the client body claimed userId:"admin", the route uses only this.
+    const id = identityFromControllerToken(jwt({ jti: 'helpdesk', extreme_role: 'READ_ONLY: 0' }));
+    expect(id.username).toBe('helpdesk');
+    expect(id.roleClaim).toBe('READ_ONLY: 0');
+  });
+
+  it('returns null for opaque or malformed tokens (session then refused)', () => {
+    expect(identityFromControllerToken('opaque-token')).toBeNull();
+    expect(identityFromControllerToken('a.b')).toBeNull();
+    expect(identityFromControllerToken(jwt({ license: 'ok' }))).toBeNull(); // no username claim
+    expect(identityFromControllerToken(null)).toBeNull();
   });
 });
 

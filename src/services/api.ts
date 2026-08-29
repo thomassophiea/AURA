@@ -420,9 +420,10 @@ class ApiService {
           localStorage.setItem('user_email', userId.trim()); // Store the username/email
 
           // Exchange the fresh controller login for an AURA session cookie
-          // (identity, role, audit attribution). Fire-and-forget: identity
-          // trouble must never block a working controller login.
-          this.establishAuraSession(userId.trim(), authResponse.adminRole).catch(() => undefined);
+          // (identity, role, audit attribution) — the server reads identity
+          // from the token, not from us. Fire-and-forget: identity trouble
+          // must never block a working controller login.
+          this.establishAuraSession().catch(() => undefined);
 
           logger.log(`✅ Login successful`);
           return authResponse;
@@ -904,12 +905,11 @@ class ApiService {
 
   /**
    * Exchange a controller login for an AURA identity session (httpOnly
-   * cookie). Best-effort — resolves the session user, or null.
+   * cookie). Best-effort — resolves the session user, or null. The server
+   * derives username and role from the controller-verified token, not from
+   * anything sent here, so no identity is passed in the body.
    */
-  async establishAuraSession(
-    userId: string,
-    adminRole?: string | null
-  ): Promise<{ username: string; role: string } | null> {
+  async establishAuraSession(): Promise<{ username: string; role: string } | null> {
     try {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
@@ -921,7 +921,7 @@ class ApiService {
         method: 'POST',
         credentials: 'include',
         headers,
-        body: JSON.stringify({ userId, adminRole: adminRole ?? null }),
+        body: '{}',
       });
       if (!resp.ok) return null;
       const body = await resp.json();
