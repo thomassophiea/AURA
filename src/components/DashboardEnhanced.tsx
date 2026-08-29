@@ -347,6 +347,8 @@ function DashboardEnhancedComponent() {
           setSelectorTab={setSelectorTab}
           rangedStats={rangedStats}
           timeRange={timeRange}
+          accessPoints={accessPoints}
+          stations={stations}
         />
         </>
       )}

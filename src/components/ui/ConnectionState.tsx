@@ -62,56 +62,37 @@ export function ConnectionState({
     return 'live';
   })();
 
-  const dotClass = (() => {
+  // Gateway API heartbeat vocabulary. Deliberately not "Online/Offline" —
+  // that pair belongs to devices, and a stale poll is not a down AP.
+  const tone = (() => {
     switch (state) {
       case 'live':
-        return 'bg-[color:var(--aura-amber)] aura-live-dot';
+        return { dot: 'bg-[color:var(--status-success)]', text: '', label: 'Connected' };
       case 'stale':
-        return 'bg-[color:var(--status-warning)]';
+        return {
+          dot: 'bg-[color:var(--status-warning)]',
+          text: 'text-[color:var(--status-warning)]',
+          label: 'Data stale',
+        };
       case 'offline':
-        return 'bg-[color:var(--status-error)]';
+        return {
+          dot: 'bg-[color:var(--status-error)]',
+          text: 'text-[color:var(--status-error)]',
+          label: 'Disconnected',
+        };
       case 'unknown':
-        return 'bg-muted-foreground/40';
-    }
-  })();
-
-  const label = (() => {
-    switch (state) {
-      case 'live':
-        return 'LIVE';
-      case 'stale':
-        return 'STALE';
-      case 'offline':
-        return 'OFFLINE';
-      case 'unknown':
-        return 'WAITING';
+        return { dot: 'bg-muted-foreground/40', text: '', label: 'Connecting…' };
     }
   })();
 
   return (
     <span
-      className={cn(
-        'inline-flex items-center gap-2',
-        'font-mono text-[10.5px] uppercase tracking-[0.18em]',
-        'text-muted-foreground',
-        className
-      )}
+      className={cn('inline-flex items-center gap-1.5 text-xs text-muted-foreground', className)}
       role="status"
       aria-live="polite"
     >
-      <span
-        aria-hidden="true"
-        className={cn('inline-block h-[7px] w-[7px] rounded-full', dotClass)}
-      />
-      <span
-        className={cn(
-          state === 'live' && 'text-[color:var(--aura-amber)]',
-          state === 'stale' && 'text-[color:var(--status-warning)]',
-          state === 'offline' && 'text-[color:var(--status-error)]'
-        )}
-      >
-        {label}
-      </span>
+      <span aria-hidden="true" className={cn('inline-block h-2 w-2 rounded-full', tone.dot)} />
+      <span className={cn(tone.text)}>{tone.label}</span>
       {lastSuccess !== null && state !== 'live' && (
         <span className="text-muted-foreground/70">
           <RelativeTime date={lastSuccess} />

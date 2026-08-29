@@ -37,27 +37,27 @@ const ok = (msAgo: number) => ({
 });
 
 describe('ConnectionState', () => {
-  it('shows WAITING when no successful log has been seeded', () => {
+  it('shows Connecting… when no successful log has been seeded', () => {
     render(<ConnectionState />);
-    expect(screen.getByText('WAITING')).toBeInTheDocument();
+    expect(screen.getByText('Connecting…')).toBeInTheDocument();
   });
 
-  it('shows LIVE within the staleAfterSeconds window after a recent success', () => {
+  it('shows Connected within the staleAfterSeconds window after a recent success', () => {
     getApiLogs.mockReturnValue([ok(5_000)]); // 5s ago
     render(<ConnectionState />);
-    expect(screen.getByText('LIVE')).toBeInTheDocument();
+    expect(screen.getByText('Connected')).toBeInTheDocument();
   });
 
-  it('flips to STALE between staleAfterSeconds and offlineAfterSeconds', () => {
+  it('flips to Data stale between staleAfterSeconds and offlineAfterSeconds', () => {
     getApiLogs.mockReturnValue([ok(45_000)]); // 45s ago — past 30s default
     render(<ConnectionState />);
-    expect(screen.getByText('STALE')).toBeInTheDocument();
+    expect(screen.getByText('Data stale')).toBeInTheDocument();
   });
 
-  it('flips to OFFLINE past offlineAfterSeconds', () => {
+  it('flips to Disconnected past offlineAfterSeconds', () => {
     getApiLogs.mockReturnValue([ok(180_000)]); // 3m ago — past 120s default
     render(<ConnectionState />);
-    expect(screen.getByText('OFFLINE')).toBeInTheDocument();
+    expect(screen.getByText('Disconnected')).toBeInTheDocument();
   });
 
   it('subscribes to apiService log updates and re-renders on a new success', () => {
@@ -69,7 +69,7 @@ describe('ConnectionState', () => {
       }
     );
     render(<ConnectionState />);
-    expect(screen.getByText('WAITING')).toBeInTheDocument();
+    expect(screen.getByText('Connecting…')).toBeInTheDocument();
     act(() => {
       push?.({
         status: 200,
@@ -77,14 +77,14 @@ describe('ConnectionState', () => {
         timestamp: new Date(Date.now()),
       });
     });
-    expect(screen.getByText('LIVE')).toBeInTheDocument();
+    expect(screen.getByText('Connected')).toBeInTheDocument();
   });
 
   it('honors a custom staleAfterSeconds threshold', () => {
     getApiLogs.mockReturnValue([ok(20_000)]); // 20s ago
     render(<ConnectionState staleAfterSeconds={10} />);
     // 20s past a 10s threshold → STALE.
-    expect(screen.getByText('STALE')).toBeInTheDocument();
+    expect(screen.getByText('Data stale')).toBeInTheDocument();
   });
 
   it('does not seed lastSuccess from non-2xx logs', () => {
@@ -93,7 +93,7 @@ describe('ConnectionState', () => {
       { status: undefined, isPending: true, timestamp: new Date() },
     ]);
     render(<ConnectionState />);
-    expect(screen.getByText('WAITING')).toBeInTheDocument();
+    expect(screen.getByText('Connecting…')).toBeInTheDocument();
   });
 
   it('exposes role=status and aria-live=polite for assistive tech', () => {
@@ -108,11 +108,11 @@ describe('ConnectionState', () => {
     // computed elapsed exceeds the stale threshold.
     getApiLogs.mockReturnValue([ok(28_000)]); // just below 30s
     render(<ConnectionState />);
-    expect(screen.getByText('LIVE')).toBeInTheDocument();
+    expect(screen.getByText('Connected')).toBeInTheDocument();
     act(() => {
       vi.setSystemTime(new Date('2026-05-08T12:00:05Z')); // +5s wall clock
       vi.advanceTimersByTime(2_000);
     });
-    expect(screen.getByText('STALE')).toBeInTheDocument();
+    expect(screen.getByText('Data stale')).toBeInTheDocument();
   });
 });

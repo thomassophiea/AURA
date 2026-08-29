@@ -117,7 +117,7 @@ function InsightCardsGridImpl({
   return (
     <div className="grid gap-6 md:grid-cols-2">
       {/* Network Health */}
-      <Card className="aura-section">
+      <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <HeaderChip>
@@ -207,7 +207,7 @@ function InsightCardsGridImpl({
       </Card>
 
       {/* Capacity Planning */}
-      <Card className="aura-section">
+      <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <HeaderChip>
@@ -301,7 +301,7 @@ function InsightCardsGridImpl({
       </Card>
 
       {/* Anomaly Detection */}
-      <Card className="aura-section">
+      <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <HeaderChip>
@@ -368,7 +368,7 @@ function InsightCardsGridImpl({
       </Card>
 
       {/* Predictive Maintenance */}
-      <Card className="aura-section">
+      <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <HeaderChip>

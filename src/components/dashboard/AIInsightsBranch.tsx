@@ -19,6 +19,10 @@ import { DriftStrip } from './DriftStrip';
 import { InsightCardsGrid } from './InsightCardsGrid';
 import { OrgSiteHealthOverview } from './OrgSiteHealthOverview';
 import { SitesAttentionWidget } from './SitesAttentionWidget';
+import type {
+  AccessPoint as ApInventoryItem,
+  Station as StationInventoryItem,
+} from '../../hooks/useDashboardData';
 import { DetailPanel } from './DetailPanel';
 import { BestPracticesWidget } from '../BestPracticesWidget';
 import { AuditLogsWidget } from '../AuditLogsWidget';
@@ -108,6 +112,9 @@ interface AIInsightsBranchProps {
   rangedStats: RangedNetworkStats;
   /** The selected window, for labelling what the tiles are measuring. */
   timeRange: ResolvedTimeRange;
+  /** Raw inventories for the per-site health widget (already fetched by the page). */
+  accessPoints?: ApInventoryItem[];
+  stations?: StationInventoryItem[];
 }
 
 function AIInsightsBranchComponent({
@@ -131,6 +138,8 @@ function AIInsightsBranchComponent({
   setSelectorTab,
   rangedStats,
   timeRange,
+  accessPoints = [],
+  stations = [],
 }: AIInsightsBranchProps) {
   const formatBps = formatBitsPerSecond;
 
@@ -235,7 +244,7 @@ function AIInsightsBranchComponent({
         />
       </div>
 
-      <SitesAttentionWidget />
+      <SitesAttentionWidget accessPoints={accessPoints} stations={stations} />
 
       <BestPracticesWidget />
 

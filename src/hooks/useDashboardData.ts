@@ -20,6 +20,31 @@ import {
 import { BAND_COLORS, SNR_QUALITY_COLORS } from '../config/colorPalette';
 
 /**
+ * The one online/offline decision for an AP row. Extracted so widgets
+ * grouping APs (per-site health) agree exactly with the headline apStats.
+ */
+export function isAccessPointOnline(ap: AccessPoint): boolean {
+  const status = (
+    ap.status ||
+    ap.connectionState ||
+    ap.operationalState ||
+    (ap as any).state ||
+    ''
+  ).toLowerCase();
+  const isUp = (ap as any).isUp;
+  const isOnline = (ap as any).online;
+  return (
+    status === 'inservice' ||
+    status.includes('up') ||
+    status.includes('online') ||
+    status.includes('connected') ||
+    isUp === true ||
+    isOnline === true ||
+    (!status && isUp !== false && isOnline !== false)
+  );
+}
+
+/**
  * Band attribution for a station, most-trustworthy source first:
  * controller-reported band → channel number → PHY-rate heuristic.
  * Returns null when nothing usable is present.
@@ -711,24 +736,7 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
     let chUtilCount = 0;
 
     aps.forEach((ap) => {
-      const status = (
-        ap.status ||
-        ap.connectionState ||
-        ap.operationalState ||
-        (ap as any).state ||
-        ''
-      ).toLowerCase();
-      const isUp = (ap as any).isUp;
-      const isOnline = (ap as any).online;
-
-      const apIsOnline =
-        status === 'inservice' ||
-        status.includes('up') ||
-        status.includes('online') ||
-        status.includes('connected') ||
-        isUp === true ||
-        isOnline === true ||
-        (!status && isUp !== false && isOnline !== false);
+      const apIsOnline = isAccessPointOnline(ap);
 
       if (apIsOnline) {
         stats.online++;
