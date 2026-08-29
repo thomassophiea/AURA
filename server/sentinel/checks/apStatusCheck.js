@@ -8,6 +8,7 @@
  */
 
 import { fetchXcc } from '../../validationEngine/xccClient.js';
+import { SENTINEL_MAX_APS_SCANNED } from './scanLimits.js';
 
 function toArray(val) {
   return Array.isArray(val?.data) ? val.data : Array.isArray(val) ? val : [];
@@ -36,10 +37,21 @@ export async function runApStatusCheck(opts) {
   }
   const displayAp = (serial) => nameBySerial.get(serial) ?? serial;
 
+  // Bound per-AP iteration at fleet scale. Site-scoped runs already narrowed
+  // statePath to one site's APs above, so they stay exhaustive unless a
+  // single site itself exceeds the cap.
+  const fullStateList = toArray(stateList);
+  const totalApCount = fullStateList.length;
+  const sampled = totalApCount > SENTINEL_MAX_APS_SCANNED;
+  const scannedStateList = sampled
+    ? fullStateList.slice(0, SENTINEL_MAX_APS_SCANNED)
+    : fullStateList;
+  const scannedApCount = scannedStateList.length;
+
   const alerts = [];
   const statuses = [];
 
-  for (const entry of toArray(stateList)) {
+  for (const entry of scannedStateList) {
     const serial = apSerial(entry);
     if (!serial) continue;
     const status = entry.entityStatus?.operationalStatus ?? 'Unknown';
@@ -71,14 +83,20 @@ export async function runApStatusCheck(opts) {
   }
 
   const impacted = alerts.length;
+  const sampledPrefix = sampled
+    ? `Sampled ${scannedApCount} of ${totalApCount} APs (fleet exceeds scan cap). `
+    : '';
   const evidence = {
     apStatuses: statuses.sort((a, b) => a.accessPoint.localeCompare(b.accessPoint)),
+    sampled,
+    scannedCount: scannedApCount,
+    totalCount: totalApCount,
     summary:
       statuses.length === 0
-        ? 'No AP state records found.'
+        ? `${sampledPrefix}No AP state records found.`
         : impacted === 0
-          ? `All ${statuses.length} AP(s) in service with no reported troubles.`
-          : `${impacted} of ${statuses.length} AP(s) out of service or reporting troubles.`,
+          ? `${sampledPrefix}All ${statuses.length} AP(s) in service with no reported troubles.`
+          : `${sampledPrefix}${impacted} of ${statuses.length} AP(s) out of service or reporting troubles.`,
   };
 
   return { alerts, evidence };

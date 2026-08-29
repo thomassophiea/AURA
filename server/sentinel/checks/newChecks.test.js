@@ -16,6 +16,7 @@ import { runCertExpiryCheck } from './certExpiryCheck.js';
 import { runFirmwareConsistencyCheck } from './firmwareConsistencyCheck.js';
 import { runDnsReachabilityCheck, parseDnsServers } from './dnsReachabilityCheck.js';
 import { runApStatusCheck } from './apStatusCheck.js';
+import { SENTINEL_MAX_APS_SCANNED } from './scanLimits.js';
 
 const OPTS = { authToken: 'x', controllerUrl: 'https://controller.example:443' };
 
@@ -159,5 +160,48 @@ describe('apStatusCheck', () => {
     });
     await runApStatusCheck({ ...OPTS, siteId: 'site-1' });
     expect(fetchXcc).toHaveBeenCalledWith('/v1/state/sites/site-1/aps', expect.anything());
+  });
+
+  describe('fleet-scale scan cap', () => {
+    function fleetOf(count) {
+      return Array.from({ length: count }, (_, i) => ({
+        apSerialNo: `S${i}`,
+        entityStatus: { operationalStatus: 'InService', troubles: [] },
+      }));
+    }
+
+    function routeFleet(stateList) {
+      fetchXcc.mockImplementation(async (path) => {
+        if (path === '/v1/state/aps') return stateList;
+        if (path === '/v1/aps') return { data: [] };
+        throw new Error(`unexpected ${path}`);
+      });
+    }
+
+    it('scans every AP and reports no sampling when the fleet is under the cap', async () => {
+      const count = 5;
+      routeFleet(fleetOf(count));
+
+      const { evidence } = await runApStatusCheck(OPTS);
+
+      expect(evidence.sampled).toBeFalsy();
+      expect(evidence.scannedCount).toBe(count);
+      expect(evidence.totalCount).toBe(count);
+      expect(evidence.apStatuses).toHaveLength(count);
+    });
+
+    it('caps the scan and reports honest sampling when the fleet exceeds the cap', async () => {
+      const count = 600;
+      routeFleet(fleetOf(count));
+
+      const { evidence } = await runApStatusCheck(OPTS);
+
+      expect(evidence.sampled).toBe(true);
+      expect(evidence.scannedCount).toBe(SENTINEL_MAX_APS_SCANNED);
+      expect(evidence.totalCount).toBe(count);
+      expect(evidence.summary).toContain(`Sampled ${SENTINEL_MAX_APS_SCANNED} of ${count} APs`);
+      // Only the capped subset was actually iterated/reported on
+      expect(evidence.apStatuses).toHaveLength(SENTINEL_MAX_APS_SCANNED);
+    });
   });
 });

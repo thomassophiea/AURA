@@ -1,5 +1,6 @@
 import { fetchXcc } from '../../validationEngine/xccClient.js';
 import { resolveLldpForVlan } from '../../validationEngine/lldpTopologyResolver.js';
+import { SENTINEL_MAX_APS_SCANNED } from './scanLimits.js';
 
 const LLDP_BATCH_SIZE = 15;
 
@@ -121,6 +122,16 @@ export async function runVlanTrunkCheck(opts) {
     }
   }
 
+  // Bound per-AP LLDP work at fleet scale. Site-scoped runs have already
+  // narrowed apList to one site above, so they stay exhaustive unless a
+  // single site itself exceeds the cap.
+  const totalApCount = apList.length;
+  const sampled = totalApCount > SENTINEL_MAX_APS_SCANNED;
+  if (sampled) {
+    apList = apList.slice(0, SENTINEL_MAX_APS_SCANNED);
+  }
+  const scannedApCount = apList.length;
+
   // Build serial -> name lookup
   const nameBySerial = new Map();
   for (const ap of apList) {
@@ -158,12 +169,19 @@ export async function runVlanTrunkCheck(opts) {
       name: apName(ap) ?? apSerial(ap),
     })),
     totalAps: apList.length,
+    sampled,
+    scannedCount: scannedApCount,
+    totalCount: totalApCount,
     lldpResults: [],
     summary: '',
   };
 
+  const sampledPrefix = sampled
+    ? `Sampled ${scannedApCount} of ${totalApCount} APs (fleet exceeds scan cap). `
+    : '';
+
   if (!wlanVlans.length) {
-    evidence.summary = `${serviceList.length} WLAN(s) and ${topoList.length} topology(s) found, but no VLAN mappings resolved. Check that services have a defaultTopology field pointing to a topology with a vlanid.`;
+    evidence.summary = `${sampledPrefix}${serviceList.length} WLAN(s) and ${topoList.length} topology(s) found, but no VLAN mappings resolved. Check that services have a defaultTopology field pointing to a topology with a vlanid.`;
     return { alerts: [], evidence };
   }
 
@@ -175,7 +193,7 @@ export async function runVlanTrunkCheck(opts) {
   }));
 
   if (!lldpByAp.length) {
-    evidence.summary = `No LLDP data retrieved from ${apList.length} APs.`;
+    evidence.summary = `${sampledPrefix}No LLDP data retrieved from ${apList.length} APs.`;
     return { alerts: [], evidence };
   }
 
@@ -255,9 +273,11 @@ export async function runVlanTrunkCheck(opts) {
   const warnings = alerts.filter((a) => a.severity === 'warning').length;
   const infos = alerts.filter((a) => a.severity === 'info').length;
   if (warnings > 0) {
-    evidence.summary = `${warnings} trunk mismatch(es) found across ${wlanVlans.length} WLAN(s) and ${lldpByAp.length} AP(s).${infos ? ` ${infos} informational (incomplete LLDP data).` : ''}`;
+    evidence.summary = `${sampledPrefix}${warnings} trunk mismatch(es) found across ${wlanVlans.length} WLAN(s) and ${lldpByAp.length} AP(s).${infos ? ` ${infos} informational (incomplete LLDP data).` : ''}`;
   } else if (infos > 0) {
-    evidence.summary = `No trunk mismatches. ${infos} AP(s) have incomplete LLDP data — cannot fully verify. ${wlanVlans.length} WLAN(s), ${lldpByAp.length} AP(s) checked.`;
+    evidence.summary = `${sampledPrefix}No trunk mismatches. ${infos} AP(s) have incomplete LLDP data — cannot fully verify. ${wlanVlans.length} WLAN(s), ${lldpByAp.length} AP(s) checked.`;
+  } else if (sampled) {
+    evidence.summary = `${sampledPrefix}No trunk mismatches found among the ${lldpByAp.length} AP(s) sampled — not a fleet-wide guarantee.`;
   } else {
     evidence.summary = `All ${wlanVlans.length} WLAN VLAN(s) verified on ${lldpByAp.length} AP trunk(s). No mismatches found.`;
   }

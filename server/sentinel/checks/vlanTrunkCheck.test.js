@@ -6,6 +6,7 @@ vi.mock('../../validationEngine/xccClient.js', () => ({
 
 import { fetchXcc } from '../../validationEngine/xccClient.js';
 import { runVlanTrunkCheck } from './vlanTrunkCheck.js';
+import { SENTINEL_MAX_APS_SCANNED } from './scanLimits.js';
 
 const SERVICES = {
   data: [{ serviceName: 'AURA-CWP', defaultTopology: 'topo-1' }],
@@ -160,5 +161,54 @@ describe('vlanTrunkCheck', () => {
     expect(warning.target).toBe('AP5020-PVT-01');
     expect(warning.message).toContain('missing VLAN 1');
     expect(warning.context.port).toBe('1/0/23');
+  });
+
+  describe('fleet-scale scan cap', () => {
+    function fleetOf(count) {
+      return {
+        data: Array.from({ length: count }, (_, i) => ({
+          serialNumber: `S${i}`,
+          apName: `AP-${i}`,
+        })),
+      };
+    }
+
+    function routeFleet(aps) {
+      fetchXcc.mockImplementation(async (path) => {
+        if (path === '/v1/services') return SERVICES;
+        if (path === '/v1/topologies') return TOPOLOGIES;
+        if (path === '/v1/aps') return aps;
+        if (/^\/v1\/aps\/[^/]+\/lldp$/.test(path)) return [];
+        throw new Error(`unexpected path ${path}`);
+      });
+    }
+
+    it('scans every AP and reports no sampling when the fleet is under the cap', async () => {
+      const count = 5;
+      routeFleet(fleetOf(count));
+
+      const { evidence } = await runVlanTrunkCheck({ authToken: 'x', controllerUrl: 'http://t' });
+
+      expect(evidence.sampled).toBeFalsy();
+      expect(evidence.scannedCount).toBe(count);
+      expect(evidence.totalCount).toBe(count);
+      const lldpCalls = fetchXcc.mock.calls.filter(([p]) => p.includes('/lldp'));
+      expect(lldpCalls).toHaveLength(count);
+    });
+
+    it('caps the scan and reports honest sampling when the fleet exceeds the cap', async () => {
+      const count = 600;
+      routeFleet(fleetOf(count));
+
+      const { evidence } = await runVlanTrunkCheck({ authToken: 'x', controllerUrl: 'http://t' });
+
+      expect(evidence.sampled).toBe(true);
+      expect(evidence.scannedCount).toBe(SENTINEL_MAX_APS_SCANNED);
+      expect(evidence.totalCount).toBe(count);
+      expect(evidence.summary).toContain(`Sampled ${SENTINEL_MAX_APS_SCANNED} of ${count} APs`);
+      // Only the capped subset was actually probed for LLDP
+      const lldpCalls = fetchXcc.mock.calls.filter(([p]) => p.includes('/lldp'));
+      expect(lldpCalls).toHaveLength(SENTINEL_MAX_APS_SCANNED);
+    });
   });
 });
