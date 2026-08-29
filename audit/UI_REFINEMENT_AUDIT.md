@@ -79,3 +79,23 @@ The app today mixes **three competing visual languages** (EP1 enterprise cards, 
 ## Verification bar
 - All ~3.6k unit tests green; tsc clean; production build clean.
 - Live browser verification on Integration after deploy: dark + light, wide + narrow, every touched page.
+
+## Status — 2026-08-29
+
+**Shipped in b399323 + 9ab83f2** (net −1,272 lines): Phases 1–4 as planned above, all
+verified by 3,594 green tests, clean tsc, clean production build. Highlights beyond the plan:
+Events & Alarms rebuilt on AG grids with new column configs + 20 new tests; dead code removed
+(`src/components/widgets/` + chart.js + react-chartjs-2 + InstrumentPanel + RecentEventsSummary
++ ~unreachable markup); `offline`/`neutral` added as first-class semantic states.
+
+**Deliberately deferred** (low demo value ÷ cost, revisit after this lands):
+- SentinelInfraTab: 14 raw `<table>`s without overflow wrappers (dense internal SLE surface).
+- ConfigureAdvanced.tsx: 10 hand-rolled tables + 32 fixed grids (low-traffic config page).
+- Unreachable `ui/table` fallback branches behind `GridModeContext.agGridEnabled === true`
+  (~500 lines in AccessPoints/ConfigureNetworks/ConfigurePolicy/ConfigureGuest/
+  ConfigureProfiles/AdministratorsManagement) — pure deletion, needs its own careful pass.
+- formatBytes base-1024 vs base-1000 unification (11 local copies; changing output alters
+  displayed numbers, needs a product decision on which base is contractual).
+- GuestManagement page vs clients/GuestUsers duplication — candidate for deletion.
+- SLE hexagon fills on Operational Insights (olive/military greens) — distinctive branding,
+  left as-is pending a product call.
