@@ -26,6 +26,7 @@ import { registerResolver } from './server/cortex/toolDispatcher.js';
 import { sentinelEngine } from './server/sentinel/sentinelEngine.js';
 import { createSentinelRouter } from './server/sentinel/sentinelRouter.js';
 import { createSleThresholdsRouter } from './server/sle/thresholdsRouter.js';
+import { createDeviceSearchRouter } from './server/devices/deviceSearchRouter.js';
 import { createIdentityRouter } from './server/identity/identityRouter.js';
 import { createSsoRouter } from './server/identity/ssoRouter.js';
 import { getSetting as getIdentitySetting } from './server/identity/identityStore.js';
@@ -2189,6 +2190,11 @@ app.use(
     : (_req, res) => res.status(503).json({ error: 'Monitoring persistence is not configured' })
 );
 app.use('/api', createSleThresholdsRouter());
+
+// ==================== Device Search Routes ====================
+// Server-side search+cap over APs/clients so pickers can become typeahead
+// instead of loading the full ~100,000-AP inventory into the browser.
+app.use('/api', createDeviceSearchRouter());
 
 // ==================== Config History & Estate Routes ====================
 // Configuration snapshots/diffs/compliance trend, and the multi-controller
