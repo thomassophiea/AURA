@@ -101,8 +101,103 @@ function itemKey(item) {
   return String(item?.id ?? item?.name ?? item?.serviceName ?? stableStringify(item).slice(0, 64));
 }
 
-function itemName(item) {
+export function itemName(item) {
   return String(item?.name ?? item?.serviceName ?? item?.siteName ?? item?.id ?? 'unnamed');
+}
+
+/**
+ * Which sections have a documented, confirmable write path on the controller
+ * (verified against controller-api/openapi-spec.json — see task-5-report.md
+ * for the exact paths checked). Restore never writes a section that isn't
+ * listed here with the relevant verb set to true.
+ */
+export const RESTORE_WRITE_SUPPORT = {
+  wlans: {
+    create: true,
+    update: true,
+    delete: true,
+    evidence: 'openapi-spec.json: POST /v1/services; PUT/DELETE /v1/services/{serviceId}',
+  },
+  networks: {
+    create: true,
+    update: true,
+    delete: true,
+    evidence: 'openapi-spec.json: POST /v1/topologies; PUT/DELETE /v1/topologies/{topologyId}',
+  },
+  aaaPolicies: {
+    create: true,
+    update: true,
+    delete: true,
+    evidence: 'openapi-spec.json: POST /v1/aaapolicy; PUT/DELETE /v1/aaapolicy/{id}',
+  },
+  profiles: {
+    create: true,
+    update: true,
+    delete: true,
+    evidence: 'openapi-spec.json: POST /v3/profiles; PUT/DELETE /v3/profiles/{profileId}',
+  },
+  sites: {
+    create: true,
+    update: true,
+    delete: true,
+    evidence: 'openapi-spec.json: POST /v3/sites; PUT/DELETE /v3/sites/{siteId}',
+  },
+};
+
+/**
+ * Compute what would change if `currentSections` were restored to match
+ * `targetSections` — the same item keying diffSections uses (id ?? name ??
+ * serviceName), so an item that only reordered keys is never reported as a
+ * change. Pure: no I/O, deterministic for a given input.
+ *
+ * `items` on each section carries the raw objects an apply step needs: the
+ * target's version of every create/update, and the current version of every
+ * delete (its id is what a DELETE call needs — the target no longer has it).
+ */
+export function computeRestorePlan(currentSections, targetSections, { sections: sectionFilter } = {}) {
+  const wanted =
+    Array.isArray(sectionFilter) && sectionFilter.length > 0 ? new Set(sectionFilter) : null;
+  const plan = [];
+  for (const { key, label } of SNAPSHOT_SECTIONS) {
+    if (wanted && !wanted.has(key)) continue;
+    const currentItems = Array.isArray(currentSections?.[key]) ? currentSections[key] : [];
+    const targetItems = Array.isArray(targetSections?.[key]) ? targetSections[key] : [];
+    const currentByKey = new Map(currentItems.map((i) => [itemKey(i), i]));
+    const targetByKey = new Map(targetItems.map((i) => [itemKey(i), i]));
+
+    const toCreate = [];
+    const toUpdate = [];
+    const toDelete = [];
+    const createItems = [];
+    const updateItems = [];
+    const deleteItems = [];
+
+    for (const [k, item] of targetByKey) {
+      if (!currentByKey.has(k)) {
+        toCreate.push(itemName(item));
+        createItems.push(item);
+      } else if (stableStringify(currentByKey.get(k)) !== stableStringify(item)) {
+        toUpdate.push(itemName(item));
+        updateItems.push(item);
+      }
+    }
+    for (const [k, item] of currentByKey) {
+      if (!targetByKey.has(k)) {
+        toDelete.push(itemName(item));
+        deleteItems.push(item);
+      }
+    }
+
+    plan.push({
+      section: key,
+      label,
+      toCreate,
+      toUpdate,
+      toDelete,
+      items: { create: createItems, update: updateItems, delete: deleteItems },
+    });
+  }
+  return plan;
 }
 
 /**
@@ -148,14 +243,13 @@ function toArray(data) {
 }
 
 /**
- * Capture and store a snapshot through an authenticated controller session
- * (server/monitoring/controllerClient.js ControllerSession).
+ * Read every SNAPSHOT_SECTIONS surface live through an authenticated
+ * controller session, without persisting anything. Shared by the nightly/
+ * on-demand snapshot capture and by restore (which needs "current" as a plan
+ * input, never stored as a snapshot in its own right).
  */
-export async function takeSnapshot(session, { kind = 'scheduled', takenBy = null } = {}) {
-  if (!(await ready())) return { ok: false, error: 'persistence unavailable' };
-
+export async function captureCurrentSections(session) {
   const sections = {};
-  const hashes = {};
   const failures = [];
   for (const { key, path } of SNAPSHOT_SECTIONS) {
     const result = await session.get(path);
@@ -163,12 +257,25 @@ export async function takeSnapshot(session, { kind = 'scheduled', takenBy = null
       failures.push(`${key} (${result.errorSummary ?? result.status})`);
       continue;
     }
-    const items = toArray(result.data);
-    sections[key] = items;
-    hashes[key] = sectionHash(items);
+    sections[key] = toArray(result.data);
   }
+  return { sections, failures };
+}
+
+/**
+ * Capture and store a snapshot through an authenticated controller session
+ * (server/monitoring/controllerClient.js ControllerSession).
+ */
+export async function takeSnapshot(session, { kind = 'scheduled', takenBy = null } = {}) {
+  if (!(await ready())) return { ok: false, error: 'persistence unavailable' };
+
+  const { sections, failures } = await captureCurrentSections(session);
   if (Object.keys(sections).length === 0) {
     return { ok: false, error: `no sections captured: ${failures.join(', ')}` };
+  }
+  const hashes = {};
+  for (const key of Object.keys(sections)) {
+    hashes[key] = sectionHash(sections[key]);
   }
 
   const pool = getPool();

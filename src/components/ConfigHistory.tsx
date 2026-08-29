@@ -21,11 +21,13 @@ import {
   Plus,
   Minus,
   Pencil,
+  History,
 } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
 import { apiService, getDynamicControllerUrl } from '../services/api';
 import { useAuraSession } from '../hooks/useAuraSession';
 import { toast } from 'sonner';
+import ConfigRestoreDialog from './ConfigRestoreDialog';
 
 interface SnapshotMeta {
   id: number;
@@ -72,7 +74,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export default function ConfigHistory() {
-  const { canOperate } = useAuraSession();
+  const { canOperate, isAdmin } = useAuraSession();
   const [snapshots, setSnapshots] = useState<SnapshotMeta[]>([]);
   const [compliance, setCompliance] = useState<CompliancePoint[]>([]);
   const [selected, setSelected] = useState<number[]>([]);
@@ -84,6 +86,7 @@ export default function ConfigHistory() {
   const [loading, setLoading] = useState(true);
   const [capturing, setCapturing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [restoreTarget, setRestoreTarget] = useState<number | null>(null);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -305,6 +308,20 @@ export default function ConfigHistory() {
                       {snap.takenBy ? ` by ${snap.takenBy}` : ''}
                     </span>
                   </div>
+                  {isAdmin && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 shrink-0"
+                      title="Restore this snapshot"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setRestoreTarget(snap.id);
+                      }}
+                    >
+                      <History className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"
@@ -373,6 +390,16 @@ export default function ConfigHistory() {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {restoreTarget !== null && (
+        <ConfigRestoreDialog
+          snapshotId={restoreTarget}
+          open={restoreTarget !== null}
+          onOpenChange={(next) => {
+            if (!next) setRestoreTarget(null);
+          }}
+        />
       )}
     </div>
   );

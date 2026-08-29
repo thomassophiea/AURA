@@ -204,6 +204,54 @@ export class ControllerSession {
       return { ok: false, status: null, data: null, errorClass, errorSummary: summary };
     }
   }
+
+  /**
+   * Write (POST/PUT/DELETE) to a controller path. Same envelope and 401
+   * retry-once contract as `get()`. Used only by gated, audited flows (config
+   * restore) — everything else in AURA reads the controller through `get()`.
+   *
+   * @returns {Promise<{ ok: boolean, status: number|null, data: any,
+   *                     errorClass: string|null, errorSummary: string|null }>}
+   */
+  async write(path, { method = 'POST', body = null, retryOnAuthFailure = true } = {}) {
+    let token;
+    try {
+      token = await this.getToken();
+    } catch (error) {
+      const { errorClass, summary } = sanitizeError(error, { status: error.status });
+      return { ok: false, status: error.status ?? null, data: null, errorClass, errorSummary: summary };
+    }
+
+    try {
+      const result = await requestXcc(path, {
+        authToken: `Bearer ${token}`,
+        controllerUrl: this.#baseUrl,
+        fetchFn: this.#fetchFn,
+        timeoutMs: this.#timeoutMs,
+        agent: httpsAgent(),
+        method,
+        body,
+      });
+
+      if (result.ok) {
+        return { ok: true, status: result.status, data: result.data, errorClass: null, errorSummary: null };
+      }
+
+      if (result.status === 401 && retryOnAuthFailure) {
+        this.invalidate();
+        return this.write(path, { method, body, retryOnAuthFailure: false });
+      }
+
+      const { errorClass, summary } = sanitizeError(new Error(result.errorText ?? 'request failed'), {
+        status: result.status,
+        endpoint: path,
+      });
+      return { ok: false, status: result.status, data: null, errorClass, errorSummary: summary };
+    } catch (error) {
+      const { errorClass, summary } = sanitizeError(error, { endpoint: path });
+      return { ok: false, status: null, data: null, errorClass, errorSummary: summary };
+    }
+  }
 }
 
 /** Cache of sessions by source id, so tokens survive across polls in one process. */

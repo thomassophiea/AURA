@@ -64,7 +64,21 @@ export async function requestXcc(
       const errorText = await resp.text().catch(() => resp.statusText);
       return { ok: false, status: resp.status, data: null, errorText };
     }
-    const data = await resp.json();
+    if (method === 'GET') {
+      const data = await resp.json();
+      return { ok: true, status: resp.status, data, errorText: null };
+    }
+    // A write (POST/PUT/DELETE) may come back 200/204 with an empty body —
+    // resp.json() would throw on that, turning a successful write into a
+    // reported failure. Parse defensively; GET keeps the strict path above
+    // unchanged since every controller GET body is JSON.
+    let data = null;
+    try {
+      const text = await resp.text();
+      data = text ? JSON.parse(text) : null;
+    } catch {
+      data = null;
+    }
     return { ok: true, status: resp.status, data, errorText: null };
   } finally {
     if (timer) clearTimeout(timer);
