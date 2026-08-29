@@ -244,6 +244,26 @@ describe('client normalization + search (real controller field names)', () => {
     expect(res.status).toBe(200);
     expect(res.body.total).toBe(2);
   });
+
+  it('stays up when /v1/services throws: 200 with ssid falling back to the serviceId string', async () => {
+    fetchXcc.mockImplementation((path) => {
+      if (path === '/v1/stations') return Promise.resolve(buildStations());
+      if (path === '/v1/services') return Promise.reject(new Error('503 /v1/services: unavailable'));
+      throw new Error(`unexpected path ${path}`);
+    });
+
+    const res = await call(buildApp(), '/api/devices/clients/search');
+    expect(res.status).toBe(200);
+    expect(res.body.items).toHaveLength(buildStations().length);
+    const byMac = Object.fromEntries(res.body.items.map((item) => [item.macAddress, item]));
+    // Names/AP names are unaffected by the services outage.
+    expect(byMac['aa:bb:cc:00:00:01'].name).toBe('toms-laptop');
+    // SSIDs fall back to the raw serviceId string since the name map couldn't be built.
+    expect(byMac['aa:bb:cc:00:00:01'].ssid).toBe('101');
+    expect(byMac['aa:bb:cc:00:00:02'].ssid).toBe('202');
+    // The legacy station carries its own plain `ssid` field, unaffected by the map at all.
+    expect(byMac['aa:bb:cc:00:00:04'].ssid).toBe('Guest-Legacy');
+  });
 });
 
 describe('route-level behavior (mounted router, mocked fetchXcc)', () => {

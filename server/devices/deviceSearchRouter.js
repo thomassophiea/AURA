@@ -205,10 +205,15 @@ export function createDeviceSearchRouter() {
 
     try {
       const items = await getCachedList(cacheKey, async () => {
-        const [data, ssidById] = await Promise.all([
-          fetchXcc('/v1/stations', { authToken, controllerUrl }),
-          fetchServiceNameMap({ authToken, controllerUrl }),
-        ]);
+        // Stations are the source of truth for this endpoint — a failure to
+        // fetch them legitimately 502s. The SSID name lookup is a nice-to-have
+        // enrichment layered on top: `normalizeClient` already falls back to
+        // the raw serviceId string when a name can't be resolved, so a
+        // `/v1/services` outage must not take client search down with it.
+        const data = await fetchXcc('/v1/stations', { authToken, controllerUrl });
+        const ssidById = await fetchServiceNameMap({ authToken, controllerUrl }).catch(
+          () => new Map()
+        );
         return toArray(data).map((client) => normalizeClient(client, ssidById));
       });
       res.json(filterDevices(items, { q, limit, fields: CLIENT_SEARCH_FIELDS }));
