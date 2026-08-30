@@ -238,6 +238,56 @@ describe('APInsightsFullScreen', () => {
     });
   });
 
+  describe('correlation strip', () => {
+    beforeEach(() => {
+      vi.mocked(apiService.apiService.getAccessPointInsights).mockResolvedValue(
+        AP5020_INSIGHTS_3H
+      );
+    });
+
+    const renderFullScreen = () =>
+      render(
+        <APInsightsFullScreen
+          serialNumber={mockSerialNumber}
+          apName={mockApName}
+          onClose={mockOnClose}
+        />
+      );
+
+    it('stays hidden until a chart has been hovered or locked', async () => {
+      renderFullScreen();
+      await waitFor(() => {
+        expect(screen.getByText('Power Consumption')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('correlation-strip')).not.toBeInTheDocument();
+    });
+
+    it('correlates every series at the locked instant', async () => {
+      timelineState.isLocked = true;
+      timelineState.currentTime = SPIKE_TIMESTAMP;
+      renderFullScreen();
+
+      const strip = await screen.findByTestId('correlation-strip');
+      // Values from the fixture at the spike: throughput Total 4,831,190 bps
+      // and the 18670 mW spike rendered as watts.
+      expect(strip).toHaveTextContent('Throughput');
+      expect(strip).toHaveTextContent('4.8 Mbps');
+      expect(strip).toHaveTextContent('Power');
+      expect(strip).toHaveTextContent('18.67 W');
+      expect(strip).toHaveTextContent('Clients');
+      expect(strip).toHaveTextContent('RSS');
+    });
+
+    it('tracks the hover cursor while unlocked and offers the lock hint', async () => {
+      timelineState.isLocked = false;
+      timelineState.currentTime = SPIKE_TIMESTAMP;
+      renderFullScreen();
+
+      const strip = await screen.findByTestId('correlation-strip');
+      expect(strip).toHaveTextContent('Click a chart to lock this moment');
+    });
+  });
+
   describe('power context card', () => {
     beforeEach(() => {
       vi.mocked(apiService.apiService.getAccessPointInsights).mockResolvedValue(

@@ -52,6 +52,7 @@ import { SelectedRangeLabel } from './SelectedRangeLabel';
 import { TimelineControls } from './timeline';
 import { PowerChart } from './insights/PowerChart';
 import { PowerContextCard } from './insights/PowerContextCard';
+import { CorrelationStrip, type CorrelationStripItem } from './insights/CorrelationStrip';
 import { buildPowerContext, derivePowerLevers } from '../services/powerAnalysis';
 
 interface APInsightsProps {
@@ -518,6 +519,95 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
     return transformReportData(report, duration);
   }, [insights, duration]);
 
+  // The strip readouts at the cursor time — one value per chart, so a spike on
+  // any chart can be read against every other series without scrolling. Tracks
+  // the hover cursor live; freezes when the timeline is locked.
+  const correlationItems = useMemo((): CorrelationStripItem[] => {
+    const t = timeline.currentTime;
+    if (t === null) return [];
+
+    const items: CorrelationStripItem[] = [];
+
+    const throughput = getValueAtTimestamp(throughputData, t, ['Total']).Total;
+    if (throughput !== null) {
+      items.push({
+        key: 'throughput',
+        label: 'Throughput',
+        value: formatValue(throughput, 'bps'),
+        color: CHART_COLORS.blue,
+      });
+    }
+
+    const powerW = getValueAtTimestamp(powerData, t, ['Power Consumption'])['Power Consumption'];
+    if (powerW !== null) {
+      items.push({
+        key: 'power',
+        label: 'Power',
+        value: `${powerW.toFixed(2)} W`,
+        color: CHART_COLORS.orange,
+      });
+    }
+
+    const clients = getValueAtTimestamp(clientData, t, ['tntUniqueUsers']).tntUniqueUsers;
+    if (clients !== null) {
+      items.push({
+        key: 'clients',
+        label: 'Clients',
+        value: clients.toFixed(0),
+        color: CHART_COLORS.purple,
+      });
+    }
+
+    const rss = getValueAtTimestamp(rssData, t, ['Rss']).Rss;
+    if (rss !== null) {
+      items.push({ key: 'rss', label: 'RSS', value: `${rss.toFixed(0)} dBm`, color: CHART_COLORS.cyan });
+    }
+
+    // Busy airtime = everything that is not "Available". Falls back to
+    // 100 − Available when the report omits the busy components.
+    const busyPercent = (row: Record<string, number | null>): number | null => {
+      const parts = [row.ClientData, row.CoChannel, row.Interference].filter(
+        (v): v is number => typeof v === 'number' && !Number.isNaN(v)
+      );
+      if (parts.length > 0) return parts.reduce((sum, v) => sum + v, 0);
+      return typeof row.Available === 'number' ? Math.max(0, 100 - row.Available) : null;
+    };
+    const utilFields = ['Available', 'ClientData', 'CoChannel', 'Interference'];
+    const busy5 = busyPercent(getValueAtTimestamp(channelUtil5Data, t, utilFields));
+    if (busy5 !== null) {
+      items.push({ key: 'util5', label: '5 GHz busy', value: `${busy5.toFixed(0)}%`, color: CHART_COLORS.warning });
+    }
+    const busy24 = busyPercent(getValueAtTimestamp(channelUtil24Data, t, utilFields));
+    if (busy24 !== null) {
+      items.push({ key: 'util24', label: '2.4 GHz busy', value: `${busy24.toFixed(0)}%`, color: CHART_COLORS.warning });
+    }
+
+    // Noise is negative dBm; the highest (least negative) radio is the worst.
+    const noiseRow = getValueAtTimestamp(noiseData, t, ['R1', 'R2', 'R3']);
+    const noiseValues = [noiseRow.R1, noiseRow.R2, noiseRow.R3].filter(
+      (v): v is number => typeof v === 'number' && !Number.isNaN(v)
+    );
+    if (noiseValues.length > 0) {
+      items.push({
+        key: 'noise',
+        label: 'Noise (worst)',
+        value: `${Math.max(...noiseValues).toFixed(0)} dBm`,
+        color: CHART_COLORS.pink,
+      });
+    }
+
+    return items;
+  }, [
+    timeline.currentTime,
+    throughputData,
+    powerData,
+    clientData,
+    rssData,
+    channelUtil5Data,
+    channelUtil24Data,
+    noiseData,
+  ]);
+
   // Define all charts with their data - charts with data appear first, empty charts are hidden
   const chartConfigs = useMemo(() => {
     const configs = [
@@ -590,12 +680,13 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
 
     switch (config.id) {
       case 'throughput': {
+        // Chart rows are keyed by the controller's statName casing.
         const lockedThroughputValues =
           timeline.isLocked && timeline.currentTime !== null
             ? getValueAtTimestamp(throughputData, timeline.currentTime, [
-                'total',
-                'upload',
-                'download',
+                'Total',
+                'Upload',
+                'Download',
               ])
             : null;
         return (
@@ -605,22 +696,22 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                 <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
                 {lockedThroughputValues && (
                   <div className="flex gap-3 text-xs">
-                    {lockedThroughputValues.total !== null && (
+                    {lockedThroughputValues.Total !== null && (
                       <Badge variant="secondary" className="font-mono">
                         <span className="text-blue-500 font-semibold mr-1">Total:</span>{' '}
-                        {formatValue(lockedThroughputValues.total, 'bps')}
+                        {formatValue(lockedThroughputValues.Total, 'bps')}
                       </Badge>
                     )}
-                    {lockedThroughputValues.upload !== null && (
+                    {lockedThroughputValues.Upload !== null && (
                       <Badge variant="secondary" className="font-mono">
                         <span className="text-cyan-500 font-semibold mr-1">Up:</span>{' '}
-                        {formatValue(lockedThroughputValues.upload, 'bps')}
+                        {formatValue(lockedThroughputValues.Upload, 'bps')}
                       </Badge>
                     )}
-                    {lockedThroughputValues.download !== null && (
+                    {lockedThroughputValues.Download !== null && (
                       <Badge variant="secondary" className="font-mono">
                         <span className="text-pink-500 font-semibold mr-1">Down:</span>{' '}
-                        {formatValue(lockedThroughputValues.download, 'bps')}
+                        {formatValue(lockedThroughputValues.Download, 'bps')}
                       </Badge>
                     )}
                   </div>
@@ -1453,6 +1544,15 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
             timeline.syncFromScope('client-insights');
           }}
           sourceLabel="Client Insights"
+        />
+
+        {/* Cross-chart readout at the cursor time — pinned above the scroll
+            area so a locked power spike can be read against clients,
+            throughput, RSS, utilization and noise without scrolling. */}
+        <CorrelationStrip
+          timestamp={timeline.currentTime}
+          isLocked={timeline.isLocked}
+          items={correlationItems}
         />
 
         {/* Content */}
