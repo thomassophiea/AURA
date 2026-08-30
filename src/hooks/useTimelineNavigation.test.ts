@@ -103,6 +103,51 @@ describe('useTimelineNavigation', () => {
     expect(b.result.current.currentTime).toBeNull();
   });
 
+  it('does not re-publish an unchanged timestamp (hover on the same bucket)', () => {
+    let renders = 0;
+    const { result } = renderHook(() => {
+      renders += 1;
+      return useTimelineNavigation('client-insights');
+    });
+    act(() => result.current.resetTimeline());
+    act(() => result.current.setCurrentTime(123));
+    const rendersAfterFirst = renders;
+    act(() => result.current.setCurrentTime(123));
+    act(() => result.current.setCurrentTime(123));
+    expect(renders).toBe(rendersAfterFirst);
+    expect(result.current.currentTime).toBe(123);
+  });
+
+  it('ignoreUnlockedCursorMoves skips hover re-renders but delivers lock changes', () => {
+    let chartRenders = 0;
+    const charts = renderHook(() => {
+      chartRenders += 1;
+      return useTimelineNavigation('client-insights', { ignoreUnlockedCursorMoves: true });
+    });
+    const live = renderHook(() => useTimelineNavigation('client-insights'));
+    act(() => live.result.current.resetTimeline());
+
+    const baseline = chartRenders;
+    act(() => live.result.current.setCurrentTime(100));
+    act(() => live.result.current.setCurrentTime(200));
+    act(() => live.result.current.setCurrentTime(300));
+    // The live subscriber tracked the cursor; the chart subscriber kept its
+    // previous state. (React allows one extra render before bailing out on a
+    // same-state set, so the count is bounded, not zero.)
+    expect(live.result.current.currentTime).toBe(300);
+    expect(chartRenders - baseline).toBeLessThanOrEqual(1);
+    expect(charts.result.current.currentTime).not.toBe(300);
+
+    // Locking must reach the chart subscriber, carrying the locked time.
+    act(() => live.result.current.toggleLock());
+    expect(charts.result.current.isLocked).toBe(true);
+    expect(charts.result.current.currentTime).toBe(300);
+
+    // Unlock propagates too.
+    act(() => live.result.current.toggleLock());
+    expect(charts.result.current.isLocked).toBe(false);
+  });
+
   it('syncFromScope copies state from another scope', () => {
     const a = renderHook(() => useTimelineNavigation('client-insights'));
     const b = renderHook(() => useTimelineNavigation('ap-insights'));

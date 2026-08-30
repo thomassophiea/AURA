@@ -49,27 +49,56 @@ function setState(scope: TimelineScope, updates: Partial<TimelineState>): void {
   notifyListeners(scope);
 }
 
+interface UseTimelineNavigationOptions {
+  /**
+   * Don't re-render this subscriber for cursor moves while unlocked. For a
+   * component that only renders locked-cursor UI (a chart grid with a pinned
+   * reference line), hover tracking then costs nothing: recharts' native
+   * synced tooltip cursor is the live indicator, and heavy charts re-render
+   * only on lock/unlock, window-drag, or data changes. Live readouts (the
+   * timeline controls, the correlation strip) subscribe without this.
+   */
+  ignoreUnlockedCursorMoves?: boolean;
+}
+
 /**
  * Hook for correlated timeline navigation across charts
  * Provides synchronized cursor, time window selection, and lock functionality
  * State is scoped per page (client-insights vs ap-insights)
  */
-export function useTimelineNavigation(scope: TimelineScope) {
+export function useTimelineNavigation(
+  scope: TimelineScope,
+  options?: UseTimelineNavigationOptions
+) {
   const [state, setLocalState] = useState<TimelineState>(() => getState(scope));
   const rafRef = useRef<number | null>(null);
   const isDraggingRef = useRef(false);
+  const ignoreUnlockedCursorMoves = options?.ignoreUnlockedCursorMoves ?? false;
 
   // Subscribe to state changes
   useEffect(() => {
     const listener = () => {
-      setLocalState(getState(scope));
+      const next = getState(scope);
+      setLocalState((prev) => {
+        // While unlocked with the window untouched, the only thing that can
+        // differ is the hover cursor — skip it for subscribers that opted out.
+        if (
+          ignoreUnlockedCursorMoves &&
+          !next.isLocked &&
+          !prev.isLocked &&
+          prev.timeWindow === next.timeWindow
+        ) {
+          return prev;
+        }
+        return next;
+      });
     };
 
     listeners[scope].add(listener);
     return () => {
       listeners[scope].delete(listener);
     };
-  }, [scope]);
+  }, [scope, ignoreUnlockedCursorMoves]);
 
   // Set current time (throttled with requestAnimationFrame)
   const setCurrentTime = useCallback(
@@ -80,7 +109,10 @@ export function useTimelineNavigation(scope: TimelineScope) {
 
       rafRef.current = requestAnimationFrame(() => {
         const currentState = getState(scope);
-        if (!currentState.isLocked) {
+        // Skip identical values: recharts snaps the hover label to data
+        // points, so most mousemove frames repeat the previous timestamp, and
+        // publishing them re-rendered every chart on every frame.
+        if (!currentState.isLocked && currentState.currentTime !== timestamp) {
           setState(scope, { currentTime: timestamp });
         }
         rafRef.current = null;
@@ -111,7 +143,7 @@ export function useTimelineNavigation(scope: TimelineScope) {
     (timestamp: number) => {
       if (isDraggingRef.current) {
         const currentState = getState(scope);
-        if (currentState.timeWindow.start !== null) {
+        if (currentState.timeWindow.start !== null && currentState.timeWindow.end !== timestamp) {
           setState(scope, {
             timeWindow: { ...currentState.timeWindow, end: timestamp },
           });

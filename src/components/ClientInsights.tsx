@@ -52,7 +52,7 @@ import { COMPACT_TOOLTIP_STYLE } from '../lib/chartStyle';
 import { timelineChartHandlers } from '../lib/timelineChartEvents';
 import { TimeRangeSelector } from './TimeRangeSelector';
 import { SelectedRangeLabel } from './SelectedRangeLabel';
-import { TimelineControls } from './timeline';
+import { LiveTimelineControls } from './timeline';
 
 interface ClientInsightsProps {
   macAddress: string;
@@ -404,7 +404,9 @@ export function ClientInsightsFullScreen({
   const duration = controllerDurationFor(range) ?? '24H';
 
   // Timeline navigation hook
-  const timeline = useTimelineNavigation('client-insights');
+  // Charts render only locked-cursor UI, so hover tracking must not
+  // re-render them — the timeline controls subscribe live on their own.
+  const timeline = useTimelineNavigation('client-insights', { ignoreUnlockedCursorMoves: true });
 
   // Helper function to format X-axis ticks
   const formatXAxisTick = (timestamp: number, duration: string): string => {
@@ -651,12 +653,12 @@ export function ClientInsightsFullScreen({
                       contentStyle={COMPACT_TOOLTIP_STYLE}
                     />
                     <Legend />
-                    {timeline.currentTime !== null && (
+                    {timeline.isLocked && timeline.currentTime !== null && (
                       <ReferenceLine
                         x={timeline.currentTime}
-                        stroke={timeline.isLocked ? TIMELINE_COLORS.cursorLocked : TIMELINE_COLORS.cursorUnlocked}
-                        strokeWidth={timeline.isLocked ? 2 : 1.5}
-                        strokeDasharray={timeline.isLocked ? TIMELINE_COLORS.cursorLockedDasharray : TIMELINE_COLORS.cursorUnlockedDasharray}
+                        stroke={TIMELINE_COLORS.cursorLocked}
+                        strokeWidth={2}
+                        strokeDasharray={TIMELINE_COLORS.cursorLockedDasharray}
                       />
                     )}
                     {timeline.timeWindow.start !== null && timeline.timeWindow.end !== null && (
@@ -749,12 +751,12 @@ export function ClientInsightsFullScreen({
                       contentStyle={COMPACT_TOOLTIP_STYLE}
                     />
                     <Legend />
-                    {timeline.currentTime !== null && (
+                    {timeline.isLocked && timeline.currentTime !== null && (
                       <ReferenceLine
                         x={timeline.currentTime}
-                        stroke={timeline.isLocked ? TIMELINE_COLORS.cursorLocked : TIMELINE_COLORS.cursorUnlocked}
-                        strokeWidth={timeline.isLocked ? 2 : 1.5}
-                        strokeDasharray={timeline.isLocked ? TIMELINE_COLORS.cursorLockedDasharray : TIMELINE_COLORS.cursorUnlockedDasharray}
+                        stroke={TIMELINE_COLORS.cursorLocked}
+                        strokeWidth={2}
+                        strokeDasharray={TIMELINE_COLORS.cursorLockedDasharray}
                       />
                     )}
                     {timeline.timeWindow.start !== null && timeline.timeWindow.end !== null && (
@@ -897,12 +899,12 @@ export function ClientInsightsFullScreen({
                       contentStyle={COMPACT_TOOLTIP_STYLE}
                     />
                     <Legend />
-                    {timeline.currentTime !== null && (
+                    {timeline.isLocked && timeline.currentTime !== null && (
                       <ReferenceLine
                         x={timeline.currentTime}
-                        stroke={timeline.isLocked ? TIMELINE_COLORS.cursorLocked : TIMELINE_COLORS.cursorUnlocked}
-                        strokeWidth={timeline.isLocked ? 2 : 1.5}
-                        strokeDasharray={timeline.isLocked ? TIMELINE_COLORS.cursorLockedDasharray : TIMELINE_COLORS.cursorUnlockedDasharray}
+                        stroke={TIMELINE_COLORS.cursorLocked}
+                        strokeWidth={2}
+                        strokeDasharray={TIMELINE_COLORS.cursorLockedDasharray}
                       />
                     )}
                     {timeline.timeWindow.start !== null && timeline.timeWindow.end !== null && (
@@ -979,12 +981,12 @@ export function ClientInsightsFullScreen({
                     <YAxis tick={{ fontSize: 11 }} domain={[0, 100]} width={40} />
                     <Tooltip labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
                     <Legend />
-                    {timeline.currentTime !== null && (
+                    {timeline.isLocked && timeline.currentTime !== null && (
                       <ReferenceLine
                         x={timeline.currentTime}
-                        stroke={timeline.isLocked ? TIMELINE_COLORS.cursorLocked : TIMELINE_COLORS.cursorUnlocked}
-                        strokeWidth={timeline.isLocked ? 2 : 1.5}
-                        strokeDasharray={timeline.isLocked ? TIMELINE_COLORS.cursorLockedDasharray : TIMELINE_COLORS.cursorUnlockedDasharray}
+                        stroke={TIMELINE_COLORS.cursorLocked}
+                        strokeWidth={2}
+                        strokeDasharray={TIMELINE_COLORS.cursorLockedDasharray}
                       />
                     )}
                     {timeline.timeWindow.start !== null && timeline.timeWindow.end !== null && (
@@ -1074,12 +1076,12 @@ export function ClientInsightsFullScreen({
                       contentStyle={COMPACT_TOOLTIP_STYLE}
                     />
                     <Legend />
-                    {timeline.currentTime !== null && (
+                    {timeline.isLocked && timeline.currentTime !== null && (
                       <ReferenceLine
                         x={timeline.currentTime}
-                        stroke={timeline.isLocked ? TIMELINE_COLORS.cursorLocked : TIMELINE_COLORS.cursorUnlocked}
-                        strokeWidth={timeline.isLocked ? 2 : 1.5}
-                        strokeDasharray={timeline.isLocked ? TIMELINE_COLORS.cursorLockedDasharray : TIMELINE_COLORS.cursorUnlockedDasharray}
+                        stroke={TIMELINE_COLORS.cursorLocked}
+                        strokeWidth={2}
+                        strokeDasharray={TIMELINE_COLORS.cursorLockedDasharray}
                       />
                     )}
                     {timeline.timeWindow.start !== null && timeline.timeWindow.end !== null && (
@@ -1169,12 +1171,12 @@ export function ClientInsightsFullScreen({
                       contentStyle={COMPACT_TOOLTIP_STYLE}
                     />
                     <Legend />
-                    {timeline.currentTime !== null && (
+                    {timeline.isLocked && timeline.currentTime !== null && (
                       <ReferenceLine
                         x={timeline.currentTime}
-                        stroke={timeline.isLocked ? TIMELINE_COLORS.cursorLocked : TIMELINE_COLORS.cursorUnlocked}
-                        strokeWidth={timeline.isLocked ? 2 : 1.5}
-                        strokeDasharray={timeline.isLocked ? TIMELINE_COLORS.cursorLockedDasharray : TIMELINE_COLORS.cursorUnlockedDasharray}
+                        stroke={TIMELINE_COLORS.cursorLocked}
+                        strokeWidth={2}
+                        strokeDasharray={TIMELINE_COLORS.cursorLockedDasharray}
                       />
                     )}
                     {timeline.timeWindow.start !== null && timeline.timeWindow.end !== null && (
@@ -1269,12 +1271,12 @@ export function ClientInsightsFullScreen({
                       contentStyle={COMPACT_TOOLTIP_STYLE}
                     />
                     <Legend />
-                    {timeline.currentTime !== null && (
+                    {timeline.isLocked && timeline.currentTime !== null && (
                       <ReferenceLine
                         x={timeline.currentTime}
-                        stroke={timeline.isLocked ? TIMELINE_COLORS.cursorLocked : TIMELINE_COLORS.cursorUnlocked}
-                        strokeWidth={timeline.isLocked ? 2 : 1.5}
-                        strokeDasharray={timeline.isLocked ? TIMELINE_COLORS.cursorLockedDasharray : TIMELINE_COLORS.cursorUnlockedDasharray}
+                        stroke={TIMELINE_COLORS.cursorLocked}
+                        strokeWidth={2}
+                        strokeDasharray={TIMELINE_COLORS.cursorLockedDasharray}
                       />
                     )}
                     {timeline.timeWindow.start !== null && timeline.timeWindow.end !== null && (
@@ -1364,12 +1366,12 @@ export function ClientInsightsFullScreen({
                       contentStyle={COMPACT_TOOLTIP_STYLE}
                     />
                     <Legend />
-                    {timeline.currentTime !== null && (
+                    {timeline.isLocked && timeline.currentTime !== null && (
                       <ReferenceLine
                         x={timeline.currentTime}
-                        stroke={timeline.isLocked ? TIMELINE_COLORS.cursorLocked : TIMELINE_COLORS.cursorUnlocked}
-                        strokeWidth={timeline.isLocked ? 2 : 1.5}
-                        strokeDasharray={timeline.isLocked ? TIMELINE_COLORS.cursorLockedDasharray : TIMELINE_COLORS.cursorUnlockedDasharray}
+                        stroke={TIMELINE_COLORS.cursorLocked}
+                        strokeWidth={2}
+                        strokeDasharray={TIMELINE_COLORS.cursorLockedDasharray}
                       />
                     )}
                     {timeline.timeWindow.start !== null && timeline.timeWindow.end !== null && (
@@ -1459,12 +1461,12 @@ export function ClientInsightsFullScreen({
                       contentStyle={COMPACT_TOOLTIP_STYLE}
                     />
                     <Legend />
-                    {timeline.currentTime !== null && (
+                    {timeline.isLocked && timeline.currentTime !== null && (
                       <ReferenceLine
                         x={timeline.currentTime}
-                        stroke={timeline.isLocked ? TIMELINE_COLORS.cursorLocked : TIMELINE_COLORS.cursorUnlocked}
-                        strokeWidth={timeline.isLocked ? 2 : 1.5}
-                        strokeDasharray={timeline.isLocked ? TIMELINE_COLORS.cursorLockedDasharray : TIMELINE_COLORS.cursorUnlockedDasharray}
+                        stroke={TIMELINE_COLORS.cursorLocked}
+                        strokeWidth={2}
+                        strokeDasharray={TIMELINE_COLORS.cursorLockedDasharray}
                       />
                     )}
                     {timeline.timeWindow.start !== null && timeline.timeWindow.end !== null && (
@@ -1566,12 +1568,12 @@ export function ClientInsightsFullScreen({
                     <YAxis tick={{ fontSize: 11 }} width={40} />
                     <Tooltip labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
                     <Legend />
-                    {timeline.currentTime !== null && (
+                    {timeline.isLocked && timeline.currentTime !== null && (
                       <ReferenceLine
                         x={timeline.currentTime}
-                        stroke={timeline.isLocked ? TIMELINE_COLORS.cursorLocked : TIMELINE_COLORS.cursorUnlocked}
-                        strokeWidth={timeline.isLocked ? 2 : 1.5}
-                        strokeDasharray={timeline.isLocked ? TIMELINE_COLORS.cursorLockedDasharray : TIMELINE_COLORS.cursorUnlockedDasharray}
+                        stroke={TIMELINE_COLORS.cursorLocked}
+                        strokeWidth={2}
+                        strokeDasharray={TIMELINE_COLORS.cursorLockedDasharray}
                       />
                     )}
                     {timeline.timeWindow.start !== null && timeline.timeWindow.end !== null && (
@@ -1671,12 +1673,12 @@ export function ClientInsightsFullScreen({
                       contentStyle={COMPACT_TOOLTIP_STYLE}
                     />
                     <Legend />
-                    {timeline.currentTime !== null && (
+                    {timeline.isLocked && timeline.currentTime !== null && (
                       <ReferenceLine
                         x={timeline.currentTime}
-                        stroke={timeline.isLocked ? TIMELINE_COLORS.cursorLocked : TIMELINE_COLORS.cursorUnlocked}
-                        strokeWidth={timeline.isLocked ? 2 : 1.5}
-                        strokeDasharray={timeline.isLocked ? TIMELINE_COLORS.cursorLockedDasharray : TIMELINE_COLORS.cursorUnlockedDasharray}
+                        stroke={TIMELINE_COLORS.cursorLocked}
+                        strokeWidth={2}
+                        strokeDasharray={TIMELINE_COLORS.cursorLockedDasharray}
                       />
                     )}
                     {timeline.timeWindow.start !== null && timeline.timeWindow.end !== null && (
@@ -1758,16 +1760,9 @@ export function ClientInsightsFullScreen({
         </div>
 
         {/* Timeline Controls */}
-        <TimelineControls
-          currentTime={timeline.currentTime}
-          isLocked={timeline.isLocked}
-          hasTimeWindow={timeline.timeWindow.start !== null && timeline.timeWindow.end !== null}
-          onToggleLock={timeline.toggleLock}
-          onClearTimeWindow={timeline.clearTimeWindow}
-          onCopyTimeline={() => {
-            // Copy timeline FROM ap-insights TO client-insights
-            timeline.syncFromScope('ap-insights');
-          }}
+        <LiveTimelineControls
+          scope="client-insights"
+          copyFromScope="ap-insights"
           sourceLabel="AP Insights"
         />
 

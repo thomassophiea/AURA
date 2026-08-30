@@ -50,7 +50,7 @@ import { useSelectedTimeRange } from '../hooks/useSelectedTimeRange';
 import { useApInsightsData } from '../hooks/useApInsightsData';
 import { TimeRangeSelector } from './TimeRangeSelector';
 import { SelectedRangeLabel } from './SelectedRangeLabel';
-import { TimelineControls } from './timeline';
+import { LiveTimelineControls } from './timeline';
 import { PowerChart } from './insights/PowerChart';
 import { PowerContextCard } from './insights/PowerContextCard';
 import { CorrelationStrip, type CorrelationStripItem } from './insights/CorrelationStrip';
@@ -388,6 +388,127 @@ export function APInsights({ serialNumber, apName: _apName, onOpenFullScreen }: 
   );
 }
 
+interface ApInsightsDatasets {
+  throughputData: any[];
+  powerData: any[];
+  clientData: any[];
+  rssData: any[];
+  channelUtil5Data: any[];
+  channelUtil24Data: any[];
+  noiseData: any[];
+}
+
+/**
+ * The strip readouts at the cursor time — one value per chart, so a spike on
+ * any chart can be read against every other series without scrolling. Owns a
+ * live timeline subscription: hover tracking re-renders only this readout,
+ * never the chart grid (which subscribes with ignoreUnlockedCursorMoves).
+ */
+function LiveCorrelationStrip({
+  throughputData,
+  powerData,
+  clientData,
+  rssData,
+  channelUtil5Data,
+  channelUtil24Data,
+  noiseData,
+}: ApInsightsDatasets) {
+  const timeline = useTimelineNavigation('ap-insights');
+  const items = useMemo((): CorrelationStripItem[] => {
+    const t = timeline.currentTime;
+    if (t === null) return [];
+
+    const items: CorrelationStripItem[] = [];
+
+    const throughput = getValueAtTimestamp(throughputData, t, ['Total']).Total;
+    if (throughput !== null) {
+      items.push({
+        key: 'throughput',
+        label: 'Throughput',
+        value: formatValue(throughput, 'bps'),
+        color: CHART_COLORS.blue,
+      });
+    }
+
+    const powerW = getValueAtTimestamp(powerData, t, ['Power Consumption'])['Power Consumption'];
+    if (powerW !== null) {
+      items.push({
+        key: 'power',
+        label: 'Power',
+        value: `${powerW.toFixed(2)} W`,
+        color: CHART_COLORS.orange,
+      });
+    }
+
+    const clients = getValueAtTimestamp(clientData, t, ['tntUniqueUsers']).tntUniqueUsers;
+    if (clients !== null) {
+      items.push({
+        key: 'clients',
+        label: 'Clients',
+        value: clients.toFixed(0),
+        color: CHART_COLORS.purple,
+      });
+    }
+
+    const rss = getValueAtTimestamp(rssData, t, ['Rss']).Rss;
+    if (rss !== null) {
+      items.push({ key: 'rss', label: 'RSS', value: `${rss.toFixed(0)} dBm`, color: CHART_COLORS.cyan });
+    }
+
+    // Busy airtime = everything that is not "Available". Falls back to
+    // 100 − Available when the report omits the busy components.
+    const busyPercent = (row: Record<string, number | null>): number | null => {
+      const parts = [row.ClientData, row.CoChannel, row.Interference].filter(
+        (v): v is number => typeof v === 'number' && !Number.isNaN(v)
+      );
+      if (parts.length > 0) return parts.reduce((sum, v) => sum + v, 0);
+      return typeof row.Available === 'number' ? Math.max(0, 100 - row.Available) : null;
+    };
+    const utilFields = ['Available', 'ClientData', 'CoChannel', 'Interference'];
+    const busy5 = busyPercent(getValueAtTimestamp(channelUtil5Data, t, utilFields));
+    if (busy5 !== null) {
+      items.push({ key: 'util5', label: '5 GHz busy', value: `${busy5.toFixed(0)}%`, color: CHART_COLORS.warning });
+    }
+    const busy24 = busyPercent(getValueAtTimestamp(channelUtil24Data, t, utilFields));
+    if (busy24 !== null) {
+      items.push({ key: 'util24', label: '2.4 GHz busy', value: `${busy24.toFixed(0)}%`, color: CHART_COLORS.warning });
+    }
+
+    // Noise is negative dBm; the highest (least negative) radio is the worst.
+    const noiseRow = getValueAtTimestamp(noiseData, t, ['R1', 'R2', 'R3']);
+    const noiseValues = [noiseRow.R1, noiseRow.R2, noiseRow.R3].filter(
+      (v): v is number => typeof v === 'number' && !Number.isNaN(v)
+    );
+    if (noiseValues.length > 0) {
+      items.push({
+        key: 'noise',
+        label: 'Noise (worst)',
+        value: `${Math.max(...noiseValues).toFixed(0)} dBm`,
+        color: CHART_COLORS.pink,
+      });
+    }
+
+    return items;
+  }, [
+    timeline.currentTime,
+    throughputData,
+    powerData,
+    clientData,
+    rssData,
+    channelUtil5Data,
+    channelUtil24Data,
+    noiseData,
+  ]);
+
+  return (
+    <CorrelationStrip
+      timestamp={timeline.currentTime}
+      isLocked={timeline.isLocked}
+      items={items}
+    />
+  );
+}
+
 // Full-screen AP Insights component
 interface APInsightsFullScreenProps {
   serialNumber: string;
@@ -426,7 +547,9 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
   const duration = servedFromHistory ? '24H' : controllerDurationFor(range) ?? '24H';
 
   // Timeline navigation hook
-  const timeline = useTimelineNavigation('ap-insights');
+  // Charts render only locked-cursor UI, so hover tracking must not
+  // re-render them — the live readouts subscribe on their own below.
+  const timeline = useTimelineNavigation('ap-insights', { ignoreUnlockedCursorMoves: true });
 
   // Helper function to format X-axis ticks
   const formatXAxisTick = (timestamp: number, duration: string): string => {
@@ -519,95 +642,6 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
     const report = insights?.noisePerRadio?.[0];
     return transformReportData(report, duration);
   }, [insights, duration]);
-
-  // The strip readouts at the cursor time — one value per chart, so a spike on
-  // any chart can be read against every other series without scrolling. Tracks
-  // the hover cursor live; freezes when the timeline is locked.
-  const correlationItems = useMemo((): CorrelationStripItem[] => {
-    const t = timeline.currentTime;
-    if (t === null) return [];
-
-    const items: CorrelationStripItem[] = [];
-
-    const throughput = getValueAtTimestamp(throughputData, t, ['Total']).Total;
-    if (throughput !== null) {
-      items.push({
-        key: 'throughput',
-        label: 'Throughput',
-        value: formatValue(throughput, 'bps'),
-        color: CHART_COLORS.blue,
-      });
-    }
-
-    const powerW = getValueAtTimestamp(powerData, t, ['Power Consumption'])['Power Consumption'];
-    if (powerW !== null) {
-      items.push({
-        key: 'power',
-        label: 'Power',
-        value: `${powerW.toFixed(2)} W`,
-        color: CHART_COLORS.orange,
-      });
-    }
-
-    const clients = getValueAtTimestamp(clientData, t, ['tntUniqueUsers']).tntUniqueUsers;
-    if (clients !== null) {
-      items.push({
-        key: 'clients',
-        label: 'Clients',
-        value: clients.toFixed(0),
-        color: CHART_COLORS.purple,
-      });
-    }
-
-    const rss = getValueAtTimestamp(rssData, t, ['Rss']).Rss;
-    if (rss !== null) {
-      items.push({ key: 'rss', label: 'RSS', value: `${rss.toFixed(0)} dBm`, color: CHART_COLORS.cyan });
-    }
-
-    // Busy airtime = everything that is not "Available". Falls back to
-    // 100 − Available when the report omits the busy components.
-    const busyPercent = (row: Record<string, number | null>): number | null => {
-      const parts = [row.ClientData, row.CoChannel, row.Interference].filter(
-        (v): v is number => typeof v === 'number' && !Number.isNaN(v)
-      );
-      if (parts.length > 0) return parts.reduce((sum, v) => sum + v, 0);
-      return typeof row.Available === 'number' ? Math.max(0, 100 - row.Available) : null;
-    };
-    const utilFields = ['Available', 'ClientData', 'CoChannel', 'Interference'];
-    const busy5 = busyPercent(getValueAtTimestamp(channelUtil5Data, t, utilFields));
-    if (busy5 !== null) {
-      items.push({ key: 'util5', label: '5 GHz busy', value: `${busy5.toFixed(0)}%`, color: CHART_COLORS.warning });
-    }
-    const busy24 = busyPercent(getValueAtTimestamp(channelUtil24Data, t, utilFields));
-    if (busy24 !== null) {
-      items.push({ key: 'util24', label: '2.4 GHz busy', value: `${busy24.toFixed(0)}%`, color: CHART_COLORS.warning });
-    }
-
-    // Noise is negative dBm; the highest (least negative) radio is the worst.
-    const noiseRow = getValueAtTimestamp(noiseData, t, ['R1', 'R2', 'R3']);
-    const noiseValues = [noiseRow.R1, noiseRow.R2, noiseRow.R3].filter(
-      (v): v is number => typeof v === 'number' && !Number.isNaN(v)
-    );
-    if (noiseValues.length > 0) {
-      items.push({
-        key: 'noise',
-        label: 'Noise (worst)',
-        value: `${Math.max(...noiseValues).toFixed(0)} dBm`,
-        color: CHART_COLORS.pink,
-      });
-    }
-
-    return items;
-  }, [
-    timeline.currentTime,
-    throughputData,
-    powerData,
-    clientData,
-    rssData,
-    channelUtil5Data,
-    channelUtil24Data,
-    noiseData,
-  ]);
 
   // Define all charts with their data - charts with data appear first, empty charts are hidden
   const chartConfigs = useMemo(() => {
@@ -751,12 +785,12 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                       contentStyle={COMPACT_TOOLTIP_STYLE}
                     />
                     <Legend />
-                    {timeline.currentTime !== null && (
+                    {timeline.isLocked && timeline.currentTime !== null && (
                       <ReferenceLine
                         x={timeline.currentTime}
-                        stroke={timeline.isLocked ? TIMELINE_COLORS.cursorLocked : TIMELINE_COLORS.cursorUnlocked}
-                        strokeWidth={timeline.isLocked ? 2 : 1.5}
-                        strokeDasharray={timeline.isLocked ? TIMELINE_COLORS.cursorLockedDasharray : TIMELINE_COLORS.cursorUnlockedDasharray}
+                        stroke={TIMELINE_COLORS.cursorLocked}
+                        strokeWidth={2}
+                        strokeDasharray={TIMELINE_COLORS.cursorLockedDasharray}
                       />
                     )}
                     {timeline.timeWindow.start !== null && timeline.timeWindow.end !== null && (
@@ -847,12 +881,12 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                     <YAxis tick={{ fontSize: 11 }} width={40} />
                     <Tooltip labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
                     <Legend />
-                    {timeline.currentTime !== null && (
+                    {timeline.isLocked && timeline.currentTime !== null && (
                       <ReferenceLine
                         x={timeline.currentTime}
-                        stroke={timeline.isLocked ? TIMELINE_COLORS.cursorLocked : TIMELINE_COLORS.cursorUnlocked}
-                        strokeWidth={timeline.isLocked ? 2 : 1.5}
-                        strokeDasharray={timeline.isLocked ? TIMELINE_COLORS.cursorLockedDasharray : TIMELINE_COLORS.cursorUnlockedDasharray}
+                        stroke={TIMELINE_COLORS.cursorLocked}
+                        strokeWidth={2}
+                        strokeDasharray={TIMELINE_COLORS.cursorLockedDasharray}
                       />
                     )}
                     {timeline.timeWindow.start !== null && timeline.timeWindow.end !== null && (
@@ -949,12 +983,12 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                       contentStyle={COMPACT_TOOLTIP_STYLE}
                     />
                     <Legend />
-                    {timeline.currentTime !== null && (
+                    {timeline.isLocked && timeline.currentTime !== null && (
                       <ReferenceLine
                         x={timeline.currentTime}
-                        stroke={timeline.isLocked ? TIMELINE_COLORS.cursorLocked : TIMELINE_COLORS.cursorUnlocked}
-                        strokeWidth={timeline.isLocked ? 2 : 1.5}
-                        strokeDasharray={timeline.isLocked ? TIMELINE_COLORS.cursorLockedDasharray : TIMELINE_COLORS.cursorUnlockedDasharray}
+                        stroke={TIMELINE_COLORS.cursorLocked}
+                        strokeWidth={2}
+                        strokeDasharray={TIMELINE_COLORS.cursorLockedDasharray}
                       />
                     )}
                     {timeline.timeWindow.start !== null && timeline.timeWindow.end !== null && (
@@ -1074,12 +1108,12 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                       contentStyle={COMPACT_TOOLTIP_STYLE}
                     />
                     <Legend />
-                    {timeline.currentTime !== null && (
+                    {timeline.isLocked && timeline.currentTime !== null && (
                       <ReferenceLine
                         x={timeline.currentTime}
-                        stroke={timeline.isLocked ? TIMELINE_COLORS.cursorLocked : TIMELINE_COLORS.cursorUnlocked}
-                        strokeWidth={timeline.isLocked ? 2 : 1.5}
-                        strokeDasharray={timeline.isLocked ? TIMELINE_COLORS.cursorLockedDasharray : TIMELINE_COLORS.cursorUnlockedDasharray}
+                        stroke={TIMELINE_COLORS.cursorLocked}
+                        strokeWidth={2}
+                        strokeDasharray={TIMELINE_COLORS.cursorLockedDasharray}
                       />
                     )}
                     {timeline.timeWindow.start !== null && timeline.timeWindow.end !== null && (
@@ -1208,12 +1242,12 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                       contentStyle={COMPACT_TOOLTIP_STYLE}
                     />
                     <Legend />
-                    {timeline.currentTime !== null && (
+                    {timeline.isLocked && timeline.currentTime !== null && (
                       <ReferenceLine
                         x={timeline.currentTime}
-                        stroke={timeline.isLocked ? TIMELINE_COLORS.cursorLocked : TIMELINE_COLORS.cursorUnlocked}
-                        strokeWidth={timeline.isLocked ? 2 : 1.5}
-                        strokeDasharray={timeline.isLocked ? TIMELINE_COLORS.cursorLockedDasharray : TIMELINE_COLORS.cursorUnlockedDasharray}
+                        stroke={TIMELINE_COLORS.cursorLocked}
+                        strokeWidth={2}
+                        strokeDasharray={TIMELINE_COLORS.cursorLockedDasharray}
                       />
                     )}
                     {timeline.timeWindow.start !== null && timeline.timeWindow.end !== null && (
@@ -1322,12 +1356,12 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                       contentStyle={COMPACT_TOOLTIP_STYLE}
                     />
                     <Legend />
-                    {timeline.currentTime !== null && (
+                    {timeline.isLocked && timeline.currentTime !== null && (
                       <ReferenceLine
                         x={timeline.currentTime}
-                        stroke={timeline.isLocked ? TIMELINE_COLORS.cursorLocked : TIMELINE_COLORS.cursorUnlocked}
-                        strokeWidth={timeline.isLocked ? 2 : 1.5}
-                        strokeDasharray={timeline.isLocked ? TIMELINE_COLORS.cursorLockedDasharray : TIMELINE_COLORS.cursorUnlockedDasharray}
+                        stroke={TIMELINE_COLORS.cursorLocked}
+                        strokeWidth={2}
+                        strokeDasharray={TIMELINE_COLORS.cursorLockedDasharray}
                       />
                     )}
                     {timeline.timeWindow.start !== null && timeline.timeWindow.end !== null && (
@@ -1413,27 +1447,24 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
           <SelectedRangeLabel range={range} coverage={selectedCoverage} />
         </div>
 
-        {/* Timeline Controls */}
-        <TimelineControls
-          currentTime={timeline.currentTime}
-          isLocked={timeline.isLocked}
-          hasTimeWindow={timeline.timeWindow.start !== null && timeline.timeWindow.end !== null}
-          onToggleLock={timeline.toggleLock}
-          onClearTimeWindow={timeline.clearTimeWindow}
-          onCopyTimeline={() => {
-            // Copy timeline FROM client-insights TO ap-insights
-            timeline.syncFromScope('client-insights');
-          }}
+        {/* Timeline Controls — live subscription of their own */}
+        <LiveTimelineControls
+          scope="ap-insights"
+          copyFromScope="client-insights"
           sourceLabel="Client Insights"
         />
 
         {/* Cross-chart readout at the cursor time — pinned above the scroll
             area so a locked power spike can be read against clients,
             throughput, RSS, utilization and noise without scrolling. */}
-        <CorrelationStrip
-          timestamp={timeline.currentTime}
-          isLocked={timeline.isLocked}
-          items={correlationItems}
+        <LiveCorrelationStrip
+          throughputData={throughputData}
+          powerData={powerData}
+          clientData={clientData}
+          rssData={rssData}
+          channelUtil5Data={channelUtil5Data}
+          channelUtil24Data={channelUtil24Data}
+          noiseData={noiseData}
         />
 
         {/* Content */}

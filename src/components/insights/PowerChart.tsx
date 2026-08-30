@@ -86,20 +86,15 @@ export function PowerChart({
                 contentStyle={tooltipStyle}
               />
               <Legend />
-              {timeline.currentTime !== null && (
+              {/* Locked marker only — recharts' synced tooltip cursor is the
+                  live tracking indicator, and a second line chasing it a frame
+                  behind reads as jitter. */}
+              {timeline.isLocked && timeline.currentTime !== null && (
                 <ReferenceLine
                   x={timeline.currentTime}
-                  stroke={
-                    timeline.isLocked
-                      ? TIMELINE_COLORS.cursorLocked
-                      : TIMELINE_COLORS.cursorUnlocked
-                  }
-                  strokeWidth={timeline.isLocked ? 2 : 1.5}
-                  strokeDasharray={
-                    timeline.isLocked
-                      ? TIMELINE_COLORS.cursorLockedDasharray
-                      : TIMELINE_COLORS.cursorUnlockedDasharray
-                  }
+                  stroke={TIMELINE_COLORS.cursorLocked}
+                  strokeWidth={2}
+                  strokeDasharray={TIMELINE_COLORS.cursorLockedDasharray}
                 />
               )}
               {timeline.timeWindow.start !== null && timeline.timeWindow.end !== null && (

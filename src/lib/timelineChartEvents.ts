@@ -62,7 +62,9 @@ export function timelineChartHandlers(timeline: Timeline) {
       }
     },
     onMouseMove: (state: unknown) => {
-      if (timeline.isLocked) return;
+      // No lock check here: setCurrentTime no-ops while locked and
+      // updateTimeWindow no-ops outside a drag, so the handlers stay
+      // independent of render-time state.
       const timestamp = chartEventTimestamp(state);
       if (timestamp === null) return;
       timeline.setCurrentTime(timestamp);

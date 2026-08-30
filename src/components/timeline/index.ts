@@ -1,1 +1,1 @@
-export { TimelineControls } from './TimelineControls';
+export { TimelineControls, LiveTimelineControls } from './TimelineControls';

@@ -2,6 +2,7 @@ import { Lock, Unlock, X, Copy, Info } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { useState } from 'react';
+import { useTimelineNavigation, type TimelineScope } from '../../hooks/useTimelineNavigation';
 
 interface TimelineControlsProps {
   currentTime: number | null;
@@ -164,5 +165,33 @@ export function TimelineControls({
         </div>
       )}
     </div>
+  );
+}
+
+interface LiveTimelineControlsProps {
+  /** Timeline scope this control strip reads and drives. */
+  scope: TimelineScope;
+  /** Scope the "Copy to …" action pulls the timeline from. */
+  copyFromScope?: TimelineScope;
+  sourceLabel?: string;
+}
+
+/**
+ * TimelineControls with its own live timeline subscription. The heavy chart
+ * pages subscribe with `ignoreUnlockedCursorMoves` so hover tracking doesn't
+ * re-render their charts; this wrapper keeps the time readout live.
+ */
+export function LiveTimelineControls({ scope, copyFromScope, sourceLabel }: LiveTimelineControlsProps) {
+  const timeline = useTimelineNavigation(scope);
+  return (
+    <TimelineControls
+      currentTime={timeline.currentTime}
+      isLocked={timeline.isLocked}
+      hasTimeWindow={timeline.timeWindow.start !== null && timeline.timeWindow.end !== null}
+      onToggleLock={timeline.toggleLock}
+      onClearTimeWindow={timeline.clearTimeWindow}
+      onCopyTimeline={copyFromScope ? () => timeline.syncFromScope(copyFromScope) : undefined}
+      sourceLabel={sourceLabel}
+    />
   );
 }
