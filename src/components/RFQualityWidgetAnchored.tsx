@@ -30,6 +30,7 @@ import {
   Unlock,
 } from 'lucide-react';
 import { apiService } from '../services/api';
+import { chartEventIndex } from '../lib/timelineChartEvents';
 import { useOperationalContext } from '../hooks/useOperationalContext';
 import { getEnvironmentProfile, type EnvironmentProfileType } from '../config/environmentProfiles';
 import {
@@ -582,15 +583,16 @@ export function RFQualityWidgetAnchored() {
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
                 data={timeSeries}
-                onMouseMove={(e: any) => {
-                  if (e?.activePayload?.[0]?.payload?.timestamp) {
-                    setTimeCursorFromHover(e.activePayload[0].payload.timestamp);
-                  }
+                onMouseMove={(state) => {
+                  // recharts 3 chart events carry the row index, not activePayload.
+                  const idx = chartEventIndex(state);
+                  const ts = idx !== null ? timeSeries[idx]?.timestamp : undefined;
+                  if (ts) setTimeCursorFromHover(ts);
                 }}
-                onClick={(e: any) => {
-                  if (e?.activePayload?.[0]?.payload?.timestamp) {
-                    setTimeCursor(e.activePayload[0].payload.timestamp);
-                  }
+                onClick={(state) => {
+                  const idx = chartEventIndex(state);
+                  const ts = idx !== null ? timeSeries[idx]?.timestamp : undefined;
+                  if (ts) setTimeCursor(ts);
                 }}
               >
                 <defs>

@@ -49,6 +49,7 @@ import { useSelectedTimeRange } from '../hooks/useSelectedTimeRange';
 import { useClientInsightsData } from '../hooks/useClientInsightsData';
 import { controllerDurationFor } from '../lib/timeRange';
 import { COMPACT_TOOLTIP_STYLE } from '../lib/chartStyle';
+import { timelineChartHandlers } from '../lib/timelineChartEvents';
 import { TimeRangeSelector } from './TimeRangeSelector';
 import { SelectedRangeLabel } from './SelectedRangeLabel';
 import { TimelineControls } from './timeline';
@@ -625,27 +626,7 @@ export function ClientInsightsFullScreen({
                     data={throughputData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
-                    onClick={(e: any) => {
-                      // Click to toggle lock at current position
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.toggleLock();
-                      }
-                    }}
-                    onMouseDown={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
-                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
-                      }
-                    }}
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.updateTimeWindow(timestamp);
-                      }
-                    }}
-                    onMouseUp={() => timeline.endTimeWindow()}
+                    {...timelineChartHandlers(timeline)}
                   >
                     <defs>
                       <linearGradient id="colorTotalClient" x1="0" y1="0" x2="0" y2="1">
@@ -742,27 +723,7 @@ export function ClientInsightsFullScreen({
                     data={rfQualityData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
-                    onClick={(e: any) => {
-                      // Click to toggle lock at current position
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.toggleLock();
-                      }
-                    }}
-                    onMouseDown={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
-                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
-                      }
-                    }}
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.updateTimeWindow(timestamp);
-                      }
-                    }}
-                    onMouseUp={() => timeline.endTimeWindow()}
+                    {...timelineChartHandlers(timeline)}
                   >
                     <defs>
                       <linearGradient id="colorRfQuality" x1="0" y1="0" x2="0" y2="1">
@@ -917,27 +878,7 @@ export function ClientInsightsFullScreen({
                     data={appGroupsDetailData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
-                    onClick={(e: any) => {
-                      // Click to toggle lock at current position
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.toggleLock();
-                      }
-                    }}
-                    onMouseDown={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
-                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
-                      }
-                    }}
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.updateTimeWindow(timestamp);
-                      }
-                    }}
-                    onMouseUp={() => timeline.endTimeWindow()}
+                    {...timelineChartHandlers(timeline)}
                   >
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis
@@ -1021,27 +962,7 @@ export function ClientInsightsFullScreen({
                     data={rfqiData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
-                    onClick={(e: any) => {
-                      // Click to toggle lock at current position
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.toggleLock();
-                      }
-                    }}
-                    onMouseDown={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
-                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
-                      }
-                    }}
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.updateTimeWindow(timestamp);
-                      }
-                    }}
-                    onMouseUp={() => timeline.endTimeWindow()}
+                    {...timelineChartHandlers(timeline)}
                   >
                     <defs>
                       <linearGradient id="colorRfqi" x1="0" y1="0" x2="0" y2="1">
@@ -1132,27 +1053,7 @@ export function ClientInsightsFullScreen({
                     data={wirelessRttData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
-                    onClick={(e: any) => {
-                      // Click to toggle lock at current position
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.toggleLock();
-                      }
-                    }}
-                    onMouseDown={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
-                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
-                      }
-                    }}
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.updateTimeWindow(timestamp);
-                      }
-                    }}
-                    onMouseUp={() => timeline.endTimeWindow()}
+                    {...timelineChartHandlers(timeline)}
                   >
                     <defs>
                       <linearGradient id="colorWirelessRtt" x1="0" y1="0" x2="0" y2="1">
@@ -1247,27 +1148,7 @@ export function ClientInsightsFullScreen({
                     data={networkRttData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
-                    onClick={(e: any) => {
-                      // Click to toggle lock at current position
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.toggleLock();
-                      }
-                    }}
-                    onMouseDown={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
-                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
-                      }
-                    }}
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.updateTimeWindow(timestamp);
-                      }
-                    }}
-                    onMouseUp={() => timeline.endTimeWindow()}
+                    {...timelineChartHandlers(timeline)}
                   >
                     <defs>
                       <linearGradient id="colorNetworkRtt" x1="0" y1="0" x2="0" y2="1">
@@ -1362,27 +1243,7 @@ export function ClientInsightsFullScreen({
                     data={rssData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
-                    onClick={(e: any) => {
-                      // Click to toggle lock at current position
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.toggleLock();
-                      }
-                    }}
-                    onMouseDown={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
-                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
-                      }
-                    }}
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.updateTimeWindow(timestamp);
-                      }
-                    }}
-                    onMouseUp={() => timeline.endTimeWindow()}
+                    {...timelineChartHandlers(timeline)}
                   >
                     <defs>
                       <linearGradient id="colorRssClient" x1="0" y1="0" x2="0" y2="1">
@@ -1482,27 +1343,7 @@ export function ClientInsightsFullScreen({
                     data={rxRateData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
-                    onClick={(e: any) => {
-                      // Click to toggle lock at current position
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.toggleLock();
-                      }
-                    }}
-                    onMouseDown={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
-                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
-                      }
-                    }}
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.updateTimeWindow(timestamp);
-                      }
-                    }}
-                    onMouseUp={() => timeline.endTimeWindow()}
+                    {...timelineChartHandlers(timeline)}
                   >
                     <defs>
                       <linearGradient id="colorRxRate" x1="0" y1="0" x2="0" y2="1">
@@ -1597,27 +1438,7 @@ export function ClientInsightsFullScreen({
                     data={txRateData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
-                    onClick={(e: any) => {
-                      // Click to toggle lock at current position
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.toggleLock();
-                      }
-                    }}
-                    onMouseDown={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
-                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
-                      }
-                    }}
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.updateTimeWindow(timestamp);
-                      }
-                    }}
-                    onMouseUp={() => timeline.endTimeWindow()}
+                    {...timelineChartHandlers(timeline)}
                   >
                     <defs>
                       <linearGradient id="colorTxRate" x1="0" y1="0" x2="0" y2="1">
@@ -1734,27 +1555,7 @@ export function ClientInsightsFullScreen({
                     data={eventsData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
-                    onClick={(e: any) => {
-                      // Click to toggle lock at current position
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.toggleLock();
-                      }
-                    }}
-                    onMouseDown={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
-                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
-                      }
-                    }}
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.updateTimeWindow(timestamp);
-                      }
-                    }}
-                    onMouseUp={() => timeline.endTimeWindow()}
+                    {...timelineChartHandlers(timeline)}
                   >
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis
@@ -1849,27 +1650,7 @@ export function ClientInsightsFullScreen({
                     data={dlRetriesData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
-                    onClick={(e: any) => {
-                      // Click to toggle lock at current position
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.toggleLock();
-                      }
-                    }}
-                    onMouseDown={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
-                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
-                      }
-                    }}
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.updateTimeWindow(timestamp);
-                      }
-                    }}
-                    onMouseUp={() => timeline.endTimeWindow()}
+                    {...timelineChartHandlers(timeline)}
                   >
                     <defs>
                       <linearGradient id="colorDlRetries" x1="0" y1="0" x2="0" y2="1">

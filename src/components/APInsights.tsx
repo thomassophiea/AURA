@@ -44,6 +44,7 @@ import {
 } from '../services/api';
 import { controllerDurationFor } from '../lib/timeRange';
 import { COMPACT_TOOLTIP_STYLE } from '../lib/chartStyle';
+import { timelineChartHandlers } from '../lib/timelineChartEvents';
 import { useTimelineNavigation } from '../hooks/useTimelineNavigation';
 import { useSelectedTimeRange } from '../hooks/useSelectedTimeRange';
 import { useApInsightsData } from '../hooks/useApInsightsData';
@@ -725,27 +726,7 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                     data={throughputData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="ap-insights-charts"
-                    onClick={(e: any) => {
-                      // Click to toggle lock at current position
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.toggleLock();
-                      }
-                    }}
-                    onMouseDown={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
-                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
-                      }
-                    }}
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.updateTimeWindow(timestamp);
-                      }
-                    }}
-                    onMouseUp={() => timeline.endTimeWindow()}
+                    {...timelineChartHandlers(timeline)}
                   >
                     <defs>
                       <linearGradient id="colorTotalFull" x1="0" y1="0" x2="0" y2="1">
@@ -855,27 +836,7 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                     data={clientData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="ap-insights-charts"
-                    onClick={(e: any) => {
-                      // Click to toggle lock at current position
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.toggleLock();
-                      }
-                    }}
-                    onMouseDown={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
-                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
-                      }
-                    }}
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.updateTimeWindow(timestamp);
-                      }
-                    }}
-                    onMouseUp={() => timeline.endTimeWindow()}
+                    {...timelineChartHandlers(timeline)}
                   >
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis
@@ -962,27 +923,7 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                     data={rssData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="ap-insights-charts"
-                    onClick={(e: any) => {
-                      // Click to toggle lock at current position
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.toggleLock();
-                      }
-                    }}
-                    onMouseDown={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
-                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
-                      }
-                    }}
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.updateTimeWindow(timestamp);
-                      }
-                    }}
-                    onMouseUp={() => timeline.endTimeWindow()}
+                    {...timelineChartHandlers(timeline)}
                   >
                     <defs>
                       <linearGradient id="colorRss" x1="0" y1="0" x2="0" y2="1">
@@ -1113,27 +1054,7 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                     data={channelUtil5Data}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="ap-insights-charts"
-                    onClick={(e: any) => {
-                      // Click to toggle lock at current position
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.toggleLock();
-                      }
-                    }}
-                    onMouseDown={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
-                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
-                      }
-                    }}
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.updateTimeWindow(timestamp);
-                      }
-                    }}
-                    onMouseUp={() => timeline.endTimeWindow()}
+                    {...timelineChartHandlers(timeline)}
                   >
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis
@@ -1267,27 +1188,7 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                     data={channelUtil24Data}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="ap-insights-charts"
-                    onClick={(e: any) => {
-                      // Click to toggle lock at current position
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.toggleLock();
-                      }
-                    }}
-                    onMouseDown={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
-                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
-                      }
-                    }}
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.updateTimeWindow(timestamp);
-                      }
-                    }}
-                    onMouseUp={() => timeline.endTimeWindow()}
+                    {...timelineChartHandlers(timeline)}
                   >
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis
@@ -1406,27 +1307,7 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                     data={noiseData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="ap-insights-charts"
-                    onClick={(e: any) => {
-                      // Click to toggle lock at current position
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.toggleLock();
-                      }
-                    }}
-                    onMouseDown={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
-                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
-                      }
-                    }}
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.updateTimeWindow(timestamp);
-                      }
-                    }}
-                    onMouseUp={() => timeline.endTimeWindow()}
+                    {...timelineChartHandlers(timeline)}
                   >
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis

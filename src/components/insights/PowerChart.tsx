@@ -21,6 +21,7 @@ import {
 import { Badge } from '../ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { CHART_COLORS, TIMELINE_COLORS } from '../../config/colorPalette';
+import { timelineChartHandlers } from '../../lib/timelineChartEvents';
 import type { useTimelineNavigation } from '../../hooks/useTimelineNavigation';
 
 type Timeline = ReturnType<typeof useTimelineNavigation>;
@@ -46,16 +47,6 @@ export function PowerChart({
   lockedPowerW,
   tooltipStyle,
 }: PowerChartProps) {
-  // recharts' MouseHandlerDataParam does not describe activePayload's row shape,
-  // so the handlers below take `any` — same pattern as the other AP Insights charts.
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  const handleClick = (e: any) => {
-    const point = e?.activePayload?.[0];
-    if (!point) return;
-    timeline.setCurrentTime(point.payload.timestamp);
-    timeline.toggleLock();
-  };
-
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -76,20 +67,7 @@ export function PowerChart({
               data={data}
               margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
               syncId="ap-insights-charts"
-              onClick={handleClick}
-              onMouseDown={(e: any) => {
-                if (e?.activePayload?.[0] && e.shiftKey) {
-                  timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
-                }
-              }}
-              onMouseMove={(e: any) => {
-                if (e?.activePayload?.[0] && !timeline.isLocked) {
-                  const timestamp = e.activePayload[0].payload.timestamp;
-                  timeline.setCurrentTime(timestamp);
-                  timeline.updateTimeWindow(timestamp);
-                }
-              }}
-              onMouseUp={() => timeline.endTimeWindow()}
+              {...timelineChartHandlers(timeline)}
             >
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis
@@ -103,7 +81,7 @@ export function PowerChart({
                 width={50}
               />
               <Tooltip
-                formatter={(value: any) => [`${Number(value).toFixed(2)} W`, '']}
+                formatter={(value) => [`${Number(value).toFixed(2)} W`, '']}
                 labelFormatter={() => ''}
                 contentStyle={tooltipStyle}
               />

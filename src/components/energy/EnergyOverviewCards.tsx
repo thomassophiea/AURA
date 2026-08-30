@@ -16,14 +16,14 @@ function EnergyOverviewCardsComponent({ overview, loading }: EnergyOverviewCards
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
       <MetricCard
         icon={Zap}
-        title="Energy this period"
+        title="Energy used"
         loading={pending}
         value={pending ? '' : formatKwh(overview.periodKwh)}
         subtitle={pending ? undefined : `${formatKwh(overview.annualKwhProjected)} projected annually`}
       />
       <MetricCard
         icon={DollarSign}
-        title="Estimated annual cost"
+        title="Annual cost"
         loading={pending}
         value={pending ? '' : formatCurrency(overview.estimatedAnnualCost, overview.currencySymbol)}
         subtitle={pending ? undefined : `at ${overview.currencySymbol}${overview.ratePerKwh}/kWh`}
@@ -51,9 +51,10 @@ function EnergyOverviewCardsComponent({ overview, loading }: EnergyOverviewCards
       />
       <MetricCard
         icon={TrendingUp}
-        title="Daily projection"
+        title="Daily forecast"
         loading={pending}
         value={pending ? '' : formatKwh(overview.dailyKwhProjected)}
+        subtitle={pending ? undefined : 'projected kWh per day'}
       />
     </div>
   );
