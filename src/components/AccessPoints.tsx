@@ -2318,35 +2318,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
           : undefined,
       });
     });
-    defs.push({
-      colId: '__actions',
-      headerName: '',
-      sortable: false,
-      filter: false,
-      resizable: false,
-      width: 92,
-      minWidth: 92,
-      maxWidth: 92,
-      suppressSizeToFit: true,
-      pinned: 'right',
-      cellStyle: {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100%',
-      },
-      cellRenderer: (params: any) => (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            cellHandlersRef.current!.loadAPDetails(params.data.serialNumber);
-          }}
-          className="text-xs font-medium text-primary hover:underline"
-        >
-          Details
-        </button>
-      ),
-    });
+    // No pinned actions column: the AP name cell already opens the detail view.
     return defs;
   }, [visibleColumns, navigationScope, siteGroups.length]);
 
