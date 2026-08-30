@@ -39,7 +39,7 @@ function LightAwareOptimizationComponent({
   }, [apsState.data, modelBySerial]);
 
   return (
-    <Card>
+    <Card className="gap-0">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between gap-2">
           <div>
@@ -66,24 +66,26 @@ function LightAwareOptimizationComponent({
             </p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <LightAwareWhatIf
               aps={sensorCapableAps}
               reportingCount={summary.data?.reportingCount ?? sensorCapableAps.length}
               ratePerKwh={ratePerKwh}
               currencySymbol={currencySymbol}
             />
-            <div className="flex gap-2 pt-1">
-              <Button variant="outline" size="sm" onClick={onConfigure}>
-                Configure
-              </Button>
-              <Button variant="outline" size="sm" onClick={onViewAps}>
-                View APs
-              </Button>
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={onConfigure}>
+                  Configure
+                </Button>
+                <Button variant="outline" size="sm" onClick={onViewAps}>
+                  View APs
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Actions are modeled / not currently executable.
+              </p>
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              Actions are modeled / not currently executable.
-            </p>
           </div>
         )}
       </CardContent>

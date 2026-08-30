@@ -160,8 +160,8 @@ export function EnvironmentalReportCard({
 
   return (
     <>
-      <Card>
-        <CardHeader className="pb-3">
+      <Card className="gap-0">
+        <CardHeader className="pb-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Leaf className="h-4 w-4 text-[color:var(--status-success)]" aria-hidden />
@@ -169,15 +169,15 @@ export function EnvironmentalReportCard({
             </div>
             <Badge variant="outline">{evidenceLabel(hasRecommendations)}</Badge>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             ISO 14001:2026-aligned energy performance evidence
           </p>
-          <div className="rounded-md border border-border bg-muted/20 px-3 py-2 text-sm">
-            <p className="font-medium text-foreground">{siteName}</p>
-            <p className="text-xs text-muted-foreground">{range.label}</p>
-          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm">
+            <span className="font-medium text-foreground">{siteName}</span>
+            <span className="text-muted-foreground"> · {range.label}</span>
+          </p>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
               <p className="text-xs text-muted-foreground">Projected annual savings</p>

@@ -21,10 +21,12 @@ function renderPanel() {
 }
 
 describe('LightAwareWhatIf', () => {
-  it('shows the real sensor-capable count and a modeled badge', () => {
+  it('shows the real sensor-capable count and the modeled disclaimer', () => {
     renderPanel();
     expect(screen.getByText('Sensor-capable APs').parentElement).toHaveTextContent(/3\s*\/\s*6/);
-    expect(screen.getByText('Modeled · live telemetry pending')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Live sensor telemetry will replace these assumptions/i)
+    ).toBeInTheDocument();
     expect(screen.getAllByRole('slider').length).toBe(2);
   });
 

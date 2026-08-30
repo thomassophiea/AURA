@@ -1,6 +1,8 @@
 import { useEffect, useState, type Ref } from 'react';
+import { ChevronDown } from 'lucide-react';
 
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/components/ui/utils';
 import { getEnergyPreferences, putEnergyPreferences } from '@/services/energyService';
 import type { EnergyPreferences } from '@/types/energy';
 
@@ -10,12 +12,17 @@ interface EnergyPreferencesPanelProps {
   onSaved: (prefs: EnergyPreferences) => void;
   onLoaded?: (prefs: EnergyPreferences) => void;
   emissionsFactorRef?: Ref<HTMLInputElement>;
+  /** Collapsed by default — a set-once form should not hold layout space. */
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
 export function EnergyPreferencesPanel({
   onSaved,
   onLoaded,
   emissionsFactorRef,
+  open,
+  onOpenChange,
 }: EnergyPreferencesPanelProps) {
   const [currencyCode, setCurrencyCode] = useState('USD');
   const [rate, setRate] = useState('0.14');
@@ -83,62 +90,79 @@ export function EnergyPreferencesPanel({
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
+    <Card className="gap-0">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={() => onOpenChange(!open)}
+        className={cn(
+          'flex w-full items-center justify-between gap-2 px-6 pt-6 text-left',
+          open ? 'pb-2' : 'pb-6'
+        )}
+      >
         <h3 className="text-sm font-semibold text-foreground">Electricity rate</h3>
-      </CardHeader>
-      <CardContent className="grid gap-3 sm:grid-cols-2">
-        <label className="text-sm">
-          <span className="mb-1 block text-xs text-muted-foreground">Currency</span>
-          <select
-            value={currencyCode}
-            onChange={(e) => setCurrencyCode(e.target.value)}
-            className="rounded-md border border-border bg-background px-2 py-1 text-sm"
-          >
-            {CURRENCIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-xs text-muted-foreground">Rate per kWh</span>
-          <input
-            type="number"
-            step="0.01"
-            min="0.001"
-            value={rate}
-            onChange={(e) => setRate(e.target.value)}
-            className="w-28 rounded-md border border-border bg-background px-2 py-1 text-sm"
+        <span className="flex items-center gap-2 text-xs text-muted-foreground">
+          {currencyCode} · {rate}/kWh
+          <ChevronDown
+            aria-hidden
+            className={cn('h-4 w-4 transition-transform', open && 'rotate-180')}
           />
-        </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-xs text-muted-foreground">Emissions factor (kg CO2e/kWh)</span>
-          <input ref={emissionsFactorRef} type="number" step="0.001" min="0.001" value={emissionsFactor} onChange={(e) => setEmissionsFactor(e.target.value)} placeholder="Optional" className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm" />
-        </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-xs text-muted-foreground">Factor source</span>
-          <input type="text" value={emissionsSource} onChange={(e) => setEmissionsSource(e.target.value)} placeholder="Required when factor is set" className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm" />
-        </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-xs text-muted-foreground">Geographic scope</span>
-          <input type="text" value={emissionsRegion} onChange={(e) => setEmissionsRegion(e.target.value)} placeholder="Optional" className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm" />
-        </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-xs text-muted-foreground">Source year</span>
-          <input type="number" min="1900" max="2200" value={emissionsYear} onChange={(e) => setEmissionsYear(e.target.value)} placeholder="Optional" className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm" />
-        </label>
-        <button
-          type="button"
-          onClick={save}
-          disabled={saving}
-          className="justify-self-start rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
-        >
-          {saving ? 'Saving…' : 'Save'}
-        </button>
-        {error ? <p className="text-sm text-destructive sm:col-span-2">{error}</p> : null}
-      </CardContent>
+        </span>
+      </button>
+      {open ? (
+        <CardContent className="grid gap-3 sm:grid-cols-2">
+          <label className="text-sm">
+            <span className="mb-1 block text-xs text-muted-foreground">Currency</span>
+            <select
+              value={currencyCode}
+              onChange={(e) => setCurrencyCode(e.target.value)}
+              className="rounded-md border border-border bg-background px-2 py-1 text-sm"
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-xs text-muted-foreground">Rate per kWh</span>
+            <input
+              type="number"
+              step="0.01"
+              min="0.001"
+              value={rate}
+              onChange={(e) => setRate(e.target.value)}
+              className="w-28 rounded-md border border-border bg-background px-2 py-1 text-sm"
+            />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-xs text-muted-foreground">Emissions factor (kg CO2e/kWh)</span>
+            <input ref={emissionsFactorRef} type="number" step="0.001" min="0.001" value={emissionsFactor} onChange={(e) => setEmissionsFactor(e.target.value)} placeholder="Optional" className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm" />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-xs text-muted-foreground">Factor source</span>
+            <input type="text" value={emissionsSource} onChange={(e) => setEmissionsSource(e.target.value)} placeholder="Required when factor is set" className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm" />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-xs text-muted-foreground">Geographic scope</span>
+            <input type="text" value={emissionsRegion} onChange={(e) => setEmissionsRegion(e.target.value)} placeholder="Optional" className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm" />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block text-xs text-muted-foreground">Source year</span>
+            <input type="number" min="1900" max="2200" value={emissionsYear} onChange={(e) => setEmissionsYear(e.target.value)} placeholder="Optional" className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm" />
+          </label>
+          <button
+            type="button"
+            onClick={save}
+            disabled={saving}
+            className="justify-self-start rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+          {error ? <p className="text-sm text-destructive sm:col-span-2">{error}</p> : null}
+        </CardContent>
+      ) : null}
     </Card>
   );
 }

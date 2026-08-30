@@ -33,6 +33,7 @@ export function EnergyOptimization() {
 
   const [selectedSite, setSelectedSite] = useState<string>(filters.site);
   const [preferences, setPreferences] = useState<EnergyPreferences | null>(null);
+  const [prefsOpen, setPrefsOpen] = useState(false);
   const emissionsFactorRef = useRef<HTMLInputElement>(null);
   const isXiqSite = parseXiqSiteValue(selectedSite) !== null;
 
@@ -94,7 +95,7 @@ export function EnergyOptimization() {
 
   if (isXiqSite) {
     return (
-      <div className="space-y-6 p-6">
+      <div className="space-y-4 p-6">
         {header}
         <EnergyEmptyState reason="xiq-unsupported" />
       </div>
@@ -102,7 +103,7 @@ export function EnergyOptimization() {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-4 p-6">
       {header}
 
       {overview.data?.meta.limitationsNotes.map((note) => (
@@ -118,8 +119,8 @@ export function EnergyOptimization() {
 
       {noData ? <EnergyEmptyState reason="no-data" /> : null}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="space-y-6">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="space-y-4">
           {!noData ? (
             <>
               <EnergySiteRankings
@@ -146,7 +147,7 @@ export function EnergyOptimization() {
             </>
           ) : null}
         </div>
-        <div className="space-y-6">
+        <div className="space-y-4">
           {!noData ? (
             <>
               <EnergyScenarioBuilder />
@@ -159,6 +160,8 @@ export function EnergyOptimization() {
           ) : null}
           <EnergyPreferencesPanel
             emissionsFactorRef={emissionsFactorRef}
+            open={prefsOpen}
+            onOpenChange={setPrefsOpen}
             onLoaded={setPreferences}
             onSaved={(saved) => {
               setPreferences(saved);
@@ -173,6 +176,7 @@ export function EnergyOptimization() {
             siteName={filters.site === 'all' ? 'All sites' : siteNameById.get(filters.site) ?? filters.site}
             range={selectedRange}
             onConfigureCarbon={() => {
+              setPrefsOpen(true);
               window.requestAnimationFrame(() => {
                 emissionsFactorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 emissionsFactorRef.current?.focus();

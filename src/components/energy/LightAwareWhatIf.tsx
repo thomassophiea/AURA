@@ -69,15 +69,13 @@ function LightAwareWhatIfComponent({
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-xs text-muted-foreground">Sensor-capable APs</span>
         <span className="text-sm font-semibold text-foreground">
           {aps.length} / {reportingCount}
         </span>
       </div>
-
-      <Badge variant="secondary">Modeled · live telemetry pending</Badge>
 
       <div className="space-y-3">
         <SliderRow
@@ -89,7 +87,7 @@ function LightAwareWhatIfComponent({
         <SliderRow label="Modeled dim hours/day" value={dimHours} max={8} onChange={setDimHours} />
       </div>
 
-      <div className="flex items-center justify-between border-t border-border/50 pt-3">
+      <div className="flex items-center justify-between border-t border-border/50 pt-2">
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">Projected annual savings</span>
           <Badge variant="info">What-if</Badge>

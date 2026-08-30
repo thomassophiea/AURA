@@ -1,8 +1,7 @@
 import { memo } from 'react';
 import { Zap, DollarSign, TrendingDown, TrendingUp, Wifi, Gauge } from 'lucide-react';
 
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { MetricCard } from '@/components/ui/MetricCard';
 import { formatKwh, formatWatts, formatCurrency } from '@/lib/energyCalc';
 import type { EnergyOverview } from '@/types/energy';
 
@@ -11,86 +10,50 @@ interface EnergyOverviewCardsProps {
   loading: boolean;
 }
 
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  sub,
-}: {
-  icon: typeof Zap;
-  label: string;
-  value: string;
-  sub?: string;
-}) {
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <span className="text-sm font-medium text-muted-foreground">{label}</span>
-        <Icon className="h-4 w-4 text-muted-foreground" aria-hidden />
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-semibold text-foreground">{value}</div>
-        {sub ? <p className="mt-1 text-xs text-muted-foreground">{sub}</p> : null}
-      </CardContent>
-    </Card>
-  );
-}
-
 function EnergyOverviewCardsComponent({ overview, loading }: EnergyOverviewCardsProps) {
-  if (loading || !overview) {
-    return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Card key={i}>
-            <CardHeader className="pb-2">
-              <Skeleton className="h-4 w-24" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-8 w-32" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
-  }
-
-  const TrendIcon = TrendingDown;
+  const pending = loading || !overview;
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <StatCard
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
+      <MetricCard
         icon={Zap}
-        label="Energy this period"
-        value={formatKwh(overview.periodKwh)}
-        sub={`${formatKwh(overview.annualKwhProjected)} projected annually`}
+        title="Energy this period"
+        loading={pending}
+        value={pending ? '' : formatKwh(overview.periodKwh)}
+        subtitle={pending ? undefined : `${formatKwh(overview.annualKwhProjected)} projected annually`}
       />
-      <StatCard
+      <MetricCard
         icon={DollarSign}
-        label="Estimated annual cost"
-        value={formatCurrency(overview.estimatedAnnualCost, overview.currencySymbol)}
-        sub={`at ${overview.currencySymbol}${overview.ratePerKwh}/kWh`}
+        title="Estimated annual cost"
+        loading={pending}
+        value={pending ? '' : formatCurrency(overview.estimatedAnnualCost, overview.currencySymbol)}
+        subtitle={pending ? undefined : `at ${overview.currencySymbol}${overview.ratePerKwh}/kWh`}
       />
-      <StatCard
+      <MetricCard
         icon={Gauge}
-        label="Current draw"
-        value={formatWatts(overview.currentWatts)}
-        sub={`peak ${formatWatts(overview.peakWatts)}`}
+        title="Current draw"
+        loading={pending}
+        value={pending ? '' : formatWatts(overview.currentWatts)}
+        subtitle={pending ? undefined : `peak ${formatWatts(overview.peakWatts)}`}
       />
-      <StatCard
-        icon={TrendIcon}
-        label="Average draw"
-        value={formatWatts(overview.avgWatts)}
-        sub="per reporting AP"
+      <MetricCard
+        icon={TrendingDown}
+        title="Average draw"
+        loading={pending}
+        value={pending ? '' : formatWatts(overview.avgWatts)}
+        subtitle={pending ? undefined : 'per reporting AP'}
       />
-      <StatCard
+      <MetricCard
         icon={Wifi}
-        label="APs reporting"
-        value={`${overview.apWithDataCount}`}
-        sub="with power telemetry"
+        title="APs reporting"
+        loading={pending}
+        value={pending ? '' : `${overview.apWithDataCount}`}
+        subtitle={pending ? undefined : 'with power telemetry'}
       />
-      <StatCard
+      <MetricCard
         icon={TrendingUp}
-        label="Daily projection"
-        value={formatKwh(overview.dailyKwhProjected)}
+        title="Daily projection"
+        loading={pending}
+        value={pending ? '' : formatKwh(overview.dailyKwhProjected)}
       />
     </div>
   );

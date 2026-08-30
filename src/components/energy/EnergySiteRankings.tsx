@@ -30,7 +30,7 @@ function EnergySiteRankingsComponent({
   currencySymbol = '$',
 }: EnergySiteRankingsProps) {
   return (
-    <Card>
+    <Card className="gap-0">
       <CardHeader className="pb-2">
         <h3 className="text-sm font-semibold text-foreground">Sites by energy use</h3>
       </CardHeader>

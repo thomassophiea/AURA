@@ -62,7 +62,7 @@ export function EnergyScenarioBuilder() {
   }
 
   return (
-    <Card>
+    <Card className="gap-0">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-foreground">What-if scenario</h3>

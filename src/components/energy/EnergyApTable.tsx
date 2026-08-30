@@ -17,7 +17,7 @@ function EnergyApTableComponent({ enabled, currencySymbol = '$' }: EnergyApTable
   if (!enabled) return null;
 
   return (
-    <Card>
+    <Card className="gap-0">
       <CardHeader className="pb-2">
         <h3 className="text-sm font-semibold text-foreground">Access Points</h3>
       </CardHeader>
