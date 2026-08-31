@@ -18,8 +18,11 @@ import {
 } from './portalFormModel';
 import type { EditorSectionProps } from './editorSections';
 
+// Radix Select refuses an empty-string item value, so the default carries a
+// sentinel and is mapped back to '' (no override) on change.
+const ALIGNMENT_DEFAULT = 'default';
 const ALIGNMENT_OPTIONS = [
-  { id: '', label: 'Centred (default)' },
+  { id: ALIGNMENT_DEFAULT, label: 'Centred (default)' },
   { id: 'left', label: 'Left' },
   { id: 'right', label: 'Right' },
 ] as const;
@@ -99,8 +102,13 @@ export function BrandingSection({ view, form, patch }: EditorSectionProps) {
       </div>
       <SelectField
         label="Alignment"
-        value={form.brandAlignment}
-        onChange={(value) => patch({ brandAlignment: value as FormState['brandAlignment'] })}
+        value={form.brandAlignment === '' ? ALIGNMENT_DEFAULT : form.brandAlignment}
+        onChange={(value) =>
+          patch({
+            brandAlignment:
+              value === ALIGNMENT_DEFAULT ? '' : (value as FormState['brandAlignment']),
+          })
+        }
         options={ALIGNMENT_OPTIONS}
         disabled={!supported}
         description="Header alignment on the guest card."
