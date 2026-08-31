@@ -46,9 +46,56 @@ export const ACCESS_POLICY_OPTIONS: ReadonlyArray<{
   },
 ];
 
+export type BrandFooterChoice = 'default' | 'powered' | 'none';
+
+/** Swatches from the golden design. Every one clears 4.5:1 with white ink. */
+export const BRAND_SWATCHES: ReadonlyArray<{ hex: string; label: string }> = [
+  { hex: '#4b449b', label: 'Extreme purple' },
+  { hex: '#6930df', label: 'Platform ONE' },
+  { hex: '#0f766e', label: 'Teal' },
+  { hex: '#1d4ed8', label: 'Signal blue' },
+  { hex: '#374151', label: 'Graphite' },
+];
+
+const HEX_COLOR_RE = /^#[0-9a-f]{6}$/i;
+
+/** WCAG contrast of white ink on a #rrggbb colour — mirrors the portal's check. */
+export function contrastAgainstWhite(hex: string): number {
+  const channel = (v: number) => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  };
+  const r = channel(parseInt(hex.slice(1, 3), 16));
+  const g = channel(parseInt(hex.slice(3, 5), 16));
+  const b = channel(parseInt(hex.slice(5, 7), 16));
+  const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return 1.05 / (luminance + 0.05);
+}
+
+export function isAcceptableBrandColor(value: string): boolean {
+  return HEX_COLOR_RE.test(value) && contrastAgainstWhite(value) >= 4.5;
+}
+
 export interface FormState {
   /** '' = no override stored; the portal derives terms/form from its config. */
   accessPolicy: PortalAccessPolicy | '';
+  /** Administrators see these; guests never do. '' = unset. */
+  displayName: string;
+  description: string;
+  /** '' = the portal default colour. */
+  brandColor: string;
+  /** '' = the portal default (centred). */
+  brandAlignment: '' | 'left' | 'center' | 'right';
+  brandFooter: BrandFooterChoice;
+  /** Offered locale codes; [] = all of them. */
+  localeSubset: string[];
+  /** '' = the localized default terms. */
+  termsText: string;
+  privacyPolicyEnabled: boolean;
+  /** '' = the shipped default text. */
+  privacyPolicyText: string;
+  marketingEnabled: boolean;
+  marketingText: string;
   sponsorshipEnabled: boolean;
   /** Comma-separated; blank = use the service environment's domains. */
   domainsText: string;
@@ -107,10 +154,28 @@ export function formFromView(view: PortalConfigView): FormState {
         : 'off';
   }
   const storedPolicy = view.stored.accessPolicy;
+  const alignment = view.stored.brandAlignment;
   return {
     accessPolicy: ACCESS_POLICIES.includes(storedPolicy as PortalAccessPolicy)
       ? (storedPolicy as PortalAccessPolicy)
       : '',
+    displayName: view.stored.displayName ?? '',
+    description: view.stored.description ?? '',
+    brandColor: view.stored.brandColor ?? '',
+    brandAlignment:
+      alignment === 'left' || alignment === 'center' || alignment === 'right' ? alignment : '',
+    brandFooter:
+      view.stored.brandFooterEnabled === true
+        ? 'powered'
+        : view.stored.brandFooterEnabled === false
+          ? 'none'
+          : 'default',
+    localeSubset: view.stored.localesEnabled ?? [],
+    termsText: view.stored.termsText ?? '',
+    privacyPolicyEnabled: view.stored.privacyPolicyEnabled === true,
+    privacyPolicyText: view.stored.privacyPolicyText ?? '',
+    marketingEnabled: view.stored.marketingEnabled === true,
+    marketingText: view.stored.marketingText ?? '',
     sponsorshipEnabled: view.stored.sponsorshipEnabled ?? true,
     domainsText: view.stored.sponsorAllowedDomains?.join(', ') ?? '',
     addressesText: view.stored.sponsorAllowedAddresses?.join(', ') ?? '',
@@ -132,6 +197,17 @@ export function updateFromForm(form: FormState): PortalConfigUpdate {
   }
   return {
     accessPolicy: form.accessPolicy === '' ? null : form.accessPolicy,
+    displayName: form.displayName.trim() === '' ? null : form.displayName.trim(),
+    description: form.description.trim() === '' ? null : form.description.trim(),
+    brandColor: form.brandColor === '' ? null : form.brandColor.toLowerCase(),
+    brandAlignment: form.brandAlignment === '' ? null : form.brandAlignment,
+    brandFooterEnabled: form.brandFooter === 'default' ? null : form.brandFooter === 'powered',
+    localesEnabled: form.localeSubset.length === 0 ? null : form.localeSubset,
+    termsText: form.termsText.trim() === '' ? null : form.termsText,
+    privacyPolicyEnabled: form.privacyPolicyEnabled ? true : null,
+    privacyPolicyText: form.privacyPolicyText.trim() === '' ? null : form.privacyPolicyText,
+    marketingEnabled: form.marketingEnabled ? true : null,
+    marketingText: form.marketingText.trim() === '' ? null : form.marketingText,
     sponsorshipEnabled: form.sponsorshipEnabled,
     sponsorAllowedDomains: domains.length > 0 ? domains : null,
     sponsorAllowedAddresses: addresses.length > 0 ? addresses : null,
@@ -213,6 +289,8 @@ export function validationIssues(form: FormState, view: PortalConfigView): Valid
     if (form.secureAccessEnabled && view.effective.secureAccess?.configured) {
       hidden.push('secure access');
     }
+    if (form.privacyPolicyEnabled) hidden.push('the privacy-terms tick');
+    if (form.marketingEnabled) hidden.push('the marketing tick');
     if (hidden.length > 0) {
       issues.push({
         severity: 'warning',
@@ -240,6 +318,15 @@ export function validationIssues(form: FormState, view: PortalConfigView): Valid
       text: 'Sponsorship is switched on but the portal has no email transport, so guests will not see the option.',
     });
   }
+  if (form.brandColor !== '' && !isAcceptableBrandColor(form.brandColor)) {
+    issues.push({
+      severity: 'error',
+      text: HEX_COLOR_RE.test(form.brandColor)
+        ? `Brand colour ${form.brandColor} fails contrast: white text on it measures ${contrastAgainstWhite(form.brandColor).toFixed(2)}:1 and the bar is 4.50:1.`
+        : `"${form.brandColor}" is not a #rrggbb hex colour.`,
+    });
+  }
+
   const secure = view.effective.secureAccess;
   if (form.secureAccessEnabled && secure && !secure.configured) {
     issues.push({
@@ -261,6 +348,23 @@ export function validationIssues(form: FormState, view: PortalConfigView): Valid
 export function changedSettings(form: FormState, initial: FormState): string[] {
   const changed: string[] = [];
   if (form.accessPolicy !== initial.accessPolicy) changed.push('Access method');
+  if (form.displayName !== initial.displayName) changed.push('Portal name');
+  if (form.description !== initial.description) changed.push('Description');
+  if (form.brandColor !== initial.brandColor) changed.push('Primary colour');
+  if (form.brandAlignment !== initial.brandAlignment) changed.push('Alignment');
+  if (form.brandFooter !== initial.brandFooter) changed.push('Footer');
+  if (form.localeSubset.join(',') !== initial.localeSubset.join(',')) changed.push('Languages');
+  if (form.termsText !== initial.termsText) changed.push('Terms of service');
+  if (
+    form.privacyPolicyEnabled !== initial.privacyPolicyEnabled ||
+    form.privacyPolicyText !== initial.privacyPolicyText
+  )
+    changed.push('Privacy terms');
+  if (
+    form.marketingEnabled !== initial.marketingEnabled ||
+    form.marketingText !== initial.marketingText
+  )
+    changed.push('Marketing consent');
   if (form.sponsorshipEnabled !== initial.sponsorshipEnabled) changed.push('Sponsorship offer');
   if (form.domainsText !== initial.domainsText) changed.push('Sponsor domains');
   if (form.addressesText !== initial.addressesText) changed.push('Sponsor allowlist');

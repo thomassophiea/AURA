@@ -38,11 +38,14 @@ import {
 } from './portalFormModel';
 import {
   AccessPolicySection,
+  GeneralSection,
   GuestFieldsSection,
   SecureAccessSection,
   SponsorshipSection,
 } from './editorSections';
-import { LanguagesSection, LegalPrivacySection } from './factSections';
+import { BrandingSection, LanguagesSection } from './experienceSections';
+import { LegalDocumentsSection, LegalPrivacySection } from './factSections';
+import { selectedAccessPolicy } from './portalFormModel';
 import { GuestPreview } from './GuestPreview';
 
 const GROUPS = [
@@ -303,16 +306,38 @@ export function CloudPortalPage() {
             <CardContent className="space-y-6 p-4">
               {group === 'access' && (
                 <>
+                  <GeneralSection view={view} form={form} patch={patch} />
                   <AccessPolicySection view={view} form={form} patch={patch} />
                   <SponsorshipSection view={view} form={form} patch={patch} />
                   <SecureAccessSection view={view} form={form} patch={patch} />
                 </>
               )}
               {group === 'guestForm' && (
-                <GuestFieldsSection view={view} form={form} patch={patch} />
+                <>
+                  {selectedAccessPolicy(form, view) !== 'form' && (
+                    <Alert>
+                      <AlertTitle>These fields are not shown right now</AlertTitle>
+                      <AlertDescription>
+                        The access method draws no guest form, so nothing here reaches a guest.
+                        Choose &ldquo;Guest form and terms&rdquo; under Access to switch it on.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  <GuestFieldsSection view={view} form={form} patch={patch} />
+                </>
               )}
-              {group === 'experience' && <LanguagesSection view={view} />}
-              {group === 'legal' && <LegalPrivacySection view={view} />}
+              {group === 'experience' && (
+                <>
+                  <BrandingSection view={view} form={form} patch={patch} />
+                  <LanguagesSection view={view} form={form} patch={patch} />
+                </>
+              )}
+              {group === 'legal' && (
+                <>
+                  <LegalDocumentsSection view={view} form={form} patch={patch} />
+                  <LegalPrivacySection view={view} />
+                </>
+              )}
               {view.stored.updatedAt && (
                 <p className="text-xs text-muted-foreground">
                   Last saved {new Date(view.stored.updatedAt).toLocaleString()}

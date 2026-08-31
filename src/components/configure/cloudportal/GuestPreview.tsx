@@ -34,10 +34,22 @@ export function GuestPreview({ view, form }: GuestPreviewProps) {
   const preview = view.preview;
   const [locale, setLocale] = useState(preview?.defaultLocale ?? 'en');
 
+  // Only the offered subset is switchable — exactly what the guest's picker draws.
+  const offeredLocales = useMemo(
+    () =>
+      (preview?.locales ?? []).filter(
+        (l) => form.localeSubset.length === 0 || form.localeSubset.includes(l.code)
+      ),
+    [preview, form.localeSubset]
+  );
+  const activeLocale = offeredLocales.some((l) => l.code === locale)
+    ? locale
+    : (offeredLocales[0]?.code ?? locale);
+
   const messages: PortalPreviewMessages | null = useMemo(() => {
     if (!preview) return null;
-    return preview.messages[locale] ?? preview.messages[preview.defaultLocale] ?? null;
-  }, [preview, locale]);
+    return preview.messages[activeLocale] ?? preview.messages[preview.defaultLocale] ?? null;
+  }, [preview, activeLocale]);
 
   if (!preview || !messages) {
     return (
@@ -89,6 +101,14 @@ export function GuestPreview({ view, form }: GuestPreviewProps) {
     view.envDefaults.sponsorAllowedDomains[0] ??
     'example.com';
 
+  // Look, exactly as the portal resolves it: draft override, else effective.
+  const brandColor = form.brandColor || view.effective.branding?.color || '#2563eb';
+  const alignment = form.brandAlignment || view.effective.branding?.alignment || 'center';
+  const termsShown = form.termsText.trim() || messages.consent.terms;
+  const privacyPolicyText =
+    form.privacyPolicyText.trim() || view.envDefaults.privacyPolicyText || '';
+  const marketingText = form.marketingText.trim() || view.envDefaults.marketingText || '';
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
@@ -96,12 +116,12 @@ export function GuestPreview({ view, form }: GuestPreviewProps) {
           <Smartphone className="h-3.5 w-3.5" />
           Guest preview
         </span>
-        <Select value={locale} onValueChange={setLocale}>
+        <Select value={activeLocale} onValueChange={setLocale}>
           <SelectTrigger className="h-7 w-[140px] text-xs" aria-label="Preview language">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {preview.locales.map((l) => (
+            {offeredLocales.map((l) => (
               <SelectItem key={l.code} value={l.code}>
                 {l.nativeName}
               </SelectItem>
@@ -121,11 +141,15 @@ export function GuestPreview({ view, form }: GuestPreviewProps) {
             </div>
           ) : (
             <>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-[#94a3b8]">
-                {messages.common.portalName}
-              </p>
-              <h4 className="mt-1 text-base font-bold text-[#0f172a]">{messages.consent.title}</h4>
-              <p className="mt-0.5 text-xs text-[#64748b]">{messages.consent.subtitle}</p>
+              <div style={{ textAlign: alignment as 'left' | 'center' | 'right' }}>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-[#94a3b8]">
+                  {messages.common.portalName}
+                </p>
+                <h4 className="mt-1 text-base font-bold text-[#0f172a]">
+                  {messages.consent.title}
+                </h4>
+                <p className="mt-0.5 text-xs text-[#64748b]">{messages.consent.subtitle}</p>
+              </div>
 
               {enabledFields.length > 0 && (
                 <fieldset className="mt-4 rounded-xl border border-[#e2e8f0] p-3">
@@ -155,14 +179,23 @@ export function GuestPreview({ view, form }: GuestPreviewProps) {
                 </fieldset>
               )}
 
-              <p className="mt-4 text-[10px] leading-relaxed text-[#64748b]">
-                {messages.consent.terms}
+              <p className="mt-4 whitespace-pre-line text-[10px] leading-relaxed text-[#64748b]">
+                {termsShown}
               </p>
 
               <div className="mt-3 flex items-start gap-2">
                 <span className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border border-[#cbd5e1]" />
                 <span className="text-xs text-[#334155]">{messages.consent.agree}</span>
               </div>
+
+              {form.privacyPolicyEnabled && (
+                <div className="mt-2 flex items-start gap-2">
+                  <span className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border border-[#cbd5e1]" />
+                  <span className="whitespace-pre-line text-xs text-[#334155]">
+                    {privacyPolicyText}
+                  </span>
+                </div>
+              )}
 
               <div className="mt-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3">
                 <div className="flex items-start gap-2">
@@ -176,8 +209,20 @@ export function GuestPreview({ view, form }: GuestPreviewProps) {
                 </p>
               </div>
 
+              {form.marketingEnabled && (
+                <div className="mt-3 flex items-start gap-2">
+                  <span className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border border-[#cbd5e1]" />
+                  <span className="whitespace-pre-line text-[10px] text-[#64748b]">
+                    {marketingText}
+                  </span>
+                </div>
+              )}
+
               {showOpenSubmit && (
-                <div className="mt-3 w-full rounded-xl bg-[#e2e8f0] py-2.5 text-center text-xs font-semibold text-[#94a3b8]">
+                <div
+                  className="mt-3 w-full rounded-xl py-2.5 text-center text-xs font-semibold text-[#ffffff]"
+                  style={{ backgroundColor: brandColor }}
+                >
                   {messages.consent.submitOpen}
                 </div>
               )}
@@ -248,6 +293,16 @@ export function GuestPreview({ view, form }: GuestPreviewProps) {
                     {messages.sponsorship.submit}
                   </div>
                 </section>
+              )}
+              {form.brandFooter === 'default' && (
+                <p className="mt-4 text-center text-[9px] text-[#94a3b8]">
+                  {messages.common.portalName}
+                </p>
+              )}
+              {form.brandFooter === 'powered' && (
+                <p className="mt-4 text-center text-[9px]" style={{ color: brandColor }}>
+                  Powered by Extreme Platform ONE
+                </p>
               )}
             </>
           )}

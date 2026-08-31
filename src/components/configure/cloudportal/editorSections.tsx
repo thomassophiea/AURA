@@ -6,6 +6,7 @@
  * environment provides the fallbacks.
  */
 import { Alert, AlertDescription } from '../../ui/alert';
+import { Textarea } from '../../ui/textarea';
 import { Badge } from '../../ui/badge';
 import { RadioGroup, RadioGroupItem } from '../../ui/radio-group';
 import { cn } from '../../ui/utils';
@@ -26,6 +27,74 @@ export interface EditorSectionProps {
   view: PortalConfigView;
   form: FormState;
   patch: (partial: Partial<FormState>) => void;
+}
+
+/** Multi-line sibling of systemFields' TextField, styled to match. */
+export function TextAreaField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  description,
+  rows = 4,
+  disabled,
+}: {
+  label: React.ReactNode;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  description?: React.ReactNode;
+  rows?: number;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <span className="text-sm">{label}</span>
+      <Textarea
+        value={value}
+        rows={rows}
+        placeholder={placeholder}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      {description && <p className="text-xs text-muted-foreground">{description}</p>}
+    </div>
+  );
+}
+
+export function GeneralSection({ view, form, patch }: EditorSectionProps) {
+  const supported = view.stored.displayName !== undefined;
+  return (
+    <Section
+      title="Name it"
+      description="A captive web portal is a reusable object. Administrators see this; guests never do."
+    >
+      {!supported && (
+        <Alert>
+          <AlertDescription>
+            This portal service predates the identity surface. Update the OS-ONE-CWP deployment to
+            name the portal from here.
+          </AlertDescription>
+        </Alert>
+      )}
+      <TextField
+        label="Portal name"
+        value={form.displayName}
+        onChange={(value) => patch({ displayName: value })}
+        placeholder="Cloud Captive Portal"
+        description="Shown in AURA. Blank keeps the service's own name."
+      />
+      <TextAreaField
+        label="Description"
+        value={form.description}
+        onChange={(value) => patch({ description: value })}
+        rows={2}
+        placeholder="Why this portal exists, for whoever inherits it."
+        description="Optional."
+        disabled={!supported}
+      />
+    </Section>
+  );
 }
 
 export function AccessPolicySection({ view, form, patch }: EditorSectionProps) {

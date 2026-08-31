@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import type { PortalConfigView } from '../../../services/portalConfigService';
 import {
   changedSettings,
+  contrastAgainstWhite,
   formFromView,
+  isAcceptableBrandColor,
   selectedAccessPolicy,
   updateFromForm,
   validationIssues,
@@ -234,5 +236,76 @@ describe('acceptance policy — the design fast-path choice', () => {
       accessPolicy: 'open' as const,
     };
     expect(changedSettings(form, initial)).toEqual(['Access method']);
+  });
+});
+
+describe('look, language and legal round-trips', () => {
+  it('maps stored values into the draft and back', () => {
+    const view = makeView();
+    view.stored.displayName = 'Conference Guest Portal';
+    view.stored.brandColor = '#4b449b';
+    view.stored.brandFooterEnabled = true;
+    view.stored.localesEnabled = ['en', 'de'];
+    view.stored.privacyPolicyEnabled = true;
+    const form = formFromView(view);
+    expect(form.displayName).toBe('Conference Guest Portal');
+    expect(form.brandColor).toBe('#4b449b');
+    expect(form.brandFooter).toBe('powered');
+    expect(form.localeSubset).toEqual(['en', 'de']);
+    expect(form.privacyPolicyEnabled).toBe(true);
+    const update = updateFromForm(form);
+    expect(update.brandColor).toBe('#4b449b');
+    expect(update.brandFooterEnabled).toBe(true);
+    expect(update.localesEnabled).toEqual(['en', 'de']);
+    expect(update.privacyPolicyEnabled).toBe(true);
+  });
+
+  it('blank drafts clear to null so the portal falls back to its defaults', () => {
+    const update = updateFromForm(formFromView(makeView()));
+    expect(update.displayName).toBeNull();
+    expect(update.brandColor).toBeNull();
+    expect(update.brandFooterEnabled).toBeNull();
+    expect(update.localesEnabled).toBeNull();
+    expect(update.termsText).toBeNull();
+    expect(update.privacyPolicyEnabled).toBeNull();
+    expect(update.marketingEnabled).toBeNull();
+  });
+
+  it('mirrors the portal contrast rule and blocks a failing colour', () => {
+    expect(isAcceptableBrandColor('#4b449b')).toBe(true);
+    expect(isAcceptableBrandColor('#f9c56f')).toBe(false);
+    expect(contrastAgainstWhite('#000000')).toBeCloseTo(21, 0);
+    const view = makeView();
+    const form = formFromView(view);
+    form.brandColor = '#f9c56f';
+    const errors = validationIssues(form, view).filter((i) => i.severity === 'error');
+    expect(errors.some((i) => i.text.includes('fails contrast'))).toBe(true);
+  });
+
+  it('open access names the hidden legal ticks too', () => {
+    const view = makeView();
+    const form = formFromView(view);
+    form.accessPolicy = 'open';
+    form.privacyPolicyEnabled = true;
+    form.marketingEnabled = true;
+    const text = validationIssues(form, view)
+      .map((i) => i.text)
+      .join(' ');
+    expect(text).toContain('privacy-terms tick');
+    expect(text).toContain('marketing tick');
+  });
+
+  it('names each change for the save summary', () => {
+    const view = makeView();
+    const initial = formFromView(view);
+    const form = { ...initial, fieldModes: { ...initial.fieldModes } };
+    form.brandColor = '#4b449b';
+    form.localeSubset = ['en'];
+    form.termsText = 'Custom terms.';
+    expect(changedSettings(form, initial)).toEqual([
+      'Primary colour',
+      'Languages',
+      'Terms of service',
+    ]);
   });
 });
