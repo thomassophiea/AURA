@@ -33,7 +33,6 @@ const componentImports: Record<string, () => Promise<unknown>> = {
   'configure-meshpoints': () => import('../components/configure/meshpoints'),
   'configure-policy': () => import('../components/configure/policy'),
   'configure-aaa-policies': () => import('../components/configure/aaa'),
-  'configure-guest': () => import('../components/configure/guest'),
   'configure-service-profiles': () => import('../components/configure/serviceprofiles'),
   'configure-adoption-rules': () => import('../components/configure/adoption'),
   'configure-system': () => import('../components/configure/system'),

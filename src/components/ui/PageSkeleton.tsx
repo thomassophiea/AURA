@@ -119,7 +119,6 @@ export function getSkeletonVariant(page: string): SkeletonVariant {
     case 'configure-policy':
     case 'configure-aaa-policies':
     case 'configure-adoption-rules':
-    case 'configure-guest':
     case 'configure-cloud-portal':
     case 'configure-advanced':
     case 'administration':
