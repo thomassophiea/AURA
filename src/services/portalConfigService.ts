@@ -20,8 +20,92 @@ export interface PortalConfigStored {
   sponsorshipMaxPerSession: number | null;
   guestFieldsEnabled: string[] | null;
   guestFieldsRequired: string[] | null;
+  /** Absent when the portal service predates the secure-access switch. */
+  secureAccessEnabled?: boolean | null;
   updatedBy: string | null;
   updatedAt: string | null;
+}
+
+/** Non-secret description of the secure WLAN, as the portal read it. */
+export interface SecureNetworkView {
+  ssid: string;
+  security: string;
+  securityLabel: string;
+  hidden: boolean;
+  /** Whether a Wi-Fi QR code can express this network's security mode. */
+  qr: boolean;
+  /** Whether an Apple configuration profile can express it. */
+  appleProfile: boolean;
+}
+
+export interface SecureAccessView {
+  /** A secure WLAN exists in the portal's environment. */
+  configured: boolean;
+  /** The consent form actually offers it. */
+  enabled: boolean;
+  /** null when unconfigured or the gateway was unreadable at read time. */
+  network: SecureNetworkView | null;
+  /** e.g. 'shared-passphrase'; per-device PPSK arrives as a new value. */
+  credentialSource: string;
+}
+
+/** One field's label and placeholder inside a locale's `fields` block. */
+export interface PortalPreviewFieldCopy {
+  label: string;
+  placeholder: string;
+}
+
+/**
+ * The consent-form message catalogue for one locale — the portal's own
+ * strings, so the guest preview renders the real page rather than a copy.
+ * `fields` mixes the heading strings with per-field objects; use
+ * `previewFieldCopy` to read a field safely.
+ */
+export interface PortalPreviewMessages {
+  common: { portalName: string; optional: string; required: string };
+  consent: {
+    title: string;
+    subtitle: string;
+    terms: string;
+    agree: string;
+    submitOpen: string;
+    tickToContinue: string;
+    or: string;
+  };
+  privacy: { checkbox: string; explainer: string };
+  fields: { heading: string; subheading: string } & Record<string, unknown>;
+  secureOffer: { title: string; body: string; submit: string; note: string };
+  sponsorship: {
+    offerTitle: string;
+    offerBody: string;
+    sponsorEmailLabel: string;
+    sponsorEmailPlaceholder: string;
+    identityNote: string;
+    submit: string;
+  };
+  security?: Record<string, string>;
+}
+
+export interface PortalPreviewCatalogue {
+  locales: { code: string; nativeName: string }[];
+  defaultLocale: string;
+  messages: Record<string, PortalPreviewMessages>;
+}
+
+/** Label/placeholder for a guest field in one locale, when the portal has it. */
+export function previewFieldCopy(
+  messages: PortalPreviewMessages,
+  fieldId: string
+): PortalPreviewFieldCopy | null {
+  const entry = (messages.fields as Record<string, unknown>)[fieldId];
+  if (
+    entry &&
+    typeof entry === 'object' &&
+    typeof (entry as PortalPreviewFieldCopy).label === 'string'
+  ) {
+    return entry as PortalPreviewFieldCopy;
+  }
+  return null;
 }
 
 export interface PortalConfigView {
@@ -37,9 +121,15 @@ export interface PortalConfigView {
     /** null means the portal has no way to send email — sponsorship is off. */
     emailTransport: 'resend' | 'smtp' | 'console' | null;
     guestFields: { id: string; required: boolean }[];
+    /** Absent when the portal service predates the secure-access surface. */
+    secureAccess?: SecureAccessView;
+    /** Session lifetimes from the portal's environment. Read-only facts. */
+    session?: { portalSessionTtlSeconds: number; approvalUrlTtlSeconds: number };
   };
   fieldCatalogue: { id: string; personal: boolean }[];
   envDefaults: { sponsorAllowedDomains: string[] };
+  /** Absent when the portal service predates the preview catalogue. */
+  preview?: PortalPreviewCatalogue;
 }
 
 export interface PortalConfigUpdate {
@@ -50,6 +140,8 @@ export interface PortalConfigUpdate {
   sponsorshipMaxPerSession?: number | null;
   guestFieldsEnabled?: string[] | null;
   guestFieldsRequired?: string[] | null;
+  /** Ignored by portal services that predate the switch. */
+  secureAccessEnabled?: boolean | null;
 }
 
 export class PortalConfigError extends Error {
