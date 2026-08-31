@@ -23,6 +23,14 @@ export function PpskKeyFileDialog({ open, onOpenChange, ssids }: PpskKeyFileDial
   const [file, setFile] = useState<PpskKeyFile | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // The dialog is always mounted, so its initial SSID is set before identities
+  // load. When it opens, default to the first available SSID (or one still valid)
+  // rather than leaving the selector empty.
+  useEffect(() => {
+    if (!open) return;
+    if (!ssid || !ssids.includes(ssid)) setSsid(ssids[0] ?? '');
+  }, [open, ssids, ssid]);
+
   useEffect(() => {
     if (!open || !ssid) return;
     let cancelled = false;
