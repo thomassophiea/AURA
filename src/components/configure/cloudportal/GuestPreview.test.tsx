@@ -63,6 +63,7 @@ function makeView(): PortalConfigView {
       guestFieldsEnabled: null,
       guestFieldsRequired: null,
       secureAccessEnabled: null,
+      accessPolicy: null,
       updatedBy: null,
       updatedAt: null,
     },
@@ -144,6 +145,36 @@ describe('GuestPreview', () => {
     view.effective.emailTransport = null;
     render(<GuestPreview view={view} form={formFromView(view)} />);
     expect(screen.queryByText('Employee Sponsorship')).not.toBeInTheDocument();
+  });
+
+  it('renders the acceptance policy the guest experiences', () => {
+    // Open: no page at all.
+    const openView = makeView();
+    const openForm = formFromView(openView);
+    openForm.accessPolicy = 'open';
+    const { unmount } = render(<GuestPreview view={openView} form={openForm} />);
+    expect(screen.getByText('No portal page is drawn')).toBeInTheDocument();
+    expect(screen.queryByText('Guest Wi-Fi Access')).not.toBeInTheDocument();
+    unmount();
+
+    // Terms: page drawn, fields not collected, prohibition still present.
+    const termsView = makeView();
+    const termsForm = formFromView(termsView);
+    termsForm.accessPolicy = 'terms';
+    const second = render(<GuestPreview view={termsView} form={termsForm} />);
+    expect(screen.queryByText('Your details')).not.toBeInTheDocument();
+    expect(screen.getByText('Do not store my personal data')).toBeInTheDocument();
+    expect(screen.getByText('Connect to the Internet')).toBeInTheDocument();
+    second.unmount();
+
+    // Sponsored: the request is the only way on; secure and connect are gone.
+    const sponsoredView = makeView();
+    const sponsoredForm = formFromView(sponsoredView);
+    sponsoredForm.accessPolicy = 'sponsored';
+    render(<GuestPreview view={sponsoredView} form={sponsoredForm} />);
+    expect(screen.queryByText('Connect to the Internet')).not.toBeInTheDocument();
+    expect(screen.queryByText('Secure Guest Access')).not.toBeInTheDocument();
+    expect(screen.getByText('Request Sponsored Access')).toBeInTheDocument();
   });
 
   it('explains itself when the portal predates the preview catalogue', () => {

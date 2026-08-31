@@ -4,11 +4,51 @@
  * client-side validation summary. Pure, so the whole model is testable
  * without rendering anything.
  */
-import type { PortalConfigUpdate, PortalConfigView } from '../../../services/portalConfigService';
+import type {
+  PortalAccessPolicy,
+  PortalConfigUpdate,
+  PortalConfigView,
+} from '../../../services/portalConfigService';
 
 export type FieldMode = 'off' | 'optional' | 'required';
 
+const ACCESS_POLICIES: readonly PortalAccessPolicy[] = ['open', 'terms', 'form', 'sponsored'];
+
+/**
+ * The design's "How guests get on": one choice, and it decides whether a
+ * page is drawn at all. Copy from the CWP golden design's guided create.
+ */
+export const ACCESS_POLICY_OPTIONS: ReadonlyArray<{
+  id: PortalAccessPolicy;
+  label: string;
+  description: string;
+}> = [
+  {
+    id: 'open',
+    label: 'Open — no interaction',
+    description: 'The guest is authorized the moment they join. No page, no consent, no fields.',
+  },
+  {
+    id: 'terms',
+    label: 'Terms of use only',
+    description: 'One tick and a button. The fastest honest option, and the default.',
+  },
+  {
+    id: 'form',
+    label: 'Guest form and terms',
+    description: 'Collect details before access. Choose the fields under Guest form.',
+  },
+  {
+    id: 'sponsored',
+    label: 'Sponsored approval',
+    description:
+      'A guest requests access; an employee approves it by email before the session opens.',
+  },
+];
+
 export interface FormState {
+  /** '' = no override stored; the portal derives terms/form from its config. */
+  accessPolicy: PortalAccessPolicy | '';
   sponsorshipEnabled: boolean;
   /** Comma-separated; blank = use the service environment's domains. */
   domainsText: string;
@@ -66,7 +106,11 @@ export function formFromView(view: PortalConfigView): FormState {
         ? 'optional'
         : 'off';
   }
+  const storedPolicy = view.stored.accessPolicy;
   return {
+    accessPolicy: ACCESS_POLICIES.includes(storedPolicy as PortalAccessPolicy)
+      ? (storedPolicy as PortalAccessPolicy)
+      : '',
     sponsorshipEnabled: view.stored.sponsorshipEnabled ?? true,
     domainsText: view.stored.sponsorAllowedDomains?.join(', ') ?? '',
     addressesText: view.stored.sponsorAllowedAddresses?.join(', ') ?? '',
@@ -87,6 +131,7 @@ export function updateFromForm(form: FormState): PortalConfigUpdate {
     if (mode === 'required') required.push(id);
   }
   return {
+    accessPolicy: form.accessPolicy === '' ? null : form.accessPolicy,
     sponsorshipEnabled: form.sponsorshipEnabled,
     sponsorAllowedDomains: domains.length > 0 ? domains : null,
     sponsorAllowedAddresses: addresses.length > 0 ? addresses : null,
@@ -101,6 +146,18 @@ export function updateFromForm(form: FormState): PortalConfigUpdate {
 export interface ValidationIssue {
   severity: 'error' | 'warning';
   text: string;
+}
+
+/**
+ * The policy the guest experiences for a given draft: the draft's explicit
+ * choice, else the portal's resolved value, else the same derivation the
+ * portal applies (form when any field is collected, otherwise terms).
+ */
+export function selectedAccessPolicy(form: FormState, view: PortalConfigView): PortalAccessPolicy {
+  if (form.accessPolicy !== '') return form.accessPolicy;
+  if (view.effective.accessPolicy) return view.effective.accessPolicy;
+  const anyField = Object.values(form.fieldModes).some((mode) => mode !== 'off');
+  return anyField ? 'form' : 'terms';
 }
 
 const DOMAIN_RE = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/i;
@@ -139,7 +196,45 @@ export function validationIssues(form: FormState, view: PortalConfigView): Valid
     });
   }
 
-  if (form.sponsorshipEnabled && view.effective.emailTransport === null) {
+  const policy = selectedAccessPolicy(form, view);
+  const sponsorshipAvailable = form.sponsorshipEnabled && view.effective.emailTransport !== null;
+  if (policy === 'sponsored' && !sponsorshipAvailable) {
+    issues.push({
+      severity: 'warning',
+      text:
+        view.effective.emailTransport === null
+          ? 'Sponsored approval needs an email transport the portal does not have; the portal will fall back to terms acceptance.'
+          : 'Sponsored approval requires the sponsorship offer, which is switched off below; the portal will fall back to terms acceptance.',
+    });
+  }
+  if (policy === 'open') {
+    const hidden: string[] = [];
+    if (form.sponsorshipEnabled) hidden.push('sponsorship');
+    if (form.secureAccessEnabled && view.effective.secureAccess?.configured) {
+      hidden.push('secure access');
+    }
+    if (hidden.length > 0) {
+      issues.push({
+        severity: 'warning',
+        text: `Open access draws no page, so ${hidden.join(' and ')} cannot be offered while it is selected.`,
+      });
+    }
+  }
+  const anyField = Object.values(form.fieldModes).some((mode) => mode !== 'off');
+  if (policy === 'form' && !anyField) {
+    issues.push({
+      severity: 'warning',
+      text: 'Guest form is selected but no fields are enabled, so the page renders like Terms of use only.',
+    });
+  }
+  if ((policy === 'terms' || policy === 'open') && anyField) {
+    issues.push({
+      severity: 'warning',
+      text: 'Guest details are configured but not collected under this access method.',
+    });
+  }
+
+  if (policy !== 'sponsored' && form.sponsorshipEnabled && view.effective.emailTransport === null) {
     issues.push({
       severity: 'warning',
       text: 'Sponsorship is switched on but the portal has no email transport, so guests will not see the option.',
@@ -165,6 +260,7 @@ export function validationIssues(form: FormState, view: PortalConfigView): Valid
 /** Names of the stored settings the draft would change, for the Save summary. */
 export function changedSettings(form: FormState, initial: FormState): string[] {
   const changed: string[] = [];
+  if (form.accessPolicy !== initial.accessPolicy) changed.push('Access method');
   if (form.sponsorshipEnabled !== initial.sponsorshipEnabled) changed.push('Sponsorship offer');
   if (form.domainsText !== initial.domainsText) changed.push('Sponsor domains');
   if (form.addressesText !== initial.addressesText) changed.push('Sponsor allowlist');

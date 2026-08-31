@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { PortalConfigView } from '../../../services/portalConfigService';
-import { changedSettings, formFromView, updateFromForm, validationIssues } from './portalFormModel';
+import {
+  changedSettings,
+  formFromView,
+  selectedAccessPolicy,
+  updateFromForm,
+  validationIssues,
+} from './portalFormModel';
 
 function makeView(overrides: Partial<PortalConfigView> = {}): PortalConfigView {
   return {
@@ -13,6 +19,7 @@ function makeView(overrides: Partial<PortalConfigView> = {}): PortalConfigView {
       guestFieldsEnabled: null,
       guestFieldsRequired: null,
       secureAccessEnabled: null,
+      accessPolicy: null,
       updatedBy: null,
       updatedAt: null,
     },
@@ -156,5 +163,76 @@ describe('changedSettings', () => {
     form.secureAccessEnabled = false;
     form.fieldModes.email = 'optional';
     expect(changedSettings(form, initial)).toEqual(['Secure access offer', 'Guest details']);
+  });
+});
+
+describe('acceptance policy — the design fast-path choice', () => {
+  it('round-trips: stored value in, explicit value out, blank stays null', () => {
+    const view = makeView();
+    view.stored.accessPolicy = 'sponsored';
+    const form = formFromView(view);
+    expect(form.accessPolicy).toBe('sponsored');
+    expect(updateFromForm(form).accessPolicy).toBe('sponsored');
+    form.accessPolicy = '';
+    expect(updateFromForm(form).accessPolicy).toBeNull();
+  });
+
+  it('ignores an unrecognised stored value', () => {
+    const view = makeView();
+    view.stored.accessPolicy = 'passphrase';
+    expect(formFromView(view).accessPolicy).toBe('');
+  });
+
+  it('selects: explicit draft > portal effective > derivation from fields', () => {
+    const view = makeView();
+    view.effective.accessPolicy = 'terms';
+    const form = formFromView(view);
+    expect(selectedAccessPolicy(form, view)).toBe('terms');
+    form.accessPolicy = 'open';
+    expect(selectedAccessPolicy(form, view)).toBe('open');
+    delete view.effective.accessPolicy;
+    form.accessPolicy = '';
+    // fullName is collected in the fixture, so the derivation says form.
+    expect(selectedAccessPolicy(form, view)).toBe('form');
+    form.fieldModes = { fullName: 'off', email: 'off' };
+    expect(selectedAccessPolicy(form, view)).toBe('terms');
+  });
+
+  it('warns that sponsored falls back to terms without a transport', () => {
+    const view = makeView();
+    view.effective.emailTransport = null;
+    const form = formFromView(view);
+    form.accessPolicy = 'sponsored';
+    const texts = validationIssues(form, view).map((i) => i.text);
+    expect(texts.some((t) => t.includes('fall back to terms'))).toBe(true);
+  });
+
+  it('warns that open access hides sponsorship and secure access', () => {
+    const view = makeView();
+    const form = formFromView(view);
+    form.accessPolicy = 'open';
+    const texts = validationIssues(form, view).map((i) => i.text);
+    expect(texts.some((t) => t.includes('draws no page'))).toBe(true);
+    expect(texts.some((t) => t.includes('not collected under this access method'))).toBe(true);
+  });
+
+  it('warns when form is selected with no fields enabled', () => {
+    const view = makeView();
+    const form = formFromView(view);
+    form.accessPolicy = 'form';
+    form.fieldModes = { fullName: 'off', email: 'off' };
+    const texts = validationIssues(form, view).map((i) => i.text);
+    expect(texts.some((t) => t.includes('renders like Terms'))).toBe(true);
+  });
+
+  it('names the change for the save summary', () => {
+    const view = makeView();
+    const initial = formFromView(view);
+    const form = {
+      ...initial,
+      fieldModes: { ...initial.fieldModes },
+      accessPolicy: 'open' as const,
+    };
+    expect(changedSettings(form, initial)).toEqual(['Access method']);
   });
 });

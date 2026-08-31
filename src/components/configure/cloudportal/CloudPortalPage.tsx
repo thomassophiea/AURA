@@ -36,7 +36,12 @@ import {
   validationIssues,
   type FormState,
 } from './portalFormModel';
-import { GuestFieldsSection, SecureAccessSection, SponsorshipSection } from './editorSections';
+import {
+  AccessPolicySection,
+  GuestFieldsSection,
+  SecureAccessSection,
+  SponsorshipSection,
+} from './editorSections';
 import { LanguagesSection, LegalPrivacySection } from './factSections';
 import { GuestPreview } from './GuestPreview';
 
@@ -62,6 +67,9 @@ function statusChips(view: PortalConfigView) {
           Secure access:{' '}
           {!secure.configured ? 'not configured' : secure.enabled ? 'offered' : 'off'}
         </Badge>
+      )}
+      {view.effective.accessPolicy && (
+        <Badge variant="outline">Access: {view.effective.accessPolicy}</Badge>
       )}
       {view.preview && <Badge variant="outline">{view.preview.locales.length} languages</Badge>}
     </div>
@@ -295,6 +303,7 @@ export function CloudPortalPage() {
             <CardContent className="space-y-6 p-4">
               {group === 'access' && (
                 <>
+                  <AccessPolicySection view={view} form={form} patch={patch} />
                   <SponsorshipSection view={view} form={form} patch={patch} />
                   <SecureAccessSection view={view} form={form} patch={patch} />
                 </>

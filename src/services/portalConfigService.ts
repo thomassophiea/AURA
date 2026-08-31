@@ -22,9 +22,17 @@ export interface PortalConfigStored {
   guestFieldsRequired: string[] | null;
   /** Absent when the portal service predates the secure-access switch. */
   secureAccessEnabled?: boolean | null;
+  /**
+   * How guests get on: 'open' | 'terms' | 'form' | 'sponsored'. Null means
+   * derived from configuration; absent when the portal predates the policy.
+   */
+  accessPolicy?: string | null;
   updatedBy: string | null;
   updatedAt: string | null;
 }
+
+/** How guests get on. One choice; it decides whether a page is drawn at all. */
+export type PortalAccessPolicy = 'open' | 'terms' | 'form' | 'sponsored';
 
 /** Non-secret description of the secure WLAN, as the portal read it. */
 export interface SecureNetworkView {
@@ -131,6 +139,11 @@ export interface PortalConfigView {
      * absent when the portal service predates it.
      */
     ecp?: { url: string; identity: string } | null;
+    /**
+     * The resolved acceptance policy (null overrides already derived).
+     * Absent when the portal service predates it.
+     */
+    accessPolicy?: PortalAccessPolicy;
   };
   fieldCatalogue: { id: string; personal: boolean }[];
   envDefaults: { sponsorAllowedDomains: string[] };
@@ -148,6 +161,8 @@ export interface PortalConfigUpdate {
   guestFieldsRequired?: string[] | null;
   /** Ignored by portal services that predate the switch. */
   secureAccessEnabled?: boolean | null;
+  /** Null = derive from configuration. Ignored by older portal services. */
+  accessPolicy?: PortalAccessPolicy | null;
 }
 
 export class PortalConfigError extends Error {

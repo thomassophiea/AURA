@@ -7,13 +7,17 @@
  */
 import { Alert, AlertDescription } from '../../ui/alert';
 import { Badge } from '../../ui/badge';
+import { RadioGroup, RadioGroupItem } from '../../ui/radio-group';
+import { cn } from '../../ui/utils';
 import { Section } from '../_kit/Section';
 import { NumberField, SelectField, SwitchField, TextField } from '../system/systemFields';
-import type { PortalConfigView } from '../../../services/portalConfigService';
+import type { PortalAccessPolicy, PortalConfigView } from '../../../services/portalConfigService';
 import {
+  ACCESS_POLICY_OPTIONS,
   CREDENTIAL_SOURCE_LABELS,
   FIELD_LABELS,
   FIELD_MODE_OPTIONS,
+  selectedAccessPolicy,
   type FieldMode,
   type FormState,
 } from './portalFormModel';
@@ -22,6 +26,59 @@ export interface EditorSectionProps {
   view: PortalConfigView;
   form: FormState;
   patch: (partial: Partial<FormState>) => void;
+}
+
+export function AccessPolicySection({ view, form, patch }: EditorSectionProps) {
+  const selected = selectedAccessPolicy(form, view);
+  const supported = view.effective.accessPolicy !== undefined;
+  return (
+    <Section
+      title="How guests get on"
+      description="One choice. It decides whether a page is drawn at all."
+    >
+      {!supported && (
+        <Alert>
+          <AlertDescription>
+            This portal service predates the acceptance policy. Update the OS-ONE-CWP deployment to
+            choose the access method from here; until then the portal derives it from the configured
+            guest fields.
+          </AlertDescription>
+        </Alert>
+      )}
+      <RadioGroup
+        value={selected}
+        onValueChange={(value) => patch({ accessPolicy: value as PortalAccessPolicy })}
+        disabled={!supported}
+        className="gap-2"
+      >
+        {ACCESS_POLICY_OPTIONS.map((option) => (
+          <label
+            key={option.id}
+            className={cn(
+              'flex cursor-pointer items-start gap-3 rounded-md border p-3 transition-colors',
+              selected === option.id
+                ? 'border-primary bg-accent/40'
+                : 'border-border hover:bg-accent/20',
+              !supported && 'cursor-not-allowed opacity-60'
+            )}
+          >
+            <RadioGroupItem value={option.id} className="mt-0.5" />
+            <span className="space-y-0.5">
+              <span className="block text-sm font-medium">{option.label}</span>
+              <span className="block text-xs text-muted-foreground">{option.description}</span>
+            </span>
+          </label>
+        ))}
+      </RadioGroup>
+      {form.accessPolicy === '' && supported && (
+        <p className="text-xs text-muted-foreground">
+          No explicit choice is stored yet — the portal derives{' '}
+          <span className="font-medium">{selected}</span> from its configuration. Picking an option
+          stores it explicitly.
+        </p>
+      )}
+    </Section>
+  );
 }
 
 export function SponsorshipSection({ view, form, patch }: EditorSectionProps) {
