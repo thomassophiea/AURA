@@ -161,6 +161,7 @@ describe('GuestPreview', () => {
     const termsView = makeView();
     const termsForm = formFromView(termsView);
     termsForm.accessPolicy = 'terms';
+    termsForm.sponsorshipEnabled = false; // otherwise sponsor-identity fields widen the form
     const second = render(<GuestPreview view={termsView} form={termsForm} />);
     expect(screen.queryByText('Your details')).not.toBeInTheDocument();
     expect(screen.getByText('Do not store my personal data')).toBeInTheDocument();
@@ -175,6 +176,9 @@ describe('GuestPreview', () => {
     expect(screen.queryByText('Connect to the Internet')).not.toBeInTheDocument();
     expect(screen.queryByText('Secure Guest Access')).not.toBeInTheDocument();
     expect(screen.getByText('Request Sponsored Access')).toBeInTheDocument();
+    // The portal widens the sponsored form with the identity fields, optional.
+    expect(screen.getByText('Full name')).toBeInTheDocument();
+    expect(screen.queryByText('required')).not.toBeInTheDocument();
   });
 
   it('explains itself when the portal predates the preview catalogue', () => {

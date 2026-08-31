@@ -50,9 +50,6 @@ export function GuestPreview({ view, form }: GuestPreviewProps) {
     );
   }
 
-  const enabledFields = view.fieldCatalogue.filter(
-    (f) => (form.fieldModes[f.id] ?? 'off') !== 'off'
-  );
   // The acceptance policy the guest experiences, with the portal's own
   // fallback mirrored: sponsored without a working sponsorship path renders
   // as terms, so the preview shows what actually ships.
@@ -67,8 +64,25 @@ export function GuestPreview({ view, form }: GuestPreviewProps) {
     secure?.configured &&
     secure.network !== null;
   const showSponsorship = sponsorshipAvailable && policy !== 'open';
+
+  // Configured fields draw only under the 'form' policy; whenever sponsorship
+  // is offered the portal widens the form with the sponsor-identity fields
+  // (name and email, optional on the open path) — mirror that exactly.
+  const formFields =
+    policy === 'form'
+      ? view.fieldCatalogue.filter((f) => (form.fieldModes[f.id] ?? 'off') !== 'off')
+      : [];
+  const enabledFields = [...formFields];
+  if (showSponsorship) {
+    for (const id of ['fullName', 'email']) {
+      if (!enabledFields.some((f) => f.id === id)) {
+        enabledFields.push({ id, personal: true });
+      }
+    }
+  }
+  const fieldRequired = (id: string) =>
+    policy === 'form' && formFields.some((f) => f.id === id) && form.fieldModes[id] === 'required';
   const showOpenSubmit = policy !== 'sponsored';
-  const showFields = policy === 'form';
   const sponsorDomain =
     splitList(form.domainsText)[0] ??
     view.effective.sponsorship.domains[0] ??
@@ -113,7 +127,7 @@ export function GuestPreview({ view, form }: GuestPreviewProps) {
               <h4 className="mt-1 text-base font-bold text-[#0f172a]">{messages.consent.title}</h4>
               <p className="mt-0.5 text-xs text-[#64748b]">{messages.consent.subtitle}</p>
 
-              {showFields && enabledFields.length > 0 && (
+              {enabledFields.length > 0 && (
                 <fieldset className="mt-4 rounded-xl border border-[#e2e8f0] p-3">
                   <legend className="px-1 text-xs font-semibold text-[#0f172a]">
                     {messages.fields.heading}
@@ -122,7 +136,7 @@ export function GuestPreview({ view, form }: GuestPreviewProps) {
                   <div className="flex flex-col gap-2">
                     {enabledFields.map((field) => {
                       const copy = previewFieldCopy(messages, field.id);
-                      const required = form.fieldModes[field.id] === 'required';
+                      const required = fieldRequired(field.id);
                       return (
                         <div key={field.id} className="flex flex-col gap-0.5">
                           <span className="flex items-baseline gap-1.5 text-[11px] font-medium text-[#334155]">
