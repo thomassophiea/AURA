@@ -39,6 +39,7 @@ import { createMonitoringRouter } from './server/monitoring/monitoringRouter.js'
 import { createEnergyRouter } from './server/energy/energyRouter.js';
 import { createLightAwareRouter } from './server/energy/lightAware/router.js';
 import { createGuestsRouter } from './server/guests/guestsRouter.js';
+import { createPortalConfigRouter } from './server/portal/portalConfigRouter.js';
 import { createSystemRouter } from './server/system/systemRouter.js';
 import { createServicesSummaryRouter } from './server/services/servicesSummaryRouter.js';
 import { describeEnvironment } from './server/system/environment.js';
@@ -2274,6 +2275,13 @@ app.use('/api', createGuestsRouter());
       : '[Proxy Server] ⚠ Guest management API mounted but inert — set CWP_INTERNAL_API_URL and CWP_INTERNAL_API_TOKEN'
   );
 }
+
+// ==================== Cloud Captive Portal Configuration ====================
+// Operator overlay on the portal's own configuration (sponsorship domains,
+// guest fields). Stored and validated by the portal service; AURA relays with
+// the same gateway-scoped authorization as guest management.
+app.use('/api', createPortalConfigRouter());
+console.log('[Proxy Server] ✓ Portal configuration API mounted at /api/v1/portal-config');
 
 // ==================== Cortex AI Copilot Routes ====================
 // These must appear before the /api proxy middleware so they are

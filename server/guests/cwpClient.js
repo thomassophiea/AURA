@@ -156,3 +156,17 @@ export function deleteGuest(id, options = {}) {
     method: 'DELETE',
   });
 }
+
+// ---------------------------------------------------------------------------
+// Portal configuration — the storage behind Configure → Cloud Captive Portal.
+// Same internal surface, same trust model; the portal validates every value
+// server-side, so these are thin.
+// ---------------------------------------------------------------------------
+
+export function getPortalConfig(options = {}) {
+  return cwpRequest('/api/internal/config', options);
+}
+
+export function updatePortalConfig(body, options = {}) {
+  return cwpRequest('/api/internal/config', { ...options, method: 'PUT', body });
+}

@@ -85,6 +85,9 @@ const ConfigureServiceProfiles = lazy(() =>
 const ConfigureSystem = lazy(() =>
   import('./components/configure/system').then((m) => ({ default: m.SystemPage }))
 );
+const ConfigureCloudPortal = lazy(() =>
+  import('./components/configure/cloudportal').then((m) => ({ default: m.CloudPortalPage }))
+);
 const ConfigureAccessControl = lazy(() =>
   import('./components/configure/accesscontrol').then((m) => ({ default: m.AccessControlPage }))
 );
@@ -337,6 +340,10 @@ const pageInfo = {
   'configure-system': {
     title: 'System & Security',
     description: 'Availability, allow/deny lists, SNMP, Gateway settings, and service accounts',
+  },
+  'configure-cloud-portal': {
+    title: 'Cloud Captive Portal',
+    description: 'Guest web portal: employee sponsorship policy and guest details',
   },
   'global-templates': {
     title: 'Global Templates',
@@ -1367,6 +1374,8 @@ export default function App() {
         return <ConfigureAccessControl />;
       case 'configure-system':
         return <ConfigureSystem />;
+      case 'configure-cloud-portal':
+        return <ConfigureCloudPortal />;
       case 'global-templates':
         return (
           <GlobalElementsPage

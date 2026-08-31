@@ -37,6 +37,7 @@ const componentImports: Record<string, () => Promise<unknown>> = {
   'configure-service-profiles': () => import('../components/configure/serviceprofiles'),
   'configure-adoption-rules': () => import('../components/configure/adoption'),
   'configure-system': () => import('../components/configure/system'),
+  'configure-cloud-portal': () => import('../components/configure/cloudportal'),
   'diagnostics-system-health': () => import('../components/diagnostics'),
   tools: () => import('../components/Tools'),
   administration: () => import('../components/Administration'),

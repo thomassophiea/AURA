@@ -88,6 +88,7 @@ const configureItems = [
   { id: 'configure-aaa-policies', label: 'AAA Policies', icon: UserCheck },
   { id: 'configure-access-control', label: 'Access Control', icon: KeySquare },
   { id: 'configure-guest', label: 'Guest', icon: UserPlus },
+  { id: 'configure-cloud-portal', label: 'Cloud Captive Portal', icon: Globe },
   { id: 'configure-service-profiles', label: 'Service Profiles', icon: Radar },
   { id: 'configure-adoption-rules', label: 'Adoption Rules', icon: Zap },
   { id: 'configure-system', label: 'System & Security', icon: Settings },
