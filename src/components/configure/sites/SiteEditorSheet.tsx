@@ -60,7 +60,9 @@ export function SiteEditorSheet({
   onDelete,
 }: SiteEditorSheetProps) {
   const isNew = record == null;
-  const [form, setForm] = useState<SiteConfig>(() => structuredClone((record ?? seed) as SiteConfig));
+  const [form, setForm] = useState<SiteConfig>(() =>
+    structuredClone((record ?? seed) as SiteConfig)
+  );
   const initialJson = useRef(JSON.stringify(form));
   const dirty = isNew || JSON.stringify(form) !== initialJson.current;
   const [confirmDel, setConfirmDel] = useState(false);
@@ -72,7 +74,11 @@ export function SiteEditorSheet({
 
   const handleSave = async () => {
     // Keep treeNode.country in sync with the identity country (gap 32).
-    const payload = setPath(form, 'treeNode.country', form.country || getPath(form, 'treeNode.country'));
+    const payload = setPath(
+      form,
+      'treeNode.country',
+      form.country || getPath(form, 'treeNode.country')
+    );
     const saved = await onSave(payload, record?.id);
     if (saved) onOpenChange(false);
   };

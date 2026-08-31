@@ -8,13 +8,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { Switch } from '../../ui/switch';
 import { EditorSheet, FieldRow, MaskedInput } from '../_kit';
 import type { ApProfile, Meshpoint, Topology } from '../../../types/configure';
@@ -175,7 +169,11 @@ export function MeshpointEditorSheet(props: MeshpointEditorSheetProps) {
                       upd({
                         privacy: {
                           ...form.privacy,
-                          PskElement: { ...psk, presharedKey: v, keyHexEncoded: !!psk?.keyHexEncoded },
+                          PskElement: {
+                            ...psk,
+                            presharedKey: v,
+                            keyHexEncoded: !!psk?.keyHexEncoded,
+                          },
                         },
                       })
                     }
@@ -185,7 +183,10 @@ export function MeshpointEditorSheet(props: MeshpointEditorSheetProps) {
                   />
                 </FieldRow>
               )}
-              <p className="pt-1 text-[11.5px] text-muted-foreground" style={{ marginLeft: LW + 12 }}>
+              <p
+                className="pt-1 text-[11.5px] text-muted-foreground"
+                style={{ marginLeft: LW + 12 }}
+              >
                 ( &#8314; ) Does not apply to AP 39xx
               </p>
             </>

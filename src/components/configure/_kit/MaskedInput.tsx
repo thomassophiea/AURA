@@ -7,8 +7,10 @@ import { Input } from '../../ui/input';
 import { Button } from '../../ui/button';
 import { cn } from '../../ui/utils';
 
-export interface MaskedInputProps
-  extends Omit<React.ComponentProps<typeof Input>, 'type' | 'value' | 'onChange'> {
+export interface MaskedInputProps extends Omit<
+  React.ComponentProps<typeof Input>,
+  'type' | 'value' | 'onChange'
+> {
   value: string;
   onChange: (value: string) => void;
 }

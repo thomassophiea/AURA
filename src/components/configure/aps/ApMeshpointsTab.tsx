@@ -36,7 +36,12 @@ export function ApMeshpointsTab({ form, refData, onEditOverrides }: ApMeshpoints
               <TableCell>{m.meshRoot ? 'Yes' : 'No'}</TableCell>
               <TableCell>{PREF_BAND_LABEL[m.preferredBand] ?? '—'}</TableCell>
               <TableCell className="text-right">
-                <Button type="button" variant="outline" size="sm" onClick={() => onEditOverrides(i)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onEditOverrides(i)}
+                >
                   Edit Overrides
                 </Button>
               </TableCell>

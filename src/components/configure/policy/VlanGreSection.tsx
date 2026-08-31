@@ -19,9 +19,7 @@ export function VlanGreSection({ form }: VlanGreSectionProps) {
 
   if (members.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
-        Deprecated — not configurable from AURA.
-      </p>
+      <p className="text-sm text-muted-foreground">Deprecated — not configurable from AURA.</p>
     );
   }
 

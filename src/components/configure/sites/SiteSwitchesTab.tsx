@@ -4,13 +4,7 @@
  * switch-assignment grid is out of the EPB-125 prototype scope.
  */
 import React from 'react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { FieldRow } from '../_kit';
 import type { SiteTabProps } from './siteEditorTypes';
 

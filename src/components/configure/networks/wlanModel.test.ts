@@ -81,10 +81,7 @@ describe('auth-type ↔ element mapping', () => {
 describe('portal type options (PLM 2026-08-21 guest scope)', () => {
   it('offers exactly External + Guest Essentials for new records', () => {
     expect(portalTypeOptions(null).map((o) => o.id)).toEqual(['External', 'GuestEssentials']);
-    expect(portalTypeOptions('External').map((o) => o.id)).toEqual([
-      'External',
-      'GuestEssentials',
-    ]);
+    expect(portalTypeOptions('External').map((o) => o.id)).toEqual(['External', 'GuestEssentials']);
   });
 
   it('keeps a legacy Internal value selectable with the deprecated label', () => {

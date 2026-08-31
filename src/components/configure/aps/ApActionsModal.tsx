@@ -57,12 +57,16 @@ export function ApActionsModal({
   const set = (k: keyof typeof d, v: string | boolean) => setD((p) => ({ ...p, [k]: v }));
 
   const names =
-    selected.map((r) => r.apName || r.serialNumber).slice(0, 3).join(', ') +
-    (selected.length > 3 ? `, +${selected.length - 3} more` : '');
+    selected
+      .map((r) => r.apName || r.serialNumber)
+      .slice(0, 3)
+      .join(', ') + (selected.length > 3 ? `, +${selected.length - 3} more` : '');
 
   const versions = useMemo<string[]>(
     () =>
-      Array.from(new Set(selected.map((r) => r.softwareVersion).filter((v): v is string => !!v))).sort(),
+      Array.from(
+        new Set(selected.map((r) => r.softwareVersion).filter((v): v is string => !!v))
+      ).sort(),
     [selected]
   );
   const site = sites.find((x) => x.id === d.siteId);
@@ -81,7 +85,12 @@ export function ApActionsModal({
         </FieldRow>
         {d.enable && (
           <FieldRow label="Preferred Connection" inline>
-            <ApSelect className="w-40" value={d.affinity} options={['Primary', 'Backup']} onChange={(v) => set('affinity', v)} />
+            <ApSelect
+              className="w-40"
+              value={d.affinity}
+              options={['Primary', 'Backup']}
+              onChange={(v) => set('affinity', v)}
+            />
           </FieldRow>
         )}
       </>
@@ -95,7 +104,12 @@ export function ApActionsModal({
         </FieldRow>
         {d.enable && (
           <FieldRow label="Event Level" inline>
-            <ApSelect className="w-40" value={d.level} options={AP_EVENT_LEVELS} onChange={(v) => set('level', v)} />
+            <ApSelect
+              className="w-40"
+              value={d.level}
+              options={AP_EVENT_LEVELS}
+              onChange={(v) => set('level', v)}
+            />
           </FieldRow>
         )}
       </>
@@ -103,11 +117,19 @@ export function ApActionsModal({
   } else if (actionKey === 'image') {
     okDisabled = !d.version;
     okMsg = `Upgrade to ${d.version || '?'} scheduled`;
-    const opts: Opt[] = [{ id: '', label: '— Select —' }, ...versions.map((v) => ({ id: v, label: v }))];
+    const opts: Opt[] = [
+      { id: '', label: '— Select —' },
+      ...versions.map((v) => ({ id: v, label: v })),
+    ];
     body = (
       <>
         <FieldRow label="Upgrade To Version" inline>
-          <ApSelect className="w-56" value={d.version} options={opts} onChange={(v) => set('version', v)} />
+          <ApSelect
+            className="w-56"
+            value={d.version}
+            options={opts}
+            onChange={(v) => set('version', v)}
+          />
         </FieldRow>
         <FieldRow label="Minimize service impact" inline>
           <Switch checked={d.minimize} onCheckedChange={(v) => set('minimize', v)} />
@@ -120,10 +142,20 @@ export function ApActionsModal({
     body = (
       <>
         <FieldRow label="Common Name" inline>
-          <ApSelect className="w-44" value={d.cnType} options={['AP Name', 'Serial Number', 'Custom']} onChange={(v) => set('cnType', v)} />
+          <ApSelect
+            className="w-44"
+            value={d.cnType}
+            options={['AP Name', 'Serial Number', 'Custom']}
+            onChange={(v) => set('cnType', v)}
+          />
         </FieldRow>
         <FieldRow label="Key Size" inline>
-          <ApSelect className="w-32" value={d.keySize} options={['1024', '2048', '4096']} onChange={(v) => set('keySize', v)} />
+          <ApSelect
+            className="w-32"
+            value={d.keySize}
+            options={['1024', '2048', '4096']}
+            onChange={(v) => set('keySize', v)}
+          />
         </FieldRow>
         {(
           [
@@ -161,10 +193,13 @@ export function ApActionsModal({
   } else {
     okDisabled = !d.siteId || !d.dgId;
     okMsg = `Assigned to ${site?.siteName ?? 'site'}`;
-    const siteOpts: Opt[] = [{ id: '', label: '— Select —' }, ...sites.map((x) => ({ id: x.id ?? '', label: x.siteName }))];
+    const siteOpts: Opt[] = [
+      { id: '', label: '— Select —' },
+      ...sites.map((x) => ({ id: x.id ?? '', label: x.siteName })),
+    ];
     const dgOpts: Opt[] = [
       { id: '', label: d.siteId ? '— Select —' : 'Select a site first' },
-      ...((site?.deviceGroups ?? []).map((g) => ({ id: g.id, label: g.groupName }))),
+      ...(site?.deviceGroups ?? []).map((g) => ({ id: g.id, label: g.groupName })),
     ];
     body = (
       <>
@@ -180,7 +215,12 @@ export function ApActionsModal({
           />
         </FieldRow>
         <FieldRow label="Device Group" inline>
-          <ApSelect className="w-60" value={d.dgId} options={dgOpts} onChange={(v) => set('dgId', v)} />
+          <ApSelect
+            className="w-60"
+            value={d.dgId}
+            options={dgOpts}
+            onChange={(v) => set('dgId', v)}
+          />
         </FieldRow>
       </>
     );
@@ -194,7 +234,9 @@ export function ApActionsModal({
       maxWidth={580}
       okLabel={okLabel}
       okDisabled={okDisabled}
-      onOk={() => onDone(`${okMsg} — ${selected.length} AP${selected.length === 1 ? '' : 's'}: ${names}`)}
+      onOk={() =>
+        onDone(`${okMsg} — ${selected.length} AP${selected.length === 1 ? '' : 's'}: ${names}`)
+      }
     >
       <p className="text-sm text-muted-foreground">{names}</p>
       {body}

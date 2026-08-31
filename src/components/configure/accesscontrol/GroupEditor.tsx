@@ -71,7 +71,10 @@ export function GroupEditor({
       const next = structuredClone(prev);
       const list = Array.isArray(next.entries) ? next.entries : [];
       const entry = list[index] ?? ({} as AcGroupEntry);
-      const inner = { ...((entry[spec.key] as Record<string, unknown> | null) ?? {}), [field]: value };
+      const inner = {
+        ...((entry[spec.key] as Record<string, unknown> | null) ?? {}),
+        [field]: value,
+      };
       list[index] = { ...entry, [spec.key]: inner };
       next.entries = list;
       return next;
@@ -79,7 +82,10 @@ export function GroupEditor({
 
   const addEntry = () => upd('entries', [...entries, blankEntry(spec)]);
   const removeEntry = (index: number) =>
-    upd('entries', entries.filter((_, i) => i !== index));
+    upd(
+      'entries',
+      entries.filter((_, i) => i !== index)
+    );
 
   const gridTemplate = `${spec.cols.map(() => 'minmax(0,1fr)').join(' ')} 40px`;
 

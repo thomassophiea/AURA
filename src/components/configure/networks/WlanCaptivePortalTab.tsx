@@ -234,7 +234,11 @@ export function WlanCaptivePortalTab({ form, setForm, errors, refs }: WlanTabPro
             items={eguestSettings}
             maxItems={3}
             onChange={(items) => patch({ eGuestSettings: items })}
-            createItem={() => ({ id: '', useRadiusAuthentication: false, useRadiusAccounting: false })}
+            createItem={() => ({
+              id: '',
+              useRadiusAuthentication: false,
+              useRadiusAccounting: false,
+            })}
             addLabel="Add ExtremeGuest Server"
             emptyText="No ExtremeGuest servers configured"
             getItemTitle={(item, index) =>

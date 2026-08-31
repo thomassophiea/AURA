@@ -42,23 +42,37 @@ export function ProfInstallDialog({ form, open, onOpenChange, onApply }: ProfIns
     >
       {F('WIFI7') && (
         <FieldRow label="AP Environment" inline>
-          <ApSelect className="w-40" value={d.environment || 'indoor'} options={['indoor', 'outdoor']} onChange={(v) => upd('environment', v)} />
+          <ApSelect
+            className="w-40"
+            value={d.environment || 'indoor'}
+            options={['indoor', 'outdoor']}
+            onChange={(v) => upd('environment', v)}
+          />
         </FieldRow>
       )}
 
       {F('PROFESSIONAL-INSTALL-ATT') && (
         <>
-          <h4 className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Attenuation [dB] (0-30)</h4>
+          <h4 className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Attenuation [dB] (0-30)
+          </h4>
           {(d.radios ?? []).map((r, i) => (
             <FieldRow key={i} label={r.radioName || `Radio ${r.radioIndex}`} inline>
-              <NumberField value={r.attenuation} min={0} max={30} onChange={(v) => upd(`radios.${i}.attenuation`, v)} />
+              <NumberField
+                value={r.attenuation}
+                min={0}
+                max={30}
+                onChange={(v) => upd(`radios.${i}.attenuation`, v)}
+              />
             </FieldRow>
           ))}
           {attBad && <p className="text-xs text-destructive">Attenuation must be 0 to 30 dB</p>}
         </>
       )}
 
-      <h4 className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Floor Settings</h4>
+      <h4 className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        Floor Settings
+      </h4>
       <OvrRow
         label="Floor Settings Override"
         overridden={!!d.elevationOvr}
@@ -67,21 +81,34 @@ export function ProfInstallDialog({ form, open, onOpenChange, onApply }: ProfIns
       >
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-muted-foreground">AP Height [m]</span>
-          <NumberField className="w-24" value={getIn(d, 'elevation.height') as number} onChange={(v) => upd('elevation.height', v)} />
+          <NumberField
+            className="w-24"
+            value={getIn(d, 'elevation.height') as number}
+            onChange={(v) => upd('elevation.height', v)}
+          />
           <span className="text-xs text-muted-foreground">Uncertainty</span>
-          <NumberField className="w-24" value={getIn(d, 'elevation.uncertainty') as number} onChange={(v) => upd('elevation.uncertainty', v)} />
+          <NumberField
+            className="w-24"
+            value={getIn(d, 'elevation.uncertainty') as number}
+            onChange={(v) => upd('elevation.uncertainty', v)}
+          />
         </div>
       </OvrRow>
 
       {F('GPS-ANCHOR') && (
         <>
-          <h4 className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">GPS</h4>
+          <h4 className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            GPS
+          </h4>
           <FieldRow label="Anchor AP" inline>
             <Switch checked={!!d.gpsAnchor} onCheckedChange={(v) => upd('gpsAnchor', v)} />
           </FieldRow>
           {F('GPS-DONGLE') && d.gpsAnchor && (
             <FieldRow label="GPS Dongle Distance [m]" inline>
-              <NumberField value={d.gpsAntennaDistance} onChange={(v) => upd('gpsAntennaDistance', v)} />
+              <NumberField
+                value={d.gpsAntennaDistance}
+                onChange={(v) => upd('gpsAntennaDistance', v)}
+              />
             </FieldRow>
           )}
         </>

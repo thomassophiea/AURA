@@ -11,5 +11,9 @@ export { ConfirmDialog, type ConfirmDialogProps } from './ConfirmDialog';
 export { ArrayEditor, type ArrayEditorProps } from './ArrayEditor';
 export { RuleList, type RuleListProps } from './RuleList';
 export { OvrRow, type OvrRowProps } from './OvrRow';
-export { useResourceCrud, type ResourceCrudService, type UseResourceCrudOptions } from './useResourceCrud';
+export {
+  useResourceCrud,
+  type ResourceCrudService,
+  type UseResourceCrudOptions,
+} from './useResourceCrud';
 export { useDefaults } from './useDefaults';

@@ -37,8 +37,7 @@ export function SystemPage() {
         <div className="space-y-1">
           <h1 className="text-2xl font-medium">System &amp; Security</h1>
           <p className="text-sm text-muted-foreground">
-            Availability, client allow/deny lists, SNMP, Gateway settings and local service
-            accounts
+            Availability, client allow/deny lists, SNMP, Gateway settings and local service accounts
           </p>
         </div>
       </div>

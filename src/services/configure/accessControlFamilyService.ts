@@ -188,6 +188,26 @@ export const acCertificatesService = createResourceClient<AcCertificate>({
   supportsDefault: false,
 });
 
+/* ────────────────────────────── portals ────────────────────────────── */
+
+/**
+ * Portal listing row. The wire returns bare `{name}` objects — the gateway's
+ * own rule editor populates its Portal dropdown from exactly this collection
+ * (nacPortalService.getAllPortals in services/access-control.js:
+ * GET {nacApi}portals, isArray). Verified live against 192.168.100.12:5825
+ * (200, `[{"name":"Default"}]`).
+ */
+export interface AcPortal {
+  name: string;
+}
+
+/** Captive portal configurations — list-only here (the editor needs names). */
+export const acPortalsService = {
+  async list(): Promise<AcPortal[]> {
+    return unwrapList<AcPortal>(await configureRequest<unknown>('/access-control/v1/portals'));
+  },
+};
+
 /* ────────────────────────────── rules ────────────────────────────── */
 
 const RULES_BASE = '/access-control/v1/rules';

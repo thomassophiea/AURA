@@ -13,14 +13,18 @@ import {
   aggregateDeviceGroups,
   apEligibility,
   buildClaimIndex,
+  buildClonePlan,
   buildDeletePlans,
   buildSiteSavePlans,
+  cloneName,
   countReplatformDrops,
   createInstanceGroup,
+  deviceGroupsCsv,
   dropOffPlatformSerials,
   rfKindForProfile,
   rfOptionsForKind,
   validateAggregatedGroup,
+  type AggregatedDeviceGroup,
   type AggregatedGroupForm,
   type DeviceGroupAp,
 } from './devicegroupsModel';
@@ -309,11 +313,17 @@ describe('validateAggregatedGroup', () => {
     groupName: 'INDOOR',
     profileId: 'prof-a',
     rfMgmtPolicyId: 'rf-smart',
-    instances: [],
+    instances: aggregateDeviceGroups([siteA]).find((r) => r.groupName === 'INDOOR')!.instances,
   };
 
   it('accepts a valid form', () => {
     expect(validateAggregatedGroup(base, [], 'smartRf')).toEqual({});
+  });
+
+  it('requires at least one member site — a zero-site group cannot persist', () => {
+    const errs = validateAggregatedGroup({ ...base, instances: [] }, [], 'smartRf');
+    expect(errs.sites).toMatch(/at least one site/);
+    expect(validateAggregatedGroup(base, [], 'smartRf').sites).toBeUndefined();
   });
 
   it('requires a name matching the name pattern, unique across groups', () => {
@@ -345,6 +355,133 @@ describe('validateAggregatedGroup', () => {
     };
     const errs = validateAggregatedGroup(form, [], 'smartRf', [siteA, siteB]);
     expect(errs.name).toMatch(/Alpha/);
+  });
+});
+
+/* ── clone (golden DeviceGroupsView semantics) ────────────────────────── */
+
+describe('cloneName', () => {
+  it('suggests `${name}-clone` and dedupes with numeric suffixes', () => {
+    expect(cloneName('INDOOR', ['INDOOR', 'OUTDOOR'])).toBe('INDOOR-clone');
+    expect(cloneName('INDOOR', ['INDOOR', 'INDOOR-clone'])).toBe('INDOOR-clone-2');
+    expect(cloneName('INDOOR', ['INDOOR', 'INDOOR-clone', 'INDOOR-clone-2'])).toBe(
+      'INDOOR-clone-3'
+    );
+  });
+
+  it('falls back for an unnamed source', () => {
+    expect(cloneName('', [])).toBe('Device Group-clone');
+  });
+});
+
+describe('buildClonePlan', () => {
+  const indoor = () => aggregateDeviceGroups([siteA, siteB]).find((r) => r.groupName === 'INDOOR')!;
+
+  it('copies the binding under a deduped name with zero member sites', () => {
+    const plan = buildClonePlan(indoor(), ['INDOOR', 'OUTDOOR']);
+    expect(plan.form.groupName).toBe('INDOOR-clone');
+    expect(plan.form.profileId).toBe('prof-a');
+    expect(plan.form.rfMgmtPolicyId).toBe('rf-smart');
+    expect(plan.form.instances).toEqual([]);
+  });
+
+  it('dedupes against an existing -clone name', () => {
+    expect(buildClonePlan(indoor(), ['INDOOR', 'INDOOR-clone']).form.groupName).toBe(
+      'INDOOR-clone-2'
+    );
+  });
+
+  it('copies vestigial fields into the template with identity and membership reset', () => {
+    const plan = buildClonePlan(indoor(), []);
+    // Vestigial payload from the source's first instance (makeGroup fixture).
+    expect(plan.template.txbfEnabled2_4).toBe('muMimo');
+    expect(plan.template.aggregateMpdu5).toBe(true);
+    expect(plan.template.minimumBaseRate2_4).toBe(6);
+    expect(plan.template.enableDpi).toBe(true);
+    // Identity and membership reset.
+    expect(plan.template.id).toBe('');
+    expect(plan.template.custId).toBeNull();
+    expect(plan.template.apSerialNumbers).toEqual([]);
+    expect(plan.template.canEdit).toBe(true);
+    expect(plan.template.canDelete).toBe(true);
+    expect(plan.template.groupName).toBe('INDOOR-clone');
+    expect(plan.template.profileId).toBe('prof-a');
+    expect(plan.template.rfMgmtPolicyId).toBe('rf-smart');
+    // Source records untouched (template is a clone).
+    expect(siteA.deviceGroups[0].apSerialNumbers).toEqual(['SN-1', 'SN-2']);
+    expect(siteA.deviceGroups[0].id).toBe('dg-a1');
+  });
+
+  it('falls back to vestigial defaults when the source has no instances', () => {
+    const empty: AggregatedDeviceGroup = { ...indoor(), instances: [] };
+    const plan = buildClonePlan(empty, []);
+    expect(plan.template).toHaveProperty('enableDpi');
+    expect(plan.template).toHaveProperty('txbfEnabled5');
+    expect(plan.template.apSerialNumbers).toEqual([]);
+  });
+
+  it('per-site records created from the template inherit the vestigial payload', () => {
+    const plan = buildClonePlan(indoor(), []);
+    const siteC = makeSite({ id: 'site-c', siteName: 'Charlie' });
+    const g = createInstanceGroup(siteC, plan.form, plan.template);
+    expect(g.txbfEnabled2_4).toBe('muMimo');
+    expect(g.minimumBaseRate5).toBe(6);
+    expect(g.groupName).toBe('INDOOR-clone');
+    expect(g.profileId).toBe('prof-a');
+    expect(g.rfMgmtPolicyId).toBe('rf-smart');
+    expect(g.apSerialNumbers).toEqual([]);
+    expect(g.id).toMatch(/^dg-site-c-/);
+  });
+});
+
+/* ── CSV export ───────────────────────────────────────────────────────── */
+
+describe('deviceGroupsCsv', () => {
+  const profiles = new Map([
+    ['prof-a', makeProfile({})],
+    ['prof-b', makeProfile({ id: 'prof-b', name: 'AP4020X, outdoor', apPlatform: 'AP4020X' })],
+  ]);
+  const rf = new Map([
+    ['rf-smart', { id: 'rf-smart', name: 'HQ Smart RF' } as unknown as RfMgmtPolicy],
+    ['rf-acs', { id: 'rf-acs', name: 'Default "ACS"' } as unknown as RfMgmtPolicy],
+  ]);
+
+  it('emits the header and one row per aggregated group, quoting per RFC 4180', () => {
+    const rows = aggregateDeviceGroups([siteA, siteB]);
+    const lines = deviceGroupsCsv(rows, profiles, rf).split('\n');
+    expect(lines[0]).toBe('Name,AP Platform,Profile,RF Management,Sites,Access Points');
+    expect(lines).toHaveLength(3);
+    expect(lines[1]).toBe('INDOOR,AP5020,AP5020-default,HQ Smart RF,2,3');
+    // Comma in the profile name → quoted; quotes in the RF name → doubled.
+    expect(lines[2]).toBe('OUTDOOR,AP4020X,"AP4020X, outdoor","Default ""ACS""",1,1');
+  });
+
+  it('states conflicts and never averages them away', () => {
+    const conflicted = makeSite({
+      id: 'site-c',
+      siteName: 'Charlie',
+      deviceGroups: [
+        makeGroup({
+          id: 'dg-c1',
+          groupName: 'INDOOR',
+          profileId: 'prof-b',
+          rfMgmtPolicyId: 'rf-acs',
+        }),
+      ],
+    });
+    const rows = aggregateDeviceGroups([siteA, conflicted]).filter((r) => r.groupName === 'INDOOR');
+    const line = deviceGroupsCsv(rows, profiles, rf).split('\n')[1];
+    expect(line).toContain('AP5020-default (conflict)');
+    expect(line).toContain('HQ Smart RF (conflict)');
+  });
+
+  it('uses an em dash for unresolved lookups and is header-only when empty', () => {
+    const rows = aggregateDeviceGroups([siteA, siteB]);
+    const missing = deviceGroupsCsv(rows, new Map(), new Map()).split('\n')[1];
+    expect(missing).toBe('INDOOR,—,—,—,2,3');
+    expect(deviceGroupsCsv([], profiles, rf)).toBe(
+      'Name,AP Platform,Profile,RF Management,Sites,Access Points'
+    );
   });
 });
 

@@ -46,30 +46,30 @@ export function CosPage() {
     const rlName = (id: string | null | undefined) =>
       id ? (limiters.find((r) => r.id === id)?.name ?? id) : 'None';
     return withRowClick<Cos>(
-        [
-          { field: 'cosName', headerName: 'Name', flex: 1.5, minWidth: 200, sort: 'asc' },
-          {
-            headerName: '802.1p',
-            minWidth: 110,
-            valueGetter: (p) => fmtPriority(p.data?.cosQos?.priority),
-          },
-          {
-            headerName: 'ToS/DSCP',
-            minWidth: 110,
-            valueGetter: (p) =>
-              p.data?.cosQos?.tosDscp != null ? tosHex(p.data.cosQos.tosDscp) : '—',
-          },
-          {
-            headerName: 'Inbound Rate Limit',
-            minWidth: 160,
-            valueGetter: (p) => rlName(p.data?.inboundRateLimiterId),
-          },
-          {
-            headerName: 'Outbound Rate Limit',
-            minWidth: 160,
-            valueGetter: (p) => rlName(p.data?.outboundRateLimiterId),
-          },
-        ],
+      [
+        { field: 'cosName', headerName: 'Name', flex: 1.5, minWidth: 200, sort: 'asc' },
+        {
+          headerName: '802.1p',
+          minWidth: 110,
+          valueGetter: (p) => fmtPriority(p.data?.cosQos?.priority),
+        },
+        {
+          headerName: 'ToS/DSCP',
+          minWidth: 110,
+          valueGetter: (p) =>
+            p.data?.cosQos?.tosDscp != null ? tosHex(p.data.cosQos.tosDscp) : '—',
+        },
+        {
+          headerName: 'Inbound Rate Limit',
+          minWidth: 160,
+          valueGetter: (p) => rlName(p.data?.inboundRateLimiterId),
+        },
+        {
+          headerName: 'Outbound Rate Limit',
+          minWidth: 160,
+          valueGetter: (p) => rlName(p.data?.outboundRateLimiterId),
+        },
+      ],
       (row) => setEditor({ record: row, seed: null })
     );
   }, [limiters]);

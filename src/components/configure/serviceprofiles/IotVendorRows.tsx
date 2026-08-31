@@ -57,7 +57,12 @@ export interface IotVendorRowsProps {
   onEditingChange: (editing: boolean) => void;
 }
 
-export function IotVendorRows({ vendors, readOnly, onChange, onEditingChange }: IotVendorRowsProps) {
+export function IotVendorRows({
+  vendors,
+  readOnly,
+  onChange,
+  onEditingChange,
+}: IotVendorRowsProps) {
   const [editIdx, setEditIdx] = useState<number | null>(null);
   const [draft, setDraft] = useState<VendorDraft | null>(null);
 
@@ -89,7 +94,8 @@ export function IotVendorRows({ vendors, readOnly, onChange, onEditingChange }: 
   const add = () => onChange([...vendors, { vendor: 'ANY', id: -1, name: '' }]);
 
   const last = vendors[vendors.length - 1];
-  const canAdd = !readOnly && editIdx == null && vendors.length < 5 && last && last.vendor !== 'ANY';
+  const canAdd =
+    !readOnly && editIdx == null && vendors.length < 5 && last && last.vendor !== 'ANY';
   const nameErr = draft ? vendorNameErr(draft) : null;
   const idErr = draft ? vendorIdErr(draft) : null;
 
@@ -102,7 +108,10 @@ export function IotVendorRows({ vendors, readOnly, onChange, onEditingChange }: 
             <div className="flex flex-wrap items-center gap-2">
               <span className="w-6 text-xs font-semibold text-muted-foreground">#{i + 1}</span>
               {editing && draft ? (
-                <VendorSelect value={draft.vendor} onValueChange={(v) => setDraft({ ...draft, vendor: v })} />
+                <VendorSelect
+                  value={draft.vendor}
+                  onValueChange={(v) => setDraft({ ...draft, vendor: v })}
+                />
               ) : row.vendor === 'CUSTOM' ? (
                 <button
                   type="button"
@@ -138,7 +147,12 @@ export function IotVendorRows({ vendors, readOnly, onChange, onEditingChange }: 
                     type="number"
                     placeholder="Company ID"
                     value={draft.id}
-                    onChange={(e) => setDraft({ ...draft, id: e.target.value === '' ? '' : Number(e.target.value) })}
+                    onChange={(e) =>
+                      setDraft({
+                        ...draft,
+                        id: e.target.value === '' ? '' : Number(e.target.value),
+                      })
+                    }
                   />
                   <Button
                     type="button"
@@ -155,7 +169,12 @@ export function IotVendorRows({ vendors, readOnly, onChange, onEditingChange }: 
 
               {editing && (
                 <>
-                  <Button type="button" size="sm" disabled={!draft || !vendorDraftOk(draft)} onClick={commit}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={!draft || !vendorDraftOk(draft)}
+                    onClick={commit}
+                  >
                     OK
                   </Button>
                   <Button type="button" size="sm" variant="outline" onClick={cancel}>

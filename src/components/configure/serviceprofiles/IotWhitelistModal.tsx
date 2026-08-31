@@ -7,13 +7,7 @@ import React, { useRef, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '../../ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../ui/dialog';
 
 export interface WhitelistEntry {
   longEUI: string;

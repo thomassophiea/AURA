@@ -6,14 +6,7 @@
  */
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../../ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../ui/table';
 import { BandBadge } from '../../wifi7/wifi7Viz';
 import { ehtBands } from '../../wifi7/wifi7Model';
 import type { ApDetail } from '../../../types/configure';

@@ -39,7 +39,8 @@ export function NetworksTab({ ctx }: { ctx: ProfileTabContext }) {
     });
 
   const wifl = wiredIfOf(form);
-  const hasW = (sid: string, idx: number) => wifl.some((e) => e.serviceId === sid && e.index === idx);
+  const hasW = (sid: string, idx: number) =>
+    wifl.some((e) => e.serviceId === sid && e.index === idx);
   const toggleW = (sid: string, idx: number) =>
     mut((c) => {
       const a = (c.wiredIfList as { serviceId: string; index: number }[]) ?? [];
@@ -61,7 +62,13 @@ export function NetworksTab({ ctx }: { ctx: ProfileTabContext }) {
   return (
     <div className="space-y-2">
       <div className="flex justify-end">
-        <Button type="button" variant="outline" size="sm" disabled title="Create a WLAN from the Networks page">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled
+          title="Create a WLAN from the Networks page"
+        >
           <Plus className="mr-1 h-4 w-4" />
           New Network
         </Button>
@@ -96,7 +103,11 @@ export function NetworksTab({ ctx }: { ctx: ProfileTabContext }) {
                   <TableCell className="font-medium">{s.label}</TableCell>
                   {showMlo && (
                     <TableCell className="text-center">
-                      <PCheck checked={mlo.indexOf(s.id) >= 0} onChange={() => toggleInArr('mloServiceIDs', s.id)} ariaLabel="MLO" />
+                      <PCheck
+                        checked={mlo.indexOf(s.id) >= 0}
+                        onChange={() => toggleInArr('mloServiceIDs', s.id)}
+                        ariaLabel="MLO"
+                      />
                     </TableCell>
                   )}
                   {showBs && (
@@ -112,14 +123,24 @@ export function NetworksTab({ ctx }: { ctx: ProfileTabContext }) {
                     if (r.mode === 'bridge') {
                       return (
                         <TableCell key={r.radioIndex} className="text-center">
-                          <PCheck checked={r.cbServiceId === s.id} disabled onChange={() => {}} ariaLabel="Client bridge WLAN" />
+                          <PCheck
+                            checked={r.cbServiceId === s.id}
+                            disabled
+                            onChange={() => {}}
+                            ariaLabel="Client bridge WLAN"
+                          />
                         </TableCell>
                       );
                     }
                     if (r.mode === 'sensor') {
                       return (
                         <TableCell key={r.radioIndex} className="text-center">
-                          <PCheck checked={false} disabled onChange={() => {}} ariaLabel="Sensor radio" />
+                          <PCheck
+                            checked={false}
+                            disabled
+                            onChange={() => {}}
+                            ariaLabel="Sensor radio"
+                          />
                         </TableCell>
                       );
                     }
@@ -142,12 +163,20 @@ export function NetworksTab({ ctx }: { ctx: ProfileTabContext }) {
                   })}
                   {wired.map((p) => (
                     <TableCell key={p.portIndex} className="text-center">
-                      <PCheck checked={hasW(s.id, p.portIndex)} onChange={() => toggleW(s.id, p.portIndex)} ariaLabel={`${p.portName} ${s.label}`} />
+                      <PCheck
+                        checked={hasW(s.id, p.portIndex)}
+                        onChange={() => toggleW(s.id, p.portIndex)}
+                        ariaLabel={`${p.portName} ${s.label}`}
+                      />
                     </TableCell>
                   ))}
                   {showIot && (
                     <TableCell className="text-center">
-                      <PCheck checked={!!iotSel[s.id]} onChange={(v) => setIotSel((m) => ({ ...m, [s.id]: v }))} ariaLabel="IoT" />
+                      <PCheck
+                        checked={!!iotSel[s.id]}
+                        onChange={(v) => setIotSel((m) => ({ ...m, [s.id]: v }))}
+                        ariaLabel="IoT"
+                      />
                     </TableCell>
                   )}
                 </TableRow>
@@ -178,7 +207,8 @@ export function NetworksTab({ ctx }: { ctx: ProfileTabContext }) {
       )}
 
       <p className="text-xs text-muted-foreground">
-        * WLAN is used as the primary BSSID (bssid0) on this radio — unassigning it resets the radio.
+        * WLAN is used as the primary BSSID (bssid0) on this radio — unassigning it resets the
+        radio.
       </p>
     </div>
   );

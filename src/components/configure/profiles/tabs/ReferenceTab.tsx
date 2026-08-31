@@ -19,7 +19,13 @@ export interface ReferenceTabProps {
   withAirDefenseEssentials?: boolean;
 }
 
-export function ReferenceTab({ ctx, label, fieldKey, pool, withAirDefenseEssentials }: ReferenceTabProps) {
+export function ReferenceTab({
+  ctx,
+  label,
+  fieldKey,
+  pool,
+  withAirDefenseEssentials,
+}: ReferenceTabProps) {
   const { form, setField } = ctx;
   const opts: Opt[] = [{ id: '', label: '— None —' }, ...pool];
   const value = (form as unknown as Record<string, unknown>)[fieldKey];

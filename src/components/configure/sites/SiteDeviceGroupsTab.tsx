@@ -7,14 +7,7 @@
 import React, { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '../../ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../../ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../ui/table';
 import { ConfirmDialog } from '../_kit';
 import type { DeviceGroup } from '../../../types/configure';
 import type { SiteTabProps } from './siteEditorTypes';
@@ -38,7 +31,10 @@ export function SiteDeviceGroupsTab({ form, update, refs }: SiteTabProps) {
   };
 
   const remove = (i: number) => {
-    update('deviceGroups', groups.filter((_, x) => x !== i));
+    update(
+      'deviceGroups',
+      groups.filter((_, x) => x !== i)
+    );
     setDel(null);
   };
 
@@ -86,10 +82,16 @@ export function SiteDeviceGroupsTab({ form, update, refs }: SiteTabProps) {
                   </button>
                 </TableCell>
                 <TableCell>
-                  {nameOf(g.profileId, refs.profiles.map((p) => ({ id: p.id, name: p.name })))}
+                  {nameOf(
+                    g.profileId,
+                    refs.profiles.map((p) => ({ id: p.id, name: p.name }))
+                  )}
                 </TableCell>
                 <TableCell>
-                  {nameOf(g.rfMgmtPolicyId, refs.rfPolicies.map((r) => ({ id: r.id, name: r.name })))}
+                  {nameOf(
+                    g.rfMgmtPolicyId,
+                    refs.rfPolicies.map((r) => ({ id: r.id, name: r.name }))
+                  )}
                 </TableCell>
                 <TableCell>{(g.apSerialNumbers ?? []).length}</TableCell>
                 <TableCell>

@@ -106,9 +106,7 @@ export function GlobalSettingsTab() {
             <TextField
               label="Address"
               value={form.cloudVisibility?.address ?? ''}
-              onChange={(v) =>
-                patch({ cloudVisibility: { ...form.cloudVisibility, address: v } })
-              }
+              onChange={(v) => patch({ cloudVisibility: { ...form.cloudVisibility, address: v } })}
               placeholder="calr1-cw.extremecloudiq.com"
             />
             <NumberField
@@ -138,9 +136,7 @@ export function GlobalSettingsTab() {
             <NumberField
               label="Replay Interval"
               value={form.das?.replayInterval ?? ''}
-              onChange={(v) =>
-                patch({ das: { ...form.das, replayInterval: v === '' ? 0 : v } })
-              }
+              onChange={(v) => patch({ das: { ...form.das, replayInterval: v === '' ? 0 : v } })}
               min={0}
               description="Seconds a DAS request is protected against replay."
             />

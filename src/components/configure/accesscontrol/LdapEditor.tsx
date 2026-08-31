@@ -82,7 +82,12 @@ export function LdapEditor({
     >
       <div className="max-w-[640px] space-y-6">
         <Section title="Configuration">
-          <FieldRow label="LDAP Configuration" htmlFor="acl-name" required error={dirty ? errs.name : null}>
+          <FieldRow
+            label="LDAP Configuration"
+            htmlFor="acl-name"
+            required
+            error={dirty ? errs.name : null}
+          >
             <Input
               id="acl-name"
               value={form.config_name ?? ''}
@@ -101,7 +106,12 @@ export function LdapEditor({
         </Section>
 
         <Section title="Administrator">
-          <FieldRow label="Administrator Name" htmlFor="acl-admin" required error={dirty ? errs.admin : null}>
+          <FieldRow
+            label="Administrator Name"
+            htmlFor="acl-admin"
+            required
+            error={dirty ? errs.admin : null}
+          >
             <Input
               id="acl-admin"
               value={form.administrator_username ?? ''}

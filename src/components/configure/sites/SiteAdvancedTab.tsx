@@ -6,13 +6,7 @@
  * 27) and are intentionally not surfaced here.
  */
 import React from 'react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { FieldRow } from '../_kit';
 import type { SiteTabProps } from './siteEditorTypes';
 import { ADOPTION_PREFERENCE } from './siteModel';
@@ -38,8 +32,8 @@ export function SiteAdvancedTab({ form, update }: SiteTabProps) {
         </Select>
       </FieldRow>
       <p className="pt-3 text-[12.5px] text-muted-foreground">
-        Band steering, secure tunnel, SSH and session-persistence controls target a v1 site
-        resource that is not part of the v3 site document; they are omitted from this editor.
+        Band steering, secure tunnel, SSH and session-persistence controls target a v1 site resource
+        that is not part of the v3 site document; they are omitted from this editor.
       </p>
     </div>
   );

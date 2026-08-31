@@ -55,9 +55,7 @@ describe('buildWlanPayload — save synthesis (parity gap #32)', () => {
 
   it('does not pin pmfMode for WPA3 Transition', () => {
     const record = withPrivacy('Wpa3EnterpriseTransitionElement', { pmfMode: 'enabled' });
-    const payload = buildWlanPayload(
-      formFor(record, 'WPA3-Enterprise Transition (802.1X/EAP)')
-    );
+    const payload = buildWlanPayload(formFor(record, 'WPA3-Enterprise Transition (802.1X/EAP)'));
     const element = payload.privacy?.Wpa3EnterpriseTransitionElement as { pmfMode: string };
     expect(element.pmfMode).toBe('enabled');
   });
@@ -98,12 +96,12 @@ describe('withPrivacyField', () => {
   it('writes into the active element immutably', () => {
     const form = formFor(structuredClone(SKYNET));
     const next = withPrivacyField(form, 'presharedKey', 'NewSecret1');
-    expect(
-      (next.record.privacy?.WpaPskElement as { presharedKey: string }).presharedKey
-    ).toBe('NewSecret1');
-    expect(
-      (form.record.privacy?.WpaPskElement as { presharedKey: string }).presharedKey
-    ).toBe('Annabell7');
+    expect((next.record.privacy?.WpaPskElement as { presharedKey: string }).presharedKey).toBe(
+      'NewSecret1'
+    );
+    expect((form.record.privacy?.WpaPskElement as { presharedKey: string }).presharedKey).toBe(
+      'Annabell7'
+    );
   });
 });
 

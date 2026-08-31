@@ -6,14 +6,7 @@
  * no polling (house rule: pages hold still).
  */
 import React from 'react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../../ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../ui/table';
 import type { SiteTabProps } from './siteEditorTypes';
 import { useSiteAps } from './useSiteAps';
 
@@ -31,8 +24,8 @@ export function SiteApsTab({ form, isNew }: SiteTabProps) {
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        Access points reporting this site as their host site. Assignment is managed through
-        Device Groups.
+        Access points reporting this site as their host site. Assignment is managed through Device
+        Groups.
       </p>
       <div className="rounded-md border border-border">
         <Table>

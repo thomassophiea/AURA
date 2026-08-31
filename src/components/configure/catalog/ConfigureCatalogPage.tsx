@@ -11,7 +11,11 @@ import { toast } from 'sonner';
 import { Badge } from '../../ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '../../ui/tabs';
 import { useAppContext } from '../../../contexts/AppContext';
-import { deriveGatewayMode, gatewayIdentity, gatewayModeLabel } from '../../../services/siteCatalog';
+import {
+  deriveGatewayMode,
+  gatewayIdentity,
+  gatewayModeLabel,
+} from '../../../services/siteCatalog';
 import { FeatureCatalogView } from './FeatureCatalogView';
 import { ArchitectureView } from './ArchitectureView';
 import { useFeatureCounts } from './useFeatureCounts';

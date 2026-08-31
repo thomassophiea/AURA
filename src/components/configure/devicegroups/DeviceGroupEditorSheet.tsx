@@ -30,6 +30,7 @@ import {
   type AggregatedDeviceGroup,
   type AggregatedGroupForm,
   type DeviceGroupAp,
+  type DeviceGroupClone,
   type DeviceGroupInstance,
 } from './devicegroupsModel';
 import { SiteMembershipDialog } from './SiteMembershipDialog';
@@ -40,6 +41,12 @@ const NONE = '__none__';
 export interface DeviceGroupEditorSheetProps {
   /** Aggregated group being edited, or null to create. */
   record: AggregatedDeviceGroup | null;
+  /**
+   * Clone starting point (record must be null): the source's binding under a
+   * new unique name with zero member sites; its vestigial template is used for
+   * every per-site record added here instead of bare defaults.
+   */
+  seed?: DeviceGroupClone;
   sites: SiteConfig[];
   profiles: ApProfile[];
   rfPolicies: RfMgmtPolicy[];
@@ -52,6 +59,7 @@ export interface DeviceGroupEditorSheetProps {
 
 export function DeviceGroupEditorSheet({
   record,
+  seed,
   sites,
   profiles,
   rfPolicies,
@@ -61,12 +69,18 @@ export function DeviceGroupEditorSheet({
   onDelete,
   onOpenChange,
 }: DeviceGroupEditorSheetProps) {
-  const [form, setForm] = useState<AggregatedGroupForm>(() => ({
-    groupName: record?.groupName ?? '',
-    profileId: record?.profileId ?? '',
-    rfMgmtPolicyId: record?.rfMgmtPolicyId ?? '',
-    instances: structuredClone(record?.instances ?? []),
-  }));
+  const [form, setForm] = useState<AggregatedGroupForm>(() =>
+    record
+      ? {
+          groupName: record.groupName,
+          profileId: record.profileId,
+          rfMgmtPolicyId: record.rfMgmtPolicyId,
+          instances: structuredClone(record.instances),
+        }
+      : structuredClone(
+          seed?.form ?? { groupName: '', profileId: '', rfMgmtPolicyId: '', instances: [] }
+        )
+  );
   const [dirty, setDirty] = useState(record == null);
   const [pendingProfileId, setPendingProfileId] = useState<string | null>(null);
   const [membershipAt, setMembershipAt] = useState<number | null>(null);
@@ -160,7 +174,7 @@ export function DeviceGroupEditorSheet({
       siteId: site.id,
       siteName: site.siteName,
       siteCanEdit: site.canEdit !== false,
-      group: createInstanceGroup(site, form),
+      group: createInstanceGroup(site, form, seed?.template),
     };
     update({ instances: [...form.instances, instance] });
     setAddSiteOpen(false);
@@ -190,7 +204,13 @@ export function DeviceGroupEditorSheet({
       <EditorSheet
         open
         onOpenChange={onOpenChange}
-        title={isNew ? 'Create Device Group' : `Device Group — ${record.groupName}`}
+        title={
+          isNew
+            ? seed
+              ? 'Clone Device Group'
+              : 'Create Device Group'
+            : `Device Group — ${record.groupName}`
+        }
         description="One binding — profile, platform, RF policy — applied to every member site"
         width={800}
         dirty={dirty}
@@ -323,6 +343,12 @@ export function DeviceGroupEditorSheet({
                   </span>
                 )}
               </div>
+              {errors.sites && (
+                <p className="text-xs text-destructive">
+                  {errors.sites} — {seed ? 'the clone' : 'the group'} exists only in this editor
+                  until it is saved to a site.
+                </p>
+              )}
               <div className="rounded-md border border-border">
                 <Table>
                   <TableHeader>

@@ -208,10 +208,7 @@ export interface RfValidationCtx {
 }
 
 /** Full controller validation set (gap 13); returns a field->message map. */
-export function validateRf(
-  form: RfMgmtPolicy,
-  ctx: RfValidationCtx
-): Record<string, string> {
+export function validateRf(form: RfMgmtPolicy, ctx: RfValidationCtx): Record<string, string> {
   const errs: Record<string, string> = {};
   const name = String(form.name ?? '').trim();
   if (!name) errs.name = 'Name is required';
@@ -233,11 +230,7 @@ export function validateRf(
     const b = bandOf(cfg, 'powerAndChannel', bandId);
     if (!inRange(b.txMinPower, 1, 20)) errs[`txMin${bandId}`] = 'Valid range 1 to 20';
     if (!inRange(b.txMaxPower, 1, 20)) errs[`txMax${bandId}`] = 'Valid range 1 to 20';
-    if (
-      b.txMinPower != null &&
-      b.txMaxPower != null &&
-      num(b.txMinPower) > num(b.txMaxPower)
-    )
+    if (b.txMinPower != null && b.txMaxPower != null && num(b.txMinPower) > num(b.txMaxPower))
       errs[`power${bandId}`] = 'Max Power is below Min Power';
   });
 
@@ -250,7 +243,8 @@ export function validateRf(
       if (custom && !inRange(b.freq, 1, 120)) errs[`freq${bandId}`] = 'Valid range 1 to 120';
       if (custom && !inRange(b.extFreq, 0, 50)) errs[`extFreq${bandId}`] = 'Valid range 0 to 50';
       if (!inRange(b.sampleCount, 1, 15)) errs[`sc${bandId}`] = 'Valid range 1 to 15';
-      if (b.clientAware && !inRange(b.clientCount, 1, 255)) errs[`cc${bandId}`] = 'Valid range 1 to 255';
+      if (b.clientAware && !inRange(b.clientCount, 1, 255))
+        errs[`cc${bandId}`] = 'Valid range 1 to 255';
       if (b.txLoadAware && !inRange(b.txLoadAwarePercent, 1, 100))
         errs[`tl${bandId}`] = 'Valid range 1 to 100';
       if (custom && !inRange(bandOf(cfg, 'neighbourRecovery', bandId).powerThreshold, -85, -55))
@@ -279,7 +273,8 @@ export function validateRf(
   } else {
     ['Band24', 'Band5'].forEach((bandId) => {
       const b = bandOf(cfg, 'interferenceRecovery', bandId);
-      if (!inRange(b.channelOccupancyThreshold, 10, 100)) errs[`occ${bandId}`] = 'Valid range 10 to 100';
+      if (!inRange(b.channelOccupancyThreshold, 10, 100))
+        errs[`occ${bandId}`] = 'Valid range 10 to 100';
       if (!inRange(b.noiseThreshold, -95, -50)) errs[`noi${bandId}`] = 'Valid range -95 to -50';
       if (!inRange(b.updatePeriod, 0, 15)) errs[`upd${bandId}`] = 'Valid range 0 to 15';
     });

@@ -56,7 +56,7 @@ export function useWlanRefs(): WlanRefs & { reloadProfiles: () => Promise<void> 
         eguestService.list(),
         profilesService.list(),
       ]);
-      const settle = <T,>(result: PromiseSettledResult<T[]>, label: string): T[] => {
+      const settle = <T>(result: PromiseSettledResult<T[]>, label: string): T[] => {
         if (result.status === 'fulfilled') return result.value;
         logger.warn(`[configure/networks] failed to load ${label} refs`, result.reason);
         return [];

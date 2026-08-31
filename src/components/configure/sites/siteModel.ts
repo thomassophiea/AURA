@@ -31,8 +31,7 @@ export const SITE_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9 ._()-]*$/;
 export const LATLONG_RE =
   /^\s*-?(90(\.0+)?|[0-8]?\d(\.\d+)?)\s*,\s*-?(180(\.0+)?|1[0-7]\d(\.\d+)?|\d{1,2}(\.\d+)?)\s*$/;
 export const MAC_RE = /^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/;
-export const IP_RE =
-  /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/;
+export const IP_RE = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/;
 
 export const PROTECTED_ACL_CAP = 256;
 
@@ -163,10 +162,7 @@ export interface DgValidationCtx {
   siblingNames: string[];
 }
 
-export function validateDeviceGroup(
-  dg: DeviceGroup,
-  ctx: DgValidationCtx
-): Record<string, string> {
+export function validateDeviceGroup(dg: DeviceGroup, ctx: DgValidationCtx): Record<string, string> {
   const errs: Record<string, string> = {};
   const name = String(dg.groupName ?? '').trim();
   if (!name) errs.name = 'Name is required';

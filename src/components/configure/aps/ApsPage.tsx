@@ -55,6 +55,8 @@ export function ApsPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmReboot, setConfirmReboot] = useState(false);
   const [rebooting, setRebooting] = useState(false);
+  const [confirmRelease, setConfirmRelease] = useState(false);
+  const [releasing, setReleasing] = useState(false);
   const [sites, setSites] = useState<SiteConfig[]>([]);
   const [profiles, setProfiles] = useState<ApProfile[]>([]);
   // Configure is Gateway-only, so the picker is offered without XIQ locations.
@@ -85,8 +87,14 @@ export function ApsPage() {
 
   useEffect(() => {
     void load();
-    void sitesService.list().then(setSites).catch(() => undefined);
-    void profilesService.list().then(setProfiles).catch(() => undefined);
+    void sitesService
+      .list()
+      .then(setSites)
+      .catch(() => undefined);
+    void profilesService
+      .list()
+      .then(setProfiles)
+      .catch(() => undefined);
   }, [load]);
 
   const openEdit = useCallback(async (row: ApListRow) => {
@@ -99,7 +107,8 @@ export function ApsPage() {
   }, []);
 
   const columns = useMemo(
-    () => (view === 'afc' ? afcColumns({ onEdit: openEdit }) : generalColumns({ onEdit: openEdit })),
+    () =>
+      view === 'afc' ? afcColumns({ onEdit: openEdit }) : generalColumns({ onEdit: openEdit }),
     [view, openEdit]
   );
 
@@ -130,7 +139,8 @@ export function ApsPage() {
     () => ({
       rowSelection: { mode: 'multiRow', enableClickSelection: false },
       getRowId: (p) => p.data.serialNumber,
-      onSelectionChanged: (e: SelectionChangedEvent<ApListRow>) => setSelected(e.api.getSelectedRows()),
+      onSelectionChanged: (e: SelectionChangedEvent<ApListRow>) =>
+        setSelected(e.api.getSelectedRows()),
     }),
     []
   );
@@ -162,13 +172,13 @@ export function ApsPage() {
     }
   };
 
-  /* Menu routing: 'delete' and 'reboot' are wired to real endpoints via
-     confirmation dialogs; everything else opens the parameterized modal.
-     "Release to Cloud" is on the controller's menu but has no identifiable
-     endpoint in this codebase, so it is deliberately not offered. */
+  /* Menu routing: 'delete', 'reboot' and 'release' are wired to real
+     endpoints via confirmation dialogs; everything else opens the
+     parameterized modal. */
   const handleMenuSelect = (key: ApMenuKey, label: string) => {
     if (key === 'delete') setConfirmDelete(true);
     else if (key === 'reboot') setConfirmReboot(true);
+    else if (key === 'release') setConfirmRelease(true);
     else setAction({ key, label });
   };
 
@@ -188,6 +198,30 @@ export function ApsPage() {
       }
     } finally {
       if (mounted.current) setRebooting(false);
+    }
+  };
+
+  /**
+   * Release to Cloud — single bulk PUT /v1/aps/releasetocloud with every
+   * selected serial, matching the gateway UI's own release action (wired per
+   * controller spec, not live-fired; the route answered 405 to a GET probe).
+   */
+  const handleRelease = async (targets: ApListRow[]) => {
+    setReleasing(true);
+    try {
+      await apiService.releaseAPsToCloud(targets.map((r) => r.serialNumber));
+      toast.success(`Release to cloud initiated for ${targets.length} access point(s)`, {
+        description: 'Each AP disconnects from this Gateway and reverts to cloud onboarding.',
+      });
+      gridRef.current?.getApi()?.deselectAll();
+      setSelected([]);
+      await load();
+    } catch (err) {
+      toast.error('Failed to release AP(s) to cloud', {
+        description: getUserFriendlyMessage(err),
+      });
+    } finally {
+      if (mounted.current) setReleasing(false);
     }
   };
 
@@ -234,7 +268,12 @@ export function ApsPage() {
         />
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
+          <Input
+            placeholder="Search..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
         </div>
         <div className="ml-auto flex items-center gap-2">
           <ApActionsMenu selectedCount={selected.length} onSelect={handleMenuSelect} />
@@ -288,13 +327,21 @@ export function ApsPage() {
           onSubmit={handleSave}
           onDelete={(ap) => {
             setEditor(null);
-            void handleDelete([{ serialNumber: ap.serialNumber, apName: ap.apName, canDelete: ap.canDelete }]);
+            void handleDelete([
+              { serialNumber: ap.serialNumber, apName: ap.apName, canDelete: ap.canDelete },
+            ]);
           }}
         />
       )}
 
       {newOpen && (
-        <NewApModal open onOpenChange={setNewOpen} existing={rows} profiles={profiles} onCreate={handleCreate} />
+        <NewApModal
+          open
+          onOpenChange={setNewOpen}
+          existing={rows}
+          profiles={profiles}
+          onCreate={handleCreate}
+        />
       )}
 
       {action && (
@@ -319,12 +366,32 @@ export function ApsPage() {
         description={`${selected
           .map((r) => r.apName ?? r.serialNumber)
           .slice(0, 3)
-          .join(', ')}${selected.length > 3 ? ` and ${selected.length - 3} more` : ''} will restart. All connected clients on these APs will be dropped until each AP rejoins the controller.`}
+          .join(
+            ', '
+          )}${selected.length > 3 ? ` and ${selected.length - 3} more` : ''} will restart. All connected clients on these APs will be dropped until each AP rejoins the controller.`}
         confirmLabel={rebooting ? 'Rebooting...' : 'Reboot'}
         destructive
         onConfirm={() => {
           setConfirmReboot(false);
           void handleReboot(selected);
+        }}
+      />
+
+      <ConfirmDialog
+        open={confirmRelease}
+        onOpenChange={setConfirmRelease}
+        title={`Release ${selected.length} access point(s) to cloud?`}
+        description={`${selected
+          .map((r) => r.apName ?? r.serialNumber)
+          .slice(0, 3)
+          .join(
+            ', '
+          )}${selected.length > 3 ? ` and ${selected.length - 3} more` : ''} will leave this Gateway's management entirely: each AP disconnects, stops broadcasting this Gateway's networks, abandons its per-AP overrides here, and reverts to cloud (ExtremeCloud IQ) onboarding. Re-adopting it on this Gateway requires onboarding it again.`}
+        confirmLabel={releasing ? 'Releasing...' : 'Release to Cloud'}
+        destructive
+        onConfirm={() => {
+          setConfirmRelease(false);
+          void handleRelease(selected);
         }}
       />
 

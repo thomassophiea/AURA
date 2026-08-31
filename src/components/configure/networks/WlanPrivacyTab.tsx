@@ -8,13 +8,7 @@ import React from 'react';
 import { Switch } from '../../ui/switch';
 import { Input } from '../../ui/input';
 import { FieldRow, MaskedInput, Section } from '../_kit';
-import {
-  WLAN_ENUMS,
-  hasPresharedKey,
-  isPureWpa3,
-  isWpa,
-  readPrivacyElement,
-} from './wlanModel';
+import { WLAN_ENUMS, hasPresharedKey, isPureWpa3, isWpa, readPrivacyElement } from './wlanModel';
 import { wepKeyExpectedLength, withPrivacyField } from './wlanForm';
 import { EnumSelect, patchRecord, type WlanTabProps } from './wlanControls';
 
@@ -70,9 +64,9 @@ export function WlanPrivacyTab({ form, setForm, errors }: WlanTabProps) {
         {auth === 'WPA2-Private PSK' && (
           <>
             <p className="text-sm text-muted-foreground">
-              Like WPA2-Personal, each client joins with a pre-shared key - but every user or
-              device gets its own key, hosted centrally and managed per user or device. No AAA
-              policy or RADIUS server is required.
+              Like WPA2-Personal, each client joins with a pre-shared key - but every user or device
+              gets its own key, hosted centrally and managed per user or device. No AAA policy or
+              RADIUS server is required.
             </p>
             <FieldRow label="Encryption">
               <EnumSelect

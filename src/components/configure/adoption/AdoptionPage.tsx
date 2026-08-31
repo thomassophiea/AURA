@@ -73,7 +73,10 @@ export function AdoptionPage() {
     void load();
   }, [load]);
 
-  const upd = <K extends keyof ApRegistrationSettings>(key: K, value: ApRegistrationSettings[K]) => {
+  const upd = <K extends keyof ApRegistrationSettings>(
+    key: K,
+    value: ApRegistrationSettings[K]
+  ) => {
     setForm((prev) => (prev ? { ...prev, [key]: value } : prev));
     setDirty(true);
   };
@@ -129,7 +132,12 @@ export function AdoptionPage() {
             </p>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading || saving}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => void load()}
+          disabled={loading || saving}
+        >
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
         </Button>
       </div>
@@ -160,10 +168,23 @@ export function AdoptionPage() {
                   />
                 </FieldRow>
                 <FieldRow label="DNS Retries" description="Registration DNS lookup retry count.">
-                  <NumberField value={form.dnsRetries} min={0} max={100} onChange={(v) => upd('dnsRetries', v === '' ? 0 : v)} />
+                  <NumberField
+                    value={form.dnsRetries}
+                    min={0}
+                    max={100}
+                    onChange={(v) => upd('dnsRetries', v === '' ? 0 : v)}
+                  />
                 </FieldRow>
-                <FieldRow label="DNS Delay [s]" description="Delay between DNS registration retries.">
-                  <NumberField value={form.dnsDelay} min={0} max={600} onChange={(v) => upd('dnsDelay', v === '' ? 0 : v)} />
+                <FieldRow
+                  label="DNS Delay [s]"
+                  description="Delay between DNS registration retries."
+                >
+                  <NumberField
+                    value={form.dnsDelay}
+                    min={0}
+                    max={600}
+                    onChange={(v) => upd('dnsDelay', v === '' ? 0 : v)}
+                  />
                 </FieldRow>
               </Section>
 

@@ -11,13 +11,7 @@ import { Input } from '../../ui/input';
 import { Checkbox } from '../../ui/checkbox';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../ui/dialog';
 import { FieldRow } from '../_kit';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import type { ApProfile, DeviceGroup, RfMgmtPolicy } from '../../../types/configure';
 import { useSiteAps } from './useSiteAps';
 import { newDeviceGroup, validateDeviceGroup } from './siteModel';
@@ -70,7 +64,10 @@ export function DeviceGroupModal({
   const valid = Object.keys(errs).length === 0;
 
   const toggleAp = (sn: string) =>
-    set('apSerialNumbers', selected.includes(sn) ? selected.filter((x) => x !== sn) : [...selected, sn]);
+    set(
+      'apSerialNumbers',
+      selected.includes(sn) ? selected.filter((x) => x !== sn) : [...selected, sn]
+    );
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -81,7 +78,10 @@ export function DeviceGroupModal({
         <div className="flex flex-wrap gap-8">
           <div className="w-[300px] shrink-0 space-y-1">
             <FieldRow label="Name" error={errs.name} required>
-              <Input value={dg.groupName ?? ''} onChange={(e) => set('groupName', e.target.value)} />
+              <Input
+                value={dg.groupName ?? ''}
+                onChange={(e) => set('groupName', e.target.value)}
+              />
             </FieldRow>
             <FieldRow label="Profile" error={errs.profile} required>
               <Select
@@ -160,7 +160,11 @@ export function DeviceGroupModal({
         </div>
         <DialogFooter>
           {onDelete && (
-            <Button variant="outline" className="mr-auto text-destructive hover:text-destructive" onClick={onDelete}>
+            <Button
+              variant="outline"
+              className="mr-auto text-destructive hover:text-destructive"
+              onClick={onDelete}
+            >
               Delete
             </Button>
           )}

@@ -145,6 +145,65 @@ export function aggregateDeviceGroups(sites: SiteConfig[]): AggregatedDeviceGrou
   return [...byName.values()];
 }
 
+/* ── Clone (golden DeviceGroupsView semantics) ────────────────────────── */
+
+/**
+ * Unique clone name: `${name}-clone`, then `${name}-clone-2`, `-3`, … deduped
+ * against every existing aggregated group name (the aggregation key).
+ */
+export function cloneName(name: string, existingNames: readonly string[]): string {
+  const taken = new Set(existingNames);
+  const base = `${name || 'Device Group'}-clone`;
+  if (!taken.has(base)) return base;
+  for (let n = 2; ; n++) {
+    const candidate = `${base}-${n}`;
+    if (!taken.has(candidate)) return candidate;
+  }
+}
+
+export interface DeviceGroupClone {
+  /** Editor starting point: the binding under a new name, ZERO member sites. */
+  form: AggregatedGroupForm;
+  /**
+   * Vestigial payload copied from the source's first instance (membership and
+   * identity reset) — new per-site records inherit it instead of bare defaults.
+   */
+  template: DeviceGroup;
+}
+
+/**
+ * A clone is the binding without its member sites: profile and RF policy are
+ * the reusable part, the AP membership is what varies per site — carrying the
+ * sites over would assert a placement the operator never chose. The clone
+ * exists only in the editor until saved to at least one member site (groups
+ * live inside site records on the wire, so a zero-site group cannot persist).
+ */
+export function buildClonePlan(
+  source: AggregatedDeviceGroup,
+  existingNames: readonly string[]
+): DeviceGroupClone {
+  const name = cloneName(source.groupName, existingNames);
+  const src = source.instances[0]?.group;
+  const template: DeviceGroup = src ? structuredClone(src) : newDeviceGroup();
+  template.custId = null;
+  template.id = '';
+  template.canEdit = true;
+  template.canDelete = true;
+  template.groupName = name;
+  template.profileId = source.profileId;
+  template.rfMgmtPolicyId = source.rfMgmtPolicyId;
+  template.apSerialNumbers = [];
+  return {
+    form: {
+      groupName: name,
+      profileId: source.profileId,
+      rfMgmtPolicyId: source.rfMgmtPolicyId,
+      instances: [],
+    },
+    template,
+  };
+}
+
 /* ── Eligibility (rules 1 + 2) ────────────────────────────────────────── */
 
 export interface SerialClaim {
@@ -239,6 +298,7 @@ export interface DeviceGroupFormErrors {
   name?: string;
   profile?: string;
   rf?: string;
+  sites?: string;
 }
 
 export function validateAggregatedGroup(
@@ -265,6 +325,9 @@ export function validateAggregatedGroup(
   }
   if (!form.profileId) errs.profile = 'Profile is required';
   if (rfKind && !form.rfMgmtPolicyId) errs.rf = `${RF_KIND_LABEL[rfKind]} policy is required`;
+  // Groups live inside site records on the wire — a zero-site group cannot persist.
+  if (form.instances.length === 0)
+    errs.sites = 'A device group is stored inside its member sites — add at least one site';
   return errs;
 }
 
@@ -277,16 +340,22 @@ export interface SiteSavePlan {
   site: SiteConfig;
 }
 
-/** New per-site record for a site being added: vestigial defaults + the binding. */
+/**
+ * New per-site record for a site being added: vestigial defaults + the binding.
+ * A clone passes its `template` so vestigial payload copies from the source
+ * instead of bare defaults; membership always starts empty.
+ */
 export function createInstanceGroup(
   site: Pick<SiteConfig, 'id'>,
-  form: Pick<AggregatedGroupForm, 'groupName' | 'profileId' | 'rfMgmtPolicyId'>
+  form: Pick<AggregatedGroupForm, 'groupName' | 'profileId' | 'rfMgmtPolicyId'>,
+  template?: DeviceGroup
 ): DeviceGroup {
-  const group = newDeviceGroup();
+  const group = template ? structuredClone(template) : newDeviceGroup();
   group.id = `dg-${site.id}-${Date.now()}`;
   group.groupName = form.groupName;
   group.profileId = form.profileId;
   group.rfMgmtPolicyId = form.rfMgmtPolicyId;
+  group.apSerialNumbers = [];
   return group;
 }
 
@@ -331,6 +400,52 @@ export function buildSiteSavePlans(
     plans.push({ siteId: site.id, siteName: site.siteName, site: next });
   }
   return plans;
+}
+
+/* ── CSV export ───────────────────────────────────────────────────────── */
+
+export const DEVICE_GROUP_CSV_HEADER = [
+  'Name',
+  'AP Platform',
+  'Profile',
+  'RF Management',
+  'Sites',
+  'Access Points',
+] as const;
+
+/** RFC 4180 field: quote when needed, escape quotes by doubling. */
+function csvField(value: string | number): string {
+  const s = String(value);
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/**
+ * CSV of the aggregated list, mirroring the grid: resolved Profile / RF names
+ * with a "(conflict)" marker where member sites disagree (stated, never
+ * averaged away), plus member-site and total-AP counts.
+ */
+export function deviceGroupsCsv(
+  rows: AggregatedDeviceGroup[],
+  profileById: Map<string, ApProfile>,
+  rfById: Map<string, RfMgmtPolicy>
+): string {
+  const lines = [DEVICE_GROUP_CSV_HEADER.map(csvField).join(',')];
+  for (const row of rows) {
+    const profile = profileById.get(row.profileId);
+    const profileName = profile?.name ?? '—';
+    const rfName = row.rfMgmtPolicyId ? (rfById.get(row.rfMgmtPolicyId)?.name ?? '—') : '—';
+    lines.push(
+      [
+        csvField(row.groupName),
+        csvField(profile?.apPlatform ?? '—'),
+        csvField(row.profileConflict ? `${profileName} (conflict)` : profileName),
+        csvField(row.rfConflict ? `${rfName} (conflict)` : rfName),
+        csvField(row.siteCount),
+        csvField(row.apCount),
+      ].join(',')
+    );
+  }
+  return lines.join('\n');
 }
 
 /** Plan the per-site PUTs that remove every instance of an aggregated group. */

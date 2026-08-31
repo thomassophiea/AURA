@@ -16,7 +16,11 @@ export interface AssociatedDeviceGroupsDialogProps {
   onClose: () => void;
 }
 
-export function AssociatedDeviceGroupsDialog({ open, profileId, onClose }: AssociatedDeviceGroupsDialogProps) {
+export function AssociatedDeviceGroupsDialog({
+  open,
+  profileId,
+  onClose,
+}: AssociatedDeviceGroupsDialogProps) {
   const [groups, setGroups] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

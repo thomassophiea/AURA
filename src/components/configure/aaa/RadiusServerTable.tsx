@@ -8,21 +8,8 @@
 import React, { useState } from 'react';
 import { ArrowDown, ArrowUp, Pencil, Plus, X } from 'lucide-react';
 import { Button } from '../../ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../../ui/table';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { RadiusServerDialog } from './RadiusServerDialog';
 import {
   MAX_RADIUS_SERVERS,
@@ -76,9 +63,7 @@ export function RadiusServerTable({
             <span className="text-xs text-muted-foreground">Add existing auth server IP:</span>
             <Select
               value=""
-              onValueChange={(ip) =>
-                onChange(copyAuthServerToAcct(authServers ?? [], servers, ip))
-              }
+              onValueChange={(ip) => onChange(copyAuthServerToAcct(authServers ?? [], servers, ip))}
             >
               <SelectTrigger className="h-8 w-[180px]" aria-label="Add existing auth server IP">
                 <SelectValue placeholder="Select..." />

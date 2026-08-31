@@ -16,8 +16,7 @@ import {
 import type { RoleRuleDraft, RoleRuleGroupKey, TopologyDraft } from './localTypes';
 
 export const IP_RE = /^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/;
-export const FQDN_RE =
-  /^(?=.{1,64}$)([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
+export const FQDN_RE = /^(?=.{1,64}$)([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
 export const HEX_RE = /^0x[0-9a-fA-F]{1,4}$/;
 
 export function inRange(v: unknown, min: number, max: number): boolean {
@@ -187,11 +186,19 @@ export function ruleErrors(key: RoleRuleGroupKey, draft: RoleRuleDraft): Record<
     }
     const proto = ruleProtocolName(d, key);
     const icmp = proto === 'icmp' || proto === 'icmpv6';
-    if (d.port === 'userDefined' && !icmp && (!inRange(d.portLow, 0, 65535) || !inRange(d.portHigh, 0, 65535))) {
+    if (
+      d.port === 'userDefined' &&
+      !icmp &&
+      (!inRange(d.portLow, 0, 65535) || !inRange(d.portHigh, 0, 65535))
+    ) {
       e.port = 'Valid port range 0 to 65535';
     }
   }
-  if (key === 'l2Filters' && d.ethertype === 'userDefined' && !HEX_RE.test(String(d.ethertypeValue || ''))) {
+  if (
+    key === 'l2Filters' &&
+    d.ethertype === 'userDefined' &&
+    !HEX_RE.test(String(d.ethertypeValue || ''))
+  ) {
     e.ether = 'Hex value required, e.g. 0x8100';
   }
   if (key === 'l3SrcDestFilters') {
@@ -249,7 +256,9 @@ export function ruleMatchText(rule: RoleRuleDraft, key: RoleRuleGroupKey): strin
     return `${String(getIn(rule, 'protocol.name') || 'any')} ${String(getIn(rule, 'source.address') || 'any')} > ${String(getIn(rule, 'destination.address') || 'any')}`;
   }
   const port =
-    rule.port && rule.port !== 'any' ? ` :${rule.portLow != null && rule.portLow !== '' ? rule.portLow : rule.port}` : '';
+    rule.port && rule.port !== 'any'
+      ? ` :${rule.portLow != null && rule.portLow !== '' ? rule.portLow : rule.port}`
+      : '';
   return `${ruleProtocolName(rule, key)}${port} ${String(rule.ipAddressRange || 'any')}`;
 }
 
@@ -329,7 +338,9 @@ export function topologyErrors(form: TopologyDraft): Record<string, string> {
  */
 export function peerAddressApplies(paired: boolean, form: TopologyDraft): boolean {
   return (
-    paired === true && String(form.mode || 'BridgedAtAp') === 'BridgedAtAc' && form.l3Presence === true
+    paired === true &&
+    String(form.mode || 'BridgedAtAp') === 'BridgedAtAc' &&
+    form.l3Presence === true
   );
 }
 

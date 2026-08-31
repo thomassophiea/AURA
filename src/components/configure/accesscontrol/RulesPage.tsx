@@ -11,6 +11,7 @@ import type { ColDef } from 'ag-grid-community';
 import { ListChecks } from 'lucide-react';
 import {
   acGroupsService,
+  acPortalsService,
   acRulesService,
   type AcRule,
 } from '../../../services/configure/accessControlFamilyService';
@@ -19,12 +20,7 @@ import { logger } from '../../../services/logger';
 import { ResourceGridPage, useResourceCrud } from '../_kit';
 import { withRowClick } from '../policy/gridHelpers';
 import { RuleEditor } from './RuleEditor';
-import {
-  RULE_CRITERIA,
-  type RuleCriterionKey,
-  criterionText,
-  yesNo,
-} from './accessControlModel';
+import { RULE_CRITERIA, type RuleCriterionKey, criterionText, yesNo } from './accessControlModel';
 
 interface EditorState {
   record: AcRule | null;
@@ -45,10 +41,12 @@ export function RulesPage() {
     getName: (r) => r.name,
   });
   const [editor, setEditor] = useState<EditorState | null>(null);
-  const [groupOptions, setGroupOptions] = useState<Record<RuleCriterionKey, string[]>>(EMPTY_GROUPS);
+  const [groupOptions, setGroupOptions] =
+    useState<Record<RuleCriterionKey, string[]>>(EMPTY_GROUPS);
   const [roleOptions, setRoleOptions] = useState<string[]>([]);
+  const [portalNames, setPortalNames] = useState<string[]>([]);
 
-  /** Groups (filtered per criterion category) + roles for the editor selects. */
+  /** Groups (filtered per criterion category) + roles + portals for the editor selects. */
   const loadRefData = useCallback(async () => {
     try {
       const groups = await acGroupsService.list();
@@ -65,9 +63,20 @@ export function RulesPage() {
     }
     try {
       const roles = await rolesService.list();
-      setRoleOptions(roles.map((r) => r.name).filter(Boolean).sort((a, b) => a.localeCompare(b)));
+      setRoleOptions(
+        roles
+          .map((r) => r.name)
+          .filter(Boolean)
+          .sort((a, b) => a.localeCompare(b))
+      );
     } catch (error) {
       logger.warn('[configure/ac-rules] failed to load roles for the Role select', error);
+    }
+    try {
+      const portals = await acPortalsService.list();
+      setPortalNames(portals.map((p) => p.name).filter(Boolean));
+    } catch (error) {
+      logger.warn('[configure/ac-rules] failed to load portals for the Portal select', error);
     }
   }, []);
 
@@ -75,14 +84,19 @@ export function RulesPage() {
     void loadRefData();
   }, [loadRefData]);
 
-  /** "Default" + every portal value already on the wire (no portal list API here). */
+  /**
+   * The controller's portal collection (GET /access-control/v1/portals — the
+   * same source the gateway's own rule editor uses), unioned with every value
+   * already on the wire so an unlisted portal on an existing rule stays
+   * selectable for round-trip.
+   */
   const portalOptions = useMemo(() => {
-    const seen = new Set<string>(['Default']);
+    const seen = new Set<string>(portalNames.length > 0 ? portalNames : ['Default']);
     for (const rule of crud.items) {
       if (rule.portal?.value) seen.add(rule.portal.value);
     }
     return Array.from(seen).sort((a, b) => a.localeCompare(b));
-  }, [crud.items]);
+  }, [crud.items, portalNames]);
 
   const columns = useMemo<ColDef<AcRule>[]>(
     () =>

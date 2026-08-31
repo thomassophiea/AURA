@@ -52,8 +52,7 @@ describe('validateMeshpoint — API-is-truth ranges', () => {
 
   it('skips the timeout check when distributed support is absent (row hidden)', () => {
     expect(
-      validateMeshpoint(base({ neighborTimeout: 1 }), { supportDistributed: false })
-        .neighborTimeout
+      validateMeshpoint(base({ neighborTimeout: 1 }), { supportDistributed: false }).neighborTimeout
     ).toBeUndefined();
   });
 

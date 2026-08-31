@@ -92,7 +92,11 @@ export function LabelRow({
         </Label>
         {children}
       </div>
-      {error && <p className="mt-1 text-xs text-destructive" style={{ marginLeft: width + 12 }}>{error}</p>}
+      {error && (
+        <p className="mt-1 text-xs text-destructive" style={{ marginLeft: width + 12 }}>
+          {error}
+        </p>
+      )}
     </div>
   );
 }

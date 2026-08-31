@@ -51,7 +51,9 @@ describe('txBf round-trip preservation', () => {
       supportedOperatingModes: [
         {
           id: 'SENSOR_SERVICE_2_5_6',
-          radios: [{ id: 1, defaultProtocol: 'gnxbe', band: 'BAND2', supportedProtocols: ['gnxbe'] }],
+          radios: [
+            { id: 1, defaultProtocol: 'gnxbe', band: 'BAND2', supportedProtocols: ['gnxbe'] },
+          ],
         },
       ],
     } as unknown as ApProfile;
@@ -66,14 +68,24 @@ describe('replanRadios (updateRadios + setDropdownMode + setRadioBandsTitles)', 
       operatingMode: 'A',
       radios: [
         radio({ radioIndex: 1, mode: 'gn', supportedModes: ['gn', 'gnx'] }),
-        radio({ radioIndex: 2, radioName: 'Radio 2', mode: 'ancx', supportedModes: ['anc', 'ancx'] }),
+        radio({
+          radioIndex: 2,
+          radioName: 'Radio 2',
+          mode: 'ancx',
+          supportedModes: ['anc', 'ancx'],
+        }),
       ],
       supportedOperatingModes: [
         {
           id: 'B',
           radios: [
             { id: 1, defaultProtocol: 'gnxbe', band: 'BAND2', supportedProtocols: ['bg', 'gnxbe'] },
-            { id: 2, defaultProtocol: 'ancxbe', band: 'BAND5HIGH', supportedProtocols: ['anc', 'ancx', 'ancxbe'] },
+            {
+              id: 2,
+              defaultProtocol: 'ancxbe',
+              band: 'BAND5HIGH',
+              supportedProtocols: ['anc', 'ancx', 'ancxbe'],
+            },
           ],
         },
       ],

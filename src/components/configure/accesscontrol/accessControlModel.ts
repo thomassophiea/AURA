@@ -27,8 +27,7 @@ export const RE_MAC = /^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$/;
 export const RE_OUI = /^([0-9A-Fa-f]{2}:){2}([0-9A-Fa-f]{2})$/;
 export const RE_LDAP_URL = /^ldaps?:\/\/\S+$/i;
 
-export const isInt = (v: unknown): boolean =>
-  v !== '' && v != null && Number.isInteger(Number(v));
+export const isInt = (v: unknown): boolean => v !== '' && v != null && Number.isInteger(Number(v));
 
 export const intIn = (v: unknown, lo: number, hi: number): boolean =>
   isInt(v) && Number(v) >= lo && Number(v) <= hi;
@@ -79,12 +78,40 @@ export const HASH_TYPES = ['PKCS5 Reversible Hash', 'SHA1 Non-Reversible Hash'];
    its own predefined groups use are offered here and any value already on a
    record is preserved, so nothing captured is lost. */
 export const DEVICE_TYPES = [
-  'Windows', 'Windows 10', 'Windows 8.1', 'Windows 8', 'Windows 7', 'Windows Vista',
-  'Windows XP', 'Windows Server 2008 R2', 'Windows Server 2008', 'Windows Server 2003',
-  'Windows Mobile', 'Linux', 'Ubuntu', 'Fedora', 'Red Hat', 'SUSE', 'Debian', 'Mac',
-  'Mac OS X 10.7+', 'Macintosh', 'Apple iOS', 'iPad', 'iPhone', 'iPod', 'ATV', 'Android',
-  'Samsung Galaxy', 'Chrome OS', 'BlackBerry', 'BB10', 'BlackBerry Playbook',
-  'Amazon Kindle Fire', 'Nook', 'Game Console',
+  'Windows',
+  'Windows 10',
+  'Windows 8.1',
+  'Windows 8',
+  'Windows 7',
+  'Windows Vista',
+  'Windows XP',
+  'Windows Server 2008 R2',
+  'Windows Server 2008',
+  'Windows Server 2003',
+  'Windows Mobile',
+  'Linux',
+  'Ubuntu',
+  'Fedora',
+  'Red Hat',
+  'SUSE',
+  'Debian',
+  'Mac',
+  'Mac OS X 10.7+',
+  'Macintosh',
+  'Apple iOS',
+  'iPad',
+  'iPhone',
+  'iPod',
+  'ATV',
+  'Android',
+  'Samsung Galaxy',
+  'Chrome OS',
+  'BlackBerry',
+  'BB10',
+  'BlackBerry Playbook',
+  'Amazon Kindle Fire',
+  'Nook',
+  'Game Console',
 ];
 
 export const toOpts = (values: string[]): Opt[] => values.map((v) => ({ id: v, label: v }));
@@ -108,39 +135,79 @@ export type RuleCriterionKey =
 /* ──────────────── controller-shaped defaults for Add (no /default API) ──────────────── */
 
 export const D_RADIUS: AcRadiusServer = {
-  server_ip: '', shared_secret: '', response_window: 1, authentication_timeout: 5,
-  authentication_retry_count: 3, authorization_client_port: 1812, accounting_client_port: 1813,
-  proxy_radius_accounting_requests: false, require_message_authenticator: false,
-  username_format: 'Keep Domain Name', use_server_status_request: false, use_access_request: false,
-  username: '', password: '', check_interval: 60, number_of_answers_to_alive: 3,
+  server_ip: '',
+  shared_secret: '',
+  response_window: 1,
+  authentication_timeout: 5,
+  authentication_retry_count: 3,
+  authorization_client_port: 1812,
+  accounting_client_port: 1813,
+  proxy_radius_accounting_requests: false,
+  require_message_authenticator: false,
+  username_format: 'Keep Domain Name',
+  use_server_status_request: false,
+  use_access_request: false,
+  username: '',
+  password: '',
+  check_interval: 60,
+  number_of_answers_to_alive: 3,
   revive_interval: 60,
 };
 
 export const D_LDAP = {
-  config_name: '', ldap_configuration_urls: [] as string[], administrator_username: '',
-  administrator_password: '', user_authentication_type: 'NTLM Authentication',
-  keep_domain_name_for_user_lookup: false, use_fqdn: false, user_search_root: '',
-  host_search_root: '', ou_search_root: '', user_object_class: '', user_search_attribute: '',
-  user_password_attribute: '', host_object_class: '', host_search_attribute: '',
+  config_name: '',
+  ldap_configuration_urls: [] as string[],
+  administrator_username: '',
+  administrator_password: '',
+  user_authentication_type: 'NTLM Authentication',
+  keep_domain_name_for_user_lookup: false,
+  use_fqdn: false,
+  user_search_root: '',
+  host_search_root: '',
+  ou_search_root: '',
+  user_object_class: '',
+  user_search_attribute: '',
+  user_password_attribute: '',
+  host_object_class: '',
+  host_search_attribute: '',
   ou_object_classes: '',
 };
 
 export const D_REPO_USER = {
-  username: '', display_name: '', first_name: '', last_name: '', password: '',
-  password_hash_type: 'PKCS5 Reversible Hash', description: '', enabled: true,
+  username: '',
+  display_name: '',
+  first_name: '',
+  last_name: '',
+  password: '',
+  password_hash_type: 'PKCS5 Reversible Hash',
+  description: '',
+  enabled: true,
 };
 
 export const D_GROUP: AcGroup = {
-  name: '', description: '', type: 'End System - MAC', type_category: 'End-System Group',
-  mode: 'MATCH_ANY', is_registration: false, is_readonly: false, entries: [],
+  name: '',
+  description: '',
+  type: 'End System - MAC',
+  type_category: 'End-System Group',
+  mode: 'MATCH_ANY',
+  is_registration: false,
+  is_readonly: false,
+  entries: [],
 };
 
 export const D_CERT = {
-  name: '', subject: '', issuer: '', valid_from: '', valid_to: '', crl_urls: [] as string[],
+  name: '',
+  subject: '',
+  issuer: '',
+  valid_from: '',
+  valid_to: '',
+  crl_urls: [] as string[],
 };
 
 export const D_RULE: AcRule = {
-  name: '', enabled: true, enabled_edit: true,
+  name: '',
+  enabled: true,
+  enabled_edit: true,
   user_group: { value: 'Any', edit: true, invert: false },
   end_system_group: { value: 'Any', edit: true, invert: false },
   device_type_group: { value: 'Any', edit: true, invert: false },
@@ -282,21 +349,27 @@ export function radiusErrors(form: AcRadiusServer, createMode: boolean): ErrorMa
     server_ip: RE_IPV4.test(str(form.server_ip)) ? null : 'Enter a valid IPv4 address',
     shared_secret:
       str(form.shared_secret).length >= 6 ? null : 'Shared secret must be at least 6 characters',
-    authentication_timeout: intIn(form.authentication_timeout, 1, 60) ? null : 'Valid range 1 to 60',
-    authentication_retry_count:
-      intIn(form.authentication_retry_count, 0, 10) ? null : 'Valid range 0 to 10',
-    authorization_client_port:
-      intIn(form.authorization_client_port, 1, 65535) ? null : 'Valid range 1 to 65535',
-    accounting_client_port:
-      intIn(form.accounting_client_port, 1, 65535) ? null : 'Valid range 1 to 65535',
+    authentication_timeout: intIn(form.authentication_timeout, 1, 60)
+      ? null
+      : 'Valid range 1 to 60',
+    authentication_retry_count: intIn(form.authentication_retry_count, 0, 10)
+      ? null
+      : 'Valid range 0 to 10',
+    authorization_client_port: intIn(form.authorization_client_port, 1, 65535)
+      ? null
+      : 'Valid range 1 to 65535',
+    accounting_client_port: intIn(form.accounting_client_port, 1, 65535)
+      ? null
+      : 'Valid range 1 to 65535',
   };
   if (!createMode) {
     errs.response_window = intIn(form.response_window, 1, 60) ? null : 'Valid range 1 to 60';
   }
   if (form.use_server_status_request || form.use_access_request) {
     errs.check_interval = intIn(form.check_interval, 1, 3600) ? null : 'Valid range 1 to 3600';
-    errs.number_of_answers_to_alive =
-      intIn(form.number_of_answers_to_alive, 1, 10) ? null : 'Valid range 1 to 10';
+    errs.number_of_answers_to_alive = intIn(form.number_of_answers_to_alive, 1, 10)
+      ? null
+      : 'Valid range 1 to 10';
     errs.revive_interval = intIn(form.revive_interval, 1, 3600) ? null : 'Valid range 1 to 3600';
   }
   return errs;

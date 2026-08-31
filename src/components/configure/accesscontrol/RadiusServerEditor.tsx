@@ -37,9 +37,7 @@ export function RadiusServerEditor({
 }: RadiusServerEditorProps) {
   const createMode = record == null;
   const ro = isReadOnly(record);
-  const [form, setForm] = useState<AcRadiusServer>(() =>
-    structuredClone(record ?? D_RADIUS)
-  );
+  const [form, setForm] = useState<AcRadiusServer>(() => structuredClone(record ?? D_RADIUS));
   const initial = useRef(JSON.stringify(record ?? D_RADIUS));
   const dirty = JSON.stringify(form) !== initial.current;
 
@@ -65,7 +63,12 @@ export function RadiusServerEditor({
     >
       <div className="max-w-[620px] space-y-6">
         <Section title="Server">
-          <FieldRow label="RADIUS Server IP" htmlFor="acr-ip" required error={dirty ? errs.server_ip : null}>
+          <FieldRow
+            label="RADIUS Server IP"
+            htmlFor="acr-ip"
+            required
+            error={dirty ? errs.server_ip : null}
+          >
             <Input
               id="acr-ip"
               value={form.server_ip ?? ''}

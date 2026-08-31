@@ -68,7 +68,7 @@ function formFromView(view: PortalConfigView): FormState {
   );
   const required = new Set(
     managed
-      ? view.stored.guestFieldsRequired ?? []
+      ? (view.stored.guestFieldsRequired ?? [])
       : view.effective.guestFields.filter((f) => f.required).map((f) => f.id)
   );
   const fieldModes: Record<string, FieldMode> = {};
@@ -197,9 +197,9 @@ export function CloudPortalPage() {
       <Alert>
         <AlertTitle>Cloud Captive Portal is not connected</AlertTitle>
         <AlertDescription>
-          Set <code>CWP_INTERNAL_API_URL</code> and <code>CWP_INTERNAL_API_TOKEN</code> on the
-          AURA service so it can reach the captive portal&apos;s internal API. Guest access
-          itself is unaffected — the portal keeps running on its own configuration.
+          Set <code>CWP_INTERNAL_API_URL</code> and <code>CWP_INTERNAL_API_TOKEN</code> on the AURA
+          service so it can reach the captive portal&apos;s internal API. Guest access itself is
+          unaffected — the portal keeps running on its own configuration.
         </AlertDescription>
       </Alert>
     );
@@ -252,9 +252,9 @@ export function CloudPortalPage() {
               {effectiveSummary.transport === null && (
                 <Alert variant="warning">
                   <AlertDescription>
-                    The portal has no email transport, so sponsorship cannot be offered
-                    regardless of the switch below. Transports are configured on the portal
-                    service environment (Resend API key or SMTP relay).
+                    The portal has no email transport, so sponsorship cannot be offered regardless
+                    of the switch below. Transports are configured on the portal service environment
+                    (Resend API key or SMTP relay).
                   </AlertDescription>
                 </Alert>
               )}
@@ -268,7 +268,9 @@ export function CloudPortalPage() {
                 label="Allowed sponsor domains"
                 value={form.domainsText}
                 onChange={(value) => patch({ domainsText: value })}
-                placeholder={view.envDefaults.sponsorAllowedDomains.join(', ') || 'extremenetworks.com'}
+                placeholder={
+                  view.envDefaults.sponsorAllowedDomains.join(', ') || 'extremenetworks.com'
+                }
                 description={`Comma-separated, exact match. Blank uses the service default (currently: ${effectiveSummary.domains}).`}
               />
               <TextField

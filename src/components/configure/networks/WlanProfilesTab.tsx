@@ -8,14 +8,7 @@
  */
 import React from 'react';
 import { Checkbox } from '../../ui/checkbox';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../../ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../ui/table';
 import type { ApProfile, ProfileRadio } from '../../../types/configure';
 import { allows6GHz, type WlanAuthType } from './wlanModel';
 import type { AssignmentMatrix } from './useProfileAssignments';
@@ -100,15 +93,11 @@ export function WlanProfilesTab({
                       </span>
                     )}
                     {noH2e && (
-                      <span className="ml-2 text-xs text-muted-foreground">
-                        H2E not supported
-                      </span>
+                      <span className="ml-2 text-xs text-muted-foreground">H2E not supported</span>
                     )}
                   </TableCell>
                   {RADIO_COLUMNS.map((radioIndex) => {
-                    const radio = (profile.radios ?? []).find(
-                      (r) => r.radioIndex === radioIndex
-                    );
+                    const radio = (profile.radios ?? []).find((r) => r.radioIndex === radioIndex);
                     if (!radio) {
                       return (
                         <TableCell key={radioIndex} className="text-center text-muted-foreground">

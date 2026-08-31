@@ -23,10 +23,7 @@ export function RateLimitersPage() {
     getId: (r) => r.id,
     getName: (r) => r.name,
   });
-  const defaults = useDefaults<RateLimiter>(
-    () => rateLimitersService.getDefault(),
-    'rate limiter'
-  );
+  const defaults = useDefaults<RateLimiter>(() => rateLimitersService.getDefault(), 'rate limiter');
   const [editor, setEditor] = useState<EditorState | null>(null);
 
   const openAdd = async () => {

@@ -83,7 +83,12 @@ export const iotVendorRow = (vendor: string): GenericScanVendor =>
    the Gateway's own per-app gates. */
 export const IOT_MULTI_APPS = [
   { id: 'iBeaconAdvertisement', label: 'iBeacon', kind: 'beacon', flag: 'IOT-IBEACON-ADV' },
-  { id: 'eddystoneAdvertisement', label: 'Eddystone-url', kind: 'beacon', flag: 'IOT-EDDYSTONE-ADV' },
+  {
+    id: 'eddystoneAdvertisement',
+    label: 'Eddystone-url',
+    kind: 'beacon',
+    flag: 'IOT-EDDYSTONE-ADV',
+  },
   { id: 'iBeaconScan', label: 'iBeacon Scan', kind: 'scan', flag: 'IOT-IBEACON-SCAN' },
   { id: 'eddystoneScan', label: 'Eddystone-url Scan', kind: 'scan', flag: 'IOT-EDDYSTONE-SCAN' },
   { id: 'genericScan', label: 'Generic BLE Scan', kind: 'scan', flag: 'IOT-GENERIC-SCAN' },
@@ -182,12 +187,41 @@ export const IOT_FLAT_DEFAULTS: IotProfile = {
   canEdit: true,
   canDelete: true,
   appId: 'iBeaconAdvertisement',
-  iBeaconAdvertisement: { uuid: '00000000-0000-0000-0000-000000000000', interval: 100, major: 0, minor: 0, measuredRssi: -47 },
-  iBeaconScan: { uuid: '00000000-0000-0000-0000-000000000000', destAddr: '0.0.0.0', destPort: 0, interval: 100, window: 100, minRSS: -100 },
+  iBeaconAdvertisement: {
+    uuid: '00000000-0000-0000-0000-000000000000',
+    interval: 100,
+    major: 0,
+    minor: 0,
+    measuredRssi: -47,
+  },
+  iBeaconScan: {
+    uuid: '00000000-0000-0000-0000-000000000000',
+    destAddr: '0.0.0.0',
+    destPort: 0,
+    interval: 100,
+    window: 100,
+    minRSS: -100,
+  },
   eddystoneAdvertisement: { url: '', interval: 100, measuredRssi: -5 },
   eddystoneScan: { destAddr: '0.0.0.0', destPort: 0, interval: 100, window: 100, minRSS: -100 },
-  genericScan: { destAddr: '0.0.0.0', destPort: 0, interval: 100, window: 100, minRSS: -100, companyId: -1, vendors: [{ id: -1, name: '', vendor: 'ANY' }] },
-  threadGateway: { channel: 25, shortPANId: '67C6', extPANId: '697351FF4AEC29CD', masterKey: 'BAABF2FBE3467CC254F81BE8E78D765A', networkName: '', commCredentials: 'THREADNETWORK', whiteList: [] },
+  genericScan: {
+    destAddr: '0.0.0.0',
+    destPort: 0,
+    interval: 100,
+    window: 100,
+    minRSS: -100,
+    companyId: -1,
+    vendors: [{ id: -1, name: '', vendor: 'ANY' }],
+  },
+  threadGateway: {
+    channel: 25,
+    shortPANId: '67C6',
+    extPANId: '697351FF4AEC29CD',
+    masterKey: 'BAABF2FBE3467CC254F81BE8E78D765A',
+    networkName: '',
+    commCredentials: 'THREADNETWORK',
+    whiteList: [],
+  },
   /* IOT-MULTI-APP defaults (initDefaultFormValues): nothing enabled,
      BLE Data = Latest Only, both destination modes off. */
   apps: [],
@@ -256,7 +290,11 @@ export function adaptIot(record: IotProfile): IotProfile {
   const http = src.ble_scan?.destination?.http_server ?? {};
   for (const a of src.ble_scan?.applications ?? []) {
     const tgt =
-      a.app_type === 'GENERIC' ? 'genericScan' : a.app_type === 'IBEACON' ? 'iBeaconScan' : 'eddystoneScan';
+      a.app_type === 'GENERIC'
+        ? 'genericScan'
+        : a.app_type === 'IBEACON'
+          ? 'iBeaconScan'
+          : 'eddystoneScan';
     const sub = f[tgt] as IotScanBase | undefined;
     if (sub) {
       if (a.min_rss != null) sub.minRSS = a.min_rss;
@@ -269,7 +307,11 @@ export function adaptIot(record: IotProfile): IotProfile {
           if (v.vendor) return { vendor: v.vendor, id: v.id ?? -1, name: v.name ?? '' };
           const named = Object.keys(IOT_VENDOR_ID).find((k) => IOT_VENDOR_ID[k] === v.id);
           if (named) return iotVendorRow(named);
-          return { vendor: (v.id ?? -1) > 0 ? 'CUSTOM' : 'ANY', id: v.id ?? -1, name: v.name ?? '' };
+          return {
+            vendor: (v.id ?? -1) > 0 ? 'CUSTOM' : 'ANY',
+            id: v.id ?? -1,
+            name: v.name ?? '',
+          };
         });
       }
       if (udp.address) {
@@ -355,7 +397,11 @@ export function validateIot(
 ): Record<string, string | null> {
   const errs: Record<string, string | null> = { name: nameError(rows, form) };
   if (ctx.multi) return validateIotMulti(form, errs, ctx);
-  const scanErrs = (root: 'iBeaconScan' | 'eddystoneScan' | 'genericScan', hasUuid: boolean, destOn: boolean) => {
+  const scanErrs = (
+    root: 'iBeaconScan' | 'eddystoneScan' | 'genericScan',
+    hasUuid: boolean,
+    destOn: boolean
+  ) => {
     const s = (form[root] ?? {}) as Partial<IBeaconScan>;
     errs[`${root}.interval`] = rangeErr(s.interval, 100, 10240, 'Scan Interval');
     errs[`${root}.window`] = !intIn(s.window, 100, 10240)
@@ -364,9 +410,13 @@ export function validateIot(
         ? 'Scan Window can not be bigger than Scan Interval'
         : null;
     if (hasUuid) errs[`${root}.uuid`] = RE_UUID.test(s.uuid ?? '') ? null : 'Enter a valid UUID';
-    errs[`${root}.minRSS`] = intIn(s.minRSS, -100, -10) ? null : 'Min RSS must be an integer between -100 and -10';
+    errs[`${root}.minRSS`] = intIn(s.minRSS, -100, -10)
+      ? null
+      : 'Min RSS must be an integer between -100 and -10';
     if (destOn) {
-      errs[`${root}.destAddr`] = RE_IPV4.test(s.destAddr ?? '') ? null : 'Enter a valid IPv4 address';
+      errs[`${root}.destAddr`] = RE_IPV4.test(s.destAddr ?? '')
+        ? null
+        : 'Enter a valid IPv4 address';
       errs[`${root}.destPort`] = intIn(s.destPort, 1, 65535)
         ? null
         : 'Destination Port must be an integer between 1 and 65535';
@@ -379,22 +429,37 @@ export function validateIot(
     errs['ib.uuid'] = RE_UUID.test(b?.uuid ?? '') ? null : 'Enter a valid UUID';
     errs['ib.major'] = rangeErr(b?.major, 0, 65535, 'Major');
     errs['ib.minor'] = rangeErr(b?.minor, 0, 65535, 'Minor');
-    errs['ib.rssi'] = intIn(b?.measuredRssi, -127, 127) ? null : 'Measured RSSI must be an integer between -127 and 127';
+    errs['ib.rssi'] = intIn(b?.measuredRssi, -127, 127)
+      ? null
+      : 'Measured RSSI must be an integer between -127 and 127';
   } else if (form.appId === 'eddystoneAdvertisement') {
     const e = form.eddystoneAdvertisement;
-    errs['ed.url'] = !e?.url ? 'URL is required' : RE_URL.test(e.url) ? null : 'Enter a valid URL (http:// or https://)';
+    errs['ed.url'] = !e?.url
+      ? 'URL is required'
+      : RE_URL.test(e.url)
+        ? null
+        : 'Enter a valid URL (http:// or https://)';
     errs['ed.interval'] = rangeErr(e?.interval, 100, 10240, 'Advertise Interval');
-    errs['ed.rssi'] = intIn(e?.measuredRssi, -127, 127) ? null : 'Measured RSSI must be an integer between -127 and 127';
+    errs['ed.rssi'] = intIn(e?.measuredRssi, -127, 127)
+      ? null
+      : 'Measured RSSI must be an integer between -127 and 127';
   } else if (form.appId === 'iBeaconScan') scanErrs('iBeaconScan', true, ctx.fwdI);
   else if (form.appId === 'eddystoneScan') scanErrs('eddystoneScan', false, ctx.fwdE);
   else if (form.appId === 'genericScan') scanErrs('genericScan', false, true);
   else if (form.appId === 'threadGateway') {
     const t = form.threadGateway;
-    errs['tg.name'] = t?.networkName && String(t.networkName).trim() ? null : 'Service Name is required';
+    errs['tg.name'] =
+      t?.networkName && String(t.networkName).trim() ? null : 'Service Name is required';
     errs['tg.ch'] = rangeErr(t?.channel, 11, 26, 'Channel');
-    errs['tg.span'] = RE_HEX4.test(t?.shortPANId ?? '') ? null : 'Short PAN ID must be 4 hex characters';
-    errs['tg.xpan'] = RE_HEX16.test(t?.extPANId ?? '') ? null : 'Extended PAN ID must be 16 hex characters';
-    errs['tg.key'] = RE_HEX32.test(t?.masterKey ?? '') ? null : 'Master Key must be 32 hex characters';
+    errs['tg.span'] = RE_HEX4.test(t?.shortPANId ?? '')
+      ? null
+      : 'Short PAN ID must be 4 hex characters';
+    errs['tg.xpan'] = RE_HEX16.test(t?.extPANId ?? '')
+      ? null
+      : 'Extended PAN ID must be 16 hex characters';
+    errs['tg.key'] = RE_HEX32.test(t?.masterKey ?? '')
+      ? null
+      : 'Master Key must be 32 hex characters';
     errs['tg.cred'] = t?.commCredentials ? null : 'Commissioning Credentials are required';
   }
   if (ctx.vendorEditing) errs['vendor.editing'] = 'Finish editing the vendor row';
@@ -425,31 +490,47 @@ function validateIotMulti(
   }
   if (on('eddystoneAdvertisement')) {
     const e = form.eddystoneAdvertisement;
-    errs['ed.url'] = !e?.url ? 'URL is required' : RE_URL.test(e.url) ? null : 'Enter a valid URL (http:// or https://)';
+    errs['ed.url'] = !e?.url
+      ? 'URL is required'
+      : RE_URL.test(e.url)
+        ? null
+        : 'Enter a valid URL (http:// or https://)';
     errs['ed.interval'] = rangeErr(e?.interval, 100, 10240, 'Advertise Interval');
   }
   if (scanOn) {
     errs['m.interval'] = rangeErr(form.iBeaconScan?.interval, 100, 10240, 'Scan Interval');
     if (form.iBeaconRealTimeMonitoring) {
-      errs['m.destAddr'] = RE_IPV4.test(form.iBeaconScan?.destAddr ?? '') ? null : 'Enter a valid IPv4 address';
+      errs['m.destAddr'] = RE_IPV4.test(form.iBeaconScan?.destAddr ?? '')
+        ? null
+        : 'Enter a valid IPv4 address';
       errs['m.destPort'] = intIn(form.iBeaconScan?.destPort, 1, 65535)
         ? null
         : 'Destination Port must be an integer between 1 and 65535';
     }
     if (form.iBeaconRealBatchReporting) {
       const u = form.iBeaconAdvertisement?.url;
-      errs['m.batchUrl'] = !u ? 'Reporting URL is required' : RE_URL.test(u) ? null : 'Enter a valid URL (http:// or https://)';
+      errs['m.batchUrl'] = !u
+        ? 'Reporting URL is required'
+        : RE_URL.test(u)
+          ? null
+          : 'Enter a valid URL (http:// or https://)';
     }
   }
   if (on('iBeaconScan')) {
     errs['m.ibUuid'] = RE_UUID.test(form.iBeaconScan?.uuid ?? '') ? null : 'Enter a valid UUID';
-    errs['m.ibRss'] = intIn(form.iBeaconScan?.minRSS, -100, -10) ? null : 'Min RSS must be an integer between -100 and -10';
+    errs['m.ibRss'] = intIn(form.iBeaconScan?.minRSS, -100, -10)
+      ? null
+      : 'Min RSS must be an integer between -100 and -10';
   }
   if (on('eddystoneScan')) {
-    errs['m.edRss'] = intIn(form.eddystoneScan?.minRSS, -100, -10) ? null : 'Min RSS must be an integer between -100 and -10';
+    errs['m.edRss'] = intIn(form.eddystoneScan?.minRSS, -100, -10)
+      ? null
+      : 'Min RSS must be an integer between -100 and -10';
   }
   if (on('genericScan')) {
-    errs['m.gnRss'] = intIn(form.genericScan?.minRSS, -100, -10) ? null : 'Min RSS must be an integer between -100 and -10';
+    errs['m.gnRss'] = intIn(form.genericScan?.minRSS, -100, -10)
+      ? null
+      : 'Min RSS must be an integer between -100 and -10';
   }
   if (ctx.vendorEditing) errs['vendor.editing'] = 'Finish editing the vendor row';
   return errs;
@@ -462,9 +543,19 @@ export interface VendorDraft {
   id: number | '';
 }
 export const vendorNameErr = (d: VendorDraft): string | null =>
-  d.vendor !== 'CUSTOM' ? null : !d.name ? 'Vendor name is required' : RE_VENDOR_NAME.test(d.name) ? null : 'Vendor name contains invalid characters';
+  d.vendor !== 'CUSTOM'
+    ? null
+    : !d.name
+      ? 'Vendor name is required'
+      : RE_VENDOR_NAME.test(d.name)
+        ? null
+        : 'Vendor name contains invalid characters';
 export const vendorIdErr = (d: VendorDraft): string | null =>
-  d.vendor !== 'CUSTOM' ? null : intIn(d.id, 1, 65535) ? null : 'Company ID must be an integer between 1 and 65535';
+  d.vendor !== 'CUSTOM'
+    ? null
+    : intIn(d.id, 1, 65535)
+      ? null
+      : 'Company ID must be an integer between 1 and 65535';
 export const vendorDraftOk = (d: VendorDraft): boolean =>
   d.vendor !== 'CUSTOM' || (!vendorNameErr(d) && !vendorIdErr(d));
 
@@ -475,11 +566,19 @@ export function iotAppsSummary(r?: IotProfile): string {
   const src = r as unknown as NewShape;
   const out: string[] = [];
   for (const a of src.ble_beacon?.applications ?? []) {
-    out.push({ IBEACON: 'iBeacon Advertisement', EDDYSTONE: 'Eddystone-URL Advertisement' }[a.app_type ?? ''] ?? a.app_type ?? '');
+    out.push(
+      { IBEACON: 'iBeacon Advertisement', EDDYSTONE: 'Eddystone-URL Advertisement' }[
+        a.app_type ?? ''
+      ] ??
+        a.app_type ??
+        ''
+    );
   }
   for (const a of src.ble_scan?.applications ?? []) {
     out.push(
-      { GENERIC: 'Generic BLE Scan', IBEACON: 'iBeacon Scan', EDDYSTONE: 'Eddystone-URL Scan' }[a.app_type ?? ''] ??
+      { GENERIC: 'Generic BLE Scan', IBEACON: 'iBeacon Scan', EDDYSTONE: 'Eddystone-URL Scan' }[
+        a.app_type ?? ''
+      ] ??
         a.app_type ??
         ''
     );

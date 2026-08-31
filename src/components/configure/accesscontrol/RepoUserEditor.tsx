@@ -11,7 +11,10 @@ import { Input } from '../../ui/input';
 import { EditorSheet, FieldRow, MaskedInput, Section } from '../_kit';
 import { EnumSelect } from '../policy/fields';
 import type { AcRepoUserRecord } from '../../../services/configure/accessControlFamilyService';
-import { DEFAULT_REPOSITORY, repoUserId } from '../../../services/configure/accessControlFamilyService';
+import {
+  DEFAULT_REPOSITORY,
+  repoUserId,
+} from '../../../services/configure/accessControlFamilyService';
 import { D_REPO_USER, HASH_TYPES, isReadOnly, noErrors, toOpts } from './accessControlModel';
 
 export interface RepoUserEditorProps {
@@ -73,7 +76,12 @@ export function RepoUserEditor({
     >
       <div className="max-w-[560px] space-y-6">
         <Section title="User">
-          <FieldRow label="Username" htmlFor="acu-username" required error={dirty ? errs.username : null}>
+          <FieldRow
+            label="Username"
+            htmlFor="acu-username"
+            required
+            error={dirty ? errs.username : null}
+          >
             <Input
               id="acu-username"
               value={form.username ?? ''}

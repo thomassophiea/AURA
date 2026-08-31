@@ -81,7 +81,9 @@ export function useResourceCrud<T>(
       try {
         const saved = id ? await service.update(id, payload) : await service.create(payload);
         const label = saved ? (getName?.(saved) ?? getId(saved)) : resourceLabel;
-        toast.success(id ? `Updated ${resourceLabel} "${label}"` : `Created ${resourceLabel} "${label}"`);
+        toast.success(
+          id ? `Updated ${resourceLabel} "${label}"` : `Created ${resourceLabel} "${label}"`
+        );
         await refresh();
         return saved;
       } catch (err) {

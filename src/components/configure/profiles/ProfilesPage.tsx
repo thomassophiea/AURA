@@ -40,9 +40,7 @@ export function ProfilesPage() {
     // The list endpoint serves supportedOperatingModes as null; only the
     // single-record GET carries the per-platform operating-mode catalogue
     // (Gateway 10.20). Fall back to the list row if the fetch fails.
-    const full = profile.id
-      ? await profilesService.get(profile.id).catch(() => profile)
-      : profile;
+    const full = profile.id ? await profilesService.get(profile.id).catch(() => profile) : profile;
     setEditing(full);
     setIsNew(false);
     setSheetOpen(true);
@@ -101,7 +99,13 @@ export function ProfilesPage() {
           </button>
         ),
       },
-      { colId: 'apPlatform', field: 'apPlatform', headerName: 'AP Platform', flex: 1, minWidth: 130 },
+      {
+        colId: 'apPlatform',
+        field: 'apPlatform',
+        headerName: 'AP Platform',
+        flex: 1,
+        minWidth: 130,
+      },
       {
         colId: 'operationalMode',
         headerName: 'Operational Mode',
@@ -130,7 +134,11 @@ export function ProfilesPage() {
         headerName: 'Predefined',
         width: 120,
         cellRenderer: (p: { data?: ApProfile }) =>
-          p.data?.predefined ? <Badge variant="secondary">Predefined</Badge> : <Badge variant="outline">Custom</Badge>,
+          p.data?.predefined ? (
+            <Badge variant="secondary">Predefined</Badge>
+          ) : (
+            <Badge variant="outline">Custom</Badge>
+          ),
       },
     ],
     []

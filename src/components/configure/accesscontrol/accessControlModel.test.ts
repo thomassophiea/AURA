@@ -35,9 +35,9 @@ describe('showInvert (rule.html NOT switch)', () => {
   });
 
   it('treats a missing edit flag as editable (edit !== false)', () => {
-    expect(showInvert({ value: 'Staff', edit: undefined as unknown as boolean, invert: false })).toBe(
-      true
-    );
+    expect(
+      showInvert({ value: 'Staff', edit: undefined as unknown as boolean, invert: false })
+    ).toBe(true);
   });
 
   it('hides for an absent criterion', () => {
@@ -114,17 +114,27 @@ describe('radiusErrors (aaa_radius_servers.html ranges)', () => {
   });
 
   it('validates response_window in EDIT mode only (ng-show="!createMode")', () => {
-    const record = { ...D_RADIUS, server_ip: '10.0.0.1', shared_secret: 'secret1', response_window: 0 };
+    const record = {
+      ...D_RADIUS,
+      server_ip: '10.0.0.1',
+      shared_secret: 'secret1',
+      response_window: 0,
+    };
     expect(radiusErrors(record, true).response_window).toBeUndefined();
     expect(radiusErrors(record, false).response_window).toBe('Valid range 1 to 60');
   });
 
   it('validates the health-check trio only when a health check is enabled', () => {
-    const base = { ...D_RADIUS, server_ip: '10.0.0.1', shared_secret: 'secret1', check_interval: 0 };
+    const base = {
+      ...D_RADIUS,
+      server_ip: '10.0.0.1',
+      shared_secret: 'secret1',
+      check_interval: 0,
+    };
     expect(radiusErrors(base, true).check_interval).toBeUndefined();
-    expect(
-      radiusErrors({ ...base, use_server_status_request: true }, true).check_interval
-    ).toBe('Valid range 1 to 3600');
+    expect(radiusErrors({ ...base, use_server_status_request: true }, true).check_interval).toBe(
+      'Valid range 1 to 3600'
+    );
   });
 
   it('enforces secret length and port/retry ranges', () => {

@@ -99,8 +99,7 @@ export function GroupsPage() {
             headerName: 'Entries',
             width: 100,
             // The list payload omits entries; a count renders only when known.
-            valueGetter: (p) =>
-              Array.isArray(p.data?.entries) ? p.data.entries.length : null,
+            valueGetter: (p) => (Array.isArray(p.data?.entries) ? p.data.entries.length : null),
             valueFormatter: (p) => dashText(p.value),
           },
           {

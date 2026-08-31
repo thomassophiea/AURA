@@ -53,7 +53,8 @@ export const radioIfOf = (p: ApProfile): IfEntry[] => (p.radioIfList as IfEntry[
 export const wiredIfOf = (p: ApProfile): IfEntry[] => (p.wiredIfList as IfEntry[]) ?? [];
 export const meshIfOf = (p: ApProfile): MeshIfEntry[] => (p.meshpointIfList as MeshIfEntry[]) ?? [];
 export const meshpointsOf = (p: ApProfile): ProfileMesh[] => (p.meshpoints as ProfileMesh[]) ?? [];
-export const strArr = (v: unknown): string[] => (Array.isArray(v) ? (v as unknown[]).map(String) : []);
+export const strArr = (v: unknown): string[] =>
+  Array.isArray(v) ? (v as unknown[]).map(String) : [];
 
 /** Band label for a radio from its name or index. */
 export const bandOf = (r: ProfileRadio): string => {
@@ -130,8 +131,10 @@ export function hasDeviceAdvErrors(form: ApProfile, F: (t: string) => boolean): 
     if (!inRange(sp.deadline, 1, Number(sp.interval) || 300)) return true;
     if ((sp.targets ?? []).length > 10) return true;
   }
-  if (getIn(form, 'peapUsername.selection') === 'Custom' && !getIn(form, 'peapUsername.custom')) return true;
-  if (getIn(form, 'peapPassword.selection') === 'Custom' && !getIn(form, 'peapPassword.custom')) return true;
+  if (getIn(form, 'peapUsername.selection') === 'Custom' && !getIn(form, 'peapUsername.custom'))
+    return true;
+  if (getIn(form, 'peapPassword.selection') === 'Custom' && !getIn(form, 'peapPassword.custom'))
+    return true;
   if (selDnsError(form.selDnsIntercept)) return true;
   return false;
 }

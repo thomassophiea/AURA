@@ -21,14 +21,7 @@ import { RfSelectShutdownTab } from './RfSelectShutdownTab';
 import { RfAutoSensorTab } from './RfAutoSensorTab';
 import { RfAcsInterferenceTab } from './RfAcsInterferenceTab';
 import type { RfTabProps } from './rfControls';
-import {
-  RF_TABS_ACS,
-  RF_TABS_SMART,
-  getPath,
-  setPath,
-  toRfPayload,
-  validateRf,
-} from './rfModel';
+import { RF_TABS_ACS, RF_TABS_SMART, getPath, setPath, toRfPayload, validateRf } from './rfModel';
 
 export interface RfEditorSheetProps {
   open: boolean;

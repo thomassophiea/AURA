@@ -56,20 +56,41 @@ export function useRefPools(enabled: boolean) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [services, roles, topologies, meshpoints, airdefense, iot, esl, rtls, positioning, analytics] =
-      await Promise.all([
-        toOpts(() => servicesService.list() as Promise<NamedRecord[]>, 'serviceName'),
-        toOpts(() => rolesService.list() as Promise<NamedRecord[]>),
-        toOpts(() => topologiesService.list() as Promise<NamedRecord[]>),
-        toOpts(() => meshpointsService.list() as Promise<NamedRecord[]>),
-        toOpts(() => adspService.list() as Promise<NamedRecord[]>),
-        toOpts(() => iotProfileService.list() as Promise<NamedRecord[]>),
-        toOpts(() => eslProfileService.list() as Promise<NamedRecord[]>),
-        toOpts(() => rtlsProfileService.list() as Promise<NamedRecord[]>),
-        toOpts(() => positioningService.list() as Promise<NamedRecord[]>),
-        toOpts(() => analyticsService.list() as Promise<NamedRecord[]>),
-      ]);
-    setPools({ services, roles, topologies, meshpoints, airdefense, iot, esl, rtls, positioning, analytics });
+    const [
+      services,
+      roles,
+      topologies,
+      meshpoints,
+      airdefense,
+      iot,
+      esl,
+      rtls,
+      positioning,
+      analytics,
+    ] = await Promise.all([
+      toOpts(() => servicesService.list() as Promise<NamedRecord[]>, 'serviceName'),
+      toOpts(() => rolesService.list() as Promise<NamedRecord[]>),
+      toOpts(() => topologiesService.list() as Promise<NamedRecord[]>),
+      toOpts(() => meshpointsService.list() as Promise<NamedRecord[]>),
+      toOpts(() => adspService.list() as Promise<NamedRecord[]>),
+      toOpts(() => iotProfileService.list() as Promise<NamedRecord[]>),
+      toOpts(() => eslProfileService.list() as Promise<NamedRecord[]>),
+      toOpts(() => rtlsProfileService.list() as Promise<NamedRecord[]>),
+      toOpts(() => positioningService.list() as Promise<NamedRecord[]>),
+      toOpts(() => analyticsService.list() as Promise<NamedRecord[]>),
+    ]);
+    setPools({
+      services,
+      roles,
+      topologies,
+      meshpoints,
+      airdefense,
+      iot,
+      esl,
+      rtls,
+      positioning,
+      analytics,
+    });
     setLoading(false);
   }, []);
 

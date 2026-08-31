@@ -19,9 +19,7 @@ import type { RateLimiter } from '../../../types/configure';
 describe('RateLimiterDialog', () => {
   it('gates Save on name + CIR range and submits numeric cirKbps', () => {
     const onSubmit = vi.fn();
-    render(
-      <RateLimiterDialog open onOpenChange={() => {}} record={null} onSubmit={onSubmit} />
-    );
+    render(<RateLimiterDialog open onOpenChange={() => {}} record={null} onSubmit={onSubmit} />);
 
     const save = screen.getByRole('button', { name: 'Save' });
     expect(save).toBeDisabled();
@@ -46,9 +44,7 @@ describe('RateLimiterDialog', () => {
       canEdit: true,
       canDelete: true,
     };
-    render(
-      <RateLimiterDialog open onOpenChange={() => {}} record={record} onSubmit={onSubmit} />
-    );
+    render(<RateLimiterDialog open onOpenChange={() => {}} record={record} onSubmit={onSubmit} />);
 
     fireEvent.change(screen.getByRole('spinbutton'), { target: { value: '10000' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));

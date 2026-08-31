@@ -13,6 +13,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 // these component tests stay hermetic — no live traffic (port brief gate).
 vi.mock('../../../services/configure', () => ({
   ConfigureApiError: class ConfigureApiError extends Error {},
+  // The dialog's Trust Point select seeds from the controller cert listing.
+  trustPointsService: { list: vi.fn().mockResolvedValue(['radsec-ca']) },
 }));
 import { RadiusServerTable } from './RadiusServerTable';
 import { newRadiusServer, type AaaServerForm } from './aaaModel';
@@ -23,7 +25,9 @@ function server(ip: string, overrides: Partial<AaaServerForm> = {}): AaaServerFo
 
 describe('RadiusServerTable', () => {
   it('renders the 5 controller columns', () => {
-    render(<RadiusServerTable radiusType="auth" servers={[server('10.0.0.1')]} onChange={vi.fn()} />);
+    render(
+      <RadiusServerTable radiusType="auth" servers={[server('10.0.0.1')]} onChange={vi.fn()} />
+    );
     for (const col of ['Order', 'Server Address', 'Port', 'Retries', 'Timeout']) {
       expect(screen.getByText(col)).toBeInTheDocument();
     }
@@ -82,9 +86,7 @@ describe('RadiusServerTable', () => {
   });
 
   it('hides New for the onboard-policy lockdown and when disabled', () => {
-    render(
-      <RadiusServerTable radiusType="auth" servers={[]} onChange={vi.fn()} hideNew />
-    );
+    render(<RadiusServerTable radiusType="auth" servers={[]} onChange={vi.fn()} hideNew />);
     expect(screen.queryByRole('button', { name: /New/ })).not.toBeInTheDocument();
   });
 

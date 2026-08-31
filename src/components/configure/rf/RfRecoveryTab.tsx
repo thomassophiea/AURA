@@ -17,8 +17,17 @@ export function RfRecoveryTab({ cfg, root, custom, errs, update }: RfTabProps) {
   const ir = (getPath(cfg, 'interferenceRecovery') ?? {}) as Record<string, unknown>;
   const nEnabled = !!basic.neighborRecovery;
   const iEnabled = !!basic.interferenceRecovery;
-  const [sub, setSub] = useState<'Neighbor' | 'Interference'>(nEnabled ? 'Neighbor' : 'Interference');
-  const cur = sub === 'Neighbor' ? (nEnabled ? 'Neighbor' : 'Interference') : iEnabled ? 'Interference' : 'Neighbor';
+  const [sub, setSub] = useState<'Neighbor' | 'Interference'>(
+    nEnabled ? 'Neighbor' : 'Interference'
+  );
+  const cur =
+    sub === 'Neighbor'
+      ? nEnabled
+        ? 'Neighbor'
+        : 'Interference'
+      : iEnabled
+        ? 'Interference'
+        : 'Neighbor';
   const W = 240;
 
   const subBtn = (t: 'Neighbor' | 'Interference', en: boolean) => (
@@ -46,7 +55,12 @@ export function RfRecoveryTab({ cfg, root, custom, errs, update }: RfTabProps) {
       {cur === 'Neighbor' ? (
         <>
           <LabelRow label="Power Hold Time [s] (0-3600)" width={W} error={errs.pht}>
-            <NumCellRaw value={nr.powerHoldTime} disabled={!custom} onChange={(v) => update(`${root}.neighbourRecovery.powerHoldTime`, v)} width={140} />
+            <NumCellRaw
+              value={nr.powerHoldTime}
+              disabled={!custom}
+              onChange={(v) => update(`${root}.neighbourRecovery.powerHoldTime`, v)}
+              width={140}
+            />
           </LabelRow>
           <SubHead>Power Threshold [dBm] (-85 to -55)</SubHead>
           {RF_BANDS.map(([bandId, label]) => (
@@ -54,7 +68,9 @@ export function RfRecoveryTab({ cfg, root, custom, errs, update }: RfTabProps) {
               <NumCellRaw
                 value={bandOf(cfg, 'neighbourRecovery', bandId).powerThreshold}
                 disabled={!custom}
-                onChange={(v) => update(`${bandPath(cfg, root, 'neighbourRecovery', bandId)}.powerThreshold`, v)}
+                onChange={(v) =>
+                  update(`${bandPath(cfg, root, 'neighbourRecovery', bandId)}.powerThreshold`, v)
+                }
                 width={120}
               />
             </LabelRow>
@@ -69,10 +85,18 @@ export function RfRecoveryTab({ cfg, root, custom, errs, update }: RfTabProps) {
           {!!nr.dynamicSample && (
             <>
               <LabelRow label="Sample Retries (1-10)" width={W} error={errs.sr}>
-                <NumCellRaw value={nr.sampleRetries} onChange={(v) => update(`${root}.neighbourRecovery.sampleRetries`, v)} width={120} />
+                <NumCellRaw
+                  value={nr.sampleRetries}
+                  onChange={(v) => update(`${root}.neighbourRecovery.sampleRetries`, v)}
+                  width={120}
+                />
               </LabelRow>
               <LabelRow label="Sample Threshold (1-30)" width={W} error={errs.sth}>
-                <NumCellRaw value={nr.sampleThreshold} onChange={(v) => update(`${root}.neighbourRecovery.sampleThreshold`, v)} width={120} />
+                <NumCellRaw
+                  value={nr.sampleThreshold}
+                  onChange={(v) => update(`${root}.neighbourRecovery.sampleThreshold`, v)}
+                  width={120}
+                />
               </LabelRow>
             </>
           )}
@@ -97,10 +121,20 @@ export function RfRecoveryTab({ cfg, root, custom, errs, update }: RfTabProps) {
             </LabelRow>
           )}
           <LabelRow label="Channel Hold Time [s] (1-86400)" width={W} error={errs.cht}>
-            <NumCellRaw value={ir.clientHoldTime} disabled={!custom} onChange={(v) => update(`${root}.interferenceRecovery.clientHoldTime`, v)} width={140} />
+            <NumCellRaw
+              value={ir.clientHoldTime}
+              disabled={!custom}
+              onChange={(v) => update(`${root}.interferenceRecovery.clientHoldTime`, v)}
+              width={140}
+            />
           </LabelRow>
           <LabelRow label="Client Threshold (1-255)" width={W} error={errs.cth}>
-            <NumCellRaw value={ir.clientThreshold} disabled={!custom} onChange={(v) => update(`${root}.interferenceRecovery.clientThreshold`, v)} width={120} />
+            <NumCellRaw
+              value={ir.clientThreshold}
+              disabled={!custom}
+              onChange={(v) => update(`${root}.interferenceRecovery.clientThreshold`, v)}
+              width={120}
+            />
           </LabelRow>
           <SubHead>Channel Switch Delta [dBm] (5-35)</SubHead>
           {RF_BANDS.map(([bandId, label]) => (
@@ -108,7 +142,9 @@ export function RfRecoveryTab({ cfg, root, custom, errs, update }: RfTabProps) {
               <NumCellRaw
                 value={bandOf(cfg, 'interferenceRecovery', bandId).chSwitchDelta}
                 disabled={!custom}
-                onChange={(v) => update(`${bandPath(cfg, root, 'interferenceRecovery', bandId)}.chSwitchDelta`, v)}
+                onChange={(v) =>
+                  update(`${bandPath(cfg, root, 'interferenceRecovery', bandId)}.chSwitchDelta`, v)
+                }
                 width={120}
               />
             </LabelRow>

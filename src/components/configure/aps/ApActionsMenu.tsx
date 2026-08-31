@@ -1,11 +1,13 @@
 /**
  * Footer "Actions" menu for the AP list (ctrl.apActions + cert submenu, gaps
  * 18/19). Disabled with no selection, matching the controller graying the
- * menu. Parameterized items open ApActionsModal; Delete and Reboot are wired
- * to the real DELETE /v1/aps/{serial} and POST /v1/aps/{serial}/reboot
- * endpoints via confirmation dialogs owned by the page. The controller menu
- * also carries "Release to Cloud"; no release endpoint is identifiable in
- * this codebase, so that item is deliberately NOT offered (no fake actions).
+ * menu. Parameterized items open ApActionsModal; Delete, Reboot and Release
+ * to Cloud are wired to the real DELETE /v1/aps/{serial},
+ * POST /v1/aps/{serial}/reboot and PUT /v1/aps/releasetocloud endpoints via
+ * confirmation dialogs owned by the page. The release contract was recovered
+ * from the gateway's own UI bundles (device-data-factory `release`:
+ * PUT aps/releasetocloud, body {serialNumbers}); the gateway offers the item
+ * unconditionally on a multi-selection, which is the behavior mirrored here.
  */
 import React from 'react';
 import { ChevronDown, Settings2 } from 'lucide-react';
@@ -22,8 +24,8 @@ import {
 } from '../../ui/dropdown-menu';
 import type { ApActionKey } from './ApActionsModal';
 
-/** Modal-backed action keys plus the two directly-wired list operations. */
-export type ApMenuKey = ApActionKey | 'delete' | 'reboot';
+/** Modal-backed action keys plus the directly-wired list operations. */
+export type ApMenuKey = ApActionKey | 'delete' | 'reboot' | 'release';
 
 export interface ApActionsMenuProps {
   selectedCount: number;
@@ -68,6 +70,12 @@ export function ApActionsMenu({ selectedCount, onSelect }: ApActionsMenuProps) {
         </DropdownMenuSub>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => onSelect('reboot', 'Reboot')}>Reboot</DropdownMenuItem>
+        <DropdownMenuItem
+          className="text-destructive focus:text-destructive"
+          onSelect={() => onSelect('release', 'Release to Cloud')}
+        >
+          Release to Cloud
+        </DropdownMenuItem>
         <DropdownMenuItem
           className="text-destructive focus:text-destructive"
           onSelect={() => onSelect('delete', 'Delete')}

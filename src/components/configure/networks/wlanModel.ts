@@ -254,7 +254,12 @@ export function defaultPrivacyFields(auth: WlanAuthType): PrivacyElementFields {
       };
     case 'WPA3-Compatibility':
       // 10.20: WpaSaePskElement gained its own cipher select.
-      return { pmfMode: 'enabled', presharedKey: '', keyHexEncoded: false, encryption: 'AES_CCM_128' };
+      return {
+        pmfMode: 'enabled',
+        presharedKey: '',
+        keyHexEncoded: false,
+        encryption: 'AES_CCM_128',
+      };
     case 'WEP':
       return { keyLength: 'WEP_64bit', pskInputType: 'Hex', keyIndex: '1', passPhrase: '' };
     case 'WPA2-Enterprise (802.1X/EAP)':

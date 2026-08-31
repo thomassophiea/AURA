@@ -53,10 +53,7 @@ export interface MeshValidationCtx {
   supportDistributed: boolean;
 }
 
-export function validateMeshpoint(
-  form: Meshpoint,
-  ctx: MeshValidationCtx
-): Record<string, string> {
+export function validateMeshpoint(form: Meshpoint, ctx: MeshValidationCtx): Record<string, string> {
   const errs: Record<string, string> = {};
   const name = String(form.name ?? '').trim();
   if (!name) errs.name = 'Meshpoint name is required';

@@ -125,20 +125,45 @@ export function IotMultiAppBody({
               {a.id === 'iBeaconAdvertisement' && on(a.id) && (
                 <div className="space-y-4 pl-4">
                   <FieldRow label="Advertise Interval (ms)" error={errs['ib.interval']} required>
-                    <Input type="number" disabled={ro} value={Number.isFinite(ib?.interval) ? ib?.interval : ''}
-                      onChange={(e) => updSub('iBeaconAdvertisement', { interval: numVal(e.target.value) })} className="max-w-[160px]" />
+                    <Input
+                      type="number"
+                      disabled={ro}
+                      value={Number.isFinite(ib?.interval) ? ib?.interval : ''}
+                      onChange={(e) =>
+                        updSub('iBeaconAdvertisement', { interval: numVal(e.target.value) })
+                      }
+                      className="max-w-[160px]"
+                    />
                   </FieldRow>
                   <FieldRow label="UUID" error={errs['ib.uuid']} required>
-                    <Input disabled={ro} value={ib?.uuid ?? ''}
-                      onChange={(e) => updSub('iBeaconAdvertisement', { uuid: e.target.value })} className="max-w-[340px]" />
+                    <Input
+                      disabled={ro}
+                      value={ib?.uuid ?? ''}
+                      onChange={(e) => updSub('iBeaconAdvertisement', { uuid: e.target.value })}
+                      className="max-w-[340px]"
+                    />
                   </FieldRow>
                   <FieldRow label="Major" error={errs['ib.major']} required>
-                    <Input type="number" disabled={ro} value={Number.isFinite(ib?.major) ? ib?.major : ''}
-                      onChange={(e) => updSub('iBeaconAdvertisement', { major: numVal(e.target.value) })} className="max-w-[160px]" />
+                    <Input
+                      type="number"
+                      disabled={ro}
+                      value={Number.isFinite(ib?.major) ? ib?.major : ''}
+                      onChange={(e) =>
+                        updSub('iBeaconAdvertisement', { major: numVal(e.target.value) })
+                      }
+                      className="max-w-[160px]"
+                    />
                   </FieldRow>
                   <FieldRow label="Minor" error={errs['ib.minor']} required>
-                    <Input type="number" disabled={ro} value={Number.isFinite(ib?.minor) ? ib?.minor : ''}
-                      onChange={(e) => updSub('iBeaconAdvertisement', { minor: numVal(e.target.value) })} className="max-w-[160px]" />
+                    <Input
+                      type="number"
+                      disabled={ro}
+                      value={Number.isFinite(ib?.minor) ? ib?.minor : ''}
+                      onChange={(e) =>
+                        updSub('iBeaconAdvertisement', { minor: numVal(e.target.value) })
+                      }
+                      className="max-w-[160px]"
+                    />
                   </FieldRow>
                   {txRow('iBeaconAdvertisement')}
                 </div>
@@ -146,12 +171,24 @@ export function IotMultiAppBody({
               {a.id === 'eddystoneAdvertisement' && on(a.id) && (
                 <div className="space-y-4 pl-4">
                   <FieldRow label="URL" error={errs['ed.url']} required>
-                    <Input disabled={ro} value={ed?.url ?? ''} placeholder="https://example.com"
-                      onChange={(e) => updSub('eddystoneAdvertisement', { url: e.target.value })} className="max-w-[340px]" />
+                    <Input
+                      disabled={ro}
+                      value={ed?.url ?? ''}
+                      placeholder="https://example.com"
+                      onChange={(e) => updSub('eddystoneAdvertisement', { url: e.target.value })}
+                      className="max-w-[340px]"
+                    />
                   </FieldRow>
                   <FieldRow label="Advertise Interval (ms)" error={errs['ed.interval']} required>
-                    <Input type="number" disabled={ro} value={Number.isFinite(ed?.interval) ? ed?.interval : ''}
-                      onChange={(e) => updSub('eddystoneAdvertisement', { interval: numVal(e.target.value) })} className="max-w-[160px]" />
+                    <Input
+                      type="number"
+                      disabled={ro}
+                      value={Number.isFinite(ed?.interval) ? ed?.interval : ''}
+                      onChange={(e) =>
+                        updSub('eddystoneAdvertisement', { interval: numVal(e.target.value) })
+                      }
+                      className="max-w-[160px]"
+                    />
                   </FieldRow>
                   {txRow('eddystoneAdvertisement')}
                 </div>
@@ -164,11 +201,21 @@ export function IotMultiAppBody({
       {scanApps.length > 0 && (
         <Group title="BLE Scan">
           {scanOn && (
-            <FieldRow label="Scan Interval (ms)" error={errs['m.interval']} required
-              description="Shared across the enabled scan applications">
-              <Input type="number" disabled={ro}
-                value={Number.isFinite(form.iBeaconScan?.interval) ? form.iBeaconScan?.interval : ''}
-                onChange={(e) => updSub('iBeaconScan', { interval: numVal(e.target.value) })} className="max-w-[160px]" />
+            <FieldRow
+              label="Scan Interval (ms)"
+              error={errs['m.interval']}
+              required
+              description="Shared across the enabled scan applications"
+            >
+              <Input
+                type="number"
+                disabled={ro}
+                value={
+                  Number.isFinite(form.iBeaconScan?.interval) ? form.iBeaconScan?.interval : ''
+                }
+                onChange={(e) => updSub('iBeaconScan', { interval: numVal(e.target.value) })}
+                className="max-w-[160px]"
+              />
             </FieldRow>
           )}
           {scanApps.map((a) => (
@@ -177,31 +224,55 @@ export function IotMultiAppBody({
               {a.id === 'iBeaconScan' && on(a.id) && (
                 <div className="space-y-4 pl-4">
                   <FieldRow label="Filter UUID" error={errs['m.ibUuid']} required>
-                    <Input disabled={ro} value={form.iBeaconScan?.uuid ?? ''}
-                      onChange={(e) => updSub('iBeaconScan', { uuid: e.target.value })} className="max-w-[340px]" />
+                    <Input
+                      disabled={ro}
+                      value={form.iBeaconScan?.uuid ?? ''}
+                      onChange={(e) => updSub('iBeaconScan', { uuid: e.target.value })}
+                      className="max-w-[340px]"
+                    />
                   </FieldRow>
                   <FieldRow label="Min RSS (dBm)" error={errs['m.ibRss']} required>
-                    <Input type="number" disabled={ro}
-                      value={Number.isFinite(form.iBeaconScan?.minRSS) ? form.iBeaconScan?.minRSS : ''}
-                      onChange={(e) => updSub('iBeaconScan', { minRSS: numVal(e.target.value) })} className="max-w-[160px]" />
+                    <Input
+                      type="number"
+                      disabled={ro}
+                      value={
+                        Number.isFinite(form.iBeaconScan?.minRSS) ? form.iBeaconScan?.minRSS : ''
+                      }
+                      onChange={(e) => updSub('iBeaconScan', { minRSS: numVal(e.target.value) })}
+                      className="max-w-[160px]"
+                    />
                   </FieldRow>
                 </div>
               )}
               {a.id === 'eddystoneScan' && on(a.id) && (
                 <div className="space-y-4 pl-4">
                   <FieldRow label="Min RSS (dBm)" error={errs['m.edRss']} required>
-                    <Input type="number" disabled={ro}
-                      value={Number.isFinite(form.eddystoneScan?.minRSS) ? form.eddystoneScan?.minRSS : ''}
-                      onChange={(e) => updSub('eddystoneScan', { minRSS: numVal(e.target.value) })} className="max-w-[160px]" />
+                    <Input
+                      type="number"
+                      disabled={ro}
+                      value={
+                        Number.isFinite(form.eddystoneScan?.minRSS)
+                          ? form.eddystoneScan?.minRSS
+                          : ''
+                      }
+                      onChange={(e) => updSub('eddystoneScan', { minRSS: numVal(e.target.value) })}
+                      className="max-w-[160px]"
+                    />
                   </FieldRow>
                 </div>
               )}
               {a.id === 'genericScan' && on(a.id) && (
                 <div className="space-y-4 pl-4">
                   <FieldRow label="Min RSS (dBm)" error={errs['m.gnRss']} required>
-                    <Input type="number" disabled={ro}
-                      value={Number.isFinite(form.genericScan?.minRSS) ? form.genericScan?.minRSS : ''}
-                      onChange={(e) => updSub('genericScan', { minRSS: numVal(e.target.value) })} className="max-w-[160px]" />
+                    <Input
+                      type="number"
+                      disabled={ro}
+                      value={
+                        Number.isFinite(form.genericScan?.minRSS) ? form.genericScan?.minRSS : ''
+                      }
+                      onChange={(e) => updSub('genericScan', { minRSS: numVal(e.target.value) })}
+                      className="max-w-[160px]"
+                    />
                   </FieldRow>
                   <FieldRow label="Vendors">{vendorRows}</FieldRow>
                 </div>
@@ -214,33 +285,54 @@ export function IotMultiAppBody({
       {scanOn && (
         <Group title="Destination">
           <FieldRow label="Real-Time Monitoring" inline>
-            <Checkbox checked={!!form.iBeaconRealTimeMonitoring} disabled={ro}
+            <Checkbox
+              checked={!!form.iBeaconRealTimeMonitoring}
+              disabled={ro}
               onCheckedChange={(v) => upd({ iBeaconRealTimeMonitoring: v === true })}
-              aria-label="Real-time monitoring" />
+              aria-label="Real-time monitoring"
+            />
           </FieldRow>
           {form.iBeaconRealTimeMonitoring && (
             <div className="space-y-4 pl-4">
               <FieldRow label="IP Address" error={errs['m.destAddr']} required>
-                <Input disabled={ro} value={form.iBeaconScan?.destAddr ?? ''}
-                  onChange={(e) => updSub('iBeaconScan', { destAddr: e.target.value })} className="max-w-[240px]" />
+                <Input
+                  disabled={ro}
+                  value={form.iBeaconScan?.destAddr ?? ''}
+                  onChange={(e) => updSub('iBeaconScan', { destAddr: e.target.value })}
+                  className="max-w-[240px]"
+                />
               </FieldRow>
               <FieldRow label="Port" error={errs['m.destPort']} required>
-                <Input type="number" disabled={ro}
-                  value={Number.isFinite(form.iBeaconScan?.destPort) ? form.iBeaconScan?.destPort : ''}
-                  onChange={(e) => updSub('iBeaconScan', { destPort: numVal(e.target.value) })} className="max-w-[160px]" />
+                <Input
+                  type="number"
+                  disabled={ro}
+                  value={
+                    Number.isFinite(form.iBeaconScan?.destPort) ? form.iBeaconScan?.destPort : ''
+                  }
+                  onChange={(e) => updSub('iBeaconScan', { destPort: numVal(e.target.value) })}
+                  className="max-w-[160px]"
+                />
               </FieldRow>
             </div>
           )}
           <FieldRow label="Batch Reporting" inline>
-            <Checkbox checked={!!form.iBeaconRealBatchReporting} disabled={ro}
+            <Checkbox
+              checked={!!form.iBeaconRealBatchReporting}
+              disabled={ro}
               onCheckedChange={(v) => upd({ iBeaconRealBatchReporting: v === true })}
-              aria-label="Batch reporting" />
+              aria-label="Batch reporting"
+            />
           </FieldRow>
           {form.iBeaconRealBatchReporting && (
             <div className="space-y-4 pl-4">
               <FieldRow label="Reporting URL" error={errs['m.batchUrl']} required>
-                <Input disabled={ro} value={form.iBeaconAdvertisement?.url ?? ''} placeholder="https://example.com/collect"
-                  onChange={(e) => updSub('iBeaconAdvertisement', { url: e.target.value })} className="max-w-[340px]" />
+                <Input
+                  disabled={ro}
+                  value={form.iBeaconAdvertisement?.url ?? ''}
+                  placeholder="https://example.com/collect"
+                  onChange={(e) => updSub('iBeaconAdvertisement', { url: e.target.value })}
+                  className="max-w-[340px]"
+                />
               </FieldRow>
             </div>
           )}
@@ -248,8 +340,11 @@ export function IotMultiAppBody({
       )}
 
       <FieldRow label="BLE Data">
-        <Select value={form.bleData ?? 'LATEST_ONLY'} disabled={ro}
-          onValueChange={(v) => upd({ bleData: v })}>
+        <Select
+          value={form.bleData ?? 'LATEST_ONLY'}
+          disabled={ro}
+          onValueChange={(v) => upd({ bleData: v })}
+        >
           <SelectTrigger className="max-w-[240px]" aria-label="BLE data">
             <SelectValue />
           </SelectTrigger>

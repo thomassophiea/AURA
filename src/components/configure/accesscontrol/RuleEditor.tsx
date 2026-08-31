@@ -10,7 +10,10 @@ import { Switch } from '../../ui/switch';
 import { Input } from '../../ui/input';
 import { EditorSheet, FieldRow, Section } from '../_kit';
 import { EnumSelect } from '../policy/fields';
-import type { AcRule, AcRuleCriterion } from '../../../services/configure/accessControlFamilyService';
+import type {
+  AcRule,
+  AcRuleCriterion,
+} from '../../../services/configure/accessControlFamilyService';
 import {
   D_RULE,
   RULE_CRITERIA,
@@ -30,7 +33,7 @@ export interface RuleEditorProps {
   groupOptions: Record<RuleCriterionKey, string[]>;
   /** Role names from /v3/roles. */
   roleOptions: string[];
-  /** Portal names ("Default" + any values already on the wire). */
+  /** Portal names (GET /access-control/v1/portals + any values already on the wire). */
   portalOptions: string[];
   /** Sibling rule names for the uniqueness check. */
   siblingNames: string[];
@@ -63,7 +66,10 @@ export function RuleEditor({
   };
   const valid = noErrors(errs) && !ro;
 
-  const updCriterion = (key: RuleCriterionKey | 'role' | 'portal', patch: Partial<AcRuleCriterion>) =>
+  const updCriterion = (
+    key: RuleCriterionKey | 'role' | 'portal',
+    patch: Partial<AcRuleCriterion>
+  ) =>
     setForm((prev) => ({
       ...prev,
       [key]: { ...(prev[key] ?? DEFAULT_CRITERION), ...patch },

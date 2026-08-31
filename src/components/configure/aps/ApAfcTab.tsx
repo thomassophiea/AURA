@@ -28,7 +28,9 @@ export function ApAfcTab({ form }: ApAfcTabProps) {
         <span className="text-sm">{r6 ? r6.radioName : 'Not present'}</span>
       </FieldRow>
       <FieldRow label="AFC Status">
-        <span className={`text-sm font-semibold ${status === 'Standard Power' ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}>
+        <span
+          className={`text-sm font-semibold ${status === 'Standard Power' ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`}
+        >
           {status}
         </span>
       </FieldRow>
@@ -38,7 +40,9 @@ export function ApAfcTab({ form }: ApAfcTabProps) {
         </FieldRow>
       )}
       <FieldRow label="Operating Channel (6 GHz)">
-        <span className="text-sm text-muted-foreground">{(r6 && (r6.opChannel || r6.channel)) || '—'}</span>
+        <span className="text-sm text-muted-foreground">
+          {(r6 && (r6.opChannel || r6.channel)) || '—'}
+        </span>
       </FieldRow>
       <FieldRow label="Operating Power (6 GHz)">
         <span className="text-sm text-muted-foreground">

@@ -3,13 +3,7 @@
  * over the shadcn Select primitive, and the common tab-props contract.
  */
 import React from 'react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import type { WlanService } from '../../../types/configure';
 import type { EnumOption } from './wlanModel';
 import type { WlanErrors, WlanFormState, WlanUiState } from './wlanForm';

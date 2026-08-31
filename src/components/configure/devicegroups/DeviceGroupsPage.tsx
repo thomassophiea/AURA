@@ -8,18 +8,22 @@
  */
 import React, { useCallback, useMemo, useState } from 'react';
 import type { ColDef, ICellRendererParams } from 'ag-grid-community';
-import { Boxes } from 'lucide-react';
+import { Boxes, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { ResourceGridPage } from '../_kit';
+import { Button } from '../../ui/button';
 import { sitesService } from '../../../services/configure/sitesService';
 import { getUserFriendlyMessage } from '../../../services/errorHandler';
 import {
   aggregateDeviceGroups,
+  buildClonePlan,
   buildDeletePlans,
   buildSiteSavePlans,
+  deviceGroupsCsv,
   rfKindForProfile,
   type AggregatedDeviceGroup,
   type AggregatedGroupForm,
+  type DeviceGroupClone,
   type SiteSavePlan,
 } from './devicegroupsModel';
 import { useDeviceGroupsData } from './useDeviceGroupsData';
@@ -27,6 +31,8 @@ import { DeviceGroupEditorSheet } from './DeviceGroupEditorSheet';
 
 interface EditorState {
   record: AggregatedDeviceGroup | null;
+  /** Clone starting point — the binding under a new name, zero member sites. */
+  seed?: DeviceGroupClone;
 }
 
 interface PlanOutcome {
@@ -73,6 +79,38 @@ export function DeviceGroupsPage() {
   const rfById = useMemo(() => new Map(data.rfPolicies.map((r) => [r.id, r])), [data.rfPolicies]);
 
   const openEdit = useCallback((record: AggregatedDeviceGroup) => setEditor({ record }), []);
+
+  /**
+   * Golden clone semantics: copy the binding (profile, RF policy, vestigial
+   * payload) under a new unique name with ZERO member sites, then open the
+   * editor so sites can be added — the clone exists only in the editor until
+   * saved to at least one site.
+   */
+  const openClone = useCallback(
+    (row: AggregatedDeviceGroup) => {
+      setEditor({
+        record: null,
+        seed: buildClonePlan(
+          row,
+          rows.map((r) => r.groupName)
+        ),
+      });
+    },
+    [rows]
+  );
+
+  const handleExport = useCallback(() => {
+    const csv = deviceGroupsCsv(rows, profileById, rfById);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `device-groups_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [rows, profileById, rfById]);
 
   const columnDefs = useMemo<ColDef<AggregatedDeviceGroup>[]>(
     () => [
@@ -187,12 +225,20 @@ export function DeviceGroupsPage() {
           `${row.groupName} ${profileById.get(row.profileId)?.name ?? ''} ${profileById.get(row.profileId)?.apPlatform ?? ''}`
         }
         onAdd={() => setEditor({ record: null })}
+        onClone={openClone}
         onRefresh={() => void data.refresh()}
+        toolbarExtra={
+          <Button variant="outline" size="sm" disabled={rows.length === 0} onClick={handleExport}>
+            <Download className="mr-1 h-4 w-4" />
+            Export
+          </Button>
+        }
       />
       {editor && (
         <DeviceGroupEditorSheet
-          key={editor.record?.groupName ?? 'new'}
+          key={editor.record?.groupName ?? editor.seed?.form.groupName ?? 'new'}
           record={editor.record}
+          seed={editor.seed}
           sites={data.sites}
           profiles={data.profiles}
           rfPolicies={data.rfPolicies}

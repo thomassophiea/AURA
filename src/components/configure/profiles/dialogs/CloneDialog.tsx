@@ -16,7 +16,13 @@ export interface CloneDialogProps {
   onClose: () => void;
 }
 
-export function CloneDialog({ open, sourceName, existingNames, onConfirm, onClose }: CloneDialogProps) {
+export function CloneDialog({
+  open,
+  sourceName,
+  existingNames,
+  onConfirm,
+  onClose,
+}: CloneDialogProps) {
   const [name, setName] = useState('');
 
   useEffect(() => {

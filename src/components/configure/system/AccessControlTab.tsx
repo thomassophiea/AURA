@@ -131,7 +131,12 @@ export function AccessControlTab() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => void refresh()} disabled={loading || saving}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void refresh()}
+            disabled={loading || saving}
+          >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
           <Button size="sm" onClick={handleSave} disabled={!dirty || saving || loading}>
@@ -145,7 +150,11 @@ export function AccessControlTab() {
         <CardContent className="space-y-4 p-4">
           <div className="space-y-2">
             <Label>List Mode</Label>
-            <RadioGroup className="flex flex-col gap-2" value={mode} onValueChange={requestModeChange}>
+            <RadioGroup
+              className="flex flex-col gap-2"
+              value={mode}
+              onValueChange={requestModeChange}
+            >
               <label className="flex items-center gap-2 text-sm">
                 <RadioGroupItem value="Allow" /> Allow only listed MAC addresses
               </label>
@@ -220,7 +229,10 @@ export function AccessControlTab() {
         </CardContent>
       </Card>
 
-      <Dialog open={addOpen} onOpenChange={(o) => (o ? setAddOpen(true) : (setAddOpen(false), setDraft('')))}>
+      <Dialog
+        open={addOpen}
+        onOpenChange={(o) => (o ? setAddOpen(true) : (setAddOpen(false), setDraft('')))}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add MAC Address</DialogTitle>

@@ -30,7 +30,9 @@ export {
   acRulesService,
   acCertificatesService,
   acLocalPasswordUsersService,
+  acPortalsService,
 } from './accessControlFamilyService';
+export { trustPointsService, extractTrustPoints } from './trustPointsService';
 export {
   availabilityService,
   mobilityService,

@@ -120,14 +120,23 @@ describe('newRuleDraft', () => {
 
 describe('ruleErrors', () => {
   it('requires a valid FQDN for hostName subnet type', () => {
-    const draft = { ...newRuleDraft('l3Filters'), subnetType: 'hostName', ipAddressRange: 'not a fqdn' };
+    const draft = {
+      ...newRuleDraft('l3Filters'),
+      subnetType: 'hostName',
+      ipAddressRange: 'not a fqdn',
+    };
     expect(ruleErrors('l3Filters', draft).addr).toMatch(/FQDN/);
     draft.ipAddressRange = 'portal.example.com';
     expect(ruleErrors('l3Filters', draft).addr).toBeUndefined();
   });
 
   it('validates user-defined port ranges 0-65535', () => {
-    const draft = { ...newRuleDraft('l3Filters'), port: 'userDefined', portLow: 70000 as number, portHigh: 80 as number };
+    const draft = {
+      ...newRuleDraft('l3Filters'),
+      port: 'userDefined',
+      portLow: 70000 as number,
+      portHigh: 80 as number,
+    };
     expect(ruleErrors('l3Filters', draft).port).toMatch(/65535/);
   });
 
@@ -143,7 +152,11 @@ describe('ruleErrors', () => {
   });
 
   it('requires a hex ethertype for user-defined L2 rules', () => {
-    const draft = { ...newRuleDraft('l2Filters'), ethertype: 'userDefined', ethertypeValue: '8100' };
+    const draft = {
+      ...newRuleDraft('l2Filters'),
+      ethertype: 'userDefined',
+      ethertypeValue: '8100',
+    };
     expect(ruleErrors('l2Filters', draft).ether).toMatch(/Hex/);
     draft.ethertypeValue = '0x8100';
     expect(ruleErrors('l2Filters', draft).ether).toBeUndefined();
@@ -160,9 +173,17 @@ describe('ruleErrors', () => {
 
   it('validates nested src-dest endpoint ports and FQDNs', () => {
     const draft = newRuleDraft('l3SrcDestFilters');
-    draft.source = { subnetType: 'hostName', address: 'bad host', port: { known: 'any', low: 0, high: 0 } };
+    draft.source = {
+      subnetType: 'hostName',
+      address: 'bad host',
+      port: { known: 'any', low: 0, high: 0 },
+    };
     expect(ruleErrors('l3SrcDestFilters', draft).sourceAddr).toMatch(/FQDN/);
-    draft.destination = { subnetType: 'anyIpAddress', address: '', port: { known: 'userDefined', low: -1, high: 10 } };
+    draft.destination = {
+      subnetType: 'anyIpAddress',
+      address: '',
+      port: { known: 'userDefined', low: -1, high: 10 },
+    };
     expect(ruleErrors('l3SrcDestFilters', draft).destination).toMatch(/65535/);
   });
 });
@@ -198,10 +219,12 @@ describe('hasRedirectRule', () => {
 
 describe('roleErrors', () => {
   it('requires name, valid CIR in cir mode, and a containment VLAN', () => {
-    expect(roleErrors({ name: '' }, { enabled: false, mode: 'cir', cirKbps: '' }).name).toBeTruthy();
     expect(
-      roleErrors({ name: 'R' }, { enabled: true, mode: 'cir', cirKbps: 100 }).cir
-    ).toMatch(/128 to 500000/);
+      roleErrors({ name: '' }, { enabled: false, mode: 'cir', cirKbps: '' }).name
+    ).toBeTruthy();
+    expect(roleErrors({ name: 'R' }, { enabled: true, mode: 'cir', cirKbps: 100 }).cir).toMatch(
+      /128 to 500000/
+    );
     expect(
       roleErrors({ name: 'R' }, { enabled: true, mode: 'cir', cirKbps: 1000 }).cir
     ).toBeUndefined();
@@ -219,8 +242,16 @@ describe('topologyErrors', () => {
     expect(topologyErrors({ name: '', vlanid: 10 }).name).toBeTruthy();
     expect(topologyErrors({ name: 'x'.repeat(33), vlanid: 10 }).name).toMatch(/32/);
     expect(topologyErrors({ name: 'v', vlanid: 5000 }).vlanid).toMatch(/4094/);
-    expect(topologyErrors({ name: 'v', vlanid: 10, mode: 'FabricAttach', isid: 0 }).isid).toBeTruthy();
-    const vx = topologyErrors({ name: 'v', vlanid: 10, mode: 'Vxlan', vni: 0, remoteVtepIp: '0.0.0.0' });
+    expect(
+      topologyErrors({ name: 'v', vlanid: 10, mode: 'FabricAttach', isid: 0 }).isid
+    ).toBeTruthy();
+    const vx = topologyErrors({
+      name: 'v',
+      vlanid: 10,
+      mode: 'Vxlan',
+      vni: 0,
+      remoteVtepIp: '0.0.0.0',
+    });
     expect(vx.vni).toBeTruthy();
     expect(vx.vtep).toBeTruthy();
   });
@@ -347,8 +378,8 @@ describe('Peer Address (availability pair, foreignIpAddress)', () => {
     expect(peerAddressError(true, { ...l3Ac, foreignIpAddress: '10.0.0.2' }).peer).toBeUndefined();
     // not applicable → never an error, even with a bad value on the record
     expect(peerAddressError(false, { ...l3Ac, foreignIpAddress: '' })).toEqual({});
-    expect(
-      peerAddressError(true, { mode: 'Gre', l3Presence: true, foreignIpAddress: '' })
-    ).toEqual({});
+    expect(peerAddressError(true, { mode: 'Gre', l3Presence: true, foreignIpAddress: '' })).toEqual(
+      {}
+    );
   });
 });

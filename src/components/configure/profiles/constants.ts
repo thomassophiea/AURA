@@ -124,12 +124,7 @@ export const ADV_RANGES: Record<string, [number, number]> = {
 };
 
 type FeaturePredicate = (tag: string) => boolean;
-export type AdvFieldType =
-  | 'num'
-  | 'bool'
-  | 'chlist'
-  | Opt[]
-  | ((r: ProfileRadio) => Opt[]);
+export type AdvFieldType = 'num' | 'bool' | 'chlist' | Opt[] | ((r: ProfileRadio) => Opt[]);
 
 export interface AdvRadioField {
   key: string;
@@ -163,7 +158,12 @@ export const ADV_RADIO_FIELDS: AdvRadioField[] = [
     ],
     show: (_r, F) => F('CELL-SIZE-CONTROL'),
   },
-  { key: 'atf', label: 'Airtime Fairness Mode', type: opt(['Off', 'On']), show: (_r, F) => F('CELL-SIZE-CONTROL') },
+  {
+    key: 'atf',
+    label: 'Airtime Fairness Mode',
+    type: opt(['Off', 'On']),
+    show: (_r, F) => F('CELL-SIZE-CONTROL'),
+  },
   /* Gateway 10.20 — Traffic Allocation Framework. add-edit-profile.html
      renders it immediately after Airtime Fairness behind the same
      CELL-SIZE-CONTROL gate; on the wire it is radios[].taf, a boolean. */
@@ -173,7 +173,12 @@ export const ADV_RADIO_FIELDS: AdvRadioField[] = [
     type: 'bool',
     show: (_r, F) => F('CELL-SIZE-CONTROL'),
   },
-  { key: 'maxDistance', label: 'Maximum Distance [Meters]', type: 'num', show: (_r, F) => F('CELL-SIZE-CONTROL') },
+  {
+    key: 'maxDistance',
+    label: 'Maximum Distance [Meters]',
+    type: 'num',
+    show: (_r, F) => F('CELL-SIZE-CONTROL'),
+  },
   /* Beamforming (txBf) — REMOVED by PLM ruling 2026-08-26: Beamforming
      configuration stays on the controller and is not authored here. The txBf
      FIELD stays on ProfileRadio records as round-trip payload (never strip it
@@ -190,10 +195,30 @@ export const ADV_RADIO_FIELDS: AdvRadioField[] = [
   },
   { key: 'addba', label: 'ADDBA support', type: 'bool', show: (r) => r.mode !== 'bg' },
   { key: 'aggMsdu', label: 'Aggregate MSDU', type: 'bool', show: (r) => r.mode !== 'bg' },
-  { key: 'dot11gPM', label: '802.11g protection mode', type: opt(['Auto', 'None']), show: (r) => IS_24G_MODE(r.mode) },
-  { key: 'mbr', label: 'Minimum Basic Rate [Mbps]', type: (r) => mbrOptsFor(r.mode), show: () => true },
-  { key: 'aggregateMpdu', label: 'Aggregate MPDU', type: opt(['enabled', 'disabled']), show: (r) => r.mode !== 'bg' },
-  { key: 'aggMpduSF', label: 'Aggregate MPDU max subframes', type: 'num', show: (r) => r.mode !== 'bg' },
+  {
+    key: 'dot11gPM',
+    label: '802.11g protection mode',
+    type: opt(['Auto', 'None']),
+    show: (r) => IS_24G_MODE(r.mode),
+  },
+  {
+    key: 'mbr',
+    label: 'Minimum Basic Rate [Mbps]',
+    type: (r) => mbrOptsFor(r.mode),
+    show: () => true,
+  },
+  {
+    key: 'aggregateMpdu',
+    label: 'Aggregate MPDU',
+    type: opt(['enabled', 'disabled']),
+    show: (r) => r.mode !== 'bg',
+  },
+  {
+    key: 'aggMpduSF',
+    label: 'Aggregate MPDU max subframes',
+    type: 'num',
+    show: (r) => r.mode !== 'bg',
+  },
   { key: 'rtsCts', label: 'AMPDU RTS/CTS', type: 'bool', show: (r) => r.mode !== 'bg' },
   { key: 'dtim', label: 'DTIM [beacons]', type: 'num', show: (r) => r.mode !== 'bg' },
   {
@@ -207,8 +232,18 @@ export const ADV_RADIO_FIELDS: AdvRadioField[] = [
     ],
     show: (r, F) => F('802.11AX-TAG') && IS_AX_MODE(r.mode),
   },
-  { key: 'twt', label: 'Target Wake Time (TWT)', type: 'bool', show: (r, F) => F('802.11AX-TAG') && IS_AX_MODE(r.mode) },
-  { key: 'bsscolor', label: 'BSS Color', type: 'num', show: (r, F) => F('802.11AX-TAG') && IS_AX_MODE(r.mode) },
+  {
+    key: 'twt',
+    label: 'Target Wake Time (TWT)',
+    type: 'bool',
+    show: (r, F) => F('802.11AX-TAG') && IS_AX_MODE(r.mode),
+  },
+  {
+    key: 'bsscolor',
+    label: 'BSS Color',
+    type: 'num',
+    show: (r, F) => F('802.11AX-TAG') && IS_AX_MODE(r.mode),
+  },
   {
     key: 'inBandDiscovery',
     label: 'In-Band Discovery',
@@ -224,10 +259,26 @@ export const ADV_RADIO_FIELDS: AdvRadioField[] = [
     ],
     show: (r, F) => F('6GHZ-POWER-MODE-LPI') && F('6GHZ-POWER-MODE-SP') && IS_6G_MODE(r.mode),
   },
-  { key: 'maxClients', label: 'Max Clients', type: 'num', show: (_r, F) => F('HI-DEN-MAX-CLIENTS') },
-  { key: 'mc2uc', label: 'Multicast to Unicast Delivery', type: opt(['Disabled', 'Auto']), show: () => true },
+  {
+    key: 'maxClients',
+    label: 'Max Clients',
+    type: 'num',
+    show: (_r, F) => F('HI-DEN-MAX-CLIENTS'),
+  },
+  {
+    key: 'mc2uc',
+    label: 'Multicast to Unicast Delivery',
+    type: opt(['Disabled', 'Auto']),
+    show: () => true,
+  },
   // ── Cell Size Control collapsible (CELL-SIZE-CONTROL) ──
-  { key: 'probeSuppOnLowRss', label: 'Probe Suppression', type: 'bool', show: (_r, F) => F('CELL-SIZE-CONTROL'), group: 'csc' },
+  {
+    key: 'probeSuppOnLowRss',
+    label: 'Probe Suppression',
+    type: 'bool',
+    show: (_r, F) => F('CELL-SIZE-CONTROL'),
+    group: 'csc',
+  },
   {
     key: 'probeSuppRssTh',
     label: 'RSS Threshold [dBm]',
@@ -242,8 +293,20 @@ export const ADV_RADIO_FIELDS: AdvRadioField[] = [
     show: (_r, F) => F('CELL-SIZE-CONTROL') && F('FORCE-DEASSOC-ON-LOW-RSS'),
     group: 'csc',
   },
-  { key: 'maxProbeRty', label: 'Max Probe Retries', type: 'num', show: (_r, F) => F('CELL-SIZE-CONTROL'), group: 'csc' },
-  { key: 'rssOffset', label: 'RSS Offset [dB]', type: 'num', show: (_r, F) => F('CELL-SIZE-CONTROL'), group: 'csc' },
+  {
+    key: 'maxProbeRty',
+    label: 'Max Probe Retries',
+    type: 'num',
+    show: (_r, F) => F('CELL-SIZE-CONTROL'),
+    group: 'csc',
+  },
+  {
+    key: 'rssOffset',
+    label: 'RSS Offset [dB]',
+    type: 'num',
+    show: (_r, F) => F('CELL-SIZE-CONTROL'),
+    group: 'csc',
+  },
 ];
 
 /* ── device Advanced Settings dialog enums (profileAdvanced.html) ── */
@@ -340,8 +403,32 @@ export const defaultProfileMesh = (meshpointId: string): ProfileMesh => ({
   costRoot: false,
   rootSelectionMethod: 'None',
   bandSettings: [
-    { bandId: 'Band5', txPower: 17, acsPlan: 'ChannelPlanAllNonDFS', acsList: [], pathMin: 1000, pathThreshold: 1500, tolerancePeriod: 60 },
-    { bandId: 'Band24', txPower: 17, acsPlan: 'ChannelPlanAuto', acsList: [], pathMin: 1000, pathThreshold: 1500, tolerancePeriod: 60 },
-    { bandId: 'Band6', txPower: 17, acsPlan: 'ChannelPlanAll', acsList: [], pathMin: 1000, pathThreshold: 1500, tolerancePeriod: 60 },
+    {
+      bandId: 'Band5',
+      txPower: 17,
+      acsPlan: 'ChannelPlanAllNonDFS',
+      acsList: [],
+      pathMin: 1000,
+      pathThreshold: 1500,
+      tolerancePeriod: 60,
+    },
+    {
+      bandId: 'Band24',
+      txPower: 17,
+      acsPlan: 'ChannelPlanAuto',
+      acsList: [],
+      pathMin: 1000,
+      pathThreshold: 1500,
+      tolerancePeriod: 60,
+    },
+    {
+      bandId: 'Band6',
+      txPower: 17,
+      acsPlan: 'ChannelPlanAll',
+      acsList: [],
+      pathMin: 1000,
+      pathThreshold: 1500,
+      tolerancePeriod: 60,
+    },
   ],
 });

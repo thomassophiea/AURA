@@ -61,8 +61,7 @@ export function AdminEditor({
   const patch = (next: Partial<Administrator>) => setForm((p) => ({ ...p, ...next }));
   const isBuiltinAdmin = !isNew && form.userId === BUILTIN_ADMIN;
 
-  const handleSave = () =>
-    onSave(toAdminPayload(form, { isNew, changePassword }), record?.userId);
+  const handleSave = () => onSave(toAdminPayload(form, { isNew, changePassword }), record?.userId);
 
   return (
     <EditorSheet
@@ -131,7 +130,11 @@ export function AdminEditor({
 
         <Section title="Password">
           {!isNew && (
-            <FieldRow label="Change Password" inline description="Set a new password for this account.">
+            <FieldRow
+              label="Change Password"
+              inline
+              description="Set a new password for this account."
+            >
               <Switch
                 checked={changePassword}
                 onCheckedChange={(v) => {

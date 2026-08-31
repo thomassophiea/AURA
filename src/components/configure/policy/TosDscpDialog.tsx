@@ -96,9 +96,7 @@ export function TosDscpDialog({ open, onOpenChange, value, onApply }: TosDscpDia
                   value={dscp}
                   min={0}
                   max={63}
-                  onChange={(nv) =>
-                    setDscp(nv === '' ? '' : Math.max(0, Math.min(63, Number(nv))))
-                  }
+                  onChange={(nv) => setDscp(nv === '' ? '' : Math.max(0, Math.min(63, Number(nv))))}
                   className="w-28"
                 />
               </FieldRow>

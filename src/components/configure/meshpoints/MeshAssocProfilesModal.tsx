@@ -80,7 +80,9 @@ export function MeshAssocProfilesModal({
         await profilesService.update(p.id, { ...rest, meshpointIfList: kept });
         changed += 1;
       }
-      toast.success(`Updated meshpoint assignment on ${changed} profile${changed === 1 ? '' : 's'}`);
+      toast.success(
+        `Updated meshpoint assignment on ${changed} profile${changed === 1 ? '' : 's'}`
+      );
       await onSaved();
       onClose();
     } catch (error) {
@@ -105,7 +107,8 @@ export function MeshAssocProfilesModal({
             meshProfiles.map((p) => {
               const radios: ProfileRadio[] = p.radios ?? [];
               const nonSensor = radios.filter((r) => r.mode !== 'sensor');
-              const allOn = nonSensor.length > 0 && nonSensor.every((r) => sel[p.id]?.[r.radioIndex]);
+              const allOn =
+                nonSensor.length > 0 && nonSensor.every((r) => sel[p.id]?.[r.radioIndex]);
               return (
                 <div key={p.id} className="rounded-md border border-border px-3.5 py-2.5">
                   <div className="mb-2 flex items-center gap-3">

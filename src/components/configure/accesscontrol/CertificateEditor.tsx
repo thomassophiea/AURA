@@ -69,7 +69,12 @@ export function CertificateEditor({
               className="max-w-[340px]"
             />
           </FieldRow>
-          <FieldRow label="Subject" htmlFor="acc-subject" required error={dirty ? errs.subject : null}>
+          <FieldRow
+            label="Subject"
+            htmlFor="acc-subject"
+            required
+            error={dirty ? errs.subject : null}
+          >
             <Input
               id="acc-subject"
               value={form.subject ?? ''}

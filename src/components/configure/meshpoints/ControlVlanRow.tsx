@@ -10,13 +10,7 @@ import { toast } from 'sonner';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../ui/dialog';
 import { ConfirmDialog } from '../_kit';
 import { topologiesService } from '../../../services/configure';
@@ -51,7 +45,9 @@ export function ControlVlanRow({
       def.name = '';
       setEdit({ topo: def, isNew: true });
     } catch (error) {
-      toast.error('Failed to load topology template', { description: getUserFriendlyMessage(error) });
+      toast.error('Failed to load topology template', {
+        description: getUserFriendlyMessage(error),
+      });
     }
   };
 
@@ -108,7 +104,14 @@ export function ControlVlanRow({
             ))}
           </SelectContent>
         </Select>
-        <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => void openAdd()} aria-label="Add topology">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => void openAdd()}
+          aria-label="Add topology"
+        >
           <Plus className="h-4 w-4" />
         </Button>
         <Button
@@ -147,7 +150,9 @@ export function ControlVlanRow({
                 <Input
                   id="topo-name"
                   value={edit.topo.name ?? ''}
-                  onChange={(e) => setEdit({ ...edit, topo: { ...edit.topo, name: e.target.value } })}
+                  onChange={(e) =>
+                    setEdit({ ...edit, topo: { ...edit.topo, name: e.target.value } })
+                  }
                 />
               </div>
               <div className="space-y-1.5">

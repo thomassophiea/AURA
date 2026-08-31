@@ -32,10 +32,19 @@ export function VlansTab({ ctx }: { ctx: ProfileTabContext }) {
           <TableRow key={v.id}>
             <TableCell className="font-medium">{v.label}</TableCell>
             <TableCell className="text-center">
-              <PCheck checked={referenced.indexOf(v.id) >= 0} disabled onChange={() => {}} ariaLabel="Referenced (read-only)" />
+              <PCheck
+                checked={referenced.indexOf(v.id) >= 0}
+                disabled
+                onChange={() => {}}
+                ariaLabel="Referenced (read-only)"
+              />
             </TableCell>
             <TableCell className="text-center">
-              <PCheck checked={additional.indexOf(v.id) >= 0} onChange={() => toggleInArr('additionalTopologyIDs', v.id)} ariaLabel={v.label} />
+              <PCheck
+                checked={additional.indexOf(v.id) >= 0}
+                onChange={() => toggleInArr('additionalTopologyIDs', v.id)}
+                ariaLabel={v.label}
+              />
             </TableCell>
           </TableRow>
         ))}

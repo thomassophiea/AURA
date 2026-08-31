@@ -7,7 +7,10 @@
  * the UI, so the same mapping is done here rather than showing 0.0.0.0 in a
  * text box. Kept free of React so it is directly unit-testable.
  */
-import type { AvailabilitySettings, MobilitySettings } from '../../../services/configure/availabilityService';
+import type {
+  AvailabilitySettings,
+  MobilitySettings,
+} from '../../../services/configure/availabilityService';
 
 /** The Gateway's "not set" sentinel. */
 export const UNSET = '0.0.0.0';
@@ -42,8 +45,7 @@ export const DISCOVERY_METHODS = [
   { id: 'StaticConfiguration', label: 'Static Configuration' },
 ] as const;
 
-const isInt = (v: unknown): boolean =>
-  v !== '' && v != null && Number.isInteger(Number(v));
+const isInt = (v: unknown): boolean => v !== '' && v != null && Number.isInteger(Number(v));
 
 const intIn = (v: unknown, lo: number, hi: number): boolean =>
   isInt(v) && Number(v) >= lo && Number(v) <= hi;

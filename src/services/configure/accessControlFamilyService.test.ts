@@ -13,6 +13,7 @@ vi.mock('../api', () => ({
 import { apiService } from '../api';
 import {
   acLocalPasswordUsersService,
+  acPortalsService,
   acRulesService,
   flattenRuleSets,
   repoUserId,
@@ -79,6 +80,15 @@ describe('acRulesService', () => {
       ['/access-control/v1/rules/Guest%20Rule', 'PUT'],
       ['/access-control/v1/rules/Guest%20Rule', 'DELETE'],
     ]);
+  });
+});
+
+describe('acPortalsService', () => {
+  it('list() GETs /access-control/v1/portals and returns the bare-array rows', async () => {
+    mockRequest.mockResolvedValueOnce(jsonResponse([{ name: 'Default' }, { name: 'Guest' }]));
+    const portals = await acPortalsService.list();
+    expect(mockRequest.mock.calls[0][0]).toBe('/access-control/v1/portals');
+    expect(portals.map((p) => p.name)).toEqual(['Default', 'Guest']);
   });
 });
 

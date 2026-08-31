@@ -7,24 +7,12 @@
  */
 import React, { useMemo } from 'react';
 import { Info } from 'lucide-react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../../ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../ui/table';
 import { Badge } from '../../ui/badge';
 import { AfcPowerBar, PowerModeBadge } from '../../wifi7/wifi7Viz';
 import type { ApDetail } from '../../../types/configure';
 import { AfcSummaryCards } from './AfcSummaryCards';
-import {
-  afcStatusVariant,
-  buildAfcSummary,
-  projectAfcApRow,
-  type AfcApRow,
-} from './siteAfcModel';
+import { afcStatusVariant, buildAfcSummary, projectAfcApRow, type AfcApRow } from './siteAfcModel';
 
 export interface SiteAfcTabProps {
   aps: ApDetail[];
@@ -61,9 +49,9 @@ export function SiteAfcTab({ aps, apRanging, loading }: SiteAfcTabProps) {
         <p>
           Grid values come from per-AP config (<code>/v1/aps/&#123;serial&#125;</code>).{' '}
           <span className="font-medium">Status</span> is a config-derived AFC eligibility signal
-          (AFC enabled + GPS anchor + Standard-Power mode) — the controller&apos;s live
-          &ldquo;AFC Available&rdquo;, expiry and subgraph state are runtime telemetry not exposed
-          by the config API.
+          (AFC enabled + GPS anchor + Standard-Power mode) — the controller&apos;s live &ldquo;AFC
+          Available&rdquo;, expiry and subgraph state are runtime telemetry not exposed by the
+          config API.
         </p>
       </div>
 
@@ -81,7 +69,10 @@ export function SiteAfcTab({ aps, apRanging, loading }: SiteAfcTabProps) {
           <TableBody>
             {rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={COLUMNS.length} className="py-8 text-center text-muted-foreground">
+                <TableCell
+                  colSpan={COLUMNS.length}
+                  className="py-8 text-center text-muted-foreground"
+                >
                   {loading ? 'Loading access points…' : 'No access points in this site.'}
                 </TableCell>
               </TableRow>
@@ -107,7 +98,9 @@ export function SiteAfcTab({ aps, apRanging, loading }: SiteAfcTabProps) {
                   >
                     {row.geoLocation}
                   </TableCell>
-                  <TableCell>{row.powerMode ? <PowerModeBadge mode={row.powerMode} /> : '—'}</TableCell>
+                  <TableCell>
+                    {row.powerMode ? <PowerModeBadge mode={row.powerMode} /> : '—'}
+                  </TableCell>
                   <TableCell className="whitespace-nowrap tabular-nums">{row.channel}</TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">
                     {row.fallbackChannel}

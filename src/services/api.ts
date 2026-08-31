@@ -5887,6 +5887,36 @@ class ApiService {
   }
 
   /**
+   * Release APs from this Gateway back to cloud (ExtremeCloud IQ) onboarding.
+   *
+   * Endpoint: PUT /v1/aps/releasetocloud  body {serialNumbers: string[]}
+   * Contract taken from the gateway's own UI (device-data-factory `release`
+   * / `releaseToCloud` $resource actions, both PUT aps/releasetocloud with a
+   * serialNumbers array). A GET probe of the path on 192.168.100.12 returns
+   * 405 Method Not Allowed, confirming the route exists for another verb.
+   * Wired per controller spec, not live-fired (releasing a lab AP would eject
+   * it from the Gateway).
+   */
+  async releaseAPsToCloud(serialNumbers: string[]): Promise<void> {
+    if (serialNumbers.length === 0) return;
+    logger.log(`[API] Releasing AP(s) to cloud: ${serialNumbers.join(', ')}`);
+    const response = await this.makeAuthenticatedRequest(
+      '/v1/aps/releasetocloud',
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serialNumbers }),
+      },
+      30000
+    );
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      throw new Error(`Release to cloud failed: ${response.status}${text ? ` - ${text}` : ''}`);
+    }
+    logger.log('[API] ✓ AP release to cloud initiated');
+  }
+
+  /**
    * Reset access point to factory defaults
    * Endpoint: POST /v1/aps/{serialNumber}/reset
    */

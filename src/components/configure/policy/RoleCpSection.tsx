@@ -93,7 +93,11 @@ export function RoleCpSection({ form, upd, redirectRoles, onAddAllowRules }: Rol
       </Section>
 
       <EcpAdvancedDialog open={ecpOpen} onOpenChange={setEcpOpen} form={form} upd={upd} />
-      <GardenRuleDialog open={gardenOpen} onOpenChange={setGardenOpen} onAddRules={onAddAllowRules} />
+      <GardenRuleDialog
+        open={gardenOpen}
+        onOpenChange={setGardenOpen}
+        onAddRules={onAddAllowRules}
+      />
     </>
   );
 }

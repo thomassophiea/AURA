@@ -6,13 +6,7 @@
  */
 import React from 'react';
 import { Info } from 'lucide-react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../../ui/tooltip';
 import { cn } from '../../ui/utils';
 import { GridHead, NumCellRaw, type RfTabProps } from './rfControls';

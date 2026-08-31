@@ -65,7 +65,10 @@ export function ApUwbTab({ form, upd }: ApUwbTabProps) {
               onChange={(e) =>
                 upd(
                   'uwb.multilateration',
-                  e.target.value.split(',').map((x) => x.trim()).filter(Boolean)
+                  e.target.value
+                    .split(',')
+                    .map((x) => x.trim())
+                    .filter(Boolean)
                 )
               }
             />

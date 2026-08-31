@@ -6,11 +6,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { logger } from '../../../services/logger';
-import {
-  cosService,
-  rateLimitersService,
-  topologiesService,
-} from '../../../services/configure';
+import { cosService, rateLimitersService, topologiesService } from '../../../services/configure';
 import type { Cos, RateLimiter, Topology } from '../../../types/configure';
 
 export interface PolicyRefDataOptions {
@@ -20,8 +16,11 @@ export interface PolicyRefDataOptions {
 }
 
 export function usePolicyRefData(options: PolicyRefDataOptions) {
-  const { topologies: wantTopos = false, cos: wantCos = false, rateLimiters: wantRl = false } =
-    options;
+  const {
+    topologies: wantTopos = false,
+    cos: wantCos = false,
+    rateLimiters: wantRl = false,
+  } = options;
   const [topologies, setTopologies] = useState<Topology[]>([]);
   const [cos, setCos] = useState<Cos[]>([]);
   const [rateLimiters, setRateLimiters] = useState<RateLimiter[]>([]);

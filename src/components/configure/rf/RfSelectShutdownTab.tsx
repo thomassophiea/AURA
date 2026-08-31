@@ -25,16 +25,36 @@ export function RfSelectShutdownTab({ cfg, root, custom, errs, update }: RfTabPr
       {!!ir.selectShutdown && (
         <>
           <LabelRow label="High Threshold [dBm] (-85 to -55)" width={W} error={errs.ssh}>
-            <NumCellRaw value={ir.selectShutdownHighTh} disabled={dis} onChange={(v) => update(`${root}.interferenceRecovery.selectShutdownHighTh`, v)} width={120} />
+            <NumCellRaw
+              value={ir.selectShutdownHighTh}
+              disabled={dis}
+              onChange={(v) => update(`${root}.interferenceRecovery.selectShutdownHighTh`, v)}
+              width={120}
+            />
           </LabelRow>
           <LabelRow label="Low Threshold [dBm] (-100 to -55)" width={W} error={errs.ssl}>
-            <NumCellRaw value={ir.selectShutdownLowTh} disabled={dis} onChange={(v) => update(`${root}.interferenceRecovery.selectShutdownLowTh`, v)} width={120} />
+            <NumCellRaw
+              value={ir.selectShutdownLowTh}
+              disabled={dis}
+              onChange={(v) => update(`${root}.interferenceRecovery.selectShutdownLowTh`, v)}
+              width={120}
+            />
           </LabelRow>
           <LabelRow label="Frequency [min] (0-3600)" width={W} error={errs.ssf}>
-            <NumCellRaw value={ir.selectShutdownFreq} disabled={dis} onChange={(v) => update(`${root}.interferenceRecovery.selectShutdownFreq`, v)} width={120} />
+            <NumCellRaw
+              value={ir.selectShutdownFreq}
+              disabled={dis}
+              onChange={(v) => update(`${root}.interferenceRecovery.selectShutdownFreq`, v)}
+              width={120}
+            />
           </LabelRow>
           <LabelRow label="Frequency Limit (1-1000)" width={W} error={errs.ssfl}>
-            <NumCellRaw value={ir.selectShutdownFreqLimit} disabled={dis} onChange={(v) => update(`${root}.interferenceRecovery.selectShutdownFreqLimit`, v)} width={120} />
+            <NumCellRaw
+              value={ir.selectShutdownFreqLimit}
+              disabled={dis}
+              onChange={(v) => update(`${root}.interferenceRecovery.selectShutdownFreqLimit`, v)}
+              width={120}
+            />
           </LabelRow>
           {dis && (
             <p className="text-[11.5px] text-muted-foreground" style={{ marginLeft: W + 12 }}>

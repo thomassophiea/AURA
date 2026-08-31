@@ -6,14 +6,7 @@
 import React, { useState } from 'react';
 import { ArrowDown, ArrowUp, Pencil, Plus, X } from 'lucide-react';
 import { Button } from '../../ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../../ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../ui/table';
 import { NaiRealmDialog } from './NaiRealmDialog';
 import { MAX_NAI_REALMS, moveItem, removeAt, upsertAt, type NaiRealmEntry } from './aaaModel';
 

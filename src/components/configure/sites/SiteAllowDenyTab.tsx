@@ -12,22 +12,25 @@ import { Label } from '../../ui/label';
 import { Switch } from '../../ui/switch';
 import { RadioGroup, RadioGroupItem } from '../../ui/radio-group';
 import type { SiteTabProps } from './siteEditorTypes';
-import {
-  IP_RE,
-  MAC_RE,
-  PROTECTED_ACL_CAP,
-  readMacAcl,
-  readProtectedAcl,
-} from './siteModel';
+import { IP_RE, MAC_RE, PROTECTED_ACL_CAP, readMacAcl, readProtectedAcl } from './siteModel';
 
 function ChipList({ items, onRemove }: { items: string[]; onRemove: (i: number) => void }) {
-  if (items.length === 0) return <p className="my-2 text-[12.5px] text-muted-foreground">No entries</p>;
+  if (items.length === 0)
+    return <p className="my-2 text-[12.5px] text-muted-foreground">No entries</p>;
   return (
     <div className="my-2 flex flex-wrap gap-1.5">
       {items.map((m, i) => (
-        <span key={`${m}-${i}`} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-2.5 py-1 font-mono text-[12.5px]">
+        <span
+          key={`${m}-${i}`}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-2.5 py-1 font-mono text-[12.5px]"
+        >
           {m}
-          <button type="button" className="text-destructive" onClick={() => onRemove(i)} aria-label={`Remove ${m}`}>
+          <button
+            type="button"
+            className="text-destructive"
+            onClick={() => onRemove(i)}
+            aria-label={`Remove ${m}`}
+          >
             <X className="h-3 w-3" />
           </button>
         </span>
@@ -65,7 +68,11 @@ export function SiteAllowDenyTab({ form, update }: SiteTabProps) {
       </div>
       {mac && (
         <div className="mb-6 pl-6">
-          <RadioGroup className="mb-2 flex gap-6" value={mac.mode} onValueChange={(v) => update('macAcl.mode', v)}>
+          <RadioGroup
+            className="mb-2 flex gap-6"
+            value={mac.mode}
+            onValueChange={(v) => update('macAcl.mode', v)}
+          >
             <label className="flex items-center gap-2 text-sm">
               <RadioGroupItem value="Allow" /> Allow List
             </label>
@@ -73,7 +80,15 @@ export function SiteAllowDenyTab({ form, update }: SiteTabProps) {
               <RadioGroupItem value="Deny" /> Deny List
             </label>
           </RadioGroup>
-          <ChipList items={macList} onRemove={(i) => update('macAcl.macList', macList.filter((_, x) => x !== i))} />
+          <ChipList
+            items={macList}
+            onRemove={(i) =>
+              update(
+                'macAcl.macList',
+                macList.filter((_, x) => x !== i)
+              )
+            }
+          />
           <div className="flex items-center gap-2">
             <Input
               value={draft.mac}
@@ -106,7 +121,11 @@ export function SiteAllowDenyTab({ form, update }: SiteTabProps) {
       </div>
       {pro && (
         <div className="pl-6">
-          <RadioGroup className="mb-2 flex gap-6" value={pro.mode} onValueChange={(v) => update('protectedAcl.mode', v)}>
+          <RadioGroup
+            className="mb-2 flex gap-6"
+            value={pro.mode}
+            onValueChange={(v) => update('protectedAcl.mode', v)}
+          >
             <label className="flex items-center gap-2 text-sm">
               <RadioGroupItem value="Deny" /> Deny List
             </label>
@@ -114,7 +133,15 @@ export function SiteAllowDenyTab({ form, update }: SiteTabProps) {
               <RadioGroupItem value="Allow" /> Allow List
             </label>
           </RadioGroup>
-          <ChipList items={ipList} onRemove={(i) => update('protectedAcl.ipList', ipList.filter((_, x) => x !== i))} />
+          <ChipList
+            items={ipList}
+            onRemove={(i) =>
+              update(
+                'protectedAcl.ipList',
+                ipList.filter((_, x) => x !== i)
+              )
+            }
+          />
           <div className="flex items-center gap-2">
             <Input
               value={draft.ip}
@@ -138,7 +165,9 @@ export function SiteAllowDenyTab({ form, update }: SiteTabProps) {
             </span>
           </div>
           {ipErr && <p className="mt-1 text-xs text-destructive">{ipErr}</p>}
-          <p className="mt-3 text-xs text-amber-600">Not supported on AP3900 series access points.</p>
+          <p className="mt-3 text-xs text-amber-600">
+            Not supported on AP3900 series access points.
+          </p>
           <p className="text-xs text-muted-foreground">
             Client address protection requires DHCP snooping to learn client bindings.
           </p>

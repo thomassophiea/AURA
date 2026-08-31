@@ -6,14 +6,7 @@
  * detail surface mirroring the controller layout, not a mutation editor.
  */
 import React from 'react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../../ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../ui/table';
 import { FieldRow, Section } from '../_kit';
 import type { ApDetail, SiteConfig } from '../../../types/configure';
 
@@ -27,7 +20,8 @@ const yesNo = (v: boolean | null | undefined) => (v ? 'Yes' : 'No');
 function asMacList(acl: unknown): string[] {
   if (Array.isArray(acl)) return acl.map((e) => (typeof e === 'string' ? e : JSON.stringify(e)));
   if (acl && typeof acl === 'object') {
-    const inner = (acl as Record<string, unknown>).macAddresses ?? (acl as Record<string, unknown>).entries;
+    const inner =
+      (acl as Record<string, unknown>).macAddresses ?? (acl as Record<string, unknown>).entries;
     if (Array.isArray(inner)) return inner.map((e) => String(e));
   }
   return [];
@@ -62,9 +56,13 @@ export function SiteDeviceGroupsPanel({ site }: { site: SiteConfig }) {
                 <TableCell className="text-right tabular-nums">
                   {g.apSerialNumbers?.length ?? 0}
                 </TableCell>
-                <TableCell className="text-right tabular-nums">{g.serviceIDs?.length ?? 0}</TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {g.serviceIDs?.length ?? 0}
+                </TableCell>
                 <TableCell className="text-right tabular-nums">{g.roleIDs?.length ?? 0}</TableCell>
-                <TableCell className="text-right tabular-nums">{g.topologyIDs?.length ?? 0}</TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {g.topologyIDs?.length ?? 0}
+                </TableCell>
                 <TableCell>
                   <Value>{yesNo(g.enableDpi)}</Value>
                 </TableCell>

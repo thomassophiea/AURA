@@ -15,15 +15,27 @@ import { bandOf } from '../helpers';
 import type { Opt, ProfileTabContext } from '../types';
 
 export function RadiosTab({ ctx }: { ctx: ProfileTabContext }) {
-  const { form, radios, F, pools, setOperatingMode, updRadio, openRadioAdvanced, openClientBridge } = ctx;
+  const {
+    form,
+    radios,
+    F,
+    pools,
+    setOperatingMode,
+    updRadio,
+    openRadioAdvanced,
+    openClientBridge,
+  } = ctx;
 
   if (!radios.length) {
-    return <p className="p-4 text-sm text-muted-foreground">This platform has no configurable radios.</p>;
+    return (
+      <p className="p-4 text-sm text-muted-foreground">This platform has no configurable radios.</p>
+    );
   }
 
   const bridgeRadios = radios.filter((r) => r.mode === 'bridge');
   const cbMissing = bridgeRadios.some((r) => !r.cbServiceId);
-  const dualAlert = !F('BOTH-RADIOS-ON') && radios.length >= 2 && radios[0].adminState && radios[1].adminState;
+  const dualAlert =
+    !F('BOTH-RADIOS-ON') && radios.length >= 2 && radios[0].adminState && radios[1].adminState;
   const svcOpts: Opt[] = [{ id: '', label: '— None —' }, ...pools.services];
   const cols = `180px repeat(${radios.length}, minmax(150px, 1fr))`;
 
@@ -41,7 +53,10 @@ export function RadiosTab({ ctx }: { ctx: ProfileTabContext }) {
     : (opModeOpts[0]?.id ?? form.operatingMode);
 
   const Row = ({ label, cells }: { label: React.ReactNode; cells: React.ReactNode[] }) => (
-    <div className="grid items-center border-t border-border py-3" style={{ gridTemplateColumns: cols }}>
+    <div
+      className="grid items-center border-t border-border py-3"
+      style={{ gridTemplateColumns: cols }}
+    >
       <div className="px-4 text-sm">{label}</div>
       {cells.map((c, i) => (
         <div key={i} className="flex justify-center px-2">

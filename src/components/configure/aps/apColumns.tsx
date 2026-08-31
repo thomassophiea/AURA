@@ -20,7 +20,11 @@ function StatusDot({ data }: ICellRendererParams<ApListRow>) {
   const label = state === 'unknown' ? 'Status unknown' : state;
   return (
     <span className="flex h-full items-center">
-      <span className={`inline-block h-2.5 w-2.5 rounded-full ${color}`} title={label} aria-label={label} />
+      <span
+        className={`inline-block h-2.5 w-2.5 rounded-full ${color}`}
+        title={label}
+        aria-label={label}
+      />
     </span>
   );
 }
@@ -37,7 +41,14 @@ export interface ApColumnOptions {
 
 export function generalColumns({ onEdit }: ApColumnOptions): ColDef<ApListRow>[] {
   return [
-    { headerName: '', width: 46, cellRenderer: StatusDot, sortable: false, filter: false, resizable: false },
+    {
+      headerName: '',
+      width: 46,
+      cellRenderer: StatusDot,
+      sortable: false,
+      filter: false,
+      resizable: false,
+    },
     {
       headerName: 'Name',
       field: 'apName',
@@ -93,7 +104,11 @@ export function afcColumns({ onEdit }: ApColumnOptions): ColDef<ApListRow>[] {
           </button>
         ) : null,
     },
-    { headerName: 'Model', minWidth: 120, valueGetter: (p) => p.data?.hardwareType || p.data?.platformName || '' },
+    {
+      headerName: 'Model',
+      minWidth: 120,
+      valueGetter: (p) => p.data?.hardwareType || p.data?.platformName || '',
+    },
     {
       headerName: 'Radio 3 (6 GHz)',
       minWidth: 150,
