@@ -80,10 +80,28 @@ rejection-sampled from an unambiguous alphabet. See `server/ppsk/pmk.test.js`.
 
 ## UI
 
-Configure ▸ **Private Pre-Shared Key** (`configure-ppsk`) — a `ResourceGridPage`
-of identities (create / edit / enable-disable / delete / reveal / generate) plus a
-**wpa_psk_file** preview dialog per SSID. Marked *Experimental* in the header
-because provisioning is not yet controller-driven.
+Configure ▸ **Private Pre-Shared Key** (`configure-ppsk`), built to match the golden
+EP1 "Pre-Shared Keys" design:
+
+- **DECOUPLED banner** — states that a key is an independent object (may reference a
+  Role, never owned by one) with live **Global / Site-bound / Stored-locally** counts.
+- **Status filter pills** — All · Active · Paused · Expired · Site-bound · Global, with
+  counts. *Paused* = disabled; *Expired* = past `expiresAt`; both derived, not stored.
+- **Grid** — Key Name, Key Description, Email, Passphrase, Usage, SSID, VLAN ID, Role,
+  Status. `VLAN ID`/`Role` render *WLAN default* (italic) when unset.
+- **Toolbar** — Filter · Reveal Passphrases (bulk, via the audited reveal path) · Audit
+  Trail · Import (CSV) · Export (CSV) · wpa_psk_file preview · Delete · Add Key.
+- **Add / Edit Key modal** — KEY IDENTITY (name, description, owner email) · SCOPE
+  (Global / Bind to Sites / Bind to Site Groups) · NETWORK (SSID filtered to Private-PSK
+  WLANs from the controller, VLAN, Role) · USAGE (Multiple users, or Single user bound to
+  the first device or a specified MAC) · CREDENTIAL (passphrase, reveal/generate, notify).
+- **Import** parses `name, ssid, passphrase, vlan_id, mac, usage, role, email,
+  notify_on_create_or_edit` and bulk-creates through the audited API; a sample CSV is
+  downloadable. **Export** writes the same shape (passphrases only when Reveal is on).
+- **Audit Trail** lists every `ppsk.*` action (who, when, which keyid) — never a passphrase.
+
+Marked *Experimental* because controller-driven provisioning is not yet available; the
+`wpa_psk_file` preview is the out-of-band path.
 
 ## Applying it out of band (lab runbook)
 

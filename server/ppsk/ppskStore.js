@@ -37,6 +37,14 @@ CREATE TABLE IF NOT EXISTS ppsk_identities (
   created_at           timestamptz NOT NULL DEFAULT now(),
   updated_at           timestamptz NOT NULL DEFAULT now()
 );
+-- 0015 fields (twin of migrations/0015_ppsk_identity_fields.sql)
+ALTER TABLE ppsk_identities
+  ADD COLUMN IF NOT EXISTS email         text,
+  ADD COLUMN IF NOT EXISTS usage         text NOT NULL DEFAULT 'multi',
+  ADD COLUMN IF NOT EXISTS mac_mode      text,
+  ADD COLUMN IF NOT EXISTS mac           text,
+  ADD COLUMN IF NOT EXISTS notify        boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS store_locally boolean NOT NULL DEFAULT false;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_ppsk_ssid_keyid ON ppsk_identities (ssid, keyid);
 CREATE INDEX IF NOT EXISTS idx_ppsk_ssid_enabled ON ppsk_identities (ssid, enabled);
 CREATE INDEX IF NOT EXISTS idx_ppsk_created ON ppsk_identities (created_at DESC);
@@ -83,11 +91,17 @@ function rowToIdentity(row) {
     id: row.id,
     name: row.name,
     description: row.description,
+    email: row.email ?? null,
     ssid: row.ssid,
     keyid: row.keyid,
     hasPassphrase: Boolean(row.passphrase_encrypted),
     role: row.role,
     vlanId: row.vlan_id,
+    usage: row.usage ?? 'multi',
+    macMode: row.mac_mode ?? null,
+    mac: row.mac ?? null,
+    notify: row.notify ?? false,
+    storeLocally: row.store_locally ?? false,
     scope: row.scope,
     scopeRef: row.scope_ref,
     enabled: row.enabled,
@@ -138,19 +152,26 @@ export async function createIdentity(input) {
   const keyid = keyidFor(input.keyid || input.name);
   const { rows } = await getPool().query(
     `INSERT INTO ppsk_identities
-       (id, name, description, ssid, keyid, passphrase_encrypted, role, vlan_id,
+       (id, name, description, email, ssid, keyid, passphrase_encrypted, role, vlan_id,
+        usage, mac_mode, mac, notify, store_locally,
         scope, scope_ref, enabled, expires_at, max_devices, created_by)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
      RETURNING *`,
     [
       id,
       input.name,
       input.description ?? null,
+      input.email ?? null,
       input.ssid,
       keyid,
       encryptPassphrase(input.passphrase),
       input.role ?? null,
       input.vlanId ?? null,
+      input.usage ?? 'multi',
+      input.macMode ?? null,
+      input.mac ?? null,
+      input.notify ?? false,
+      input.storeLocally ?? false,
       input.scope ?? 'global',
       input.scopeRef ?? null,
       input.enabled ?? true,
@@ -187,6 +208,12 @@ export async function updateIdentity(id, patch) {
        enabled = COALESCE($11, enabled),
        expires_at = COALESCE($12, expires_at),
        max_devices = COALESCE($13, max_devices),
+       email = COALESCE($14, email),
+       usage = COALESCE($15, usage),
+       mac_mode = COALESCE($16, mac_mode),
+       mac = COALESCE($17, mac),
+       notify = COALESCE($18, notify),
+       store_locally = COALESCE($19, store_locally),
        updated_at = now()
      WHERE id = $1
      RETURNING *`,
@@ -204,6 +231,12 @@ export async function updateIdentity(id, patch) {
       patch.enabled ?? null,
       patch.expiresAt ?? null,
       patch.maxDevices ?? null,
+      patch.email ?? null,
+      patch.usage ?? null,
+      patch.macMode ?? null,
+      patch.mac ?? null,
+      patch.notify ?? null,
+      patch.storeLocally ?? null,
     ]
   );
   return rows[0] ? rowToIdentity(rows[0]) : null;

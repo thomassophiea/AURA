@@ -20,7 +20,7 @@
 
 import { Router, json as expressJson } from 'express';
 import { requireRole as defaultRequireRole } from '../identity/identityRouter.js';
-import { audit as defaultAudit } from '../identity/identityStore.js';
+import { audit as defaultAudit, listAudit as defaultListAudit } from '../identity/identityStore.js';
 import { sanitizeError } from '../monitoring/errorSanitizer.js';
 import { isCryptoConfigured } from './ppskCrypto.js';
 import * as defaultStore from './ppskStore.js';
@@ -73,6 +73,37 @@ function validate(body, { partial = false } = {}) {
   if ('keyid' in body && body.keyid) out.keyid = String(body.keyid);
   if ('role' in body) out.role = body.role ? String(body.role).slice(0, 128) : null;
 
+  if ('email' in body) {
+    const email = body.email ? String(body.email).trim() : '';
+    // Optional owner contact; validated loosely (ASCII, one @) — it is a label,
+    // not an auth principal, and never used to send from the server here.
+    if (email && (email.length > 254 || !/^[\x21-\x7e]+@[\x21-\x7e]+\.[\x21-\x7e]+$/.test(email))) {
+      return { ok: false, error: 'email is not a valid address' };
+    }
+    out.email = email || null;
+  }
+  if ('usage' in body && body.usage != null) {
+    if (body.usage !== 'multi' && body.usage !== 'single') {
+      return { ok: false, error: "usage must be 'multi' or 'single'" };
+    }
+    out.usage = body.usage;
+  }
+  if ('macMode' in body) {
+    if (body.macMode != null && body.macMode !== 'first' && body.macMode !== 'specify') {
+      return { ok: false, error: "macMode must be 'first' or 'specify'" };
+    }
+    out.macMode = body.macMode ?? null;
+  }
+  if ('mac' in body) {
+    const mac = body.mac ? String(body.mac).trim() : '';
+    if (mac && !/^([0-9a-fA-F]{2}([:-]?)){5}[0-9a-fA-F]{2}$/.test(mac)) {
+      return { ok: false, error: 'mac must be a MAC address (AA:BB:CC:DD:EE:FF)' };
+    }
+    out.mac = mac || null;
+  }
+  if ('notify' in body) out.notify = Boolean(body.notify);
+  if ('storeLocally' in body) out.storeLocally = Boolean(body.storeLocally);
+
   if ('vlanId' in body && body.vlanId != null && body.vlanId !== '') {
     const v = Number(body.vlanId);
     if (!Number.isInteger(v) || v < 1 || v > 4094) return { ok: false, error: 'vlanId must be 1–4094' };
@@ -121,6 +152,7 @@ export function createPpskRouter({
   store = defaultStore,
   requireRole = defaultRequireRole,
   audit = defaultAudit,
+  listAudit = defaultListAudit,
   cryptoConfigured = isCryptoConfigured,
 } = {}) {
   const router = Router();
@@ -164,6 +196,18 @@ export function createPpskRouter({
   router.post('/v1/ppsk/generate', requireRole('operator'), jsonBody, (req, res) => {
     const length = Number(req.body?.length) || 16;
     res.json({ passphrase: generatePassphrase(length) });
+  });
+
+  // ── Audit trail (PPSK actions only) ──
+  router.get('/v1/ppsk/audit', requireRole('operator'), async (req, res) => {
+    try {
+      const limit = Math.min(Math.max(1, Number(req.query.limit) || 200), 500);
+      const all = await listAudit({ limit: 500 });
+      const entries = all.filter((e) => typeof e.action === 'string' && e.action.startsWith('ppsk.')).slice(0, limit);
+      res.json({ entries });
+    } catch (error) {
+      fail(res, error, '/v1/ppsk/audit');
+    }
   });
 
   // ── Render the wpa_psk_file for an SSID (the provisioning artifact) ──

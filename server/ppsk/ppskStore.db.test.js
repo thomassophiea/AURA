@@ -28,7 +28,6 @@ import {
 } from './ppskStore.js';
 
 if (!hasTestDatabase) {
-  // eslint-disable-next-line no-console
   console.warn(`[ppskStore.db.test] SKIPPED — ${SKIP_REASON}`);
 }
 

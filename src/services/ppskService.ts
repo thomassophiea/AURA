@@ -16,17 +16,25 @@ import { apiService, getDynamicControllerUrl } from './api';
 const BASE = '/api/v1/ppsk';
 
 export type PpskScope = 'global' | 'site' | 'site-group' | 'gateway';
+export type PpskUsage = 'multi' | 'single';
+export type PpskMacMode = 'first' | 'specify';
 
 /** Public shape of a PPSK identity. The passphrase is never included here. */
 export interface PpskIdentity {
   id: string;
   name: string;
   description: string | null;
+  email: string | null;
   ssid: string;
   keyid: string;
   hasPassphrase: boolean;
   role: string | null;
   vlanId: number | null;
+  usage: PpskUsage;
+  macMode: PpskMacMode | null;
+  mac: string | null;
+  notify: boolean;
+  storeLocally: boolean;
   scope: PpskScope;
   scopeRef: string | null;
   enabled: boolean;
@@ -43,14 +51,37 @@ export interface PpskInput {
   ssid: string;
   passphrase?: string;
   description?: string | null;
+  email?: string | null;
   keyid?: string;
   role?: string | null;
   vlanId?: number | null;
+  usage?: PpskUsage;
+  macMode?: PpskMacMode | null;
+  mac?: string | null;
+  notify?: boolean;
+  storeLocally?: boolean;
   scope?: PpskScope;
   scopeRef?: string | null;
   enabled?: boolean;
   expiresAt?: string | null;
   maxDevices?: number | null;
+}
+
+/** Derived lifecycle status for the filter pills. */
+export type PpskStatus = 'active' | 'paused' | 'expired';
+export function ppskStatus(k: PpskIdentity): PpskStatus {
+  if (k.expiresAt && new Date(k.expiresAt).getTime() < Date.now()) return 'expired';
+  return k.enabled ? 'active' : 'paused';
+}
+
+export interface PpskAuditEntry {
+  id: number;
+  actor: string | null;
+  source: string | null;
+  action: string;
+  target: string | null;
+  detail: Record<string, unknown>;
+  at: string;
 }
 
 /** What AURA managed to enforce on the gateway — honest, since it can't yet. */
@@ -163,5 +194,30 @@ export const ppskService = {
 
   async keyfile(ssid: string): Promise<PpskKeyFile> {
     return request(`/keyfile?ssid=${encodeURIComponent(ssid)}`);
+  },
+
+  async audit(limit = 200): Promise<PpskAuditEntry[]> {
+    const data = await request<{ entries: PpskAuditEntry[] }>(`/audit?limit=${limit}`);
+    return data.entries;
+  },
+
+  /** Bulk create from parsed CSV rows; returns per-row outcomes. */
+  async importMany(
+    inputs: PpskInput[]
+  ): Promise<Array<{ ok: boolean; name: string; error?: string }>> {
+    const results: Array<{ ok: boolean; name: string; error?: string }> = [];
+    for (const input of inputs) {
+      try {
+        await this.create(input);
+        results.push({ ok: true, name: input.name });
+      } catch (err) {
+        results.push({
+          ok: false,
+          name: input.name,
+          error: err instanceof PpskRequestError ? err.message : 'failed',
+        });
+      }
+    }
+    return results;
   },
 };
