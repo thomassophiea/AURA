@@ -158,15 +158,16 @@ export const WLAN_ENUMS = {
     { id: 'Ascii', label: 'ASCII' },
   ],
   /**
-   * Offered portal types. Local CWP ("Internal") is deprecated and not
-   * offered; a record already carrying any other value keeps it selectable so
-   * nothing is silently rewritten on save — see portalTypeOptions().
-   * PLM 2026-08-21: guest scope is External + Guest Essentials only.
+   * Offered portal types, as the gateway stores them. Exactly one value is
+   * offered on the record — 'External' — because both supported choices
+   * (Cloud Captive Portal, External Captive Portal) are external captive
+   * portals to the gateway; Cloud is the UI-level selection that wires the
+   * ECP fields to the managed portal (see portalTypeOptions / portalSelection).
+   * A record already carrying any other value keeps it selectable so nothing
+   * is silently rewritten on save. Ruling 2026-08-31: two options only —
+   * Local CWP and Guest Essentials are no longer offered on new records.
    */
-  portalType: [
-    { id: 'External', label: 'External' },
-    { id: 'GuestEssentials', label: 'Guest Essentials' },
-  ],
+  portalType: [{ id: 'External', label: 'External Captive Portal' }],
   ecpRedirect: [
     { id: 'ORIGINALDESTINATION', label: 'Original destination' },
     { id: 'URLCUSTOMIZED', label: 'Custom URL' },
@@ -178,18 +179,58 @@ export const PORTAL_LEGACY_LABELS: Record<string, string> = {
   Internal: 'Internal (Local CWP — deprecated)',
   EGuest: 'Extreme Guest',
   CWA: 'CWA',
+  GuestEssentials: 'Guest Essentials (deprecated)',
 };
 
 /**
- * The two supported portal types, plus whatever this record already holds so
- * a legacy / non-guest value still renders and survives a save untouched.
+ * UI-only selection value for the managed Cloud Captive Portal. Never written
+ * to the record: on the gateway the cloud portal *is* an External captive
+ * portal, distinguished only by where its ECP URL points.
+ */
+export const PORTAL_CLOUD = 'CloudCWP';
+
+/**
+ * The two supported portal choices, plus whatever this record already holds
+ * so a legacy value still renders and survives a save untouched.
  */
 export function portalTypeOptions(current: string | null | undefined): EnumOption[] {
-  const base = [...WLAN_ENUMS.portalType];
+  const base: EnumOption[] = [
+    { id: PORTAL_CLOUD, label: 'Cloud Captive Portal' },
+    ...WLAN_ENUMS.portalType,
+  ];
   if (current && !base.some((option) => option.id === current)) {
     base.push({ id: current, label: PORTAL_LEGACY_LABELS[current] ?? current });
   }
   return base;
+}
+
+/** Normalise an ECP URL enough that a copied value still matches. */
+function normalizeEcpUrl(value: string): string | null {
+  try {
+    const url = new URL(value.trim());
+    return `${url.origin.toLowerCase()}${url.pathname.replace(/\/+$/, '')}`;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Which Portal Type choice a record represents: the cloud portal when the
+ * ECP URL points at the managed portal, otherwise the stored type. An
+ * explicit UI choice (the operator just picked one) always wins, so choosing
+ * "External Captive Portal" is possible even while the URL still matches.
+ */
+export function portalSelection(
+  captivePortalType: string | null | undefined,
+  cpRedirect: string,
+  cloudEcpUrl: string | null,
+  explicitChoice = ''
+): string {
+  if (explicitChoice) return explicitChoice;
+  const type = captivePortalType ?? 'External';
+  if (type !== 'External' || !cloudEcpUrl) return type;
+  const recordUrl = normalizeEcpUrl(cpRedirect);
+  return recordUrl !== null && recordUrl === normalizeEcpUrl(cloudEcpUrl) ? PORTAL_CLOUD : type;
 }
 
 /** DSCP service classes for the 64-row codePoints editor. */

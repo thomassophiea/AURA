@@ -14,6 +14,8 @@ import {
   isEnterprise,
   isPureWpa3,
   isWpa,
+  PORTAL_CLOUD,
+  portalSelection,
   portalTypeOptions,
   privacyLabel,
 } from './wlanModel';
@@ -78,21 +80,64 @@ describe('auth-type ↔ element mapping', () => {
   });
 });
 
-describe('portal type options (PLM 2026-08-21 guest scope)', () => {
-  it('offers exactly External + Guest Essentials for new records', () => {
-    expect(portalTypeOptions(null).map((o) => o.id)).toEqual(['External', 'GuestEssentials']);
-    expect(portalTypeOptions('External').map((o) => o.id)).toEqual(['External', 'GuestEssentials']);
+describe('portal type options (ruling 2026-08-31: two choices only)', () => {
+  it('offers exactly Cloud Captive Portal + External Captive Portal for new records', () => {
+    expect(portalTypeOptions(null).map((o) => o.id)).toEqual([PORTAL_CLOUD, 'External']);
+    expect(portalTypeOptions(null).map((o) => o.label)).toEqual([
+      'Cloud Captive Portal',
+      'External Captive Portal',
+    ]);
+    expect(portalTypeOptions('External').map((o) => o.id)).toEqual([PORTAL_CLOUD, 'External']);
+    expect(portalTypeOptions(PORTAL_CLOUD).map((o) => o.id)).toEqual([PORTAL_CLOUD, 'External']);
   });
 
   it('keeps a legacy Internal value selectable with the deprecated label', () => {
     const options = portalTypeOptions('Internal');
-    expect(options.map((o) => o.id)).toEqual(['External', 'GuestEssentials', 'Internal']);
+    expect(options.map((o) => o.id)).toEqual([PORTAL_CLOUD, 'External', 'Internal']);
     expect(options[2].label).toBe('Internal (Local CWP — deprecated)');
   });
 
-  it('keeps EGuest / CWA values selectable without rewriting them', () => {
+  it('keeps EGuest / CWA / GuestEssentials values selectable without rewriting them', () => {
     expect(portalTypeOptions('EGuest').at(-1)).toEqual({ id: 'EGuest', label: 'Extreme Guest' });
     expect(portalTypeOptions('CWA').at(-1)).toEqual({ id: 'CWA', label: 'CWA' });
+    expect(portalTypeOptions('GuestEssentials').at(-1)).toEqual({
+      id: 'GuestEssentials',
+      label: 'Guest Essentials (deprecated)',
+    });
+  });
+});
+
+describe('portalSelection (Cloud vs External is decided by the ECP URL)', () => {
+  const CLOUD_URL = 'https://os-one-cwp-production.up.railway.app/portal';
+
+  it('classifies an External record pointing at the managed portal as Cloud', () => {
+    expect(portalSelection('External', CLOUD_URL, CLOUD_URL)).toBe(PORTAL_CLOUD);
+    // Trailing slash and case differences in the origin still match.
+    expect(
+      portalSelection('External', 'HTTPS://OS-ONE-CWP-PRODUCTION.UP.RAILWAY.APP/portal/', CLOUD_URL)
+    ).toBe(PORTAL_CLOUD);
+  });
+
+  it('classifies any other External URL as External', () => {
+    expect(portalSelection('External', 'https://portal.example.com/guest', CLOUD_URL)).toBe(
+      'External'
+    );
+    expect(portalSelection('External', '', CLOUD_URL)).toBe('External');
+    expect(portalSelection(null, '', CLOUD_URL)).toBe('External');
+  });
+
+  it('never classifies as Cloud when the portal is not connected', () => {
+    expect(portalSelection('External', CLOUD_URL, null)).toBe('External');
+  });
+
+  it('passes legacy types through untouched', () => {
+    expect(portalSelection('EGuest', CLOUD_URL, CLOUD_URL)).toBe('EGuest');
+    expect(portalSelection('Internal', '', CLOUD_URL)).toBe('Internal');
+  });
+
+  it('an explicit operator choice wins over the derivation', () => {
+    expect(portalSelection('External', CLOUD_URL, CLOUD_URL, 'External')).toBe('External');
+    expect(portalSelection('External', '', CLOUD_URL, PORTAL_CLOUD)).toBe(PORTAL_CLOUD);
   });
 });
 

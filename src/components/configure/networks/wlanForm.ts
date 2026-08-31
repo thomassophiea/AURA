@@ -37,6 +37,12 @@ export interface WlanUiState {
   radiusServers: string[];
   portalName: string;
   portalInterface: string;
+  /**
+   * Explicit Portal Type pick this session (PORTAL_CLOUD or 'External').
+   * UI-only: never persisted — the record stores 'External' either way and
+   * the cloud choice is otherwise derived from the ECP URL.
+   */
+  cpPortalChoice: string;
   cpRedirect: string;
   cpIdentity: string;
   cpSharedKey: string;
@@ -119,6 +125,7 @@ export function createFormState(seed: WlanService): WlanFormState {
       radiusServers: [0, 1, 2, 3].map((slot) => aaaConf?.radiusServers?.[slot] ?? ''),
       portalName: cp?.name ?? '',
       portalInterface: cp?.selectedPortalInterface ?? '',
+      cpPortalChoice: '',
       cpRedirect: garden?.cpRedirect ?? '',
       cpIdentity: garden?.cpIdentity ?? '',
       cpSharedKey: garden?.cpSharedKey ?? '',
