@@ -18,7 +18,7 @@ import {
   type PortalConfigView,
   type PortalPreviewMessages,
 } from '../../../services/portalConfigService';
-import { splitList, type FormState } from './portalFormModel';
+import { selectedAccessPolicy, splitList, type FormState } from './portalFormModel';
 
 /** Substitute `{name}` placeholders the way the portal's i18n layer does. */
 function format(template: string, params: Record<string, string>): string {
@@ -53,9 +53,22 @@ export function GuestPreview({ view, form }: GuestPreviewProps) {
   const enabledFields = view.fieldCatalogue.filter(
     (f) => (form.fieldModes[f.id] ?? 'off') !== 'off'
   );
+  // The acceptance policy the guest experiences, with the portal's own
+  // fallback mirrored: sponsored without a working sponsorship path renders
+  // as terms, so the preview shows what actually ships.
+  const sponsorshipAvailable = form.sponsorshipEnabled && view.effective.emailTransport !== null;
+  let policy = selectedAccessPolicy(form, view);
+  if (policy === 'sponsored' && !sponsorshipAvailable) policy = 'terms';
+
   const secure = view.effective.secureAccess;
-  const showSecure = form.secureAccessEnabled && secure?.configured && secure.network !== null;
-  const showSponsorship = form.sponsorshipEnabled && view.effective.emailTransport !== null;
+  const showSecure =
+    policy !== 'sponsored' &&
+    form.secureAccessEnabled &&
+    secure?.configured &&
+    secure.network !== null;
+  const showSponsorship = sponsorshipAvailable && policy !== 'open';
+  const showOpenSubmit = policy !== 'sponsored';
+  const showFields = policy === 'form';
   const sponsorDomain =
     splitList(form.domainsText)[0] ??
     view.effective.sponsorship.domains[0] ??
@@ -85,122 +98,144 @@ export function GuestPreview({ view, form }: GuestPreviewProps) {
 
       <div className="mx-auto w-full max-w-[340px] overflow-hidden rounded-[24px] border-4 border-[#1e293b] bg-[#ffffff] shadow-lg">
         <div className="max-h-[560px] overflow-y-auto p-4 text-left">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-[#94a3b8]">
-            {messages.common.portalName}
-          </p>
-          <h4 className="mt-1 text-base font-bold text-[#0f172a]">{messages.consent.title}</h4>
-          <p className="mt-0.5 text-xs text-[#64748b]">{messages.consent.subtitle}</p>
-
-          {enabledFields.length > 0 && (
-            <fieldset className="mt-4 rounded-xl border border-[#e2e8f0] p-3">
-              <legend className="px-1 text-xs font-semibold text-[#0f172a]">
-                {messages.fields.heading}
-              </legend>
-              <p className="mb-2 text-[10px] text-[#64748b]">{messages.fields.subheading}</p>
-              <div className="flex flex-col gap-2">
-                {enabledFields.map((field) => {
-                  const copy = previewFieldCopy(messages, field.id);
-                  const required = form.fieldModes[field.id] === 'required';
-                  return (
-                    <div key={field.id} className="flex flex-col gap-0.5">
-                      <span className="flex items-baseline gap-1.5 text-[11px] font-medium text-[#334155]">
-                        <span>{copy?.label ?? field.id}</span>
-                        <span className="text-[10px] font-normal text-[#94a3b8]">
-                          {required ? messages.common.required : messages.common.optional}
-                        </span>
-                      </span>
-                      <div className="rounded-lg border border-[#cbd5e1] px-2.5 py-1.5 text-xs text-[#cbd5e1]">
-                        {copy?.placeholder ?? ''}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </fieldset>
-          )}
-
-          <p className="mt-4 text-[10px] leading-relaxed text-[#64748b]">
-            {messages.consent.terms}
-          </p>
-
-          <div className="mt-3 flex items-start gap-2">
-            <span className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border border-[#cbd5e1]" />
-            <span className="text-xs text-[#334155]">{messages.consent.agree}</span>
-          </div>
-
-          <div className="mt-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3">
-            <div className="flex items-start gap-2">
-              <span className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border border-[#cbd5e1]" />
-              <span className="text-xs font-medium text-[#0f172a]">
-                {messages.privacy.checkbox}
-              </span>
+          {policy === 'open' ? (
+            <div className="flex min-h-[240px] flex-col items-center justify-center gap-2 px-4 text-center">
+              <p className="text-xs font-semibold text-[#0f172a]">No portal page is drawn</p>
+              <p className="text-[10px] leading-relaxed text-[#64748b]">
+                The guest is authorized the moment they join — no page, no consent, no fields.
+              </p>
             </div>
-            <p className="mt-1.5 pl-5 text-[10px] leading-relaxed text-[#475569]">
-              {messages.privacy.explainer}
-            </p>
-          </div>
-
-          <div className="mt-3 w-full rounded-xl bg-[#e2e8f0] py-2.5 text-center text-xs font-semibold text-[#94a3b8]">
-            {messages.consent.submitOpen}
-          </div>
-          <p className="mt-1.5 text-center text-[10px] text-[#94a3b8]">
-            {messages.consent.tickToContinue}
-          </p>
-
-          {showSecure && secure?.network && (
+          ) : (
             <>
-              <div className="my-4 flex items-center gap-2" aria-hidden="true">
-                <span className="h-px flex-1 bg-[#e2e8f0]" />
-                <span className="text-[10px] uppercase tracking-wide text-[#94a3b8]">
-                  {messages.consent.or}
-                </span>
-                <span className="h-px flex-1 bg-[#e2e8f0]" />
-              </div>
-              <section className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3">
-                <h5 className="text-xs font-semibold text-[#0f172a]">
-                  {messages.secureOffer.title}
-                </h5>
-                <p className="mt-0.5 text-[10px] leading-relaxed text-[#475569]">
-                  {messages.secureOffer.body}
-                </p>
-                <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-[#0f172a]">
-                  <Lock className="h-3 w-3 text-[#64748b]" />
-                  <span>{secure.network.ssid}</span>
-                  <span className="text-[10px] font-normal text-[#64748b]">
-                    {messages.security?.[secure.network.security] ?? secure.network.securityLabel}
-                  </span>
-                </p>
-                <div className="mt-2 w-full rounded-xl border border-[#cbd5e1] py-2 text-center text-xs font-semibold text-[#334155]">
-                  {messages.secureOffer.submit}
-                </div>
-                <p className="mt-1 text-center text-[10px] text-[#94a3b8]">
-                  {messages.secureOffer.note}
-                </p>
-              </section>
-            </>
-          )}
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-[#94a3b8]">
+                {messages.common.portalName}
+              </p>
+              <h4 className="mt-1 text-base font-bold text-[#0f172a]">{messages.consent.title}</h4>
+              <p className="mt-0.5 text-xs text-[#64748b]">{messages.consent.subtitle}</p>
 
-          {showSponsorship && (
-            <section className="mt-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3">
-              <h5 className="text-xs font-semibold text-[#0f172a]">
-                {messages.sponsorship.offerTitle}
-              </h5>
-              <p className="mt-0.5 text-[10px] leading-relaxed text-[#475569]">
-                {messages.sponsorship.offerBody}
+              {showFields && enabledFields.length > 0 && (
+                <fieldset className="mt-4 rounded-xl border border-[#e2e8f0] p-3">
+                  <legend className="px-1 text-xs font-semibold text-[#0f172a]">
+                    {messages.fields.heading}
+                  </legend>
+                  <p className="mb-2 text-[10px] text-[#64748b]">{messages.fields.subheading}</p>
+                  <div className="flex flex-col gap-2">
+                    {enabledFields.map((field) => {
+                      const copy = previewFieldCopy(messages, field.id);
+                      const required = form.fieldModes[field.id] === 'required';
+                      return (
+                        <div key={field.id} className="flex flex-col gap-0.5">
+                          <span className="flex items-baseline gap-1.5 text-[11px] font-medium text-[#334155]">
+                            <span>{copy?.label ?? field.id}</span>
+                            <span className="text-[10px] font-normal text-[#94a3b8]">
+                              {required ? messages.common.required : messages.common.optional}
+                            </span>
+                          </span>
+                          <div className="rounded-lg border border-[#cbd5e1] px-2.5 py-1.5 text-xs text-[#cbd5e1]">
+                            {copy?.placeholder ?? ''}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+              )}
+
+              <p className="mt-4 text-[10px] leading-relaxed text-[#64748b]">
+                {messages.consent.terms}
               </p>
-              <p className="mt-2 text-[11px] font-medium text-[#334155]">
-                {messages.sponsorship.sponsorEmailLabel}
-              </p>
-              <div className="mt-0.5 rounded-lg border border-[#cbd5e1] px-2.5 py-1.5 text-xs text-[#cbd5e1]">
-                {format(messages.sponsorship.sponsorEmailPlaceholder, { domain: sponsorDomain })}
+
+              <div className="mt-3 flex items-start gap-2">
+                <span className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border border-[#cbd5e1]" />
+                <span className="text-xs text-[#334155]">{messages.consent.agree}</span>
               </div>
-              <p className="mt-1.5 text-[10px] text-[#64748b]">
-                {messages.sponsorship.identityNote}
-              </p>
-              <div className="mt-2 w-full rounded-xl border border-[#cbd5e1] py-2 text-center text-xs font-semibold text-[#334155]">
-                {messages.sponsorship.submit}
+
+              <div className="mt-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3">
+                <div className="flex items-start gap-2">
+                  <span className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border border-[#cbd5e1]" />
+                  <span className="text-xs font-medium text-[#0f172a]">
+                    {messages.privacy.checkbox}
+                  </span>
+                </div>
+                <p className="mt-1.5 pl-5 text-[10px] leading-relaxed text-[#475569]">
+                  {messages.privacy.explainer}
+                </p>
               </div>
-            </section>
+
+              {showOpenSubmit && (
+                <div className="mt-3 w-full rounded-xl bg-[#e2e8f0] py-2.5 text-center text-xs font-semibold text-[#94a3b8]">
+                  {messages.consent.submitOpen}
+                </div>
+              )}
+              <p className="mt-1.5 text-center text-[10px] text-[#94a3b8]">
+                {messages.consent.tickToContinue}
+              </p>
+
+              {showSecure && secure?.network && (
+                <>
+                  <div className="my-4 flex items-center gap-2" aria-hidden="true">
+                    <span className="h-px flex-1 bg-[#e2e8f0]" />
+                    <span className="text-[10px] uppercase tracking-wide text-[#94a3b8]">
+                      {messages.consent.or}
+                    </span>
+                    <span className="h-px flex-1 bg-[#e2e8f0]" />
+                  </div>
+                  <section className="rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3">
+                    <h5 className="text-xs font-semibold text-[#0f172a]">
+                      {messages.secureOffer.title}
+                    </h5>
+                    <p className="mt-0.5 text-[10px] leading-relaxed text-[#475569]">
+                      {messages.secureOffer.body}
+                    </p>
+                    <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-[#0f172a]">
+                      <Lock className="h-3 w-3 text-[#64748b]" />
+                      <span>{secure.network.ssid}</span>
+                      <span className="text-[10px] font-normal text-[#64748b]">
+                        {messages.security?.[secure.network.security] ??
+                          secure.network.securityLabel}
+                      </span>
+                    </p>
+                    <div className="mt-2 w-full rounded-xl border border-[#cbd5e1] py-2 text-center text-xs font-semibold text-[#334155]">
+                      {messages.secureOffer.submit}
+                    </div>
+                    <p className="mt-1 text-center text-[10px] text-[#94a3b8]">
+                      {messages.secureOffer.note}
+                    </p>
+                  </section>
+                </>
+              )}
+
+              {showSponsorship && (
+                <section className="mt-3 rounded-xl border border-[#e2e8f0] bg-[#f8fafc] p-3">
+                  <h5 className="text-xs font-semibold text-[#0f172a]">
+                    {messages.sponsorship.offerTitle}
+                  </h5>
+                  <p className="mt-0.5 text-[10px] leading-relaxed text-[#475569]">
+                    {messages.sponsorship.offerBody}
+                  </p>
+                  <p className="mt-2 text-[11px] font-medium text-[#334155]">
+                    {messages.sponsorship.sponsorEmailLabel}
+                  </p>
+                  <div className="mt-0.5 rounded-lg border border-[#cbd5e1] px-2.5 py-1.5 text-xs text-[#cbd5e1]">
+                    {format(messages.sponsorship.sponsorEmailPlaceholder, {
+                      domain: sponsorDomain,
+                    })}
+                  </div>
+                  <p className="mt-1.5 text-[10px] text-[#64748b]">
+                    {messages.sponsorship.identityNote}
+                  </p>
+                  <div
+                    className={
+                      policy === 'sponsored'
+                        ? 'mt-2 w-full rounded-xl bg-[#2563eb] py-2 text-center text-xs font-semibold text-[#ffffff]'
+                        : 'mt-2 w-full rounded-xl border border-[#cbd5e1] py-2 text-center text-xs font-semibold text-[#334155]'
+                    }
+                  >
+                    {messages.sponsorship.submit}
+                  </div>
+                </section>
+              )}
+            </>
           )}
         </div>
       </div>
