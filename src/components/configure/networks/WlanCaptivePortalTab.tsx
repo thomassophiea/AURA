@@ -1,18 +1,22 @@
 /**
- * WLAN editor - Captive Portal tab: portal type enum (External / Guest
- * Essentials for new records; a legacy Internal / EGuest / CWA value stays
- * selectable without silent rewrite), External identity + masked shared
- * secret + required redirect URL, topology-gated portal connection, redirect
- * URL select with custom target, redirect ports, walled-garden rules and the
- * eGuestSettings editor (max 3 servers).
+ * WLAN editor - Captive Portal tab. Two portal choices (ruling 2026-08-31):
+ * Cloud Captive Portal — the managed portal, ECP URL and identity wired from
+ * the portal service itself — and External Captive Portal, entered by hand.
+ * Both store captivePortalType 'External' on the gateway; a legacy Internal /
+ * EGuest / CWA / GuestEssentials value stays selectable without silent
+ * rewrite. Plus topology-gated portal connection, redirect URL select with
+ * custom target, redirect ports, walled-garden rules and the eGuestSettings
+ * editor (max 3 servers) for legacy records.
  */
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Trash2 } from 'lucide-react';
+import { Alert, AlertDescription } from '../../ui/alert';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Switch } from '../../ui/switch';
 import { ArrayEditor, FieldRow, MaskedInput, Section } from '../_kit';
-import { WLAN_ENUMS, portalTypeOptions } from './wlanModel';
+import { PORTAL_CLOUD, WLAN_ENUMS, portalSelection, portalTypeOptions } from './wlanModel';
+import { portalEcpInfo, type PortalEcpInfo } from '../../../services/portalConfigService';
 import type { EGuestSetting, WalledGardenRule } from './wlanForm';
 import {
   EnumSelect,
@@ -33,6 +37,48 @@ export function WlanCaptivePortalTab({ form, setForm, errors, refs }: WlanTabPro
   // PLM 2026-08-21: new guest WLANs default to External (the local CWP
   // "Internal" portal is deprecated and never offered on new records).
   const portalType = record.captivePortalType ?? 'External';
+
+  // The managed portal's ECP wiring; null = portal not connected (the cloud
+  // choice then degrades to manual entry), undefined = still loading.
+  const [cloudEcp, setCloudEcp] = useState<PortalEcpInfo | null | undefined>(undefined);
+  useEffect(() => {
+    let cancelled = false;
+    void portalEcpInfo().then((info) => {
+      if (!cancelled) setCloudEcp(info);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const selection = portalSelection(
+    record.captivePortalType,
+    ui.cpRedirect,
+    cloudEcp?.url ?? null,
+    ui.cpPortalChoice
+  );
+
+  const choosePortal = (v: string) => {
+    if (v === PORTAL_CLOUD) {
+      patch({ captivePortalType: 'External' });
+      setUi({
+        cpPortalChoice: v,
+        ...(cloudEcp ? { cpRedirect: cloudEcp.url, cpIdentity: cloudEcp.identity } : {}),
+      });
+    } else if (v === 'External') {
+      // Leaving the cloud choice clears its auto-filled wiring; a genuinely
+      // custom URL/identity is never clobbered.
+      const wasCloudWired = !!cloudEcp && ui.cpRedirect === cloudEcp.url;
+      patch({ captivePortalType: 'External' });
+      setUi({
+        cpPortalChoice: v,
+        ...(wasCloudWired ? { cpRedirect: '', cpIdentity: '' } : {}),
+      });
+    } else {
+      patch({ captivePortalType: v });
+      setUi({ cpPortalChoice: '' });
+    }
+  };
   const topology = refs.topologies.find((t) => t.id === record.defaultTopology);
   // Portal Connection only applies when the default topology is Bridged@AP or GRE.
   const showPortalConnection =
@@ -69,14 +115,66 @@ export function WlanCaptivePortalTab({ form, setForm, errors, refs }: WlanTabPro
             }
           >
             <EnumSelect
-              value={portalType}
-              options={portalTypeOptions(portalType)}
-              onChange={(v) => patch({ captivePortalType: v })}
+              value={selection}
+              options={portalTypeOptions(selection)}
+              onChange={choosePortal}
               className="w-72"
             />
           </FieldRow>
         )}
       </Section>
+
+      {cpOn && selection === PORTAL_CLOUD && (
+        <Section
+          title="Cloud Captive Portal"
+          description="The managed guest portal. The guest experience — consent form, sponsorship, secure access, languages — is configured under Configure → Cloud Captive Portal."
+        >
+          {cloudEcp ? (
+            <>
+              <FieldRow label="ECP URL" description="Wired to the portal service automatically.">
+                <span className="font-mono text-sm">{cloudEcp.url}</span>
+              </FieldRow>
+              <FieldRow label="Identity">
+                <span className="font-mono text-sm">{cloudEcp.identity}</span>
+              </FieldRow>
+              <FieldRow
+                label="Shared Secret"
+                description="Must match the secret configured on the portal service; it is never read back from either side."
+              >
+                <MaskedInput value={ui.cpSharedKey} onChange={(v) => setUi({ cpSharedKey: v })} />
+              </FieldRow>
+            </>
+          ) : (
+            <>
+              <Alert variant="warning">
+                <AlertDescription>
+                  The Cloud Captive Portal service is not connected to AURA, so its address cannot
+                  be filled in automatically. Enter the portal&apos;s ECP URL and identity manually,
+                  or connect the portal (CWP_INTERNAL_API_URL / CWP_INTERNAL_API_TOKEN).
+                </AlertDescription>
+              </Alert>
+              <FieldRow label="ECP URL" htmlFor="wlan-ecp-url" required error={errors.cpRedirect}>
+                <Input
+                  id="wlan-ecp-url"
+                  value={ui.cpRedirect}
+                  placeholder="https://portal.example.com/portal"
+                  onChange={(e) => setUi({ cpRedirect: e.target.value })}
+                />
+              </FieldRow>
+              <FieldRow label="Identity" htmlFor="wlan-cp-identity">
+                <Input
+                  id="wlan-cp-identity"
+                  value={ui.cpIdentity}
+                  onChange={(e) => setUi({ cpIdentity: e.target.value })}
+                />
+              </FieldRow>
+              <FieldRow label="Shared Secret">
+                <MaskedInput value={ui.cpSharedKey} onChange={(v) => setUi({ cpSharedKey: v })} />
+              </FieldRow>
+            </>
+          )}
+        </Section>
+      )}
 
       {cpOn && portalType === 'Internal' && (
         <Section title="Internal Portal">
@@ -102,8 +200,8 @@ export function WlanCaptivePortalTab({ form, setForm, errors, refs }: WlanTabPro
         </Section>
       )}
 
-      {cpOn && portalType === 'External' && (
-        <Section title="External Portal">
+      {cpOn && selection === 'External' && (
+        <Section title="External Captive Portal">
           <FieldRow label="ECP URL" htmlFor="wlan-ecp-url" required error={errors.cpRedirect}>
             <Input
               id="wlan-ecp-url"

@@ -125,6 +125,12 @@ export interface PortalConfigView {
     secureAccess?: SecureAccessView;
     /** Session lifetimes from the portal's environment. Read-only facts. */
     session?: { portalSessionTtlSeconds: number; approvalUrlTtlSeconds: number };
+    /**
+     * The ECP wiring a WLAN needs to point at this portal (never the shared
+     * secret). Null when the portal deployment is not fully configured;
+     * absent when the portal service predates it.
+     */
+    ecp?: { url: string; identity: string } | null;
   };
   fieldCatalogue: { id: string; personal: boolean }[];
   envDefaults: { sponsorAllowedDomains: string[] };
@@ -201,6 +207,33 @@ async function request<T>(init: RequestInit = {}): Promise<T> {
 
 export function getPortalConfig(): Promise<PortalConfigView> {
   return request<PortalConfigView>();
+}
+
+export interface PortalEcpInfo {
+  url: string;
+  identity: string;
+}
+
+let ecpInfoPromise: Promise<PortalEcpInfo | null> | null = null;
+
+/**
+ * The managed portal's ECP wiring, for the WLAN editor's "Cloud Captive
+ * Portal" choice. Cached for the session — the portal's base URL and identity
+ * change on redeploys, not mid-edit. Null whenever the portal is not
+ * connected, not configured, or predates the field; callers degrade to the
+ * plain External flow.
+ */
+export function portalEcpInfo(): Promise<PortalEcpInfo | null> {
+  ecpInfoPromise ??= getPortalConfig().then(
+    (view) => view.effective.ecp ?? null,
+    () => null
+  );
+  return ecpInfoPromise;
+}
+
+/** Test seam — drops the memoised ECP info. */
+export function resetPortalEcpInfoCache(): void {
+  ecpInfoPromise = null;
 }
 
 export function updatePortalConfig(update: PortalConfigUpdate): Promise<PortalConfigView> {
