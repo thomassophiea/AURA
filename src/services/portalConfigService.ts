@@ -27,8 +27,33 @@ export interface PortalConfigStored {
    * derived from configuration; absent when the portal predates the policy.
    */
   accessPolicy?: string | null;
+  // ---- identity / look / language / legal (absent on older portals) ----
+  displayName?: string | null;
+  description?: string | null;
+  brandColor?: string | null;
+  brandAlignment?: string | null;
+  brandFooterEnabled?: boolean | null;
+  localesEnabled?: string[] | null;
+  termsText?: string | null;
+  privacyPolicyEnabled?: boolean | null;
+  privacyPolicyText?: string | null;
+  marketingEnabled?: boolean | null;
+  marketingText?: string | null;
   updatedBy: string | null;
   updatedAt: string | null;
+}
+
+export interface PortalBrandingView {
+  color: string;
+  alignment: 'left' | 'center' | 'right';
+  /** null = legacy portal-name footer; true = branded line; false = none. */
+  footer: boolean | null;
+}
+
+export interface PortalLegalView {
+  termsText: string | null;
+  privacyPolicy: { enabled: boolean; text: string };
+  marketing: { enabled: boolean; text: string };
 }
 
 /** How guests get on. One choice; it decides whether a page is drawn at all. */
@@ -144,9 +169,22 @@ export interface PortalConfigView {
      * Absent when the portal service predates it.
      */
     accessPolicy?: PortalAccessPolicy;
+    /** Resolved look. Absent when the portal service predates it. */
+    branding?: PortalBrandingView;
+    /** Resolved legal documents, defaults applied. Absent on older portals. */
+    legal?: PortalLegalView;
+    /** Offered locale codes, validated. Absent on older portals. */
+    enabledLocales?: string[];
+    /** RFC 8908 posture; RFC 8910 (DHCP 114 / RA) is the network's half. */
+    capport?: { apiPath: string; tokenConfigured: boolean };
   };
   fieldCatalogue: { id: string; personal: boolean }[];
-  envDefaults: { sponsorAllowedDomains: string[] };
+  envDefaults: {
+    sponsorAllowedDomains: string[];
+    brandColor?: string;
+    privacyPolicyText?: string;
+    marketingText?: string;
+  };
   /** Absent when the portal service predates the preview catalogue. */
   preview?: PortalPreviewCatalogue;
 }
@@ -163,6 +201,17 @@ export interface PortalConfigUpdate {
   secureAccessEnabled?: boolean | null;
   /** Null = derive from configuration. Ignored by older portal services. */
   accessPolicy?: PortalAccessPolicy | null;
+  displayName?: string | null;
+  description?: string | null;
+  brandColor?: string | null;
+  brandAlignment?: string | null;
+  brandFooterEnabled?: boolean | null;
+  localesEnabled?: string[] | null;
+  termsText?: string | null;
+  privacyPolicyEnabled?: boolean | null;
+  privacyPolicyText?: string | null;
+  marketingEnabled?: boolean | null;
+  marketingText?: string | null;
 }
 
 export class PortalConfigError extends Error {
