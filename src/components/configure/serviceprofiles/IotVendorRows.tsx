@@ -1,9 +1,12 @@
 /**
- * Generic BLE Scan vendor filter rows (BUILD SPEC 1b #28). 1-5 rows, each
- * ANY or CUSTOM. A saved CUSTOM row shows a name button that re-opens the
- * inline editor (vendor select + name + Company ID + Bluetooth-SIG helper +
- * OK/Cancel). Delete shows only when >1 row; Add shows only on the last row
- * when its vendor != ANY and rows < 5 (IOT-GENERIC-SCAN-MULTI-COMPANY).
+ * Generic BLE Scan vendor filter rows (BUILD SPEC 1b #28 + Gateway 10.20
+ * vendorOptions). 1-5 rows, each Any / Aeroscout (935) / Chorus (64689) /
+ * Custom — the two named presets carry a fixed Bluetooth SIG company id and
+ * take no name, so only Custom opens the inline editor (vendor select + name
+ * + Company ID + Bluetooth-SIG helper + OK/Cancel). A saved CUSTOM row shows
+ * a name button that re-opens the editor. Delete shows only when >1 row; Add
+ * shows only on the last row when its vendor != ANY and rows < 5
+ * (IOT-GENERIC-SCAN-MULTI-COMPANY).
  */
 import React, { useEffect, useState } from 'react';
 import { ExternalLink, Plus, Trash2 } from 'lucide-react';
@@ -11,7 +14,37 @@ import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import type { GenericScanVendor } from '../../../types/configure';
-import { vendorDraftOk, vendorIdErr, vendorNameErr, type VendorDraft } from './iotModel';
+import {
+  IOT_VENDOR_OPTS,
+  iotVendorRow,
+  vendorDraftOk,
+  vendorIdErr,
+  vendorNameErr,
+  type VendorDraft,
+} from './iotModel';
+
+const VendorSelect = ({
+  value,
+  disabled,
+  onValueChange,
+}: {
+  value: string;
+  disabled?: boolean;
+  onValueChange: (v: string) => void;
+}) => (
+  <Select value={value} disabled={disabled} onValueChange={onValueChange}>
+    <SelectTrigger className="w-[160px]" aria-label="Vendor type">
+      <SelectValue />
+    </SelectTrigger>
+    <SelectContent>
+      {IOT_VENDOR_OPTS.map((o) => (
+        <SelectItem key={o.id} value={o.id}>
+          {o.label}
+        </SelectItem>
+      ))}
+    </SelectContent>
+  </Select>
+);
 
 const BLUETOOTH_SIG_URL =
   'https://www.bluetooth.com/specifications/assigned-numbers/company-identifiers/';
@@ -43,9 +76,9 @@ export function IotVendorRows({ vendors, readOnly, onChange, onEditingChange }: 
   const commit = () => {
     if (editIdx == null || !draft) return;
     const next: GenericScanVendor =
-      draft.vendor === 'ANY'
-        ? { vendor: 'ANY', id: -1, name: '' }
-        : { vendor: 'CUSTOM', name: draft.name, id: Number(draft.id) };
+      draft.vendor === 'CUSTOM'
+        ? { vendor: 'CUSTOM', name: draft.name, id: Number(draft.id) }
+        : iotVendorRow(draft.vendor);
     onChange(vendors.map((v, j) => (j === editIdx ? next : v)));
     cancel();
   };
@@ -69,15 +102,7 @@ export function IotVendorRows({ vendors, readOnly, onChange, onEditingChange }: 
             <div className="flex flex-wrap items-center gap-2">
               <span className="w-6 text-xs font-semibold text-muted-foreground">#{i + 1}</span>
               {editing && draft ? (
-                <Select value={draft.vendor} onValueChange={(v) => setDraft({ ...draft, vendor: v })}>
-                  <SelectTrigger className="w-[130px]" aria-label="Vendor type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ANY">ANY</SelectItem>
-                    <SelectItem value="CUSTOM">CUSTOM</SelectItem>
-                  </SelectContent>
-                </Select>
+                <VendorSelect value={draft.vendor} onValueChange={(v) => setDraft({ ...draft, vendor: v })} />
               ) : row.vendor === 'CUSTOM' ? (
                 <button
                   type="button"
@@ -88,19 +113,16 @@ export function IotVendorRows({ vendors, readOnly, onChange, onEditingChange }: 
                   {row.name || '(unnamed vendor)'}
                 </button>
               ) : (
-                <Select
-                  value="ANY"
+                <VendorSelect
+                  value={row.vendor || 'ANY'}
                   disabled={readOnly}
-                  onValueChange={(v) => v === 'CUSTOM' && beginEdit(i, { vendor: 'CUSTOM', name: '', id: -1 })}
-                >
-                  <SelectTrigger className="w-[130px]" aria-label="Vendor type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ANY">ANY</SelectItem>
-                    <SelectItem value="CUSTOM">CUSTOM</SelectItem>
-                  </SelectContent>
-                </Select>
+                  onValueChange={(v) => {
+                    // Presets commit directly (fixed id, no name); only Custom
+                    // opens the inline editor.
+                    if (v === 'CUSTOM') beginEdit(i, { vendor: 'CUSTOM', name: '', id: -1 });
+                    else onChange(vendors.map((x, j) => (j === i ? iotVendorRow(v) : x)));
+                  }}
+                />
               )}
 
               {editing && draft?.vendor === 'CUSTOM' && (

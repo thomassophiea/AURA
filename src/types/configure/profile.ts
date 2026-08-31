@@ -46,6 +46,8 @@ export interface ProfileRadio {
   maxProbeRty: number;
   rssOffset: number;
   atf: string;
+  /** Traffic Allocation Framework (Gateway 10.20) — boolean on the wire. */
+  taf?: boolean;
   maxDistance: number;
   inBandDiscovery: string;
   cbServiceId: string | null;
@@ -69,6 +71,25 @@ export interface ProfileWiredPort {
 export interface RadioIfEntry {
   serviceId: string;
   index: number;
+}
+
+/** Per-radio plan inside a supported operating mode (GET /v3/profiles/:id). */
+export interface SupportedOperatingModeRadio {
+  /** Radio index the plan applies to (matches radios[].radioIndex). */
+  id: number;
+  defaultProtocol: string;
+  /** Gateway radioBandsKeys id, e.g. 'BAND5HIGH'. */
+  band: string;
+  supportedProtocols: string[];
+}
+
+/**
+ * One entry of the per-platform operating-mode catalogue. Only the single-
+ * record GET returns it — the list endpoint serves `null` (Gateway 10.20).
+ */
+export interface SupportedOperatingMode {
+  id: string; // e.g. 'SENSOR_SERVICE_2_5_6'
+  radios: SupportedOperatingModeRadio[];
 }
 
 export interface ApProfile extends ResourceBase {
@@ -103,6 +124,13 @@ export interface ApProfile extends ResourceBase {
   psePower: string;
   edge: boolean;
   operatingMode: string;
+  /** Per-platform operating-mode catalogue; null on the list endpoint. */
+  supportedOperatingModes?: SupportedOperatingMode[] | null;
+  /**
+   * Selective DNS Interception FQDN (Gateway 10.20, resource key
+   * selective_dns). Rendered ungated by the Gateway.
+   */
+  selDnsIntercept?: string | null;
   smartPoll: SmartPollConfig;
   sensorChList: number[] | unknown[];
   airDefenseEssentials: boolean;

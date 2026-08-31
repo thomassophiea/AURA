@@ -23,12 +23,13 @@ import { Skeleton } from '../../ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '../../ui/tabs';
 import { ConfirmDialog } from '../_kit';
 import { getUserFriendlyMessage } from '../../../services/errorHandler';
+import { apiService } from '../../../services/api';
 import { profilesService } from '../../../services/configure';
 import type { ApDetail, ApProfile, SiteConfig } from '../../../types/configure';
 import { sitesService } from '../../../services/configure';
 import { apsData, type ApListRow } from './apsData';
 import { generalColumns, afcColumns } from './apColumns';
-import { ApActionsMenu } from './ApActionsMenu';
+import { ApActionsMenu, type ApMenuKey } from './ApActionsMenu';
 import { ApActionsModal, type ApActionKey } from './ApActionsModal';
 import { NewApModal } from './NewApModal';
 import { ApEditor } from './ApEditor';
@@ -44,6 +45,8 @@ export function ApsPage() {
   const [newOpen, setNewOpen] = useState(false);
   const [action, setAction] = useState<{ key: ApActionKey; label: string } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmReboot, setConfirmReboot] = useState(false);
+  const [rebooting, setRebooting] = useState(false);
   const [sites, setSites] = useState<SiteConfig[]>([]);
   const [profiles, setProfiles] = useState<ApProfile[]>([]);
   const gridRef = useRef<AGGridWrapperHandle>(null);
@@ -135,6 +138,35 @@ export function ApsPage() {
     }
   };
 
+  /* Menu routing: 'delete' and 'reboot' are wired to real endpoints via
+     confirmation dialogs; everything else opens the parameterized modal.
+     "Release to Cloud" is on the controller's menu but has no identifiable
+     endpoint in this codebase, so it is deliberately not offered. */
+  const handleMenuSelect = (key: ApMenuKey, label: string) => {
+    if (key === 'delete') setConfirmDelete(true);
+    else if (key === 'reboot') setConfirmReboot(true);
+    else setAction({ key, label });
+  };
+
+  /** Real reboot — POST /v1/aps/{serial}/reboot per selected AP. */
+  const handleReboot = async (targets: ApListRow[]) => {
+    setRebooting(true);
+    try {
+      for (const row of targets) {
+        try {
+          await apiService.rebootAP(row.serialNumber);
+          toast.success(`Reboot initiated for "${row.apName ?? row.serialNumber}"`);
+        } catch (err) {
+          toast.error(`Failed to reboot "${row.apName ?? row.serialNumber}"`, {
+            description: getUserFriendlyMessage(err),
+          });
+        }
+      }
+    } finally {
+      if (mounted.current) setRebooting(false);
+    }
+  };
+
   const handleDelete = async (targets: ApListRow[]) => {
     for (const row of targets) {
       try {
@@ -173,7 +205,7 @@ export function ApsPage() {
           <Input placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <ApActionsMenu selectedCount={selected.length} onSelect={(key, label) => setAction({ key, label })} />
+          <ApActionsMenu selectedCount={selected.length} onSelect={handleMenuSelect} />
           <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
@@ -247,6 +279,22 @@ export function ApsPage() {
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={confirmReboot}
+        onOpenChange={setConfirmReboot}
+        title={`Reboot ${selected.length} access point(s)?`}
+        description={`${selected
+          .map((r) => r.apName ?? r.serialNumber)
+          .slice(0, 3)
+          .join(', ')}${selected.length > 3 ? ` and ${selected.length - 3} more` : ''} will restart. All connected clients on these APs will be dropped until each AP rejoins the controller.`}
+        confirmLabel={rebooting ? 'Rebooting...' : 'Reboot'}
+        destructive
+        onConfirm={() => {
+          setConfirmReboot(false);
+          void handleReboot(selected);
+        }}
+      />
 
       <ConfirmDialog
         open={confirmDelete}

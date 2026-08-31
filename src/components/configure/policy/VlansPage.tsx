@@ -101,7 +101,6 @@ export function VlansPage() {
             const saved = await crud.save(payload as Partial<Topology>, id);
             if (saved) setEditor(null);
           }}
-          topologies={crud.items}
         />
       )}
     </>

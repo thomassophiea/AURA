@@ -2,7 +2,9 @@
  * WLAN editor - Associated Profiles tab: profiles x radios checkbox matrix
  * writing radioIfList. Gates: 6 GHz radios accept only WPA3 / OWE networks;
  * WPA3-Enterprise (192 Bits) locks rows whose platform lacks the WPA3-192
- * feature; create mode asks the user to save first.
+ * feature; SAE H2E Only locks rows whose platform lacks WPA3-H2E-ONLY (H2E
+ * is a hardware capability, not a preference); create mode asks the user to
+ * save first.
  */
 import React from 'react';
 import { Checkbox } from '../../ui/checkbox';
@@ -21,6 +23,8 @@ import type { AssignmentMatrix } from './useProfileAssignments';
 export interface WlanProfilesTabProps {
   wlanId: string | null;
   authType: WlanAuthType;
+  /** Active SAE method (WPA3-Personal); 'H2eOnly' locks non-H2E platforms. */
+  saeMethod?: string;
   profiles: ApProfile[];
   matrix: AssignmentMatrix;
   onToggle: (profileId: string, radioIndex: number) => void;
@@ -34,6 +38,7 @@ const is6GHz = (radio: ProfileRadio): boolean =>
 export function WlanProfilesTab({
   wlanId,
   authType,
+  saeMethod,
   profiles,
   matrix,
   onToggle,
@@ -47,6 +52,9 @@ export function WlanProfilesTab({
   }
 
   const requires192 = authType === 'WPA3-Enterprise (192 Bits)';
+  // H2E-Only is a hardware capability, not a preference: the Gateway offers
+  // only profiles carrying WPA3-H2E-ONLY once saeMethod is H2eOnly.
+  const requiresH2e = authType === 'WPA3-Personal' && saeMethod === 'H2eOnly';
   const sixGhzAllowed = allows6GHz(authType);
 
   return (
@@ -54,6 +62,8 @@ export function WlanProfilesTab({
       <p className="text-sm text-muted-foreground">
         6 GHz radios accept only WPA3 / OWE networks. WPA3-Enterprise (192 Bits) requires the
         WPA3-192 platform feature.
+        {requiresH2e &&
+          ' This network uses SAE H2E Only, so it can be assigned only to profiles whose platform supports H2E.'}
       </p>
       <div className="rounded-md border border-border">
         <Table>
@@ -76,14 +86,22 @@ export function WlanProfilesTab({
               </TableRow>
             )}
             {profiles.map((profile) => {
-              const rowLocked = requires192 && !(profile.features ?? []).includes('WPA3-192');
+              const features = profile.features ?? [];
+              const no192 = requires192 && !features.includes('WPA3-192');
+              const noH2e = requiresH2e && !features.includes('WPA3-H2E-ONLY');
+              const rowLocked = no192 || noH2e;
               return (
                 <TableRow key={profile.id} className={rowLocked ? 'opacity-50' : undefined}>
                   <TableCell>
                     {profile.name}
-                    {rowLocked && (
+                    {no192 && (
                       <span className="ml-2 text-xs text-muted-foreground">
                         WPA3-192 not supported
+                      </span>
+                    )}
+                    {noH2e && (
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        H2E not supported
                       </span>
                     )}
                   </TableCell>

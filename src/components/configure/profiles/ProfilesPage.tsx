@@ -11,7 +11,8 @@ import { toast } from 'sonner';
 import { Badge } from '../../ui/badge';
 import { ResourceGridPage, useResourceCrud } from '../_kit';
 import { cloneProfileForPlatform, profilesService } from '../../../services/configure';
-import { deriveOperationalMode, networkCount, platformCatalog } from './helpers';
+import { opModeText } from './constants';
+import { networkCount, platformCatalog } from './helpers';
 import { ProfileEditorSheet } from './ProfileEditorSheet';
 import { PlatformPickerDialog } from './dialogs/PlatformPickerDialog';
 import { CloneDialog } from './dialogs/CloneDialog';
@@ -35,8 +36,14 @@ export function ProfilesPage() {
   const platforms = useMemo(() => platformCatalog(items), [items]);
   const existingNamesFor = (exclude?: string) => names.filter((n) => n !== exclude);
 
-  const openEdit = (profile: ApProfile) => {
-    setEditing(profile);
+  const openEdit = async (profile: ApProfile) => {
+    // The list endpoint serves supportedOperatingModes as null; only the
+    // single-record GET carries the per-platform operating-mode catalogue
+    // (Gateway 10.20). Fall back to the list row if the fetch fails.
+    const full = profile.id
+      ? await profilesService.get(profile.id).catch(() => profile)
+      : profile;
+    setEditing(full);
     setIsNew(false);
     setSheetOpen(true);
   };
@@ -85,7 +92,9 @@ export function ProfilesPage() {
           <button
             type="button"
             className="flex items-center gap-2 text-left text-primary hover:underline"
-            onClick={() => p.data && openEdit(p.data)}
+            onClick={() => {
+              if (p.data) void openEdit(p.data);
+            }}
           >
             <Cpu className="h-4 w-4 text-muted-foreground" />
             {p.value}
@@ -98,7 +107,9 @@ export function ProfilesPage() {
         headerName: 'Operational Mode',
         flex: 1,
         minWidth: 150,
-        valueGetter: (p: { data?: ApProfile }) => (p.data ? deriveOperationalMode(p.data) : '—'),
+        // Gateway verbiage (operatingModes map): GENERIC → em dash (a real
+        // API value the Gateway never displays), unmapped ids → "Unknown".
+        valueGetter: (p: { data?: ApProfile }) => opModeText(p.data?.operatingMode),
       },
       {
         colId: 'radios',

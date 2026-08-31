@@ -131,7 +131,8 @@ export function MeshpointEditorSheet(props: MeshpointEditorSheetProps) {
                 <Input
                   id="mp-nt"
                   type="number"
-                  min={1}
+                  min={60}
+                  max={86400}
                   step={1}
                   value={form.neighborTimeout ?? 120}
                   onChange={(e) =>

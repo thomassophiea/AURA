@@ -1,8 +1,8 @@
 /**
  * Service Profiles landing (EPB-125 · specialized-profiles-parity.md). A
- * tabbed shell over the six specialized profile areas — IoT, RTLS, ESL,
- * Positioning, Analytics, Air Defense — each a full ResourceGridPage with its
- * own live CRUD editor. Mounted profiles are lazy per active tab.
+ * tabbed shell over the seven specialized profile areas — IoT, RTLS, ESL,
+ * Positioning, Analytics, Air Defense, ExtremeLocation — each a full
+ * ResourceGridPage with its own live CRUD editor. Mounted lazily per tab.
  */
 import React, { useState } from 'react';
 import { Layers } from 'lucide-react';
@@ -13,6 +13,7 @@ import { EslPage } from './EslPage';
 import { PositioningPage } from './PositioningPage';
 import { AnalyticsPage } from './AnalyticsPage';
 import { AdspPage } from './AdspPage';
+import { XLocationPage } from './XLocationPage';
 
 const TABS = [
   { value: 'iot', label: 'IoT', Page: IotPage },
@@ -21,6 +22,7 @@ const TABS = [
   { value: 'positioning', label: 'Positioning', Page: PositioningPage },
   { value: 'analytics', label: 'Analytics', Page: AnalyticsPage },
   { value: 'airdefense', label: 'Air Defense', Page: AdspPage },
+  { value: 'xlocation', label: 'ExtremeLocation', Page: XLocationPage },
 ] as const;
 
 export function ServiceProfilesPage() {

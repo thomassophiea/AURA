@@ -1,6 +1,7 @@
 /**
- * WLAN editor - Captive Portal tab: portal type enum (Internal / External /
- * ExtremeGuest / Guest Essentials / CWA), External identity + masked shared
+ * WLAN editor - Captive Portal tab: portal type enum (External / Guest
+ * Essentials for new records; a legacy Internal / EGuest / CWA value stays
+ * selectable without silent rewrite), External identity + masked shared
  * secret + required redirect URL, topology-gated portal connection, redirect
  * URL select with custom target, redirect ports, walled-garden rules and the
  * eGuestSettings editor (max 3 servers).
@@ -11,7 +12,7 @@ import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
 import { Switch } from '../../ui/switch';
 import { ArrayEditor, FieldRow, MaskedInput, Section } from '../_kit';
-import { WLAN_ENUMS } from './wlanModel';
+import { WLAN_ENUMS, portalTypeOptions } from './wlanModel';
 import type { EGuestSetting, WalledGardenRule } from './wlanForm';
 import {
   EnumSelect,
@@ -29,7 +30,9 @@ export function WlanCaptivePortalTab({ form, setForm, errors, refs }: WlanTabPro
   const patch = patchRecord(setForm);
   const setUi = patchUi(setForm);
   const cpOn = record.enableCaptivePortal;
-  const portalType = record.captivePortalType ?? 'Internal';
+  // PLM 2026-08-21: new guest WLANs default to External (the local CWP
+  // "Internal" portal is deprecated and never offered on new records).
+  const portalType = record.captivePortalType ?? 'External';
   const topology = refs.topologies.find((t) => t.id === record.defaultTopology);
   // Portal Connection only applies when the default topology is Bridged@AP or GRE.
   const showPortalConnection =
@@ -46,17 +49,30 @@ export function WlanCaptivePortalTab({ form, setForm, errors, refs }: WlanTabPro
           <Switch
             checked={cpOn}
             onCheckedChange={(v) =>
-              patch({ enableCaptivePortal: v, captivePortalType: v ? portalType : null })
+              // Only the flag flips (golden parity): a legacy portal type is
+              // never nulled on disable, so an off/on cycle cannot rewrite it.
+              patch(
+                v
+                  ? { enableCaptivePortal: true, captivePortalType: portalType }
+                  : { enableCaptivePortal: false }
+              )
             }
           />
         </FieldRow>
         {cpOn && (
-          <FieldRow label="Portal Type">
+          <FieldRow
+            label="Portal Type"
+            description={
+              portalType && !WLAN_ENUMS.portalType.some((o) => o.id === portalType)
+                ? 'This record carries a legacy portal type; it stays selectable and is never rewritten on save.'
+                : undefined
+            }
+          >
             <EnumSelect
               value={portalType}
-              options={WLAN_ENUMS.portalType}
+              options={portalTypeOptions(portalType)}
               onChange={(v) => patch({ captivePortalType: v })}
-              className="w-56"
+              className="w-72"
             />
           </FieldRow>
         )}

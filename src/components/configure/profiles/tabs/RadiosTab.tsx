@@ -1,19 +1,21 @@
 /**
- * Radios tab — Operating Mode (gated SOFTWARE-DEFINED-RADIOS), a per-radio
- * table (band / admin mode / protocol-role / client-bridge network) and a
- * per-radio Advanced button. Admin Mode locks for sensor radios; a dual-radio
- * alert shows when a non-BOTH-RADIOS-ON platform has both radios enabled.
+ * Radios tab — Operational Mode (gated SOFTWARE-DEFINED-RADIOS, options from
+ * the record's OWN supportedOperatingModes catalogue; choosing a mode
+ * re-plans the radios — Gateway 10.20), a per-radio table (band / admin mode /
+ * protocol-role / client-bridge network) and a per-radio Advanced button.
+ * Admin Mode locks for sensor radios; a dual-radio alert shows when a
+ * non-BOTH-RADIOS-ON platform has both radios enabled.
  */
 import React from 'react';
 import { AlertTriangle, KeyRound } from 'lucide-react';
 import { Button } from '../../../ui/button';
 import { PSelect } from '../controls';
-import { OPERATING_MODE_OPTS, RADIO_MODE_LABEL } from '../constants';
+import { OP_MODE_LABEL, RADIO_MODE_LABEL } from '../constants';
 import { bandOf } from '../helpers';
 import type { Opt, ProfileTabContext } from '../types';
 
 export function RadiosTab({ ctx }: { ctx: ProfileTabContext }) {
-  const { form, radios, F, pools, setField, updRadio, openRadioAdvanced, openClientBridge } = ctx;
+  const { form, radios, F, pools, setOperatingMode, updRadio, openRadioAdvanced, openClientBridge } = ctx;
 
   if (!radios.length) {
     return <p className="p-4 text-sm text-muted-foreground">This platform has no configurable radios.</p>;
@@ -24,6 +26,19 @@ export function RadiosTab({ ctx }: { ctx: ProfileTabContext }) {
   const dualAlert = !F('BOTH-RADIOS-ON') && radios.length >= 2 && radios[0].adminState && radios[1].adminState;
   const svcOpts: Opt[] = [{ id: '', label: '— None —' }, ...pools.services];
   const cols = `180px repeat(${radios.length}, minmax(150px, 1fr))`;
+
+  /* Operational Mode (resource key operational_mode) — gated on
+     SOFTWARE-DEFINED-RADIOS exactly as the Gateway gates it, options from the
+     record's OWN supportedOperatingModes (the per-platform catalogue returned
+     by GET /v3/profiles/:id), labels from the Gateway's operatingModes map.
+     Hidden when the catalogue is absent (list rows carry null). */
+  const opModeOpts: Opt[] = (form.supportedOperatingModes ?? []).map((m) => ({
+    id: m.id,
+    label: OP_MODE_LABEL[m.id] ?? m.id,
+  }));
+  const opModeValue = opModeOpts.some((o) => o.id === form.operatingMode)
+    ? form.operatingMode
+    : (opModeOpts[0]?.id ?? form.operatingMode);
 
   const Row = ({ label, cells }: { label: React.ReactNode; cells: React.ReactNode[] }) => (
     <div className="grid items-center border-t border-border py-3" style={{ gridTemplateColumns: cols }}>
@@ -38,15 +53,15 @@ export function RadiosTab({ ctx }: { ctx: ProfileTabContext }) {
 
   return (
     <div className="max-w-3xl space-y-4">
-      {F('SOFTWARE-DEFINED-RADIOS') && (
+      {F('SOFTWARE-DEFINED-RADIOS') && opModeOpts.length > 0 && (
         <div className="flex items-center gap-4">
-          <div className="text-sm font-medium">Operating Mode</div>
+          <div className="text-sm font-medium">Operational Mode</div>
           <PSelect
-            value={form.operatingMode || 'GENERIC'}
-            options={OPERATING_MODE_OPTS}
-            onChange={(v) => setField('operatingMode', v)}
+            value={opModeValue}
+            options={opModeOpts}
+            onChange={setOperatingMode}
             className="w-72"
-            ariaLabel="Operating mode"
+            ariaLabel="Operational mode"
           />
         </div>
       )}

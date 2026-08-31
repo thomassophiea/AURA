@@ -4,6 +4,10 @@ Enterprise network monitoring platform for Extreme Networks Campus Controller.
 
 @.aura-session.md
 
+## Knowledge base
+
+Before answering "does the controller support X" / "what does epic Y cover" / "is X in scope" questions, or building against a Campus Controller feature, check the **2027 Obsidian Vault** (`../../2027 Obsidian Vault/`, sibling of this repo's parent folder) — it holds the real controller feature catalog, the API index, the Ascend Jira epics, and the scope rulings (deprecated/deferred/owned-elsewhere) that this platform is built against. See the `ascend-vault` skill for the routing, or start at the vault's `00-Index.md`.
+
 
 ## Stack
 

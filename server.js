@@ -1855,6 +1855,13 @@ const proxyOptions = {
       proxyTrace(`path rewrite (platformmanager): ${path} -> ${rewritten}`);
       return rewritten;
     }
+    // Special case: /access-control endpoints should not have /management prefix
+    // /management/access-control/v1/... -> /access-control/v1/...
+    if (path.includes('/access-control/')) {
+      const rewritten = path.replace(/^\/management\/access-control/, '/access-control');
+      proxyTrace(`path rewrite (access-control): ${path} -> ${rewritten}`);
+      return rewritten;
+    }
     // All other paths keep /management prefix
     // /management/v1/services -> /management/v1/services
     proxyTrace(`path preserved: ${path}`);

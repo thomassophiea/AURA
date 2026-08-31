@@ -4,7 +4,13 @@
  * and profile-form validation.
  */
 import type { ApProfile, ProfileRadio, ProfileWiredPort } from '../../../types/configure';
-import { ADV_RADIO_FIELDS, ADV_RANGES, RADIO_MODE_LABEL } from './constants';
+import {
+  ADV_RADIO_FIELDS,
+  ADV_RANGES,
+  RADIO_BAND_TITLE,
+  RADIO_MODE_LABEL,
+  RE_SEL_DNS,
+} from './constants';
 import type { IfEntry, MeshIfEntry, ProfileMesh } from './types';
 
 /** Numeric range check tolerant of string inputs (matches controller inRange). */
@@ -56,17 +62,27 @@ export const bandOf = (r: ProfileRadio): string => {
   return ['2.4 GHz', '5 GHz', '6 GHz'][r.radioIndex - 1] || '';
 };
 
-/** Grid "Operational Mode" derived from the profile's radios. */
-export function deriveOperationalMode(p: ApProfile): string {
-  const radios = p.radios ?? [];
-  if (!radios.length) return '—';
-  const active = radios.filter((r) => r.adminState && r.mode !== 'off');
-  const hasSensor = radios.some((r) => r.mode === 'sensor');
-  const bands = active.filter((r) => r.mode !== 'sensor').map(bandOf).filter(Boolean);
-  const service = bands.length ? bands.join(' / ') : '';
-  if (hasSensor && service) return `Sensor + ${service}`;
-  if (hasSensor) return 'Sensor';
-  return service || 'Off';
+/**
+ * The Gateway's radio re-plan on an Operational Mode change (Gateway 10.20 —
+ * updateRadios() + setDropdownMode() + setRadioBandsTitles()). Mutates the
+ * DRAFT in place (call inside `mut`): each radio the chosen mode names gets
+ * its supportedModes replaced by that mode's supportedProtocols, a protocol
+ * the new mode disallows resets to its defaultProtocol, and the radio is
+ * re-titled from its band.
+ */
+export function replanRadios(draft: ApProfile, modeId: string): void {
+  draft.operatingMode = modeId;
+  const plan = (draft.supportedOperatingModes ?? []).find((m) => m.id === modeId);
+  if (!plan || !Array.isArray(plan.radios)) return;
+  (draft.radios ?? []).forEach((r) => {
+    const spec = plan.radios.find((x) => x.id === r.radioIndex);
+    if (!spec || !Array.isArray(spec.supportedProtocols) || !spec.supportedProtocols.length) return;
+    r.supportedModes = spec.supportedProtocols.slice();
+    if (r.supportedModes.indexOf(r.mode) < 0) r.mode = spec.defaultProtocol || '';
+    if (spec.band && RADIO_BAND_TITLE[spec.band]) {
+      r.radioName = `Radio ${r.radioIndex} - ${RADIO_BAND_TITLE[spec.band]}`;
+    }
+  });
 }
 
 /** Distinct networks bound across all radios (radioIfList serviceIds). */
@@ -116,5 +132,15 @@ export function hasDeviceAdvErrors(form: ApProfile, F: (t: string) => boolean): 
   }
   if (getIn(form, 'peapUsername.selection') === 'Custom' && !getIn(form, 'peapUsername.custom')) return true;
   if (getIn(form, 'peapPassword.selection') === 'Custom' && !getIn(form, 'peapPassword.custom')) return true;
+  if (selDnsError(form.selDnsIntercept)) return true;
   return false;
+}
+
+/**
+ * Selective DNS Interception (Gateway 10.20): empty is valid; a non-empty
+ * value must match the controller's own FQDN ng-pattern.
+ */
+export function selDnsError(value: string | null | undefined): boolean {
+  const v = String(value ?? '');
+  return v !== '' && !RE_SEL_DNS.test(v);
 }

@@ -11,12 +11,14 @@ import { AccessControlTab } from './AccessControlTab';
 import { SnmpTab } from './SnmpTab';
 import { GlobalSettingsTab } from './GlobalSettingsTab';
 import { AdministratorsTab } from './AdministratorsTab';
+import { AvailabilityTab } from './AvailabilityTab';
 
 const TABS = [
   { value: 'access', label: 'Access Control' },
   { value: 'snmp', label: 'SNMP' },
   { value: 'global', label: 'Global Settings' },
   { value: 'admins', label: 'Administrators' },
+  { value: 'availability', label: 'Availability' },
 ] as const;
 
 export function SystemPage() {
@@ -55,6 +57,9 @@ export function SystemPage() {
         {/* AdministratorsTab renders its own ResourceGridPage padding. */}
         <TabsContent value="admins">
           <AdministratorsTab />
+        </TabsContent>
+        <TabsContent value="availability" className="px-6 pb-6">
+          <AvailabilityTab />
         </TabsContent>
       </Tabs>
     </div>

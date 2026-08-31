@@ -14,6 +14,8 @@ export interface SiteAp {
   apName: string;
   hardwareType: string;
   hostSite: string;
+  /** Live state (e.g. InService) — served by /v1/aps/query only; '' elsewhere. */
+  status: string;
 }
 
 interface RawAp {
@@ -25,6 +27,7 @@ interface RawAp {
   hostSite?: string;
   siteName?: string;
   site?: string;
+  status?: string;
 }
 
 function normalize(raw: RawAp): SiteAp {
@@ -33,11 +36,13 @@ function normalize(raw: RawAp): SiteAp {
     apName: raw.apName ?? raw.name ?? raw.serialNumber ?? '',
     hardwareType: raw.hardwareType ?? raw.model ?? '',
     hostSite: raw.hostSite ?? raw.siteName ?? raw.site ?? '',
+    status: raw.status ?? '',
   };
 }
 
 async function fetchAps(): Promise<SiteAp[]> {
-  for (const path of ['/v1/aps', '/v3/aps']) {
+  // /v1/aps/query carries the live status column; plain /v1/aps does not.
+  for (const path of ['/v1/aps/query', '/v1/aps', '/v3/aps']) {
     try {
       const payload = await configureRequest<unknown>(path);
       return unwrapList<RawAp>(payload)

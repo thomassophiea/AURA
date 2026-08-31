@@ -16,6 +16,7 @@ import { AP_NAME_RE, RADIO_MODE_LABEL, apBandOf, inRange, hasFeature } from './a
 import { ApGeneralTab } from './ApGeneralTab';
 import { ApRadiosTab } from './ApRadiosTab';
 import { ApWiredPortsTab } from './ApWiredPortsTab';
+import { ApLocationInfoTab } from './ApLocationInfoTab';
 import { ApMeshpointsTab } from './ApMeshpointsTab';
 import { ApUwbTab } from './ApUwbTab';
 import { ApAfcTab } from './ApAfcTab';
@@ -82,6 +83,9 @@ export function ApEditor({ open, onOpenChange, initial, saving, onSubmit, onDele
 
   const hasMesh = (form.meshpoints ?? []).length > 0;
   const hasUwb = hasFeature(form.features, 'UWB-ELECTION');
+  // Location Info (FTM / 802.11MC) sits after Wired Ports and only on an AP
+  // that carries the 802.11MC capability — the same gate ap.html uses.
+  const hasFtm = hasFeature(form.features, '802.11MC');
 
   return (
     <>
@@ -131,6 +135,7 @@ export function ApEditor({ open, onOpenChange, initial, saving, onSubmit, onDele
               <TabsTrigger value="general">General</TabsTrigger>
               <TabsTrigger value="radios">Radios</TabsTrigger>
               <TabsTrigger value="wired">Wired Ports</TabsTrigger>
+              {hasFtm && <TabsTrigger value="location">Location Info</TabsTrigger>}
               {hasMesh && <TabsTrigger value="mesh">Meshpoints</TabsTrigger>}
               {hasUwb && <TabsTrigger value="uwb">UWB</TabsTrigger>}
               <TabsTrigger value="afc">AFC</TabsTrigger>
@@ -161,6 +166,11 @@ export function ApEditor({ open, onOpenChange, initial, saving, onSubmit, onDele
             <TabsContent value="wired" className="pt-4">
               <ApWiredPortsTab form={form} upd={upd} />
             </TabsContent>
+            {hasFtm && (
+              <TabsContent value="location" className="pt-4">
+                <ApLocationInfoTab form={form} upd={upd} />
+              </TabsContent>
+            )}
             {hasMesh && (
               <TabsContent value="mesh" className="pt-4">
                 <ApMeshpointsTab form={form} refData={refData} onEditOverrides={setMeshAdv} />

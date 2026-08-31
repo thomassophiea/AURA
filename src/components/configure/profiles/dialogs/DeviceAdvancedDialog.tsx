@@ -15,9 +15,10 @@ import {
   LED_STATUS_OPTS,
   PEAP_OPTS,
   SECURE_TUNNEL_OPTS,
+  SEL_DNS_HINT,
   SMART_POLL_INTERVAL_OPTS,
 } from '../constants';
-import { getIn, inRange, parseChannelList } from '../helpers';
+import { getIn, inRange, parseChannelList, selDnsError } from '../helpers';
 import type { Opt } from '../types';
 import type { ApProfile, SmartPollConfig } from '../../../../types/configure';
 
@@ -42,6 +43,7 @@ export function DeviceAdvancedDialog({ open, form, F, setPath, onClose }: Device
       ? `Valid range 1 to ${sp.interval || 300}`
       : null;
   const spTargetsErr = F('SMART-POLL') && sp.enabled && (sp.targets ?? []).length > 10 ? 'Maximum 10 targets' : null;
+  const selDnsErr = selDnsError(form.selDnsIntercept) ? SEL_DNS_HINT : null;
   const peapUErr = getIn(form, 'peapUsername.selection') === 'Custom' && !getIn(form, 'peapUsername.custom') ? 'Custom username is required' : null;
   const peapPErr = getIn(form, 'peapPassword.selection') === 'Custom' && !getIn(form, 'peapPassword.custom') ? 'Custom password is required' : null;
 
@@ -113,6 +115,16 @@ export function DeviceAdvancedDialog({ open, form, F, setPath, onClose }: Device
             </LabelRow>
           )}
           {F('LED-CONTROL') && <LabelRow label="LED Status" labelWidth={LW}>{sel('ledStatus', LED_STATUS_OPTS, 'w-32')}</LabelRow>}
+          {/* Gateway 10.20 — resource key selective_dns = "Selective DNS
+              Interception". The Gateway renders it straight after LED Status
+              with NO feature gate; helper text is selective_dns_tooltip
+              verbatim and the pattern is the controller's own FQDN regex. */}
+          <LabelRow label="Selective DNS Interception" labelWidth={LW} error={selDnsErr}>
+            <div className="space-y-1">
+              {text('selDnsIntercept', 'example.com')}
+              <p className="text-xs text-muted-foreground">{SEL_DNS_HINT}</p>
+            </div>
+          </LabelRow>
           <LabelRow label="PEAP Username" labelWidth={LW} error={peapUErr}>
             <div className="flex items-center gap-2">
               {sel('peapUsername.selection', PEAP_OPTS, 'w-40')}

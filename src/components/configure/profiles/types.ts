@@ -79,6 +79,8 @@ export interface ProfileTabContext {
   pools: RefPools;
   setField: (key: string, value: unknown) => void;
   setPath: (path: string, value: unknown) => void;
+  /** Operational Mode change — re-plans the radios (Gateway 10.20). */
+  setOperatingMode: (modeId: string) => void;
   updRadio: (index: number, key: string, value: unknown) => void;
   toggleInArr: (key: string, id: string) => void;
   /** Deep-clone mutate escape hatch for array edits. */

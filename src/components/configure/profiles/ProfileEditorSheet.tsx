@@ -17,6 +17,7 @@ import {
   hasDeviceAdvErrors,
   meshpointsOf,
   radioRangeErrors,
+  replanRadios,
   wiredPortsVisible,
 } from './helpers';
 import { setIn } from './helpers';
@@ -86,6 +87,9 @@ export function ProfileEditorSheet({
     setForm((prev) => setIn(prev, path, value));
     setDirty(true);
   };
+  /* Gateway 10.20: an Operational Mode change RE-PLANS the radios
+     (updateRadios + setDropdownMode + setRadioBandsTitles). */
+  const setOperatingMode = (modeId: string) => mut((c) => replanRadios(c, modeId));
   const updRadio = (index: number, key: string, value: unknown) =>
     mut((c) => {
       (c.radios[index] as unknown as Record<string, unknown>)[key] = value;
@@ -146,6 +150,7 @@ export function ProfileEditorSheet({
     pools,
     setField,
     setPath,
+    setOperatingMode,
     updRadio,
     toggleInArr,
     mut,

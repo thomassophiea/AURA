@@ -25,11 +25,14 @@ import {
   IOT_APPS_BEACON,
   IOT_APPS_SCAN,
   IOT_FN_OPTS,
+  IOT_MULTI_APPS,
   adaptIot,
   fnOfApp,
   toIotPayload,
+  toggleIotApp,
   validateIot,
 } from './iotModel';
+import { IotMultiAppBody } from './IotMultiAppBody';
 import { IotVendorRows } from './IotVendorRows';
 import { IotWhitelistModal, type WhitelistEntry } from './IotWhitelistModal';
 
@@ -55,9 +58,27 @@ export interface IotEditorProps {
   rows: NamedRecord[];
   saving: boolean;
   onSave: (payload: Partial<IotProfile>, id?: string) => void | Promise<void>;
+  /**
+   * Union of the deployment's AP-profile feature tags. The Gateway swaps the
+   * single-application editor for the multi-application model when the AP
+   * profile advertises IOT-MULTI-APP; AURA edits IoT profiles standalone, so
+   * the capability is read across the AP profiles (any profile advertising it
+   * offers the model). Per-application availability follows the Gateway's own
+   * per-app gates the same way.
+   */
+  apFeatures?: string[];
 }
 
-export function IotEditor({ open, onOpenChange, record, seed, rows, saving, onSave }: IotEditorProps) {
+export function IotEditor({
+  open,
+  onOpenChange,
+  record,
+  seed,
+  rows,
+  saving,
+  onSave,
+  apFeatures = [],
+}: IotEditorProps) {
   const isNew = record == null;
   const ro = record?.canEdit === false;
   const [form, setForm] = useState<IotProfile>(() =>
@@ -72,9 +93,16 @@ export function IotEditor({ open, onOpenChange, record, seed, rows, saving, onSa
   const [wlOpen, setWlOpen] = useState(false);
 
   const fn = fnOfApp(form.appId);
+  /* IOT-MULTI-APP (Gateway 10.20): the multi-application model replaces the
+     Function/Application pair when any AP profile advertises the capability. */
+  const multi = apFeatures.indexOf('IOT-MULTI-APP') >= 0;
+  const availApps = useMemo(
+    () => IOT_MULTI_APPS.filter((a) => apFeatures.indexOf(a.flag) >= 0),
+    [apFeatures]
+  );
   const errs = useMemo(
-    () => validateIot(form, rows, { fwdI, fwdE, vendorEditing }),
-    [form, rows, fwdI, fwdE, vendorEditing]
+    () => validateIot(form, rows, { fwdI, fwdE, vendorEditing, multi }),
+    [form, rows, fwdI, fwdE, vendorEditing, multi]
   );
   const valid = Object.values(errs).every((e) => !e) && !ro;
 
@@ -83,6 +111,16 @@ export function IotEditor({ open, onOpenChange, record, seed, rows, saving, onSa
     setForm((p) => ({ ...p, [key]: { ...(p[key] as object), ...patch } }));
   }
   const setFn = (v: string) => upd({ appId: FIRST_APP_OF_FN[v as keyof typeof FIRST_APP_OF_FN] });
+  const toggleApp = (id: string) => setForm((p) => toggleIotApp(p, id));
+
+  const vendorRows = (
+    <IotVendorRows
+      vendors={(form.genericScan as GenericScan).vendors}
+      readOnly={ro}
+      onEditingChange={setVendorEditing}
+      onChange={(vendors) => updSub('genericScan', { vendors } as Partial<GenericScan>)}
+    />
+  );
 
   const scanGroups = (root: ScanKey, hasUuid: boolean, fwd: boolean, setFwd?: (v: boolean) => void) => {
     const s = (form[root] ?? {}) as Partial<IBeaconScan>;
@@ -110,13 +148,7 @@ export function IotEditor({ open, onOpenChange, record, seed, rows, saving, onSa
             <Input type="number" disabled={ro} value={Number.isFinite(s.minRSS) ? s.minRSS : ''}
               onChange={(e) => updSub(root, { minRSS: numVal(e.target.value) })} className="max-w-[160px]" />
           </FieldRow>
-          {root === 'genericScan' && (
-            <FieldRow label="Vendors">
-              <IotVendorRows vendors={(form.genericScan as GenericScan).vendors} readOnly={ro}
-                onEditingChange={setVendorEditing}
-                onChange={(vendors) => updSub('genericScan', { vendors } as Partial<GenericScan>)} />
-            </FieldRow>
-          )}
+          {root === 'genericScan' && <FieldRow label="Vendors">{vendorRows}</FieldRow>}
         </Group>
         <Group title="Destination">
           {setFwd && (
@@ -225,44 +257,59 @@ export function IotEditor({ open, onOpenChange, record, seed, rows, saving, onSa
         onOpenChange={onOpenChange}
         title={isNew ? 'Create IoT Profile' : form.name || 'Edit IoT Profile'}
         description="IoT profile (/v3/iotprofile)"
-        width={760}
+        width={multi ? 920 : 760}
         dirty={dirty}
         valid={valid}
         saving={saving}
-        onSave={() => onSave(toIotPayload(form, fwdI, fwdE), record?.id)}
+        onSave={() => onSave(toIotPayload(form, fwdI, fwdE, multi), record?.id)}
       >
-        <div className="max-w-[640px] space-y-4">
+        <div className={`${multi ? 'max-w-[820px]' : 'max-w-[640px]'} space-y-4`}>
           <FieldRow label="Profile Name" htmlFor="iot-name" error={dirty ? errs.name : null} required>
             <Input id="iot-name" disabled={ro} value={form.name ?? ''}
               onChange={(e) => upd({ name: e.target.value })} className="max-w-[340px]" />
           </FieldRow>
-          <FieldRow label="Function" required>
-            <Select value={fn} disabled={ro} onValueChange={setFn}>
-              <SelectTrigger className="max-w-[240px]" aria-label="Function">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {IOT_FN_OPTS.map((o) => (
-                  <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FieldRow>
-          {fn !== 'threadGateway' && (
-            <FieldRow label="Application" required>
-              <Select value={form.appId} disabled={ro} onValueChange={(v) => upd({ appId: v })}>
-                <SelectTrigger className="max-w-[240px]" aria-label="Application">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(fn === 'bleBeacon' ? IOT_APPS_BEACON : IOT_APPS_SCAN).map((o) => (
-                    <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FieldRow>
+          {multi ? (
+            <IotMultiAppBody
+              form={form}
+              errs={errs}
+              readOnly={ro}
+              availApps={availApps}
+              upd={upd}
+              updSub={(key, patch) => updSub(key, patch as never)}
+              toggleApp={toggleApp}
+              vendorRows={vendorRows}
+            />
+          ) : (
+            <>
+              <FieldRow label="Function" required>
+                <Select value={fn} disabled={ro} onValueChange={setFn}>
+                  <SelectTrigger className="max-w-[240px]" aria-label="Function">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {IOT_FN_OPTS.map((o) => (
+                      <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FieldRow>
+              {fn !== 'threadGateway' && (
+                <FieldRow label="Application" required>
+                  <Select value={form.appId} disabled={ro} onValueChange={(v) => upd({ appId: v })}>
+                    <SelectTrigger className="max-w-[240px]" aria-label="Application">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(fn === 'bleBeacon' ? IOT_APPS_BEACON : IOT_APPS_SCAN).map((o) => (
+                        <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FieldRow>
+              )}
+              <div className="space-y-4 pt-1">{modeBody}</div>
+            </>
           )}
-          <div className="space-y-4 pt-1">{modeBody}</div>
         </div>
       </EditorSheet>
 

@@ -7,10 +7,14 @@
  *  - Bridged@AC: Port select (vlanMapToEsa) and the ONLY mode with Layer 3
  *    (IP/CIDR/FQDN, device registration, mgmt traffic, certificates, DHCP
  *    None/Relay/Local with the Configure dialogs)
- *  - GRE: concentrators table (max 3) + Load Balance (concentratorsSelection)
+ *  - GRE: existing concentrators render READ-ONLY with a Legacy Configuration
+ *    warning — Tunnel Concentrators are deprecated, no authoring surface (§7a)
+ *  - Peer Address (foreignIpAddress) on a paired appliance — shown for every
+ *    mode but Bridged@AP, required on Bridged@AC with Layer 3 (the Gateway's
+ *    own gate); pairing state loads once per editor open via isPaired()
  *  - Advanced dialog for locally-proxied topologies (multicast + mgmt ACL)
  */
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Info } from 'lucide-react';
 import { Button } from '../../ui/button';
 import {
@@ -31,10 +35,17 @@ import { DhcpLocalDialog, DhcpRelayDialog } from './VlanDhcpDialogs';
 import { VlanAdvancedDialog } from './VlanAdvancedDialog';
 import { VlanGreSection } from './VlanGreSection';
 import { DHCP_MODES, PHYS_IFACES, TOPOLOGY_MODES } from './constants';
-import { fmtMode, isInternalMode, topologyErrors } from './policyUtils';
+import {
+  fmtMode,
+  isInternalMode,
+  peerAddressApplies,
+  peerAddressError,
+  peerBlockVisible,
+  topologyErrors,
+} from './policyUtils';
 import { useDraft } from './useDraft';
-import type { GreConcentratorRow, TopologyDraft } from './localTypes';
-import type { Topology } from '../../../types/configure';
+import type { TopologyDraft } from './localTypes';
+import { isPaired } from '../../../services/configure/availabilityService';
 
 export interface VlanEditorProps {
   open: boolean;
@@ -44,8 +55,6 @@ export interface VlanEditorProps {
   isNew: boolean;
   saving: boolean;
   onSubmit: (payload: TopologyDraft, id?: string) => void | Promise<void>;
-  /** All topologies — used to offer existing GRE concentrators as a pool. */
-  topologies?: Topology[];
 }
 
 export function VlanEditor({
@@ -55,31 +64,33 @@ export function VlanEditor({
   isNew,
   saving,
   onSubmit,
-  topologies = [],
 }: VlanEditorProps) {
   const { form, upd, dirty } = useDraft<TopologyDraft>(initial);
   const [dialog, setDialog] = useState<'relay' | 'local' | 'adv' | 'cert' | null>(null);
+
+  /* HA pairing gates the Peer Address block — loaded once per editor open
+     (isPaired() is cached in the service; no polling). */
+  const [paired, setPaired] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    void isPaired().then((v) => {
+      if (alive) setPaired(v);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const canEdit = form.canEdit !== false;
   const mode = String(form.mode || 'BridgedAtAp');
   const internal = isInternalMode(mode);
   const l3Capable = mode === 'BridgedAtAc';
   const l3On = l3Capable && form.l3Presence === true;
+  const peerApplies = peerAddressApplies(paired, form);
 
-  const errs = topologyErrors(form);
+  const errs = { ...topologyErrors(form), ...peerAddressError(paired, form) };
   const valid = Object.keys(errs).length === 0;
   const l3Valid = l3On && !errs.ip && !errs.cidr;
-
-  /* GRE concentrator pool derived from all topologies' concentrators. */
-  const knownConcentrators = useMemo(() => {
-    const seen = new Map<string, GreConcentratorRow>();
-    for (const t of topologies) {
-      for (const c of (t.concentrators as GreConcentratorRow[] | undefined) ?? []) {
-        if (c?.name && !seen.has(c.name)) seen.set(c.name, c);
-      }
-    }
-    return [...seen.values()];
-  }, [topologies]);
 
   return (
     <>
@@ -214,12 +225,7 @@ export function VlanEditor({
 
           {mode === 'Gre' && (
             <Section title="Tunnel Concentrators">
-              <VlanGreSection
-                form={form}
-                upd={upd}
-                knownConcentrators={knownConcentrators}
-                disabled={!canEdit}
-              />
+              <VlanGreSection form={form} />
             </Section>
           )}
 
@@ -246,7 +252,7 @@ export function VlanEditor({
                   <FieldRow label="CIDR" required error={errs.cidr}>
                     <NumInput
                       value={(form.cidr as number) ?? ''}
-                      min={1}
+                      min={0}
                       max={32}
                       placeholder="24"
                       onChange={(v) => upd('cidr', v)}
@@ -318,6 +324,36 @@ export function VlanEditor({
                     </div>
                   </FieldRow>
                 </>
+              )}
+            </Section>
+          )}
+
+          {/* ── Peer Address — paired appliances only, and never on Bridged@AP
+              (topology.html ng-if="paired && topology.mode !== 'BridgedAtAp'").
+              The address itself belongs to the Bridged@AC + Layer 3 case; on
+              the other modes the Gateway shows the block without an input. ── */}
+          {peerBlockVisible(paired, form) && (
+            <Section title="Peer Address">
+              {peerApplies ? (
+                <FieldRow
+                  label="IP Address"
+                  required
+                  error={errs.peer}
+                  description="The Layer 3 address this VLAN carries on the paired appliance."
+                >
+                  <Input
+                    value={String(form.foreignIpAddress ?? '')}
+                    placeholder="10.0.0.2"
+                    onChange={(e) => upd('foreignIpAddress', e.target.value)}
+                    className="w-56"
+                  />
+                </FieldRow>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {mode === 'BridgedAtAc'
+                    ? 'Enable Layer 3 to give this VLAN a peer address on the paired appliance.'
+                    : 'A peer address applies to Bridged@AC topologies with Layer 3.'}
+                </p>
               )}
             </Section>
           )}

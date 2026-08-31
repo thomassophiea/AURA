@@ -45,11 +45,56 @@ export const PROFILE_TABS = [
 ] as const;
 export type ProfileTab = (typeof PROFILE_TABS)[number];
 
-export const OPERATING_MODE_OPTS: Opt[] = [
-  { id: 'GENERIC', label: 'Generic' },
-  { id: 'SERVICE_2_5_6', label: '2.4 / 5 / 6 GHz Service' },
-  { id: 'SENSOR_SERVICE_2_5_6', label: 'Sensor + 2.4 / 5 / 6 GHz Service' },
-];
+/**
+ * The Gateway's own operatingModes map (profile.directive, 10.20). Note that
+ * SERVICE_2_5_6 and SENSOR_SERVICE_2_5_6 are BOTH plain "2.4/5/6 GHz" —
+ * controller-exact wording, not a defect. GENERIC has no entry: it means
+ * "not software-defined" and the Gateway never displays it (non-SDR platforms
+ * hide the control entirely).
+ */
+export const OP_MODE_LABEL: Record<string, string> = {
+  SERVICE_2_5_6: '2.4/5/6 GHz',
+  SENSOR_SERVICE_5_6: '5/6 GHz + Sensor',
+  SERVICE_5L_5H_6: '5L/5H/6 GHz',
+  SENSOR_SERVICE_5_2: '2.4/5 GHz + Sensor',
+  SERVICE_5L_5H_2: '2.4/5L/5H GHz',
+  SERVICE_6L_5_6H: '5/6L/6H GHz',
+  SENSOR_SERVICE_2_5_6: '2.4/5/6 GHz',
+  SENSOR_SERVICE_2_5H_5L: '2.4/5H/5L GHz',
+  SERVICE_2_5: '2.4/5 GHz',
+  SERVICE_5_6: '5/6 GHz',
+  SERVICE_5L_5H: '5L/5H GHz',
+  SERVICE_2_6: '2.4/6 GHz',
+};
+
+/** The Gateway's radioBandsKeys — band id → radio title suffix. */
+export const RADIO_BAND_TITLE: Record<string, string> = {
+  BANDNONE: 'Sensor',
+  BAND2: '2.4 GHz',
+  BAND5: '5 GHz',
+  BAND5LOW: '5 GHz L',
+  BAND5HIGH: '5 GHz H',
+  BAND6: '6 GHz',
+  BAND6LOW: '6 GHz L',
+  BAND6HIGH: '6 GHz H',
+};
+
+/**
+ * List/grid formatting for operatingMode: Gateway map value, GENERIC renders
+ * an em dash (real API value the Gateway never displays), any other unmapped
+ * id renders "Unknown" (enhanceOperationModes fallback).
+ */
+export const opModeText = (id: string | null | undefined): string => {
+  if (!id) return '';
+  if (OP_MODE_LABEL[id]) return OP_MODE_LABEL[id];
+  return id === 'GENERIC' ? '—' : 'Unknown';
+};
+
+/** The controller's ng-pattern on selDnsIntercept (FQDN), Gateway 10.20. */
+export const RE_SEL_DNS = /^(?=.{1,253}$)(?!-)(?:[a-zA-Z0-9-]{1,63}\.)+[a-zA-Z]{2,63}$/;
+/** selective_dns_tooltip, verbatim from the Gateway resource bundle. */
+export const SEL_DNS_HINT =
+  'Allowed characters: letters, numbers, hyphen (-) and dot (.). Length: 1-253 characters.';
 
 /* radio band/mode predicates (add-edit-profile.html mode gates) */
 export const IS_24G_MODE = (m: string) =>
@@ -98,9 +143,10 @@ export interface AdvRadioField {
 const opt = (ids: string[]): Opt[] => ids.map((id) => ({ id, label: id }));
 
 /**
- * Full radioAdvancedProfile.html per-radio field set (29 controls). Option ids
- * beyond the live values follow controller naming; the ofdma/mc2uc/txBf/gi/
- * pwrMode6 id lists are controller-exact (enum bundle).
+ * Full radioAdvancedProfile.html per-radio field set. Option ids beyond the
+ * live values follow controller naming; the ofdma/mc2uc/gi/pwrMode6 id lists
+ * are controller-exact (enum bundle). Beamforming (txBf) is intentionally
+ * absent (PLM 2026-08-26 — round-trip the field, never author it).
  */
 export const ADV_RADIO_FIELDS: AdvRadioField[] = [
   { key: 'ocsChList', label: 'OCS Channels', type: 'chlist', show: (_r, F) => F('OCS') },
@@ -118,19 +164,20 @@ export const ADV_RADIO_FIELDS: AdvRadioField[] = [
     show: (_r, F) => F('CELL-SIZE-CONTROL'),
   },
   { key: 'atf', label: 'Airtime Fairness Mode', type: opt(['Off', 'On']), show: (_r, F) => F('CELL-SIZE-CONTROL') },
-  { key: 'maxDistance', label: 'Maximum Distance [Meters]', type: 'num', show: (_r, F) => F('CELL-SIZE-CONTROL') },
+  /* Gateway 10.20 — Traffic Allocation Framework. add-edit-profile.html
+     renders it immediately after Airtime Fairness behind the same
+     CELL-SIZE-CONTROL gate; on the wire it is radios[].taf, a boolean. */
   {
-    key: 'txBf',
-    label: 'Beamforming',
-    type: [
-      { id: 'disabled', label: 'Disabled' },
-      { id: 'suMimo', label: 'TX SU-MIMO' },
-      { id: 'muMimo', label: 'TX MU-MIMO' },
-      { id: 'ulMuMimo', label: 'UL MU-MIMO' },
-      { id: 'dlUlMuMimo', label: 'DL & UL MU-MIMO' },
-    ],
-    show: () => true,
+    key: 'taf',
+    label: 'Traffic Allocation Framework (TAF)',
+    type: 'bool',
+    show: (_r, F) => F('CELL-SIZE-CONTROL'),
   },
+  { key: 'maxDistance', label: 'Maximum Distance [Meters]', type: 'num', show: (_r, F) => F('CELL-SIZE-CONTROL') },
+  /* Beamforming (txBf) — REMOVED by PLM ruling 2026-08-26: Beamforming
+     configuration stays on the controller and is not authored here. The txBf
+     FIELD stays on ProfileRadio records as round-trip payload (never strip it
+     on save); only the control is gone. Do not reintroduce a txBf row. */
   {
     key: 'radioShare',
     label: 'Radio Share Mode',

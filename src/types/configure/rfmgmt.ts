@@ -76,6 +76,13 @@ export interface SmartRfCoverageHoleRecovery {
   }>;
 }
 
+/** Smart RF Auto Sensor (Gateway 10.20) — live shape on /v3/rfmgmt records. */
+export interface SmartRfAutoSensor {
+  algorithm: string; // 'SPARSE' | 'DENSE'
+  band: string; // 'Band5' | 'Band24' | 'Band6'
+  trigger: string; // 'AUTO' | 'MANUAL'
+}
+
 export interface SmartRfConfig {
   basic: SmartRfBasic;
   powerAndChannel: { bandSettings: RfPowerChannelBandSetting[] };
@@ -83,6 +90,8 @@ export interface SmartRfConfig {
   neighbourRecovery: SmartRfNeighbourRecovery;
   interferenceRecovery: SmartRfInterferenceRecovery;
   coverageHoleRecovery: SmartRfCoverageHoleRecovery;
+  /** Present on 10.20 records; optional so older captures still type-check. */
+  autoSensor?: SmartRfAutoSensor;
 }
 
 export interface AcsInterferenceRecoveryBandSetting {

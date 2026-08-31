@@ -149,6 +149,8 @@ export function validateSite(form: SiteConfig, ctx: SiteValidationCtx): Record<s
   const name = String(form.siteName ?? '').trim();
   if (!name) errs.name = 'Site name is required';
   else if (!SITE_NAME_RE.test(form.siteName)) errs.name = 'Name contains invalid characters';
+  // OpenAPI SiteElement.siteName: minLength 1, maxLength 64 (config-en5.js relocation).
+  else if (form.siteName.length > 64) errs.name = 'Site name must be at most 64 characters';
   const coord = form.treeNode?.mapCoordinates;
   if (coord && !LATLONG_RE.test(coord))
     errs.coord = 'Enter a valid "latitude, longitude" (e.g. 37.40, -121.95)';

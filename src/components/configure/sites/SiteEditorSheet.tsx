@@ -1,9 +1,11 @@
 /**
- * Site editor drawer. Six tabs (General / Device Groups / Switches / SNMP /
- * Allow-Deny / Advanced) over the live v3 site record; identity + Site Mode in
- * the header (mode immutable after create). Save mirrors country into
+ * Site editor drawer. Eight tabs (General / Location / Device Groups /
+ * Access Points / Switches / SNMP / Allow-Deny / Advanced) over the live v3
+ * site record; Site Mode is create-time-only. Save mirrors country into
  * treeNode.country. Clone runs a name modal then persists a duplicate; Delete
- * is confirm-gated and honors canDelete.
+ * is confirm-gated and honors canDelete. Floor Plans (golden placeholder) and
+ * Variables (design-side extension, no controller backend) are deliberately
+ * not represented.
  */
 import React, { useMemo, useRef, useState } from 'react';
 import { Button } from '../../ui/button';
@@ -16,7 +18,9 @@ import type { SiteConfig } from '../../../types/configure';
 import type { SiteRefs } from './useSiteRefs';
 import type { SiteTabProps } from './siteEditorTypes';
 import { SiteGeneralTab } from './SiteGeneralTab';
+import { SiteLocationTab } from './SiteLocationTab';
 import { SiteDeviceGroupsTab } from './SiteDeviceGroupsTab';
+import { SiteApsTab } from './SiteApsTab';
 import { SiteSwitchesTab } from './SiteSwitchesTab';
 import { SiteSnmpTab } from './SiteSnmpTab';
 import { SiteAllowDenyTab } from './SiteAllowDenyTab';
@@ -25,7 +29,9 @@ import { cloneSite, getPath, setPath, validateSite } from './siteModel';
 
 const TABS = [
   { id: 'general', label: 'General', Comp: SiteGeneralTab },
+  { id: 'location', label: 'Location', Comp: SiteLocationTab },
   { id: 'devicegroups', label: 'Device Groups', Comp: SiteDeviceGroupsTab },
+  { id: 'aps', label: 'Access Points', Comp: SiteApsTab },
   { id: 'switches', label: 'Switches', Comp: SiteSwitchesTab },
   { id: 'snmp', label: 'SNMP', Comp: SiteSnmpTab },
   { id: 'allowdeny', label: 'Allow/Deny', Comp: SiteAllowDenyTab },

@@ -4,3 +4,4 @@ export { SnmpTab } from './SnmpTab';
 export { GlobalSettingsTab } from './GlobalSettingsTab';
 export { AdministratorsTab } from './AdministratorsTab';
 export { AdminEditor } from './AdminEditor';
+export { AvailabilityTab } from './AvailabilityTab';

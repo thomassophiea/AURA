@@ -312,9 +312,43 @@ export function topologyErrors(form: TopologyDraft): Record<string, string> {
     if (!IP_RE.test(String(form.ipAddress || '')) || form.ipAddress === '0.0.0.0') {
       e.ip = 'A valid non-zero IPv4 address is required';
     }
-    if (!inRange(form.cidr, 1, 32)) e.cidr = 'Valid range 1 to 32';
+    /* 0, not 1. The Campus Controller OpenAPI spec gives TopologyElement.cidr
+       as minimum 0, maximum 32; the Gateway UI's /1 floor was superseded by
+       the API-is-truth ruling, so a topology the API accepts stays authorable. */
+    if (!inRange(form.cidr, 0, 32)) e.cidr = 'Valid range 0 to 32';
   }
   return e;
+}
+
+/* ── availability-pair Peer Address (foreignIpAddress) ── */
+
+/**
+ * The Peer Address value applies only when the appliance is HA-paired AND the
+ * topology is Bridged@AC with Layer 3 — the Gateway's own gate
+ * (topology.html ng-required="paired && mode==='BridgedAtAc' && l3Presence").
+ */
+export function peerAddressApplies(paired: boolean, form: TopologyDraft): boolean {
+  return (
+    paired === true && String(form.mode || 'BridgedAtAp') === 'BridgedAtAc' && form.l3Presence === true
+  );
+}
+
+/**
+ * The Peer Address BLOCK is shown more broadly than the input: on a paired
+ * appliance for every mode except Bridged@AP
+ * (topology.html ng-if="paired && topology.mode !== 'BridgedAtAp'").
+ */
+export function peerBlockVisible(paired: boolean, form: TopologyDraft): boolean {
+  return paired === true && String(form.mode || 'BridgedAtAp') !== 'BridgedAtAp';
+}
+
+/** foreignIpAddress is REQUIRED whenever the peer address applies. */
+export function peerAddressError(paired: boolean, form: TopologyDraft): Record<string, string> {
+  if (!peerAddressApplies(paired, form)) return {};
+  if (!IP_RE.test(String(form.foreignIpAddress || '')) || form.foreignIpAddress === '0.0.0.0') {
+    return { peer: 'A valid non-zero IPv4 address is required on a paired appliance' };
+  }
+  return {};
 }
 
 /* ── VLAN group helpers ── */

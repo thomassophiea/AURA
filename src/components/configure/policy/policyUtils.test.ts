@@ -27,6 +27,9 @@ import {
   tosFromBits,
   tosFromDscp,
   tosHex,
+  peerAddressApplies,
+  peerAddressError,
+  peerBlockVisible,
   vlanGroupErrors,
   vlanOptionLabel,
 } from './policyUtils';
@@ -238,10 +241,32 @@ describe('topologyErrors', () => {
       mode: 'BridgedAtAc',
       l3Presence: true,
       ipAddress: '0.0.0.0',
-      cidr: 0,
+      cidr: 33,
     });
     expect(bridgedAc.ip).toBeTruthy();
     expect(bridgedAc.cidr).toBeTruthy();
+  });
+
+  it('accepts the OpenAPI CIDR floor of /0 (API-is-truth ruling)', () => {
+    const zero = topologyErrors({
+      name: 'v',
+      vlanid: 10,
+      mode: 'BridgedAtAc',
+      l3Presence: true,
+      ipAddress: '10.0.0.1',
+      cidr: 0,
+    });
+    expect(zero.cidr).toBeUndefined();
+    // Absent CIDR is still an error — the floor moved, the requirement did not.
+    expect(
+      topologyErrors({
+        name: 'v',
+        vlanid: 10,
+        mode: 'BridgedAtAc',
+        l3Presence: true,
+        ipAddress: '10.0.0.1',
+      }).cidr
+    ).toBeTruthy();
   });
 });
 
@@ -292,5 +317,38 @@ describe('CoS / rate limiter validation', () => {
     expect(rateLimiterErrors({ name: 'RL', cirKbps: 500001 }).cir).toBeTruthy();
     expect(rateLimiterErrors({ name: 'RL', cirKbps: 128 }).cir).toBeUndefined();
     expect(rateLimiterErrors({ name: '', cirKbps: 128 }).name).toBeTruthy();
+  });
+});
+
+describe('Peer Address (availability pair, foreignIpAddress)', () => {
+  const l3Ac = { mode: 'BridgedAtAc', l3Presence: true };
+
+  it('applies only when paired AND Bridged@AC AND Layer 3', () => {
+    expect(peerAddressApplies(true, l3Ac)).toBe(true);
+    expect(peerAddressApplies(false, l3Ac)).toBe(false);
+    expect(peerAddressApplies(true, { mode: 'BridgedAtAc', l3Presence: false })).toBe(false);
+    expect(peerAddressApplies(true, { mode: 'BridgedAtAp', l3Presence: true })).toBe(false);
+    expect(peerAddressApplies(true, { mode: 'Gre', l3Presence: true })).toBe(false);
+  });
+
+  it('shows the block on a paired appliance for every mode except Bridged@AP', () => {
+    expect(peerBlockVisible(true, { mode: 'BridgedAtAc' })).toBe(true);
+    expect(peerBlockVisible(true, { mode: 'Gre' })).toBe(true);
+    expect(peerBlockVisible(true, { mode: 'BridgedAtAp' })).toBe(false);
+    // an absent mode defaults to Bridged@AP, like the editor
+    expect(peerBlockVisible(true, {})).toBe(false);
+    expect(peerBlockVisible(false, { mode: 'BridgedAtAc' })).toBe(false);
+  });
+
+  it('requires a valid non-zero foreignIpAddress only when it applies', () => {
+    expect(peerAddressError(true, { ...l3Ac, foreignIpAddress: '' }).peer).toBeTruthy();
+    expect(peerAddressError(true, { ...l3Ac, foreignIpAddress: '0.0.0.0' }).peer).toBeTruthy();
+    expect(peerAddressError(true, { ...l3Ac, foreignIpAddress: 'not-an-ip' }).peer).toBeTruthy();
+    expect(peerAddressError(true, { ...l3Ac, foreignIpAddress: '10.0.0.2' }).peer).toBeUndefined();
+    // not applicable → never an error, even with a bad value on the record
+    expect(peerAddressError(false, { ...l3Ac, foreignIpAddress: '' })).toEqual({});
+    expect(
+      peerAddressError(true, { mode: 'Gre', l3Presence: true, foreignIpAddress: '' })
+    ).toEqual({});
   });
 });

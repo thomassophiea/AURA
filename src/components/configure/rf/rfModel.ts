@@ -98,8 +98,39 @@ export const RF_TABS_SMART = [
   'Scanning',
   'Recovery',
   'Select Shutdown',
+  'Auto Sensor',
 ] as const;
 export const RF_TABS_ACS = ['Basic', 'Power & Channel', 'Interference Recovery'] as const;
+
+/* ── Smart RF Auto Sensor (Gateway 10.20) ──
+   Writes smartRf.autoSensor.{algorithm,band,trigger}. The Gateway filters
+   autoSensorBandOptions to drop 2.4 GHz whenever
+   interferenceRecovery.selectShutdown is on; an existing Band24 value then
+   falls back to Band5. Start is a runtime action performed on the Gateway,
+   so the tab renders it present but inert. */
+export const RF_AUTO_SENSOR_ALGORITHMS: RfOption[] = [
+  { id: 'SPARSE', label: 'Sparse' },
+  { id: 'DENSE', label: 'Dense' },
+];
+export const RF_AUTO_SENSOR_TRIGGERS: RfOption[] = [
+  { id: 'AUTO', label: 'Auto' },
+  { id: 'MANUAL', label: 'Manual' },
+];
+
+/** Band options — Band24 is removed while Select Shutdown is enabled. */
+export function autoSensorBandOpts(selectShutdown: boolean): RfOption[] {
+  return [
+    { id: 'Band5', label: '5 GHz' },
+    { id: 'Band24', label: '2.4 GHz' },
+    { id: 'Band6', label: '6 GHz' },
+  ].filter((b) => !(selectShutdown && b.id === 'Band24'));
+}
+
+/** Effective band value — an existing 2.4 GHz choice falls back to Band5 while Select Shutdown is on. */
+export function autoSensorBandValue(band: unknown, selectShutdown: boolean): string {
+  const b = band == null || band === '' ? 'Band5' : String(band);
+  return selectShutdown && (b === 'Band24' || b === '2.4GHZ') ? 'Band5' : b;
+}
 
 // --- immutable nested-path helpers (dot path, numeric segments index arrays) ---
 type Dict = Record<string, unknown>;
