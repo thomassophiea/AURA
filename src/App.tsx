@@ -61,9 +61,6 @@ const ConfigureAAAPolicies = lazy(() =>
 const ConfigureAdoptionRules = lazy(() =>
   import('./components/configure/adoption').then((m) => ({ default: m.AdoptionPage }))
 );
-const ConfigureGuest = lazy(() =>
-  import('./components/configure/guest').then((m) => ({ default: m.GuestPage }))
-);
 const ConfigureProfiles = lazy(() =>
   import('./components/configure/profiles').then((m) => ({ default: m.ProfilesPage }))
 );
@@ -231,7 +228,6 @@ const pageInfo = {
   },
   'sites-overview': { title: 'Sites Overview', description: 'View and manage network sites' },
   'configure-policy': { title: 'Policy', description: 'Configure network policies' },
-  'configure-guest': { title: 'Guest Access', description: 'Configure guest network settings' },
   'performance-analytics': {
     title: 'Performance Analytics',
     description: 'Analyze network performance and trends',
@@ -1354,8 +1350,6 @@ export default function App() {
         return <ConfigureAAAPolicies />;
       case 'configure-adoption-rules':
         return <ConfigureAdoptionRules />;
-      case 'configure-guest':
-        return <ConfigureGuest />;
       case 'configure-profiles':
         return <ConfigureProfiles />;
       case 'configure-rrm':

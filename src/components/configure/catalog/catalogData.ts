@@ -34,7 +34,6 @@ import {
   ShieldCheck,
   Tag,
   Timer,
-  UserCheck,
   Users,
   Waypoints,
   Wifi,
@@ -54,7 +53,6 @@ export type CountKey =
   | 'rfmgmt'
   | 'meshpoints'
   | 'sites'
-  | 'eguest'
   | 'adsp'
   | 'iot'
   | 'rtls'
@@ -286,14 +284,6 @@ export const CATALOG_GROUPS: CatalogGroup[] = [
     description: 'Specialized service profiles for advanced use cases',
     accent: 'services',
     items: [
-      {
-        id: 'eguest',
-        label: 'ExtremeGuest',
-        description: 'Guest portal and captive access',
-        icon: UserCheck,
-        viewId: 'configure-guest',
-        countKey: 'eguest',
-      },
       {
         id: 'airdefense',
         label: 'Air Defense Profiles',
@@ -569,14 +559,6 @@ export const ARCH_LAYERS: ArchLayer[] = [
         viewId: 'configure-networks',
         countKey: 'services',
         accent: 'wireless',
-      },
-      {
-        id: 'eguest',
-        label: 'ExtremeGuest',
-        icon: UserCheck,
-        viewId: 'configure-guest',
-        countKey: 'eguest',
-        accent: 'services',
       },
       {
         id: 'serviceprofiles',
