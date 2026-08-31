@@ -151,7 +151,9 @@ export const CATALOG_GROUPS: CatalogGroup[] = [
       { id: 'vlangroups', label: 'VLAN Groups', description: 'Named VLAN pools for client load-grouping', icon: Combine, viewId: 'configure-policy', countKey: 'vlangroups', tabHint: 'vlangroups' },
       { id: 'cos', label: 'CoS / Class of Service', description: 'Traffic prioritization policies', icon: Gauge, viewId: 'configure-policy', countKey: 'cos', tabHint: 'cos' },
       { id: 'aaa', label: 'AAA', description: 'Authentication, authorization & accounting', icon: KeyRound, viewId: 'configure-aaa-policies', countKey: 'aaapolicy' },
-      { id: 'ppsk', label: 'Private Pre-Shared Key', description: 'Global cloud keys for WPA2-Private PSK (organization-wide)', icon: Globe, viewId: null, badge: 'Global' },
+      // Placeholder by product decision (2026-08-31): no Gateway backend exists
+      // for organization-scope PPSK keys yet — card stays non-navigable until one does.
+      { id: 'ppsk', label: 'Private Pre-Shared Key', description: 'Global cloud keys for WPA2-Private PSK (organization-wide)', icon: Globe, viewId: null, badge: 'Global', flag: 'Future Use' },
       { id: 'ratelimiters', label: 'Rate Limiters', description: 'Per-client bandwidth caps', icon: Timer, viewId: 'configure-policy', countKey: 'ratelimiters', tabHint: 'ratelimiters' },
     ],
   },
