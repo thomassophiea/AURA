@@ -61,6 +61,9 @@ const ConfigureAAAPolicies = lazy(() =>
 const ConfigureAdoptionRules = lazy(() =>
   import('./components/configure/adoption').then((m) => ({ default: m.AdoptionPage }))
 );
+const ConfigurePpsk = lazy(() =>
+  import('./components/configure/ppsk').then((m) => ({ default: m.PpskPage }))
+);
 const ConfigureProfiles = lazy(() =>
   import('./components/configure/profiles').then((m) => ({ default: m.ProfilesPage }))
 );
@@ -228,6 +231,7 @@ const pageInfo = {
   },
   'sites-overview': { title: 'Sites Overview', description: 'View and manage network sites' },
   'configure-policy': { title: 'Policy', description: 'Configure network policies' },
+  'configure-ppsk': { title: 'Private Pre-Shared Key', description: 'Per-identity keys on one WPA2-Personal WLAN' },
   'performance-analytics': {
     title: 'Performance Analytics',
     description: 'Analyze network performance and trends',
@@ -1350,6 +1354,12 @@ export default function App() {
         return <ConfigureAAAPolicies />;
       case 'configure-adoption-rules':
         return <ConfigureAdoptionRules />;
+      case 'configure-ppsk':
+        return (
+          <ErrorBoundary fallbackTitle="Private Pre-Shared Key">
+            <ConfigurePpsk />
+          </ErrorBoundary>
+        );
       case 'configure-profiles':
         return <ConfigureProfiles />;
       case 'configure-rrm':

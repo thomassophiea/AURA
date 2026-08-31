@@ -39,6 +39,7 @@ import { createMonitoringRouter } from './server/monitoring/monitoringRouter.js'
 import { createEnergyRouter } from './server/energy/energyRouter.js';
 import { createLightAwareRouter } from './server/energy/lightAware/router.js';
 import { createGuestsRouter } from './server/guests/guestsRouter.js';
+import { createPpskRouter } from './server/ppsk/ppskRouter.js';
 import { createPortalConfigRouter } from './server/portal/portalConfigRouter.js';
 import { createSystemRouter } from './server/system/systemRouter.js';
 import { createServicesSummaryRouter } from './server/services/servicesSummaryRouter.js';
@@ -2275,6 +2276,18 @@ app.use('/api', createGuestsRouter());
       : '[Proxy Server] ⚠ Guest management API mounted but inert — set CWP_INTERNAL_API_URL and CWP_INTERNAL_API_TOKEN'
   );
 }
+
+// ==================== PPSK / MPSK ====================
+// AURA-owned per-key identities for a WPA2-Personal WLAN. Reads require viewer,
+// mutations and passphrase reveal require operator (validated against the named
+// gateway). Passphrases are stored encrypted; provisioning to the AP key file
+// is rendered here but not yet driven by the controller (two-plane honest).
+app.use('/api', createPpskRouter());
+console.log(
+  process.env.PPSK_ENCRYPTION_KEY
+    ? '[Proxy Server] ✓ PPSK API mounted at /api/v1/ppsk/*'
+    : '[Proxy Server] ⚠ PPSK API mounted but key creation is inert — set PPSK_ENCRYPTION_KEY'
+);
 
 // ==================== Cloud Captive Portal Configuration ====================
 // Operator overlay on the portal's own configuration (sponsorship domains,
