@@ -12,16 +12,23 @@ import {
   Combine,
   Cpu,
   Crosshair,
+  FileKey2,
+  FolderSearch,
   Gauge,
+  GitCompareArrows,
   Globe,
   KeyRound,
   Layers,
   ListChecks,
+  ListOrdered,
   LocateFixed,
+  Lock,
   MapPin,
+  MapPinned,
   Network,
   RadioTower,
   Router,
+  Server,
   Settings,
   ShieldAlert,
   ShieldCheck,
@@ -54,9 +61,16 @@ export type CountKey =
   | 'esl'
   | 'positioning'
   | 'analytics'
+  | 'xlocation'
+  | 'acradius'
+  | 'acldap'
+  | 'acrepos'
+  | 'acgroups'
+  | 'acrules'
+  | 'accerts'
   | 'administrators';
 
-export type AccentKey = 'wireless' | 'infra' | 'services' | 'system';
+export type AccentKey = 'wireless' | 'infra' | 'services' | 'access' | 'system';
 
 export interface FeatureCardData {
   id: string;
@@ -69,6 +83,8 @@ export interface FeatureCardData {
   countKey?: CountKey;
   badge?: string;
   flag?: string;
+  /** Tab to open on the destination page (consumed via configureNav.ts). */
+  tabHint?: string;
 }
 
 export interface CatalogGroup {
@@ -105,6 +121,13 @@ export const ACCENTS: Record<
     badge: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500',
     nodeRing: 'hover:border-emerald-500/60 hover:bg-emerald-500/5',
   },
+  access: {
+    bar: 'bg-purple-500',
+    iconActive: 'group-hover:text-purple-500',
+    hoverBorder: 'hover:border-purple-500/60',
+    badge: 'border-purple-500/30 bg-purple-500/10 text-purple-500',
+    nodeRing: 'hover:border-purple-500/60 hover:bg-purple-500/5',
+  },
   system: {
     bar: 'bg-amber-500',
     iconActive: 'group-hover:text-amber-500',
@@ -123,13 +146,13 @@ export const CATALOG_GROUPS: CatalogGroup[] = [
     items: [
       { id: 'profiles', label: 'Profiles', description: 'Device configuration templates', icon: Layers, viewId: 'configure-profiles', countKey: 'profiles' },
       { id: 'networks', label: 'Networks', description: 'SSIDs and WLAN definitions', icon: Wifi, viewId: 'configure-networks', countKey: 'services' },
-      { id: 'roles', label: 'Roles', description: 'Client access roles & firewall rules', icon: ShieldCheck, viewId: 'configure-policy', countKey: 'roles' },
-      { id: 'vlan', label: 'VLAN', description: 'L2 topologies and VLAN IDs', icon: Network, viewId: 'configure-policy', countKey: 'topologies' },
-      { id: 'vlangroups', label: 'VLAN Groups', description: 'Named VLAN pools for client load-grouping', icon: Combine, viewId: 'configure-policy', countKey: 'vlangroups' },
-      { id: 'cos', label: 'CoS / Class of Service', description: 'Traffic prioritization policies', icon: Gauge, viewId: 'configure-policy', countKey: 'cos' },
+      { id: 'roles', label: 'Roles', description: 'Client access roles & firewall rules', icon: ShieldCheck, viewId: 'configure-policy', countKey: 'roles', tabHint: 'roles' },
+      { id: 'vlan', label: 'VLAN', description: 'L2 topologies and VLAN IDs', icon: Network, viewId: 'configure-policy', countKey: 'topologies', tabHint: 'vlans' },
+      { id: 'vlangroups', label: 'VLAN Groups', description: 'Named VLAN pools for client load-grouping', icon: Combine, viewId: 'configure-policy', countKey: 'vlangroups', tabHint: 'vlangroups' },
+      { id: 'cos', label: 'CoS / Class of Service', description: 'Traffic prioritization policies', icon: Gauge, viewId: 'configure-policy', countKey: 'cos', tabHint: 'cos' },
       { id: 'aaa', label: 'AAA', description: 'Authentication, authorization & accounting', icon: KeyRound, viewId: 'configure-aaa-policies', countKey: 'aaapolicy' },
       { id: 'ppsk', label: 'Private Pre-Shared Key', description: 'Global cloud keys for WPA2-Private PSK (organization-wide)', icon: Globe, viewId: null, badge: 'Global' },
-      { id: 'ratelimiters', label: 'Rate Limiters', description: 'Per-client bandwidth caps', icon: Timer, viewId: 'configure-policy', countKey: 'ratelimiters' },
+      { id: 'ratelimiters', label: 'Rate Limiters', description: 'Per-client bandwidth caps', icon: Timer, viewId: 'configure-policy', countKey: 'ratelimiters', tabHint: 'ratelimiters' },
     ],
   },
   {
@@ -139,11 +162,11 @@ export const CATALOG_GROUPS: CatalogGroup[] = [
     accent: 'infra',
     items: [
       { id: 'aps', label: 'Access Points', description: 'Managed AP inventory', icon: Router, viewId: 'configure-access-points' },
-      { id: 'devicegroups', label: 'Device Groups', description: 'AP membership groups within a site', icon: Boxes, viewId: 'configure-sites-groups', flag: 'Further Discussion Needed' },
+      { id: 'devicegroups', label: 'Device Groups', description: 'One AP platform + profile + RF policy, applied across sites', icon: Boxes, viewId: 'configure-device-groups' },
       { id: 'adoption', label: 'AP Adoption', description: 'Adoption rules and controller assignment', icon: Cable, viewId: 'configure-adoption-rules' },
       { id: 'rfmgmt', label: 'RF Management', description: 'Channel, power and radio policies', icon: RadioTower, viewId: 'configure-rrm', countKey: 'rfmgmt' },
       { id: 'meshpoints', label: 'Meshpoints', description: 'Wireless backhaul mesh configuration', icon: Waypoints, viewId: 'configure-meshpoints', countKey: 'meshpoints' },
-      { id: 'sites', label: 'Sites', description: 'Physical site definitions', icon: MapPin, viewId: 'configure-sites-groups', countKey: 'sites' },
+      { id: 'sites', label: 'Sites', description: 'Physical site definitions', icon: MapPin, viewId: 'configure-sites-groups', countKey: 'sites', tabHint: 'site-config' },
     ],
   },
   {
@@ -153,24 +176,40 @@ export const CATALOG_GROUPS: CatalogGroup[] = [
     accent: 'services',
     items: [
       { id: 'eguest', label: 'ExtremeGuest', description: 'Guest portal and captive access', icon: UserCheck, viewId: 'configure-guest', countKey: 'eguest' },
-      { id: 'airdefense', label: 'Air Defense Profiles', description: 'WIPS / rogue detection policies', icon: ShieldAlert, viewId: 'configure-service-profiles', countKey: 'adsp' },
-      { id: 'iot', label: 'IoT Profiles', description: 'BLE, Zigbee & sensor data config', icon: Cpu, viewId: 'configure-service-profiles', countKey: 'iot' },
-      { id: 'rtls', label: 'RTLS Profiles', description: 'Real-time location system', icon: LocateFixed, viewId: 'configure-service-profiles', countKey: 'rtls' },
-      { id: 'esl', label: 'ESL Profiles', description: 'Electronic shelf label integration', icon: Tag, viewId: 'configure-service-profiles', countKey: 'esl' },
-      { id: 'positioning', label: 'Positioning Profiles', description: 'Fine-grained location services', icon: Crosshair, viewId: 'configure-service-profiles', countKey: 'positioning' },
-      { id: 'analytics', label: 'Analytics Profiles', description: 'Client presence & dwell analytics', icon: BarChart3, viewId: 'configure-service-profiles', countKey: 'analytics' },
+      { id: 'airdefense', label: 'Air Defense Profiles', description: 'WIPS / rogue detection policies', icon: ShieldAlert, viewId: 'configure-service-profiles', countKey: 'adsp', tabHint: 'airdefense' },
+      { id: 'iot', label: 'IoT Profiles', description: 'BLE, Zigbee & sensor data config', icon: Cpu, viewId: 'configure-service-profiles', countKey: 'iot', tabHint: 'iot' },
+      { id: 'rtls', label: 'RTLS Profiles', description: 'Real-time location system', icon: LocateFixed, viewId: 'configure-service-profiles', countKey: 'rtls', tabHint: 'rtls' },
+      { id: 'esl', label: 'ESL Profiles', description: 'Electronic shelf label integration', icon: Tag, viewId: 'configure-service-profiles', countKey: 'esl', tabHint: 'esl' },
+      { id: 'positioning', label: 'Positioning Profiles', description: 'Fine-grained location services', icon: Crosshair, viewId: 'configure-service-profiles', countKey: 'positioning', tabHint: 'positioning' },
+      { id: 'analytics', label: 'Analytics Profiles', description: 'Client presence & dwell analytics', icon: BarChart3, viewId: 'configure-service-profiles', countKey: 'analytics', tabHint: 'analytics' },
+      { id: 'xlocation', label: 'ExtremeLocation Profiles', description: 'ExtremeLocation cloud reporting (server, tenant, RSS)', icon: MapPinned, viewId: 'configure-service-profiles', countKey: 'xlocation', tabHint: 'xlocation' },
+    ],
+  },
+  {
+    key: 'access',
+    label: 'Access Control',
+    description: 'RADIUS, LDAP, local credentials, groups and rules for network access',
+    accent: 'access',
+    items: [
+      { id: 'acradius', label: 'RADIUS Servers', description: 'Authentication & accounting servers with health checks', icon: Server, viewId: 'configure-access-control', countKey: 'acradius', tabHint: 'radius' },
+      { id: 'acldap', label: 'LDAP Configurations', description: 'Directory connections and schema definitions', icon: FolderSearch, viewId: 'configure-access-control', countKey: 'acldap', tabHint: 'ldap' },
+      { id: 'acrepos', label: 'Local Password Repository', description: 'Locally stored user credentials', icon: Lock, viewId: 'configure-access-control', countKey: 'acrepos', tabHint: 'repository' },
+      { id: 'acgroups', label: 'Groups', description: 'User, end-system, device-type, location & time groups', icon: Users, viewId: 'configure-access-control', countKey: 'acgroups', tabHint: 'groups' },
+      { id: 'acrules', label: 'Rules', description: 'Ordered access rules mapping groups to roles & portals', icon: ListOrdered, viewId: 'configure-access-control', countKey: 'acrules', tabHint: 'rules' },
+      { id: 'accerts', label: 'Certificates', description: 'AAA certificates and CRL distribution points', icon: FileKey2, viewId: 'configure-access-control', countKey: 'accerts', tabHint: 'certificates', badge: 'EP1 · Earmarked' },
     ],
   },
   {
     key: 'system',
     label: 'System & Security',
-    description: 'Appliance-level settings, access control and SNMP',
+    description: 'Appliance-level settings, availability and SNMP',
     accent: 'system',
     items: [
-      { id: 'accesscontrol', label: 'Access Control', description: 'Client MAC allow / deny list', icon: ListChecks, viewId: 'configure-system' },
-      { id: 'snmp', label: 'SNMP', description: 'SNMP agent, communities & traps', icon: Activity, viewId: 'configure-system' },
-      { id: 'globalsettings', label: 'Global Settings', description: 'Appliance-wide configuration', icon: Settings, viewId: 'configure-system' },
-      { id: 'administrators', label: 'Administrators', description: 'Local & RADIUS admin accounts', icon: Users, viewId: 'configure-system', countKey: 'administrators' },
+      { id: 'availability', label: 'Availability', description: 'HA pairing, AP balancing and mobility', icon: GitCompareArrows, viewId: 'configure-system', tabHint: 'availability' },
+      { id: 'accesscontrol', label: 'Allow List/Deny List', description: 'Client MAC allow / deny list', icon: ListChecks, viewId: 'configure-system', tabHint: 'access' },
+      { id: 'snmp', label: 'SNMP', description: 'SNMP agent, communities & traps', icon: Activity, viewId: 'configure-system', tabHint: 'snmp', badge: 'EP1 · Earmarked' },
+      { id: 'globalsettings', label: 'Gateway Settings', description: 'Gateway-wide configuration', icon: Settings, viewId: 'configure-system', tabHint: 'global' },
+      { id: 'administrators', label: 'Local Service Accounts', description: 'Gateway-local service accounts (cloud IAM is EP1)', icon: Users, viewId: 'configure-system', countKey: 'administrators', tabHint: 'admins' },
     ],
   },
 ];

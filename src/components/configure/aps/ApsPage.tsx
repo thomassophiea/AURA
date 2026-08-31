@@ -16,6 +16,14 @@ import type { GridOptions, SelectionChangedEvent } from 'ag-grid-community';
 import { Radio, RefreshCw, Search, Trash2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { AGGridWrapper, type AGGridWrapperHandle } from '../../ui/AGGridWrapper';
+import { SourceSiteSelector } from '../../SourceSiteSelector';
+import { useSourceSites } from '../../../hooks/useSourceSites';
+import { useStickySiteSelection } from '../../../hooks/useStickySiteSelection';
+import {
+  getDeviceSiteValue,
+  isGatewayUnassigned,
+  resolveOs1DeviceSiteKey,
+} from '../../../services/siteCatalog';
 import { Button } from '../../ui/button';
 import { Card, CardContent } from '../../ui/card';
 import { Input } from '../../ui/input';
@@ -49,6 +57,9 @@ export function ApsPage() {
   const [rebooting, setRebooting] = useState(false);
   const [sites, setSites] = useState<SiteConfig[]>([]);
   const [profiles, setProfiles] = useState<ApProfile[]>([]);
+  // Configure is Gateway-only, so the picker is offered without XIQ locations.
+  const { sites: pickerSites } = useSourceSites();
+  const [selectedSite, setSelectedSite] = useStickySiteSelection('configure-aps');
   const gridRef = useRef<AGGridWrapperHandle>(null);
   const mounted = useRef(true);
 
@@ -92,15 +103,28 @@ export function ApsPage() {
     [view, openEdit]
   );
 
+  /* Site scoping rides the app-wide AURA site picker (SourceSiteSelector).
+     resolveOs1DeviceSiteKey performs the Staging/"Unassigned" translation, so
+     the equality below covers real sites and the Staging pseudo-site alike. */
+  const siteFiltered = useMemo(() => {
+    if (selectedSite === 'all') return rows;
+    return rows.filter((r) => resolveOs1DeviceSiteKey(r) === selectedSite);
+  }, [rows, selectedSite]);
+
   const filtered = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    if (!term) return rows;
-    return rows.filter((r) =>
+    if (!term) return siteFiltered;
+    return siteFiltered.filter((r) =>
       [r.apName, r.serialNumber, r.ipAddress, r.hostSite]
         .filter(Boolean)
         .some((f) => String(f).toLowerCase().includes(term))
     );
-  }, [rows, searchTerm]);
+  }, [siteFiltered, searchTerm]);
+
+  const unassignedApCount = useMemo(
+    () => rows.filter((r) => isGatewayUnassigned(getDeviceSiteValue(r))).length,
+    [rows]
+  );
 
   const gridOptions = useMemo<GridOptions<ApListRow>>(
     () => ({
@@ -200,6 +224,14 @@ export function ApsPage() {
             <TabsTrigger value="afc">AFC</TabsTrigger>
           </TabsList>
         </Tabs>
+        <SourceSiteSelector
+          value={selectedSite}
+          onValueChange={setSelectedSite}
+          sites={pickerSites}
+          xiqSites={[]}
+          unassignedDeviceCount={unassignedApCount}
+          triggerClassName="w-[200px]"
+        />
         <div className="relative max-w-sm flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10" />

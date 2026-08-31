@@ -6,6 +6,12 @@
 import { useEffect, useState } from 'react';
 import {
   aaaPolicyService,
+  acCertificatesService,
+  acGroupsService,
+  acLdapConfigurationsService,
+  acLocalPasswordUsersService,
+  acRadiusServersService,
+  acRulesService,
   administratorsService,
   adspService,
   analyticsService,
@@ -24,6 +30,7 @@ import {
   sitesService,
   topologiesService,
   vlanGroupsService,
+  xlocationService,
 } from '../../../services/configure';
 import type { CountKey } from './catalogData';
 
@@ -48,6 +55,13 @@ const LOADERS: Record<CountKey, Loader> = {
   esl: () => eslProfileService.list(),
   positioning: () => positioningService.list(),
   analytics: () => analyticsService.list(),
+  xlocation: () => xlocationService.list(),
+  acradius: () => acRadiusServersService.list(),
+  acldap: () => acLdapConfigurationsService.list(),
+  acrepos: () => acLocalPasswordUsersService.list(),
+  acgroups: () => acGroupsService.list(),
+  acrules: () => acRulesService.list(),
+  accerts: () => acCertificatesService.list(),
   administrators: () => administratorsService.list(),
 };
 

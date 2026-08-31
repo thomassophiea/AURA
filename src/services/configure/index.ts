@@ -23,6 +23,22 @@ export { analyticsService } from './analyticsService';
 export { adspService } from './adspService';
 export { administratorsService } from './administratorsService';
 export { accessControlService } from './accessControlService';
+export {
+  acRadiusServersService,
+  acLdapConfigurationsService,
+  acGroupsService,
+  acRulesService,
+  acCertificatesService,
+  acLocalPasswordUsersService,
+} from './accessControlFamilyService';
+export {
+  availabilityService,
+  mobilityService,
+  isPaired,
+  invalidatePairedCache,
+  listPlatformInterfaces,
+} from './availabilityService';
+export { xlocationService } from './xlocationService';
 export { snmpService } from './snmpService';
 export { globalSettingsService } from './globalSettingsService';
 export { adoptionService } from './adoptionService';

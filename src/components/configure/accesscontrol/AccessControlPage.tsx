@@ -5,7 +5,7 @@
  * /access-control/v1; only the active tab mounts, so switching tabs defers
  * each resource's initial load until needed.
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { RadiusServersPage } from './RadiusServersPage';
 import { LdapConfigurationsPage } from './LdapConfigurationsPage';
@@ -13,11 +13,15 @@ import { LocalPasswordRepositoryPage } from './LocalPasswordRepositoryPage';
 import { GroupsPage } from './GroupsPage';
 import { RulesPage } from './RulesPage';
 import { CertificatesPage } from './CertificatesPage';
+import { consumeConfigureTabHint } from '../catalog/configureNav';
+
+const TAB_VALUES = ['radius', 'ldap', 'repository', 'groups', 'rules', 'certificates'] as const;
 
 export function AccessControlPage() {
+  const [tab, setTab] = useState<string>(() => consumeConfigureTabHint(TAB_VALUES) ?? 'radius');
   return (
     <div className="flex h-full flex-col">
-      <Tabs defaultValue="radius" className="flex flex-1 flex-col">
+      <Tabs value={tab} onValueChange={setTab} className="flex flex-1 flex-col">
         <div className="border-b border-border px-6 pt-4">
           <TabsList>
             <TabsTrigger value="radius">RADIUS Servers</TabsTrigger>

@@ -14,6 +14,7 @@ import { PositioningPage } from './PositioningPage';
 import { AnalyticsPage } from './AnalyticsPage';
 import { AdspPage } from './AdspPage';
 import { XLocationPage } from './XLocationPage';
+import { consumeConfigureTabHint } from '../catalog/configureNav';
 
 const TABS = [
   { value: 'iot', label: 'IoT', Page: IotPage },
@@ -25,8 +26,12 @@ const TABS = [
   { value: 'xlocation', label: 'ExtremeLocation', Page: XLocationPage },
 ] as const;
 
+const TAB_VALUES = TABS.map((t) => t.value);
+
 export function ServiceProfilesPage() {
-  const [tab, setTab] = useState<string>(TABS[0].value);
+  const [tab, setTab] = useState<string>(
+    () => consumeConfigureTabHint(TAB_VALUES) ?? TABS[0].value
+  );
 
   return (
     <div className="flex flex-col">

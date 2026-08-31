@@ -1,8 +1,9 @@
 /**
- * System & Security landing page (EPB-125 §System) — four sub-tabs over the
- * appliance-level configuration surfaces: Access Control (client MAC allow/deny
- * list), SNMP, Global Settings and Administrators. Each tab owns its own live
- * GET/PUT (or list CRUD) against the Configure service layer.
+ * System & Security landing page — five sub-tabs over the appliance-level
+ * configuration surfaces: Availability (HA pair + mobility), Allow List/Deny
+ * List (client MAC ACL), SNMP, Gateway Settings and Local Service Accounts
+ * (names per PLM rulings 2026-08-26). Each tab owns its own live GET/PUT
+ * (or list CRUD) against the Configure service layer.
  */
 import React, { useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
@@ -12,17 +13,22 @@ import { SnmpTab } from './SnmpTab';
 import { GlobalSettingsTab } from './GlobalSettingsTab';
 import { AdministratorsTab } from './AdministratorsTab';
 import { AvailabilityTab } from './AvailabilityTab';
+import { consumeConfigureTabHint } from '../catalog/configureNav';
 
 const TABS = [
-  { value: 'access', label: 'Access Control' },
-  { value: 'snmp', label: 'SNMP' },
-  { value: 'global', label: 'Global Settings' },
-  { value: 'admins', label: 'Administrators' },
   { value: 'availability', label: 'Availability' },
+  { value: 'access', label: 'Allow List/Deny List' },
+  { value: 'snmp', label: 'SNMP' },
+  { value: 'global', label: 'Gateway Settings' },
+  { value: 'admins', label: 'Local Service Accounts' },
 ] as const;
 
+const TAB_VALUES = TABS.map((t) => t.value);
+
 export function SystemPage() {
-  const [tab, setTab] = useState<string>('access');
+  const [tab, setTab] = useState<string>(
+    () => consumeConfigureTabHint(TAB_VALUES) ?? 'availability'
+  );
 
   return (
     <div className="space-y-4">
@@ -31,7 +37,8 @@ export function SystemPage() {
         <div className="space-y-1">
           <h1 className="text-2xl font-medium">System &amp; Security</h1>
           <p className="text-sm text-muted-foreground">
-            Appliance-level access control, SNMP, global settings and administrator accounts
+            Availability, client allow/deny lists, SNMP, Gateway settings and local service
+            accounts
           </p>
         </div>
       </div>
