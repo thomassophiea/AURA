@@ -25,7 +25,23 @@ Operator ── AURA (this feature) ──────────────�
 The AP dataplane is ready. The **Campus OS controller does not yet emit the key
 file** (it renders a single static PSK per WLAN). So this feature manages
 identities and renders the exact `wpa_psk_file` to push, but the last mile —
-controller provisions + reloads the AP — is not automated. The UI says so:
+controller provisions + reloads the AP — is not automated. The UI says so.
+
+### In-band vs. out-of-band provisioning
+
+- **In-band (the normal path, not available yet):** you create a key in AURA and
+  the Campus OS controller automatically pushes it to the APs through its normal
+  config pipeline — the way every other setting is applied. This is blocked until
+  the controller can emit `wpa_psk_file` (see `docs/PPSK_HARDWARE_FINDINGS.md`).
+- **Out-of-band (the path that exists today):** AURA renders the `wpa_psk_file`
+  (the **wpa_psk_file preview** in the UI, downloadable/copyable) and an operator
+  applies it to the AP directly — via `scripts/ppsk-provision-lab.sh` — *around*
+  the controller's automatic pipeline. This is how identity-by-key was proven on
+  real hardware. It is a manual, lab-grade step, which is why the feature is
+  marked *Experimental*: AURA fully owns the keys, but the last hop to the AP is
+  hand-operated rather than a controller push.
+
+The UI is explicit about which path is in effect:
 
 - Every enable/disable/delete returns an `enforcement` object with
   `attempted: false, applied: false` and a reason. AURA never claims a key is
