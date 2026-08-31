@@ -136,11 +136,7 @@ export function createFormState(seed: WlanService): WlanFormState {
 }
 
 /** Immutably set one field inside the active privacy element. */
-export function withPrivacyField(
-  form: WlanFormState,
-  key: string,
-  value: unknown
-): WlanFormState {
+export function withPrivacyField(form: WlanFormState, key: string, value: unknown): WlanFormState {
   const element = AUTH_TO_ELEMENT[form.ui.authType];
   if (!element) return form;
   const privacy: ServicePrivacy = { ...(form.record.privacy ?? {}) };

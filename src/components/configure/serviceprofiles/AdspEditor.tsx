@@ -27,7 +27,15 @@ export interface AdspEditorProps {
   onSave: (payload: Partial<AdspProfile>, id?: string) => void | Promise<void>;
 }
 
-export function AdspEditor({ open, onOpenChange, record, seed, rows, saving, onSave }: AdspEditorProps) {
+export function AdspEditor({
+  open,
+  onOpenChange,
+  record,
+  seed,
+  rows,
+  saving,
+  onSave,
+}: AdspEditorProps) {
   const isNew = record == null;
   const ro = record?.canEdit === false;
   const base = record ?? seed;
@@ -36,7 +44,9 @@ export function AdspEditor({ open, onOpenChange, record, seed, rows, saving, onS
   const [svr, setSvr] = useState('');
   const [port, setPort] = useState('');
   const [expanded, setExpanded] = useState(true);
-  const initial = useRef(JSON.stringify({ name: base.name ?? '', servers: parseServers(base.svrAddr) }));
+  const initial = useRef(
+    JSON.stringify({ name: base.name ?? '', servers: parseServers(base.svrAddr) })
+  );
   const dirty = JSON.stringify({ name, servers }) !== initial.current;
 
   const portEff = port === '' ? 443 : Number(port);
@@ -47,10 +57,16 @@ export function AdspEditor({ open, onOpenChange, record, seed, rows, saving, onS
         ? 'Server address has already been added'
         : null
     : null;
-  const portErr = port !== '' && !intIn(Number(port), 0, 65535) ? 'Port must be an integer between 0 and 65535' : null;
+  const portErr =
+    port !== '' && !intIn(Number(port), 0, 65535)
+      ? 'Port must be an integer between 0 and 65535'
+      : null;
   const addDisabled = ro || !svr.trim() || !!svrErr || !!portErr || servers.length >= 3;
 
-  const errs = useMemo(() => ({ name: nameError(rows, { id: record?.id, name }, true) }), [rows, record, name]);
+  const errs = useMemo(
+    () => ({ name: nameError(rows, { id: record?.id, name }, true) }),
+    [rows, record, name]
+  );
   const valid = noErrors(errs) && servers.length >= 1 && !ro;
 
   const addServer = () => {
@@ -78,7 +94,12 @@ export function AdspEditor({ open, onOpenChange, record, seed, rows, saving, onS
       onSave={doSave}
     >
       <div className="max-w-[600px] space-y-4">
-        <FieldRow label="Profile Name" htmlFor="adsp-name" error={dirty ? errs.name : null} required>
+        <FieldRow
+          label="Profile Name"
+          htmlFor="adsp-name"
+          error={dirty ? errs.name : null}
+          required
+        >
           <Input
             id="adsp-name"
             value={name}
@@ -121,7 +142,13 @@ export function AdspEditor({ open, onOpenChange, record, seed, rows, saving, onS
                   className="max-w-[140px]"
                 />
                 <span className="text-xs text-muted-foreground">default 443</span>
-                <Button type="button" variant="outline" size="sm" disabled={addDisabled} onClick={addServer}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={addDisabled}
+                  onClick={addServer}
+                >
                   <Plus className="mr-1 h-4 w-4" />
                   Add
                 </Button>
@@ -136,7 +163,9 @@ export function AdspEditor({ open, onOpenChange, record, seed, rows, saving, onS
             className="flex items-center gap-2 text-sm font-medium"
             onClick={() => setExpanded((x) => !x)}
           >
-            <ChevronDown className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${expanded ? 'rotate-180' : ''}`}
+            />
             Total Servers: {servers.length}
           </button>
           {expanded && (
@@ -169,7 +198,9 @@ export function AdspEditor({ open, onOpenChange, record, seed, rows, saving, onS
               )}
             </div>
           )}
-          {servers.length === 0 && <p className="text-xs text-destructive">At least one server is required</p>}
+          {servers.length === 0 && (
+            <p className="text-xs text-destructive">At least one server is required</p>
+          )}
         </div>
       </div>
     </EditorSheet>

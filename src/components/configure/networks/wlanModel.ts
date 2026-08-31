@@ -8,12 +8,13 @@
  */
 import type { ServicePrivacy, WlanService } from '../../../types/configure';
 
-/** The controller's 10 auth types (conditionals.json authSelect, exact order). */
+/** The controller's 11 auth types (conditionals.json authSelect, exact order). */
 export const WLAN_AUTH_TYPES = [
   'Open',
   'OWE',
   'WEP',
   'WPA2-Personal (PSK)',
+  'WPA2-Private PSK',
   'WPA2-Enterprise (802.1X/EAP)',
   'WPA3-Enterprise (802.1X/EAP)',
   'WPA3-Enterprise Transition (802.1X/EAP)',
@@ -25,8 +26,12 @@ export type WlanAuthType = (typeof WLAN_AUTH_TYPES)[number];
 
 /** Auth type -> privacy element key (element names exactly match the API). */
 export const AUTH_TO_ELEMENT: Partial<Record<WlanAuthType, string>> = {
+  // 10.20 rename: OWE round-trips through its real privacy element (OweElement),
+  // no longer via privacy:null + oweCompanion alone (config-1020.js step B).
+  OWE: 'OweElement',
   WEP: 'WepElement',
   'WPA2-Personal (PSK)': 'WpaPskElement',
+  'WPA2-Private PSK': 'WpaPpskElement',
   'WPA3-Personal': 'WpaSaeElement',
   'WPA3-Compatibility': 'WpaSaePskElement',
   'WPA2-Enterprise (802.1X/EAP)': 'WpaEnterpriseElement',
@@ -39,6 +44,7 @@ export const AUTH_TO_ELEMENT: Partial<Record<WlanAuthType, string>> = {
 const ELEMENT_TO_AUTH: Record<string, WlanAuthType> = {
   WepElement: 'WEP',
   WpaPskElement: 'WPA2-Personal (PSK)',
+  WpaPpskElement: 'WPA2-Private PSK',
   WpaSaeElement: 'WPA3-Personal',
   WpaSaePskElement: 'WPA3-Compatibility',
   WpaEnterpriseElement: 'WPA2-Enterprise (802.1X/EAP)',
@@ -124,6 +130,12 @@ export const WLAN_ENUMS = {
     { id: 'AES_CCM_128_GCMP256', label: 'AES-CCM-128 & GCMP256' },
     { id: 'GCMP256', label: 'GCMP256' },
   ],
+  // PskEncrptionTypesEnterprise = PskEncrptionTypes minus GCMP256 (WlanFunctions).
+  encryptionEnterprise: [
+    { id: 'AES_CCM_128', label: 'AES-CCM-128' },
+    { id: 'AES_CCM_128_GCMP256', label: 'AES-CCM-128 & GCMP256' },
+  ],
+  ppskEncryption: [{ id: 'aesOnly', label: 'AES Only (CCMP)' }],
   akmSuite: [
     { id: 'AKM8_24', label: 'AKM8/AKM24' },
     { id: 'AKM24', label: 'AKM24 Only' },
@@ -145,18 +157,40 @@ export const WLAN_ENUMS = {
     { id: 'Hex', label: 'Hex' },
     { id: 'Ascii', label: 'ASCII' },
   ],
+  /**
+   * Offered portal types. Local CWP ("Internal") is deprecated and not
+   * offered; a record already carrying any other value keeps it selectable so
+   * nothing is silently rewritten on save — see portalTypeOptions().
+   * PLM 2026-08-21: guest scope is External + Guest Essentials only.
+   */
   portalType: [
-    { id: 'Internal', label: 'Internal' },
     { id: 'External', label: 'External' },
-    { id: 'EGuest', label: 'Extreme Guest' },
     { id: 'GuestEssentials', label: 'Guest Essentials' },
-    { id: 'CWA', label: 'CWA' },
   ],
   ecpRedirect: [
     { id: 'ORIGINALDESTINATION', label: 'Original destination' },
     { id: 'URLCUSTOMIZED', label: 'Custom URL' },
   ],
 } satisfies Record<string, EnumOption[]>;
+
+/** Display labels for legacy portal values a record may still carry. */
+export const PORTAL_LEGACY_LABELS: Record<string, string> = {
+  Internal: 'Internal (Local CWP — deprecated)',
+  EGuest: 'Extreme Guest',
+  CWA: 'CWA',
+};
+
+/**
+ * The two supported portal types, plus whatever this record already holds so
+ * a legacy / non-guest value still renders and survives a save untouched.
+ */
+export function portalTypeOptions(current: string | null | undefined): EnumOption[] {
+  const base = [...WLAN_ENUMS.portalType];
+  if (current && !base.some((option) => option.id === current)) {
+    base.push({ id: current, label: PORTAL_LEGACY_LABELS[current] ?? current });
+  }
+  return base;
+}
 
 /** DSCP service classes for the 64-row codePoints editor. */
 export const DSCP_CLASSES: EnumOption[] = [
@@ -201,8 +235,14 @@ export function readPrivacyElement(
 /** Sensible controller-default fields when the user switches to an auth type. */
 export function defaultPrivacyFields(auth: WlanAuthType): PrivacyElementFields {
   switch (auth) {
+    case 'OWE':
+      // 10.20: OweElement carries its own cipher select (no PMF — OWE is not WPA).
+      return { encryption: 'AES_CCM_128' };
     case 'WPA2-Personal (PSK)':
       return { mode: 'aesOnly', pmfMode: 'disabled', presharedKey: '', keyHexEncoded: false };
+    case 'WPA2-Private PSK':
+      // Per-client keys are hosted centrally; the element only pins the cipher.
+      return { mode: 'aesOnly', pmfMode: 'disabled' };
     case 'WPA3-Personal':
       return {
         saeMethod: 'SaeH2e',
@@ -213,14 +253,24 @@ export function defaultPrivacyFields(auth: WlanAuthType): PrivacyElementFields {
         keyHexEncoded: false,
       };
     case 'WPA3-Compatibility':
-      return { pmfMode: 'enabled', presharedKey: '', keyHexEncoded: false };
+      // 10.20: WpaSaePskElement gained its own cipher select.
+      return {
+        pmfMode: 'enabled',
+        presharedKey: '',
+        keyHexEncoded: false,
+        encryption: 'AES_CCM_128',
+      };
     case 'WEP':
       return { keyLength: 'WEP_64bit', pskInputType: 'Hex', keyIndex: '1', passPhrase: '' };
     case 'WPA2-Enterprise (802.1X/EAP)':
-    case 'WPA3-Enterprise Transition (802.1X/EAP)':
       return { pmfMode: 'enabled', fastTransitionEnabled: false };
+    case 'WPA3-Enterprise Transition (802.1X/EAP)':
+      // 10.20: enterprise WPA3 variants gained a cipher select (no GCMP256).
+      return { pmfMode: 'enabled', fastTransitionEnabled: false, encryption: 'AES_CCM_128' };
     case 'WPA3-Enterprise (802.1X/EAP)':
+      return { pmfMode: 'required', fastTransitionEnabled: false, encryption: 'AES_CCM_128' };
     case 'WPA3-Enterprise (192 Bits)':
+      // 192-bit gets no cipher select (WlanFunctions).
       return { pmfMode: 'required', fastTransitionEnabled: false };
     default:
       return {};
@@ -232,9 +282,11 @@ export function privacyLabel(record: WlanService): string {
   return deriveAuthType(record);
 }
 
-/** Grid label for the captive portal column. */
+/** Grid label for the captive portal column (legacy values keep a label). */
 export function captivePortalLabel(record: WlanService): string {
   if (!record.enableCaptivePortal) return 'Disabled';
-  const match = WLAN_ENUMS.portalType.find((o) => o.id === record.captivePortalType);
-  return match ? match.label : (record.captivePortalType ?? 'Enabled');
+  const type = record.captivePortalType;
+  if (!type) return 'Enabled';
+  const match = WLAN_ENUMS.portalType.find((o) => o.id === type);
+  return match?.label ?? PORTAL_LEGACY_LABELS[type] ?? type;
 }

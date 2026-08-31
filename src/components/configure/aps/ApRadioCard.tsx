@@ -140,7 +140,10 @@ export function ApRadioCard({
                           className="text-destructive"
                           aria-label={`Remove ${fc}`}
                           onClick={() =>
-                            set('fallbackChannels', (r.fallbackChannels as string[]).filter((_, y) => y !== x))
+                            set(
+                              'fallbackChannels',
+                              (r.fallbackChannels as string[]).filter((_, y) => y !== x)
+                            )
                           }
                         >
                           ✕
@@ -155,7 +158,9 @@ export function ApRadioCard({
                   placeholder="+ Add channel"
                   options={[
                     { id: '', label: '+ Add channel' },
-                    ...apChannelOpts(band).filter((o) => (r.fallbackChannels as string[] ?? []).indexOf(o.id) < 0),
+                    ...apChannelOpts(band).filter(
+                      (o) => ((r.fallbackChannels as string[]) ?? []).indexOf(o.id) < 0
+                    ),
                   ]}
                   onChange={(v) => {
                     if (!v) return;
@@ -182,7 +187,9 @@ export function ApRadioCard({
                       max={3600}
                       onChange={(v) => set('dfsRevertHoldTime', v)}
                     />
-                    {errors[`dfsH${i}`] && <p className="text-xs text-destructive">{errors[`dfsH${i}`]}</p>}
+                    {errors[`dfsH${i}`] && (
+                      <p className="text-xs text-destructive">{errors[`dfsH${i}`]}</p>
+                    )}
                   </Row>
                   <Row label="DFS Revert Client Aware (0-255)">
                     <NumberField
@@ -192,7 +199,9 @@ export function ApRadioCard({
                       max={255}
                       onChange={(v) => set('dfsRevertClientAware', v)}
                     />
-                    {errors[`dfsC${i}`] && <p className="text-xs text-destructive">{errors[`dfsC${i}`]}</p>}
+                    {errors[`dfsC${i}`] && (
+                      <p className="text-xs text-destructive">{errors[`dfsC${i}`]}</p>
+                    )}
                   </Row>
                 </>
               )}

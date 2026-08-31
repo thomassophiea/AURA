@@ -119,15 +119,13 @@ export function buildGeoDiagnostics(aps: ApDetail[], apRanging: boolean): GeoFlo
     const floor = ap.ftm?.zSubelement?.floorNumber ?? 0;
     const wgs = ap.ftm?.wgs84;
     const hasGeo = Number(wgs?.latitude ?? 0) !== 0 || Number(wgs?.longitude ?? 0) !== 0;
-    const row =
-      byFloor.get(floor) ??
-      {
-        floorNumber: floor,
-        floorLabel: floor > 0 ? `Floor ${floor}` : 'Unassigned',
-        apCount: 0,
-        anchorApCount: 0,
-        ftmRangingApCount: 0,
-      };
+    const row = byFloor.get(floor) ?? {
+      floorNumber: floor,
+      floorLabel: floor > 0 ? `Floor ${floor}` : 'Unassigned',
+      apCount: 0,
+      anchorApCount: 0,
+      ftmRangingApCount: 0,
+    };
     row.apCount += 1;
     if (ap.gpsAnchor) row.anchorApCount += 1;
     if (apRanging && hasGeo) row.ftmRangingApCount += 1;

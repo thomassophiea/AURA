@@ -10,10 +10,24 @@
  *   - create() POST /v1/aps          (New AP registration)
  *   - remove() DELETE /v1/aps/{serial}
  *
+ * AP trace (Advanced Settings > Actions) — contract recovered from the
+ * gateway's own UI (ap-controller `logs()`/`showTraces()` + device-data-factory):
+ *   - retrieveTrace()    PUT /v1/aps/{serial}/logs, body = the AP document
+ *                        (asks the AP to upload its trace archive to the
+ *                        Gateway; wired per controller spec, not live-fired —
+ *                        the GET probe of the path returns 405, confirming
+ *                        the route exists for another verb)
+ *   - listTraceFiles()   GET /v1/aps/{serial}/traceurls -> [fileName, ...]
+ *                        (404 = no trace archive yet; verified live)
+ *   - downloadTraceFiles() GET /v1/aps/downloadtrace/{file[,file...]} as an
+ *                        application/tar blob (the gateway comma-joins every
+ *                        file returned by traceurls into one request)
+ *
  * Kept under components/configure/aps per the port's write-scope; it is a data
  * helper, not a change to the shared services tree.
  */
-import { configureRequest, unwrapList } from '../../../services/configure';
+import { ConfigureApiError, configureRequest, unwrapList } from '../../../services/configure';
+import { apiService } from '../../../services/api';
 import type { ApDetail } from '../../../types/configure';
 
 /** Summary row returned by /v1/aps[/query] — a subset of the full ApDetail. */
@@ -77,7 +91,60 @@ export const apsData = {
       method: 'DELETE',
     });
   },
+
+  /**
+   * Ask the AP to upload its trace archive to the Gateway. Wired per
+   * controller spec (gateway UI: PUT aps/{serial}/logs with the AP document
+   * as the body), not live-fired.
+   */
+  async retrieveTrace(serialNumber: string, ap: ApDetail): Promise<void> {
+    await configureRequest<void>(`/v1/aps/${encodeURIComponent(serialNumber)}/logs`, {
+      method: 'PUT',
+      body: ap,
+    });
+  },
+
+  /** Trace archive file names on the Gateway; 404 means none retrieved yet. */
+  async listTraceFiles(serialNumber: string): Promise<string[]> {
+    try {
+      const payload = await configureRequest<unknown>(
+        `/v1/aps/${encodeURIComponent(serialNumber)}/traceurls`
+      );
+      return unwrapList<string>(payload);
+    } catch (error) {
+      if (error instanceof ConfigureApiError && error.status === 404) return [];
+      throw error;
+    }
+  },
+
+  /**
+   * Download the trace archive as a tar blob. The gateway UI comma-joins the
+   * full traceurls list into a single downloadtrace request; the comma stays
+   * unencoded (it is the wire's list separator, not part of a file name).
+   */
+  async downloadTraceFiles(fileNames: string[]): Promise<Blob> {
+    const path = `/v1/aps/downloadtrace/${fileNames.map(encodeURIComponent).join(',')}`;
+    const response = await apiService.makeAuthenticatedRequest(
+      path,
+      { headers: { accept: 'application/tar' } },
+      60000
+    );
+    if (!response.ok) {
+      throw new Error(`Trace download failed: ${response.status}`);
+    }
+    return response.blob();
+  },
 };
+
+/**
+ * The gateway stamps the download with today's date: the first file's
+ * "ApRpt...-" prefix becomes "ApRpt<yyyymmdd>-" (ap-controller showTraces).
+ */
+export function traceDownloadName(wireName: string, now: Date = new Date()): string {
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return wireName.replace(/ApRpt.+?-/, `ApRpt${now.getFullYear()}${month}${day}-`);
+}
 
 /** Online/offline hint from a list row's tolerant status fields (gap 25). */
 export function apOnlineState(row: ApListRow): 'online' | 'offline' | 'unknown' {

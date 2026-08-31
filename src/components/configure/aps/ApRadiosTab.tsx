@@ -72,10 +72,18 @@ export function ApRadiosTab({
             Client Bridge
           </h4>
           <FieldRow label="Username">
-            <Input className="w-56" value={form.cbUser ?? ''} onChange={(e) => upd('cbUser', e.target.value)} />
+            <Input
+              className="w-56"
+              value={form.cbUser ?? ''}
+              onChange={(e) => upd('cbUser', e.target.value)}
+            />
           </FieldRow>
           <FieldRow label="Password">
-            <MaskedInput className="w-56" value={form.cbPassword ?? ''} onChange={(v) => upd('cbPassword', v)} />
+            <MaskedInput
+              className="w-56"
+              value={form.cbPassword ?? ''}
+              onChange={(v) => upd('cbPassword', v)}
+            />
           </FieldRow>
           <OvrRow
             label="RSS Threshold [dBm]"

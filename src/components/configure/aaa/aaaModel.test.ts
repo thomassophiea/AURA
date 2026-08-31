@@ -26,7 +26,12 @@ import {
 import type { AaaPolicy } from '../../../types/configure';
 
 function server(overrides: Partial<AaaServerForm> = {}): AaaServerForm {
-  return { ...newRadiusServer('auth'), ipAddress: '10.0.0.1', sharedSecret: 'secret123', ...overrides };
+  return {
+    ...newRadiusServer('auth'),
+    ipAddress: '10.0.0.1',
+    sharedSecret: 'secret123',
+    ...overrides,
+  };
 }
 
 function policy(overrides: Partial<AaaPolicyForm> = {}): AaaPolicyForm {
@@ -171,7 +176,9 @@ describe('reauthTimeoutOvr zero-means-off semantics (A4)', () => {
   it('0 is off and valid; 60-300 required when on', () => {
     expect(isReauthEnabled(policy())).toBe(false);
     expect(validateAaaPolicy(policy()).reauth).toBeUndefined();
-    expect(validateAaaPolicy(policy({ reauthTimeoutOvr: 59 })).reauth).toBe('Valid range 60 to 300');
+    expect(validateAaaPolicy(policy({ reauthTimeoutOvr: 59 })).reauth).toBe(
+      'Valid range 60 to 300'
+    );
     expect(validateAaaPolicy(policy({ reauthTimeoutOvr: 301 })).reauth).toBe(
       'Valid range 60 to 300'
     );
@@ -206,8 +213,12 @@ describe('validateAaaPolicy scalar rules', () => {
 
   it('flags invalid realm entries only while NAI routing is on', () => {
     const realms = [{ realm: '', authenticationRadiusServers: [], accountingRadiusServers: [] }];
-    expect(validateAaaPolicy(policy({ naiRouting: true, naiRealms: realms })).naiRealms).toBeTruthy();
-    expect(validateAaaPolicy(policy({ naiRouting: false, naiRealms: realms })).naiRealms).toBeUndefined();
+    expect(
+      validateAaaPolicy(policy({ naiRouting: true, naiRealms: realms })).naiRealms
+    ).toBeTruthy();
+    expect(
+      validateAaaPolicy(policy({ naiRouting: false, naiRealms: realms })).naiRealms
+    ).toBeUndefined();
   });
 });
 

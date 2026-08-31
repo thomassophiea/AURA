@@ -16,7 +16,13 @@ export interface ClientBridgeDialogProps {
   onClose: () => void;
 }
 
-export function ClientBridgeDialog({ open, cbUser, cbPassword, onChange, onClose }: ClientBridgeDialogProps) {
+export function ClientBridgeDialog({
+  open,
+  cbUser,
+  cbPassword,
+  onChange,
+  onClose,
+}: ClientBridgeDialogProps) {
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-md">
@@ -25,7 +31,11 @@ export function ClientBridgeDialog({ open, cbUser, cbPassword, onChange, onClose
         </DialogHeader>
         <div className="space-y-3">
           <LabelRow label="Username" labelWidth={110}>
-            <Input className="h-9" value={cbUser || ''} onChange={(e) => onChange('cbUser', e.target.value)} />
+            <Input
+              className="h-9"
+              value={cbUser || ''}
+              onChange={(e) => onChange('cbUser', e.target.value)}
+            />
           </LabelRow>
           <LabelRow label="Password" labelWidth={110}>
             <MaskedInput value={cbPassword || ''} onChange={(v) => onChange('cbPassword', v)} />

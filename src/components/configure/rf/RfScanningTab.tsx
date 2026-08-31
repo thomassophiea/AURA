@@ -4,13 +4,7 @@
  * gated on Custom sensitivity; client count / load% gated on their toggles.
  */
 import React from 'react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { Switch } from '../../ui/switch';
 import { Checkbox } from '../../ui/checkbox';
 import { GridHead, LabelRow, NumCellRaw, type RfTabProps } from './rfControls';
@@ -64,10 +58,32 @@ export function RfScanningTab({ cfg, root, custom, errs, update }: RfTabProps) {
               style={{ gridTemplateColumns: TEMPLATE }}
             >
               <div className="pt-1.5 text-[13px]">{label}</div>
-              <NumCellRaw value={b.duration} onChange={(v) => update(`${bk}.duration`, v)} error={errs[`dur${bandId}`]} width={72} />
-              <NumCellRaw value={b.freq} disabled={!custom} onChange={(v) => update(`${bk}.freq`, v)} error={errs[`freq${bandId}`]} width={72} />
-              <NumCellRaw value={b.extFreq} disabled={!custom} onChange={(v) => update(`${bk}.extFreq`, v)} error={errs[`extFreq${bandId}`]} width={72} />
-              <NumCellRaw value={b.sampleCount} onChange={(v) => update(`${bk}.sampleCount`, v)} error={errs[`sc${bandId}`]} width={72} />
+              <NumCellRaw
+                value={b.duration}
+                onChange={(v) => update(`${bk}.duration`, v)}
+                error={errs[`dur${bandId}`]}
+                width={72}
+              />
+              <NumCellRaw
+                value={b.freq}
+                disabled={!custom}
+                onChange={(v) => update(`${bk}.freq`, v)}
+                error={errs[`freq${bandId}`]}
+                width={72}
+              />
+              <NumCellRaw
+                value={b.extFreq}
+                disabled={!custom}
+                onChange={(v) => update(`${bk}.extFreq`, v)}
+                error={errs[`extFreq${bandId}`]}
+                width={72}
+              />
+              <NumCellRaw
+                value={b.sampleCount}
+                onChange={(v) => update(`${bk}.sampleCount`, v)}
+                error={errs[`sc${bandId}`]}
+                width={72}
+              />
               <div className="pt-1.5">
                 <Checkbox
                   checked={!!b.clientAware}
@@ -75,7 +91,13 @@ export function RfScanningTab({ cfg, root, custom, errs, update }: RfTabProps) {
                   aria-label={`${label} client aware`}
                 />
               </div>
-              <NumCellRaw value={b.clientCount} disabled={!b.clientAware} onChange={(v) => update(`${bk}.clientCount`, v)} error={errs[`cc${bandId}`]} width={72} />
+              <NumCellRaw
+                value={b.clientCount}
+                disabled={!b.clientAware}
+                onChange={(v) => update(`${bk}.clientCount`, v)}
+                error={errs[`cc${bandId}`]}
+                width={72}
+              />
               <Select
                 value={String(b.powerSaveAware ?? 'DYNAMIC')}
                 onValueChange={(v) => update(`${bk}.powerSaveAware`, v)}
@@ -98,7 +120,13 @@ export function RfScanningTab({ cfg, root, custom, errs, update }: RfTabProps) {
                   aria-label={`${label} TX load aware`}
                 />
               </div>
-              <NumCellRaw value={b.txLoadAwarePercent} disabled={!b.txLoadAware} onChange={(v) => update(`${bk}.txLoadAwarePercent`, v)} error={errs[`tl${bandId}`]} width={72} />
+              <NumCellRaw
+                value={b.txLoadAwarePercent}
+                disabled={!b.txLoadAware}
+                onChange={(v) => update(`${bk}.txLoadAwarePercent`, v)}
+                error={errs[`tl${bandId}`]}
+                width={72}
+              />
             </div>
           );
         })}

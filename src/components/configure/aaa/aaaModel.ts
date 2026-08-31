@@ -71,6 +71,8 @@ export interface AaaPolicyForm {
 }
 
 export const MAX_RADIUS_SERVERS = 4;
+/** The controller caps NAI realm entries at 32 (aaa-policy.html New gate). */
+export const MAX_NAI_REALMS = 32;
 export const DENY_DEFAULTS: DenyOnAuthFailureForm = { attempts: 5, interval: 5, timeout: 300 };
 export const REAUTH_DEFAULT = 60;
 

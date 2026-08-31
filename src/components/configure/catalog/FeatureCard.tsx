@@ -7,6 +7,7 @@ import { memo } from 'react';
 import { Card } from '../../ui/card';
 import { cn } from '../../ui/utils';
 import { ACCENTS, type AccentKey, type FeatureCardData } from './catalogData';
+import { setConfigureTabHint } from './configureNav';
 
 interface FeatureCardProps {
   item: FeatureCardData;
@@ -63,7 +64,10 @@ function FeatureCardImpl({ item, accent, count, onSelect }: FeatureCardProps) {
   const interactive = item.viewId !== null;
 
   const handleClick = () => {
-    if (item.viewId) onSelect(item.viewId);
+    if (item.viewId) {
+      if (item.tabHint) setConfigureTabHint(item.tabHint);
+      onSelect(item.viewId);
+    }
   };
 
   return (
@@ -85,7 +89,10 @@ function FeatureCardImpl({ item, accent, count, onSelect }: FeatureCardProps) {
       className={cn(
         'group flex-row items-center gap-3.5 rounded-lg border-border px-4 py-3 shadow-none transition-colors',
         interactive
-          ? cn('cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', styles.hoverBorder)
+          ? cn(
+              'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+              styles.hoverBorder
+            )
           : 'cursor-default',
         dim && 'opacity-50'
       )}

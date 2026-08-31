@@ -49,7 +49,9 @@ export function RfAcsInterferenceTab({ cfg, root, errs, update }: RfTabProps) {
               <div key={bandId} className="flex justify-center">
                 <NumCellRaw
                   value={bandOf(cfg, 'interferenceRecovery', bandId)[key]}
-                  onChange={(v) => update(`${bandPath(cfg, root, 'interferenceRecovery', bandId)}.${key}`, v)}
+                  onChange={(v) =>
+                    update(`${bandPath(cfg, root, 'interferenceRecovery', bandId)}.${key}`, v)
+                  }
                   error={errs[`${ek}${bandId}`]}
                   width={110}
                 />
@@ -61,7 +63,11 @@ export function RfAcsInterferenceTab({ cfg, root, errs, update }: RfTabProps) {
 
       <SubHead>2.4 GHz Only</SubHead>
       <LabelRow label="Wait Time [s] (10-120)" width={300} error={errs.wait}>
-        <NumCellRaw value={b24.waitTime} onChange={(v) => update(`${bk24}.waitTime`, v)} width={120} />
+        <NumCellRaw
+          value={b24.waitTime}
+          onChange={(v) => update(`${bk24}.waitTime`, v)}
+          width={120}
+        />
       </LabelRow>
       {DETECTS.map(([key, label]) => (
         <LabelRow key={key} label={label} width={300}>

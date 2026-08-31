@@ -25,7 +25,8 @@ export function MeshpointsTab({ ctx }: { ctx: ProfileTabContext }) {
       const meshes = (c.meshpoints as ProfileMesh[]) ?? [];
       if (meshpointId) {
         list.push({ meshpointId, index: radioIndex });
-        if (!meshes.some((m) => m.meshpointId === meshpointId)) meshes.push(defaultProfileMesh(meshpointId));
+        if (!meshes.some((m) => m.meshpointId === meshpointId))
+          meshes.push(defaultProfileMesh(meshpointId));
       }
       c.meshpointIfList = list;
       c.meshpoints = meshes.filter((m) => list.some((e) => e.meshpointId === m.meshpointId));
@@ -38,7 +39,9 @@ export function MeshpointsTab({ ctx }: { ctx: ProfileTabContext }) {
     <div className="max-w-2xl space-y-3">
       {radios.map((r) => (
         <div key={r.radioIndex} className="flex items-center gap-4">
-          <div className="w-40 shrink-0 text-right text-sm text-muted-foreground">{r.radioName}</div>
+          <div className="w-40 shrink-0 text-right text-sm text-muted-foreground">
+            {r.radioName}
+          </div>
           {r.mode === 'sensor' ? (
             <PSelect
               value=""
@@ -60,8 +63,19 @@ export function MeshpointsTab({ ctx }: { ctx: ProfileTabContext }) {
       ))}
       <div className="flex items-center gap-4">
         <div className="w-40 shrink-0" />
-        <span title={sameAll ? 'Edit meshpoint settings' : 'Assign the same meshpoint to all non-sensor radios to edit advanced settings'}>
-          <Button type="button" size="sm" disabled={!sameAll} onClick={() => openMeshAdvanced(ids[0])}>
+        <span
+          title={
+            sameAll
+              ? 'Edit meshpoint settings'
+              : 'Assign the same meshpoint to all non-sensor radios to edit advanced settings'
+          }
+        >
+          <Button
+            type="button"
+            size="sm"
+            disabled={!sameAll}
+            onClick={() => openMeshAdvanced(ids[0])}
+          >
             Advanced
           </Button>
         </span>

@@ -19,7 +19,15 @@ export interface EslEditorProps {
   onSave: (payload: Partial<EslProfile>, id?: string) => void | Promise<void>;
 }
 
-export function EslEditor({ open, onOpenChange, record, seed, rows, saving, onSave }: EslEditorProps) {
+export function EslEditor({
+  open,
+  onOpenChange,
+  record,
+  seed,
+  rows,
+  saving,
+  onSave,
+}: EslEditorProps) {
   const isNew = record == null;
   const ro = record?.canEdit === false;
   const [form, setForm] = useState<EslProfile>(() => structuredClone(record ?? seed));
@@ -31,11 +39,7 @@ export function EslEditor({ open, onOpenChange, record, seed, rows, saving, onSa
     () => ({
       name: nameError(rows, form),
       port: intIn(form.port, 1, 65535) ? null : 'Port must be an integer between 1 and 65535',
-      fqdn: !form.fqdn
-        ? 'FQDN is required'
-        : RE_HOST.test(form.fqdn)
-          ? null
-          : 'Enter a valid FQDN',
+      fqdn: !form.fqdn ? 'FQDN is required' : RE_HOST.test(form.fqdn) ? null : 'Enter a valid FQDN',
     }),
     [rows, form]
   );
@@ -69,7 +73,9 @@ export function EslEditor({ open, onOpenChange, record, seed, rows, saving, onSa
             type="number"
             value={form.port ?? ''}
             disabled={ro}
-            onChange={(e) => upd({ port: e.target.value === '' ? (NaN as number) : Number(e.target.value) })}
+            onChange={(e) =>
+              upd({ port: e.target.value === '' ? (NaN as number) : Number(e.target.value) })
+            }
             className="max-w-[160px]"
           />
         </FieldRow>

@@ -9,11 +9,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ColDef, ICellRendererParams } from 'ag-grid-community';
 import { Network } from 'lucide-react';
 import { ResourceGridPage, useDefaults, useResourceCrud } from '../_kit';
-import {
-  meshpointsService,
-  profilesService,
-  topologiesService,
-} from '../../../services/configure';
+import { meshpointsService, profilesService, topologiesService } from '../../../services/configure';
 import { logger } from '../../../services/logger';
 import type { ApProfile, Meshpoint, Topology } from '../../../types/configure';
 import { MeshpointEditorSheet } from './MeshpointEditorSheet';

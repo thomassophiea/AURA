@@ -16,7 +16,13 @@ export function RolesTab({ ctx }: { ctx: ProfileTabContext }) {
   return (
     <div className="space-y-2">
       <div className="flex justify-end">
-        <Button type="button" variant="outline" size="sm" disabled title="Create a role from the Roles page">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled
+          title="Create a role from the Roles page"
+        >
           <Plus className="mr-1 h-4 w-4" />
           New Role
         </Button>
@@ -36,7 +42,11 @@ export function RolesTab({ ctx }: { ctx: ProfileTabContext }) {
               <TableRow key={r.id}>
                 <TableCell className="font-medium">{r.label}</TableCell>
                 <TableCell className="text-center">
-                  <PCheck checked={selected.indexOf(r.id) >= 0} onChange={() => toggleInArr('roleIDs', r.id)} ariaLabel={r.label} />
+                  <PCheck
+                    checked={selected.indexOf(r.id) >= 0}
+                    onChange={() => toggleInArr('roleIDs', r.id)}
+                    ariaLabel={r.label}
+                  />
                 </TableCell>
               </TableRow>
             ))}

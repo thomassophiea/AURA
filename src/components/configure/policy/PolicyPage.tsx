@@ -4,18 +4,22 @@
  * editor over the typed services/configure layer; only the active tab mounts,
  * so switching tabs defers each resource's initial load until needed.
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { RolesPage } from './RolesPage';
 import { VlansPage } from './VlansPage';
 import { VlanGroupsPage } from './VlanGroupsPage';
 import { CosPage } from './CosPage';
 import { RateLimitersPage } from './RateLimitersPage';
+import { consumeConfigureTabHint } from '../catalog/configureNav';
+
+const TAB_VALUES = ['roles', 'vlans', 'vlangroups', 'cos', 'ratelimiters'] as const;
 
 export function PolicyPage() {
+  const [tab, setTab] = useState<string>(() => consumeConfigureTabHint(TAB_VALUES) ?? 'roles');
   return (
     <div className="flex h-full flex-col">
-      <Tabs defaultValue="roles" className="flex flex-1 flex-col">
+      <Tabs value={tab} onValueChange={setTab} className="flex flex-1 flex-col">
         <div className="border-b border-border px-6 pt-4">
           <TabsList>
             <TabsTrigger value="roles">Roles</TabsTrigger>

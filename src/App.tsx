@@ -85,6 +85,15 @@ const ConfigureServiceProfiles = lazy(() =>
 const ConfigureSystem = lazy(() =>
   import('./components/configure/system').then((m) => ({ default: m.SystemPage }))
 );
+const ConfigureCloudPortal = lazy(() =>
+  import('./components/configure/cloudportal').then((m) => ({ default: m.CloudPortalPage }))
+);
+const ConfigureAccessControl = lazy(() =>
+  import('./components/configure/accesscontrol').then((m) => ({ default: m.AccessControlPage }))
+);
+const ConfigureDeviceGroups = lazy(() =>
+  import('./components/configure/devicegroups').then((m) => ({ default: m.DeviceGroupsPage }))
+);
 const GlobalElementsPage = lazy(() =>
   import('./components/global-elements/GlobalElementsPage').then((m) => ({
     default: m.GlobalElementsPage,
@@ -221,11 +230,6 @@ const pageInfo = {
     description: 'Manage and monitor wireless access points',
   },
   'sites-overview': { title: 'Sites Overview', description: 'View and manage network sites' },
-  'configure-aaa': {
-    title: 'AAA Policies',
-    description: 'Configure authentication, authorization, and accounting',
-  },
-  'configure-devices': { title: 'Devices', description: 'Configure switches and access points' },
   'configure-policy': { title: 'Policy', description: 'Configure network policies' },
   'configure-guest': { title: 'Guest Access', description: 'Configure guest network settings' },
   'performance-analytics': {
@@ -323,11 +327,23 @@ const pageInfo = {
   },
   'configure-service-profiles': {
     title: 'Service Profiles',
-    description: 'IoT, ESL, RTLS, Positioning, Analytics, and Air Defense profiles',
+    description: 'IoT, ESL, RTLS, Positioning, Analytics, Air Defense, and ExtremeLocation profiles',
+  },
+  'configure-device-groups': {
+    title: 'Device Groups',
+    description: 'One AP platform, one profile, one RF policy — applied across sites',
+  },
+  'configure-access-control': {
+    title: 'Access Control',
+    description: 'RADIUS, LDAP, local credentials, groups, rules, and certificates',
   },
   'configure-system': {
     title: 'System & Security',
-    description: 'Access control, SNMP, global settings, and administrators',
+    description: 'Availability, allow/deny lists, SNMP, Gateway settings, and service accounts',
+  },
+  'configure-cloud-portal': {
+    title: 'Cloud Captive Portal',
+    description: 'Guest web portal: employee sponsorship policy and guest details',
   },
   'global-templates': {
     title: 'Global Templates',
@@ -1352,8 +1368,14 @@ export default function App() {
         return <ConfigureMeshpoints />;
       case 'configure-service-profiles':
         return <ConfigureServiceProfiles />;
+      case 'configure-device-groups':
+        return <ConfigureDeviceGroups />;
+      case 'configure-access-control':
+        return <ConfigureAccessControl />;
       case 'configure-system':
         return <ConfigureSystem />;
+      case 'configure-cloud-portal':
+        return <ConfigureCloudPortal />;
       case 'global-templates':
         return (
           <GlobalElementsPage

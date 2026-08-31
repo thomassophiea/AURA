@@ -132,7 +132,6 @@ export function RoleVlanField({
           isNew={!vlanModal.record}
           saving={vlanSaving}
           onSubmit={submitVlan}
-          topologies={topologies}
         />
       )}
       <ConfirmDialog

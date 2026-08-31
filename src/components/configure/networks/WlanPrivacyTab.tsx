@@ -8,13 +8,7 @@ import React from 'react';
 import { Switch } from '../../ui/switch';
 import { Input } from '../../ui/input';
 import { FieldRow, MaskedInput, Section } from '../_kit';
-import {
-  WLAN_ENUMS,
-  hasPresharedKey,
-  isPureWpa3,
-  isWpa,
-  readPrivacyElement,
-} from './wlanModel';
+import { WLAN_ENUMS, hasPresharedKey, isPureWpa3, isWpa, readPrivacyElement } from './wlanModel';
 import { wepKeyExpectedLength, withPrivacyField } from './wlanForm';
 import { EnumSelect, patchRecord, type WlanTabProps } from './wlanControls';
 
@@ -46,12 +40,43 @@ export function WlanPrivacyTab({ form, setForm, errors }: WlanTabProps) {
             : 'Cascades from the auth type selected on the Authentication tab.'
         }
       >
-        {(auth === 'Open' || auth === 'OWE') && (
-          <p className="text-sm text-muted-foreground">
-            {auth === 'OWE'
-              ? 'OWE (Enhanced Open) derives keys opportunistically - no key material to configure.'
-              : 'Open networks carry no key material.'}
-          </p>
+        {auth === 'Open' && (
+          <p className="text-sm text-muted-foreground">Open networks carry no key material.</p>
+        )}
+
+        {auth === 'OWE' && (
+          <>
+            <p className="text-sm text-muted-foreground">
+              OWE (Enhanced Open) derives keys opportunistically - no key material to configure.
+            </p>
+            {/* 10.20: OweElement carries its own cipher select. */}
+            <FieldRow label="Encryption">
+              <EnumSelect
+                value={fields.encryption ?? 'AES_CCM_128'}
+                options={WLAN_ENUMS.encryption}
+                onChange={(v) => setField('encryption', v)}
+                className="w-56"
+              />
+            </FieldRow>
+          </>
+        )}
+
+        {auth === 'WPA2-Private PSK' && (
+          <>
+            <p className="text-sm text-muted-foreground">
+              Like WPA2-Personal, each client joins with a pre-shared key - but every user or device
+              gets its own key, hosted centrally and managed per user or device. No AAA policy or
+              RADIUS server is required.
+            </p>
+            <FieldRow label="Encryption">
+              <EnumSelect
+                value={fields.mode ?? 'aesOnly'}
+                options={WLAN_ENUMS.ppskEncryption}
+                onChange={(v) => setField('mode', v)}
+                className="w-56"
+              />
+            </FieldRow>
+          </>
         )}
 
         {auth === 'WEP' && (
@@ -160,7 +185,32 @@ export function WlanPrivacyTab({ form, setForm, errors }: WlanTabProps) {
                 />
               </FieldRow>
             )}
+            {auth === 'WPA3-Compatibility' && (
+              // 10.20: WpaSaePskElement gained its own cipher select.
+              <FieldRow label="Encryption">
+                <EnumSelect
+                  value={fields.encryption ?? 'AES_CCM_128'}
+                  options={WLAN_ENUMS.encryption}
+                  onChange={(v) => setField('encryption', v)}
+                  className="w-56"
+                />
+              </FieldRow>
+            )}
           </>
+        )}
+
+        {(auth === 'WPA3-Enterprise (802.1X/EAP)' ||
+          auth === 'WPA3-Enterprise Transition (802.1X/EAP)') && (
+          // 10.20: enterprise WPA3 variants gained a cipher select on the
+          // enterprise list (no GCMP256). 192-bit gets none.
+          <FieldRow label="Encryption">
+            <EnumSelect
+              value={fields.encryption ?? 'AES_CCM_128'}
+              options={WLAN_ENUMS.encryptionEnterprise}
+              onChange={(v) => setField('encryption', v)}
+              className="w-56"
+            />
+          </FieldRow>
         )}
       </Section>
 

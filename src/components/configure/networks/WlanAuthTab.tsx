@@ -144,7 +144,9 @@ export function WlanAuthTab({ form, setForm, errors, isNew, refs }: WlanTabProps
                 <FieldRow
                   key={slot}
                   label={`RADIUS Server ${slot + 1}`}
-                  description={slot === 0 ? 'Servers come from the configured AAA policies.' : undefined}
+                  description={
+                    slot === 0 ? 'Servers come from the configured AAA policies.' : undefined
+                  }
                 >
                   <RefSelect
                     value={ui.radiusServers[slot]}

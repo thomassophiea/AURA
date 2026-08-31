@@ -40,10 +40,10 @@ export function showMobilityDomainId(form: WlanFormState, isNew: boolean): boole
 }
 
 /** WEP key length hint: 10/26 hex or 5/13 ASCII characters per keyLength+method. */
-export function wepKeyExpectedLength(fields: {
-  keyLength?: string;
-  pskInputType?: string;
-}): { length: number; hex: boolean } {
+export function wepKeyExpectedLength(fields: { keyLength?: string; pskInputType?: string }): {
+  length: number;
+  hex: boolean;
+} {
   const is128 = fields.keyLength === 'Wep_128bit';
   const hex = (fields.pskInputType ?? 'Hex') === 'Hex';
   return { length: is128 ? (hex ? 26 : 13) : hex ? 10 : 5, hex };
@@ -86,10 +86,7 @@ export function validateWlan(form: WlanFormState, isNew: boolean): WlanErrors {
     }
   }
 
-  if (
-    showMobilityDomainId(form, isNew) &&
-    !isNaturalInRange(fields.fastTransitionMdId, 0, 65535)
-  ) {
+  if (showMobilityDomainId(form, isNew) && !isNaturalInRange(fields.fastTransitionMdId, 0, 65535)) {
     errors.mobilityDomainId = 'Mobility Domain ID - valid range 0 to 65535';
   }
 

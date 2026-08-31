@@ -125,7 +125,10 @@ export function DhcpLocalDialog({ form, upd, onClose }: DhcpDialogProps) {
               />
             </FieldRow>
             <FieldRow label="WINS">
-              <Input value={String(form.wins ?? '')} onChange={(e) => upd('wins', e.target.value)} />
+              <Input
+                value={String(form.wins ?? '')}
+                onChange={(e) => upd('wins', e.target.value)}
+              />
             </FieldRow>
             <FieldRow
               label="Gateway"

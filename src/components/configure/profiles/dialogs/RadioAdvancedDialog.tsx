@@ -4,13 +4,7 @@
  * Cell Size Control sub-block. Hidden entirely for sensor radios.
  */
 import React from 'react';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '../../../ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../../ui/dialog';
 import { Button } from '../../../ui/button';
 import { Input } from '../../../ui/input';
 import { BoolSelect, NumInput, PSelect } from '../controls';
@@ -46,9 +40,21 @@ function AdvField({
 
   let control: React.ReactNode;
   if (type === 'num') {
-    control = <NumInput value={value as number} onChange={(v) => updRadio(radioIndex, field.key, v)} className="w-52" />;
+    control = (
+      <NumInput
+        value={value as number}
+        onChange={(v) => updRadio(radioIndex, field.key, v)}
+        className="w-52"
+      />
+    );
   } else if (type === 'bool') {
-    control = <BoolSelect value={!!value} onChange={(v) => updRadio(radioIndex, field.key, v)} className="w-52" />;
+    control = (
+      <BoolSelect
+        value={!!value}
+        onChange={(v) => updRadio(radioIndex, field.key, v)}
+        className="w-52"
+      />
+    );
   } else if (type === 'chlist') {
     control = (
       <Input
@@ -77,12 +83,21 @@ function AdvField({
         <span className="text-sm text-muted-foreground">{field.label}</span>
         <div className="shrink-0">{control}</div>
       </div>
-      {bad && rg && <p className="text-right text-xs text-destructive">{`Valid range ${rg[0]} to ${rg[1]}`}</p>}
+      {bad && rg && (
+        <p className="text-right text-xs text-destructive">{`Valid range ${rg[0]} to ${rg[1]}`}</p>
+      )}
     </div>
   );
 }
 
-export function RadioAdvancedDialog({ open, radio, radioIndex, F, updRadio, onClose }: RadioAdvancedDialogProps) {
+export function RadioAdvancedDialog({
+  open,
+  radio,
+  radioIndex,
+  F,
+  updRadio,
+  onClose,
+}: RadioAdvancedDialogProps) {
   if (!radio) return null;
   const main = ADV_RADIO_FIELDS.filter((f) => !f.group && f.show(radio, F));
   const csc = ADV_RADIO_FIELDS.filter((f) => f.group === 'csc' && f.show(radio, F));
@@ -101,13 +116,27 @@ export function RadioAdvancedDialog({ open, radio, radioIndex, F, updRadio, onCl
         ) : (
           <div className="space-y-3">
             {main.map((f) => (
-              <AdvField key={f.key} field={f} radio={radio} radioIndex={radioIndex} updRadio={updRadio} />
+              <AdvField
+                key={f.key}
+                field={f}
+                radio={radio}
+                radioIndex={radioIndex}
+                updRadio={updRadio}
+              />
             ))}
             {csc.length > 0 && (
               <div className="space-y-3 border-t border-border pt-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Cell Size Control</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Cell Size Control
+                </p>
                 {csc.map((f) => (
-                  <AdvField key={f.key} field={f} radio={radio} radioIndex={radioIndex} updRadio={updRadio} />
+                  <AdvField
+                    key={f.key}
+                    field={f}
+                    radio={radio}
+                    radioIndex={radioIndex}
+                    updRadio={updRadio}
+                  />
                 ))}
               </div>
             )}

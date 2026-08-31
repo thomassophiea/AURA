@@ -45,9 +45,7 @@ export function EcpAdvancedDialog({ open, onOpenChange, form, upd }: EcpAdvanced
       <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Advanced: External Captive Portal Redirection</DialogTitle>
-          <DialogDescription>
-            Include the following items in the redirection URL
-          </DialogDescription>
+          <DialogDescription>Include the following items in the redirection URL</DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           {ECP_ITEMS.map(([key, label]) => (
@@ -197,12 +195,7 @@ export interface ProfilesDialogProps {
   onChange: (ids: string[]) => void;
 }
 
-export function ProfilesDialog({
-  open,
-  onOpenChange,
-  selectedIds,
-  onChange,
-}: ProfilesDialogProps) {
+export function ProfilesDialog({ open, onOpenChange, selectedIds, onChange }: ProfilesDialogProps) {
   const [profiles, setProfiles] = useState<ProfileOption[] | null>(null);
 
   useEffect(() => {

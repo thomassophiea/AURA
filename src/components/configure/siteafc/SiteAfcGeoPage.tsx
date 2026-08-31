@@ -13,13 +13,7 @@ import { Button } from '../../ui/button';
 import { Card, CardContent } from '../../ui/card';
 import { Skeleton } from '../../ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { sitesService } from '../../../services/configure';
 import type { SiteConfig } from '../../../types/configure';
 import { logger } from '../../../services/logger';
@@ -66,10 +60,7 @@ export function SiteAfcGeoPage() {
     void loadSites();
   }, [loadSites]);
 
-  const site = useMemo(
-    () => sites.find((s) => s.id === selectedId) ?? null,
-    [sites, selectedId]
-  );
+  const site = useMemo(() => sites.find((s) => s.id === selectedId) ?? null, [sites, selectedId]);
   const { aps, loading: apsLoading, refresh } = useSiteAfcAps(site);
   const apRanging = Boolean(site?.apRanging);
 
@@ -150,7 +141,10 @@ export function SiteAfcGeoPage() {
           </div>
           <HeaderStat label="Country" value={site?.country ?? ''} />
           <HeaderStat label="Timezone" value={site?.timezone ?? ''} />
-          <HeaderStat label="Mode" value={site ? (site.distributed ? 'Distributed' : 'Centralized') : ''} />
+          <HeaderStat
+            label="Mode"
+            value={site ? (site.distributed ? 'Distributed' : 'Centralized') : ''}
+          />
           <HeaderStat label="Access Points" value={site ? String(aps.length) : ''} />
         </CardContent>
       </Card>

@@ -17,6 +17,7 @@ import {
   hasDeviceAdvErrors,
   meshpointsOf,
   radioRangeErrors,
+  replanRadios,
   wiredPortsVisible,
 } from './helpers';
 import { setIn } from './helpers';
@@ -71,7 +72,10 @@ export function ProfileEditorSheet({
   }, [record, isNew]);
 
   const radios = form.radios ?? [];
-  const F = useMemo(() => (tag: string) => (form.features ?? []).indexOf(tag) >= 0, [form.features]);
+  const F = useMemo(
+    () => (tag: string) => (form.features ?? []).indexOf(tag) >= 0,
+    [form.features]
+  );
 
   const mut = (fn: (draft: ApProfile) => void) => {
     setForm((prev) => {
@@ -86,6 +90,9 @@ export function ProfileEditorSheet({
     setForm((prev) => setIn(prev, path, value));
     setDirty(true);
   };
+  /* Gateway 10.20: an Operational Mode change RE-PLANS the radios
+     (updateRadios + setDropdownMode + setRadioBandsTitles). */
+  const setOperatingMode = (modeId: string) => mut((c) => replanRadios(c, modeId));
   const updRadio = (index: number, key: string, value: unknown) =>
     mut((c) => {
       (c.radios[index] as unknown as Record<string, unknown>)[key] = value;
@@ -128,7 +135,7 @@ export function ProfileEditorSheet({
       }),
     [radios.length, form.wiredPorts, F]
   );
-  const activeTab = visibleTabs.indexOf(tab) >= 0 ? tab : visibleTabs[0] ?? 'Radios';
+  const activeTab = visibleTabs.indexOf(tab) >= 0 ? tab : (visibleTabs[0] ?? 'Radios');
 
   const trimmed = String(form.name ?? '').trim();
   const nameErr = !trimmed
@@ -146,6 +153,7 @@ export function ProfileEditorSheet({
     pools,
     setField,
     setPath,
+    setOperatingMode,
     updRadio,
     toggleInArr,
     mut,
@@ -189,7 +197,9 @@ export function ProfileEditorSheet({
             onChange={(e) => setField('name', e.target.value)}
           />
           {nameErr && <p className="text-xs text-destructive">{nameErr}</p>}
-          {form.predefined && <p className="text-xs text-muted-foreground">Predefined profiles cannot be renamed.</p>}
+          {form.predefined && (
+            <p className="text-xs text-muted-foreground">Predefined profiles cannot be renamed.</p>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -228,19 +238,27 @@ export function ProfileEditorSheet({
         </div>
 
         {radioErrs.length > 0 && (
-          <p className="text-xs text-destructive">Out-of-range radio settings: {radioErrs.join(' · ')}</p>
+          <p className="text-xs text-destructive">
+            Out-of-range radio settings: {radioErrs.join(' · ')}
+          </p>
         )}
       </div>
 
       <RadioAdvancedDialog
         open={advRadio != null}
-        radio={advRadio != null ? radios[advRadio] ?? null : null}
+        radio={advRadio != null ? (radios[advRadio] ?? null) : null}
         radioIndex={advRadio ?? 0}
         F={F}
         updRadio={updRadio}
         onClose={() => setAdvRadio(null)}
       />
-      <DeviceAdvancedDialog open={advDev} form={form} F={F} setPath={setPath} onClose={() => setAdvDev(false)} />
+      <DeviceAdvancedDialog
+        open={advDev}
+        form={form}
+        F={F}
+        setPath={setPath}
+        onClose={() => setAdvDev(false)}
+      />
       <ClientBridgeDialog
         open={cbCred}
         cbUser={form.cbUser ?? ''}
@@ -251,13 +269,19 @@ export function ProfileEditorSheet({
       {meshAdv && (
         <MeshAdvancedDialog
           open
-          mesh={meshpointsOf(form).find((m) => m.meshpointId === meshAdv) ?? defaultProfileMesh(meshAdv)}
+          mesh={
+            meshpointsOf(form).find((m) => m.meshpointId === meshAdv) ?? defaultProfileMesh(meshAdv)
+          }
           F={F}
           onApply={applyMesh}
           onClose={() => setMeshAdv(null)}
         />
       )}
-      <AssociatedDeviceGroupsDialog open={dgOpen} profileId={record?.id ?? null} onClose={() => setDgOpen(false)} />
+      <AssociatedDeviceGroupsDialog
+        open={dgOpen}
+        profileId={record?.id ?? null}
+        onClose={() => setDgOpen(false)}
+      />
     </EditorSheet>
   );
 }

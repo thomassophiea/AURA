@@ -11,6 +11,7 @@ import { EditorSheet } from '../_kit';
 import { profilesService } from '../../../services/configure';
 import { getUserFriendlyMessage } from '../../../services/errorHandler';
 import type { WlanService } from '../../../types/configure';
+import { readPrivacyElement } from './wlanModel';
 import { buildWlanPayload, createFormState, validateWlan } from './wlanForm';
 import type { WlanRefs } from './useWlanRefs';
 import { useProfileAssignments } from './useProfileAssignments';
@@ -148,6 +149,7 @@ export function WlanEditorSheet({
           <WlanProfilesTab
             wlanId={wlanId}
             authType={form.ui.authType}
+            saeMethod={readPrivacyElement(form.record.privacy, form.ui.authType).saeMethod}
             profiles={refs.profiles}
             matrix={assignments.matrix}
             onToggle={assignments.toggle}

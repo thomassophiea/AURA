@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { SiteGroupsPage } from './SiteGroupsPage';
 import { SitesPage } from './SitesPage';
 import { SitesPage as SiteConfigPage } from './configure/sites';
+import { consumeConfigureTabHint } from './configure/catalog/configureNav';
 
 type TabId = 'site-groups' | 'sites' | 'site-config';
 
@@ -18,7 +19,11 @@ interface SitesAndGroupsPageProps {
 }
 
 export function SitesAndGroupsPage({ initialTab = 'site-groups', onShowSiteDetail }: SitesAndGroupsPageProps) {
-  const [activeTab, setActiveTab] = useState<TabId>(initialTab);
+  const [activeTab, setActiveTab] = useState<TabId>(
+    () =>
+      (consumeConfigureTabHint(['site-groups', 'sites', 'site-config']) as TabId | null) ??
+      initialTab
+  );
   const [siteGroupFilter, setSiteGroupFilter] = useState<{ id: string; name: string } | null>(null);
 
   // When user clicks site count or "View Sites" in site groups tab, switch to sites tab with filter

@@ -19,7 +19,8 @@ function seed(def: PositioningProfile): PositioningProfile {
   return s;
 }
 
-const collectionLabel = (id?: string) => POS_COLLECTIONS.find((c) => c.id === id)?.label ?? id ?? '';
+const collectionLabel = (id?: string) =>
+  POS_COLLECTIONS.find((c) => c.id === id)?.label ?? id ?? '';
 
 export function PositioningPage() {
   const columns = useCallback(

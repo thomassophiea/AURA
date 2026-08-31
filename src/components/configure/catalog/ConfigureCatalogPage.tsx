@@ -6,9 +6,16 @@
  * viewId is an App view key (see catalogData.ts for the map).
  */
 import { useCallback, useState } from 'react';
-import { LayoutGrid, Workflow } from 'lucide-react';
+import { LayoutGrid, Server, Workflow } from 'lucide-react';
 import { toast } from 'sonner';
+import { Badge } from '../../ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '../../ui/tabs';
+import { useAppContext } from '../../../contexts/AppContext';
+import {
+  deriveGatewayMode,
+  gatewayIdentity,
+  gatewayModeLabel,
+} from '../../../services/siteCatalog';
 import { FeatureCatalogView } from './FeatureCatalogView';
 import { ArchitectureView } from './ArchitectureView';
 import { useFeatureCounts } from './useFeatureCounts';
@@ -23,6 +30,9 @@ type CatalogMode = 'catalog' | 'architecture';
 export function ConfigureCatalogPage({ onNavigate }: ConfigureCatalogPageProps) {
   const [mode, setMode] = useState<CatalogMode>('catalog');
   const { counts } = useFeatureCounts();
+  // Configuration is scoped to the Site Group's Gateway (Site Group = the
+  // Gateway boundary). Surface which Gateway this catalog writes to.
+  const { siteGroup } = useAppContext();
 
   const handleNavigate = useCallback(
     (viewId: string) => {
@@ -39,7 +49,17 @@ export function ConfigureCatalogPage({ onNavigate }: ConfigureCatalogPageProps) 
     <div className="flex flex-col gap-6 p-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-foreground">Configure</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-xl font-semibold tracking-tight text-foreground">Configure</h2>
+            {siteGroup && (
+              <Badge variant="outline" className="gap-1.5 font-normal text-muted-foreground">
+                <Server className="size-3" aria-hidden />
+                {siteGroup.name ?? gatewayIdentity(siteGroup) ?? 'Gateway'}
+                <span aria-hidden>·</span>
+                {gatewayModeLabel(deriveGatewayMode(siteGroup))}
+              </Badge>
+            )}
+          </div>
           <p className="text-sm text-muted-foreground">
             Profiles, policies, and services applied across your sites
           </p>

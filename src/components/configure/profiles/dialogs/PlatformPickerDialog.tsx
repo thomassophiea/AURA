@@ -5,7 +5,14 @@
  * template and opens the full editor.
  */
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../../ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../../../ui/dialog';
 import { Button } from '../../../ui/button';
 import { Input } from '../../../ui/input';
 import { LabelRow, PSelect } from '../controls';
@@ -19,7 +26,13 @@ export interface PlatformPickerDialogProps {
   onClose: () => void;
 }
 
-export function PlatformPickerDialog({ open, platforms, existingNames, onConfirm, onClose }: PlatformPickerDialogProps) {
+export function PlatformPickerDialog({
+  open,
+  platforms,
+  existingNames,
+  onConfirm,
+  onClose,
+}: PlatformPickerDialogProps) {
   const [name, setName] = useState('');
   const [platform, setPlatform] = useState('');
 
@@ -31,7 +44,10 @@ export function PlatformPickerDialog({ open, platforms, existingNames, onConfirm
       : null;
   const valid = !nameErr && !!platform;
 
-  const opts: Opt[] = [{ id: '', label: '— Select Platform —' }, ...platforms.map((p) => ({ id: p, label: p }))];
+  const opts: Opt[] = [
+    { id: '', label: '— Select Platform —' },
+    ...platforms.map((p) => ({ id: p, label: p })),
+  ];
 
   const reset = () => {
     setName('');
@@ -52,15 +68,27 @@ export function PlatformPickerDialog({ open, platforms, existingNames, onConfirm
         <DialogHeader>
           <DialogTitle>Create Profile</DialogTitle>
           <DialogDescription>
-            Selecting a platform seeds the profile with that platform&apos;s default radios, wired ports and feature set.
+            Selecting a platform seeds the profile with that platform&apos;s default radios, wired
+            ports and feature set.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <LabelRow label="Name" labelWidth={110} error={name ? nameErr : null}>
-            <Input className="h-9" value={name} onChange={(e) => setName(e.target.value)} placeholder="Profile name" />
+            <Input
+              className="h-9"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Profile name"
+            />
           </LabelRow>
           <LabelRow label="AP Platform" labelWidth={110}>
-            <PSelect value={platform} options={opts} onChange={setPlatform} className="w-64" ariaLabel="AP platform" />
+            <PSelect
+              value={platform}
+              options={opts}
+              onChange={setPlatform}
+              className="w-64"
+              ariaLabel="AP platform"
+            />
           </LabelRow>
         </div>
         <DialogFooter>

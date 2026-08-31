@@ -40,6 +40,8 @@ import {
   LayoutGrid,
   SatelliteDish,
   Stethoscope,
+  Boxes,
+  KeySquare,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
@@ -78,12 +80,15 @@ const configureItems = [
   { id: 'configure-networks', label: 'Networks', icon: Network },
   { id: 'configure-profiles', label: 'Device Profiles', icon: Cpu },
   { id: 'configure-access-points', label: 'Access Points', icon: Wifi },
+  { id: 'configure-device-groups', label: 'Device Groups', icon: Boxes },
   { id: 'configure-site-afc-geo', label: 'Site AFC & Geo', icon: SatelliteDish },
   { id: 'configure-rrm', label: 'RF Management', icon: Radio },
   { id: 'configure-meshpoints', label: 'Meshpoints', icon: Share2 },
   { id: 'configure-policy', label: 'Policy', icon: Shield },
   { id: 'configure-aaa-policies', label: 'AAA Policies', icon: UserCheck },
+  { id: 'configure-access-control', label: 'Access Control', icon: KeySquare },
   { id: 'configure-guest', label: 'Guest', icon: UserPlus },
+  { id: 'configure-cloud-portal', label: 'Cloud Captive Portal', icon: Globe },
   { id: 'configure-service-profiles', label: 'Service Profiles', icon: Radar },
   { id: 'configure-adoption-rules', label: 'Adoption Rules', icon: Zap },
   { id: 'configure-system', label: 'System & Security', icon: Settings },

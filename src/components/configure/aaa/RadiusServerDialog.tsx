@@ -4,8 +4,14 @@
  * retries 1-32, Status-Server poll interval 30-300 (auth tables only),
  * Server Type Standard/Secure (locked in edit) -> Trust Point + Peer
  * Discovery cascade.
+ *
+ * Trust Point is a SELECT seeded from the controller's interface certs
+ * (trustPointsService — the same GET /platformmanager/v1/interface/certs
+ * derivation the gateway's own UI uses), with any unlisted current value kept
+ * selectable for round-trip. If the listing call fails outright, the field
+ * degrades to free text so a Secure server can still be configured.
  */
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -16,13 +22,9 @@ import {
 } from '../../ui/dialog';
 import { Button } from '../../ui/button';
 import { FieldRow, MaskedInput } from '../_kit';
+import { trustPointsService } from '../../../services/configure';
 import { NumberField, SelectField, SwitchField, TextField } from './fields';
-import {
-  AAA_ENUMS,
-  newRadiusServer,
-  validateRadiusServer,
-  type AaaServerForm,
-} from './aaaModel';
+import { AAA_ENUMS, newRadiusServer, validateRadiusServer, type AaaServerForm } from './aaaModel';
 
 export interface RadiusServerDialogProps {
   open: boolean;
@@ -41,15 +43,37 @@ export function RadiusServerDialog({
   onClose,
 }: RadiusServerDialogProps) {
   const editMode = server != null;
-  const [form, setForm] = useState<AaaServerForm>(
-    () => server ?? newRadiusServer(radiusType)
-  );
+  const [form, setForm] = useState<AaaServerForm>(() => server ?? newRadiusServer(radiusType));
   const set = <K extends keyof AaaServerForm>(key: K, value: AaaServerForm[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
   const errs = useMemo(() => validateRadiusServer(form, radiusType), [form, radiusType]);
   const valid = Object.keys(errs).length === 0;
   const kind = radiusType === 'acct' ? 'Accounting' : 'Authentication';
+
+  /** null = loading, 'error' = listing failed (degrade to free text). */
+  const [trustPoints, setTrustPoints] = useState<string[] | 'error' | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    trustPointsService.list().then(
+      (names) => {
+        if (!cancelled) setTrustPoints(names);
+      },
+      () => {
+        if (!cancelled) setTrustPoints('error');
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /** Controller trust points + the current unlisted value (round-trip). */
+  const trustPointOptions = useMemo(() => {
+    const names = Array.isArray(trustPoints) ? [...trustPoints] : [];
+    if (form.trustPoint && !names.includes(form.trustPoint)) names.unshift(form.trustPoint);
+    return names.map((name) => ({ id: name, label: name }));
+  }, [trustPoints, form.trustPoint]);
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
@@ -127,14 +151,32 @@ export function RadiusServerDialog({
           />
           {form.serverType === 'Secure' && (
             <>
-              <TextField
-                label="Trust Point"
-                value={form.trustPoint ?? ''}
-                onChange={(v) => set('trustPoint', v || null)}
-                error={errs.trustPoint}
-                description="Certificate trust point configured on the controller"
-                required
-              />
+              {trustPoints === 'error' ? (
+                // Listing unavailable — keep the field usable as free text.
+                <TextField
+                  label="Trust Point"
+                  value={form.trustPoint ?? ''}
+                  onChange={(v) => set('trustPoint', v || null)}
+                  error={errs.trustPoint}
+                  description="Trust point listing unavailable — enter the certificate trust point name"
+                  required
+                />
+              ) : (
+                <SelectField
+                  label="Trust Point"
+                  value={form.trustPoint ?? ''}
+                  onChange={(v) => set('trustPoint', v || null)}
+                  options={trustPointOptions}
+                  error={errs.trustPoint}
+                  description={
+                    trustPoints !== null && trustPointOptions.length === 0
+                      ? 'No trust points on this Gateway — upload a trust anchor certificate first'
+                      : 'Certificate trust point configured on the controller'
+                  }
+                  required
+                  disabled={trustPoints === null || trustPointOptions.length === 0}
+                />
+              )}
               <SwitchField
                 label="Peer Discovery"
                 checked={form.peerDiscovery}

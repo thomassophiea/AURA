@@ -30,18 +30,49 @@ export function TabRouter({ tab, ctx }: { tab: ProfileTab; ctx: ProfileTabContex
       return <WiredPortsTab ctx={ctx} />;
     case 'Air Defense':
       return (
-        <ReferenceTab ctx={ctx} label="Air Defense Profile" fieldKey="airDefenseProfileId" pool={ctx.pools.airdefense} withAirDefenseEssentials />
+        <ReferenceTab
+          ctx={ctx}
+          label="Air Defense Profile"
+          fieldKey="airDefenseProfileId"
+          pool={ctx.pools.airdefense}
+          withAirDefenseEssentials
+        />
       );
     case 'IoT':
-      return <ReferenceTab ctx={ctx} label="IoT Profile" fieldKey="iotProfileId" pool={ctx.pools.iot} />;
+      return (
+        <ReferenceTab ctx={ctx} label="IoT Profile" fieldKey="iotProfileId" pool={ctx.pools.iot} />
+      );
     case 'ESL':
-      return <ReferenceTab ctx={ctx} label="ESL Profile" fieldKey="eslProfileId" pool={ctx.pools.esl} />;
+      return (
+        <ReferenceTab ctx={ctx} label="ESL Profile" fieldKey="eslProfileId" pool={ctx.pools.esl} />
+      );
     case 'Positioning':
-      return <ReferenceTab ctx={ctx} label="Positioning Profile" fieldKey="positioningProfileId" pool={ctx.pools.positioning} />;
+      return (
+        <ReferenceTab
+          ctx={ctx}
+          label="Positioning Profile"
+          fieldKey="positioningProfileId"
+          pool={ctx.pools.positioning}
+        />
+      );
     case 'Analytics':
-      return <ReferenceTab ctx={ctx} label="Analytics Profile" fieldKey="analyticsProfileId" pool={ctx.pools.analytics} />;
+      return (
+        <ReferenceTab
+          ctx={ctx}
+          label="Analytics Profile"
+          fieldKey="analyticsProfileId"
+          pool={ctx.pools.analytics}
+        />
+      );
     case 'RTLS':
-      return <ReferenceTab ctx={ctx} label="RTLS Profile" fieldKey="rtlsProfileId" pool={ctx.pools.rtls} />;
+      return (
+        <ReferenceTab
+          ctx={ctx}
+          label="RTLS Profile"
+          fieldKey="rtlsProfileId"
+          pool={ctx.pools.rtls}
+        />
+      );
     default:
       return null;
   }

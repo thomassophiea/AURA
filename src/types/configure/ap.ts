@@ -10,6 +10,8 @@ export interface ApFtm {
   wgs84: { latitude: number; longitude: number; altitude: number };
   wgs84Ovr: boolean;
   zSubelement: {
+    /** Z-Subelement enable (ap.html zsubEnable) — absent on older captures. */
+    enabled?: boolean;
     expectedToMove: boolean;
     floorNumber: number;
     aboveFloor: { height: number; uncertainty: number };

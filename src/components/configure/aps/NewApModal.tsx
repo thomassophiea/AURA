@@ -63,8 +63,14 @@ export function NewApModal({ open, onOpenChange, existing, profiles, onCreate }:
   if (regions.length > 1 && !d.complianceRegion) errs.region = 'Compliance region is required';
   const valid = Object.keys(errs).length === 0;
 
-  const modelOpts: Opt[] = [{ id: '', label: '— Select —' }, ...models.map((m) => ({ id: m, label: m }))];
-  const regionOpts: Opt[] = [{ id: '', label: '— Select —' }, ...regions.map((r) => ({ id: r, label: r }))];
+  const modelOpts: Opt[] = [
+    { id: '', label: '— Select —' },
+    ...models.map((m) => ({ id: m, label: m })),
+  ];
+  const regionOpts: Opt[] = [
+    { id: '', label: '— Select —' },
+    ...regions.map((r) => ({ id: r, label: r })),
+  ];
 
   const create = () => {
     onCreate({
@@ -98,18 +104,32 @@ export function NewApModal({ open, onOpenChange, existing, profiles, onCreate }:
       </FieldRow>
       {d.hardwareType && (
         <FieldRow label="Serial Number" required error={d.serialNumber ? errs.serial : undefined}>
-          <Input className="w-60" maxLength={16} value={d.serialNumber} onChange={(e) => set('serialNumber', e.target.value)} />
+          <Input
+            className="w-60"
+            maxLength={16}
+            value={d.serialNumber}
+            onChange={(e) => set('serialNumber', e.target.value)}
+          />
         </FieldRow>
       )}
       <FieldRow label="Name" required error={d.apName ? errs.name : undefined}>
         <Input className="w-60" value={d.apName} onChange={(e) => set('apName', e.target.value)} />
       </FieldRow>
       <FieldRow label="Description">
-        <Input className="w-72" value={d.description} onChange={(e) => set('description', e.target.value)} />
+        <Input
+          className="w-72"
+          value={d.description}
+          onChange={(e) => set('description', e.target.value)}
+        />
       </FieldRow>
       {regions.length > 1 && (
         <FieldRow label="Compliance Region" required error={errs.region}>
-          <ApSelect className="w-60" value={d.complianceRegion} options={regionOpts} onChange={(v) => set('complianceRegion', v)} />
+          <ApSelect
+            className="w-60"
+            value={d.complianceRegion}
+            options={regionOpts}
+            onChange={(v) => set('complianceRegion', v)}
+          />
         </FieldRow>
       )}
     </EditorDialog>

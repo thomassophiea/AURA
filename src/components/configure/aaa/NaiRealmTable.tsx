@@ -6,16 +6,9 @@
 import React, { useState } from 'react';
 import { ArrowDown, ArrowUp, Pencil, Plus, X } from 'lucide-react';
 import { Button } from '../../ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../../ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../ui/table';
 import { NaiRealmDialog } from './NaiRealmDialog';
-import { moveItem, removeAt, upsertAt, type NaiRealmEntry } from './aaaModel';
+import { MAX_NAI_REALMS, moveItem, removeAt, upsertAt, type NaiRealmEntry } from './aaaModel';
 
 export interface NaiRealmTableProps {
   realms: NaiRealmEntry[];
@@ -34,7 +27,8 @@ export function NaiRealmTable({ realms, onChange, disabled }: NaiRealmTableProps
 
   return (
     <div className="space-y-2">
-      {!disabled && (
+      {/* Controller New gate: hidden at the 32-realm cap. */}
+      {!disabled && realms.length < MAX_NAI_REALMS && (
         <Button type="button" variant="outline" size="sm" onClick={() => setDialogIndex(-1)}>
           <Plus className="mr-1 h-4 w-4" />
           New

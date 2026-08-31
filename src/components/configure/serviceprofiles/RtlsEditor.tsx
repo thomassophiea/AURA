@@ -32,7 +32,15 @@ export interface RtlsEditorProps {
   onSave: (payload: Partial<RtlsProfile>, id?: string) => void | Promise<void>;
 }
 
-export function RtlsEditor({ open, onOpenChange, record, seed, rows, saving, onSave }: RtlsEditorProps) {
+export function RtlsEditor({
+  open,
+  onOpenChange,
+  record,
+  seed,
+  rows,
+  saving,
+  onSave,
+}: RtlsEditorProps) {
   const isNew = record == null;
   const ro = record?.canEdit === false;
   const [form, setForm] = useState<RtlsProfile>(() => structuredClone(record ?? seed));
@@ -70,7 +78,12 @@ export function RtlsEditor({ open, onOpenChange, record, seed, rows, saving, onS
       onSave={() => onSave(form, record?.id)}
     >
       <div className="max-w-[600px] space-y-4">
-        <FieldRow label="Profile Name" htmlFor="rtls-name" error={dirty ? errs.name : null} required>
+        <FieldRow
+          label="Profile Name"
+          htmlFor="rtls-name"
+          error={dirty ? errs.name : null}
+          required
+        >
           <Input
             id="rtls-name"
             value={form.name ?? ''}
@@ -102,7 +115,12 @@ export function RtlsEditor({ open, onOpenChange, record, seed, rows, saving, onS
           <legend className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {form.appId} Server
           </legend>
-          <FieldRow label="Server IP Addresses" htmlFor="rtls-ip" error={dirty ? errs.ip : null} required>
+          <FieldRow
+            label="Server IP Addresses"
+            htmlFor="rtls-ip"
+            error={dirty ? errs.ip : null}
+            required
+          >
             <Input
               id="rtls-ip"
               value={sub.ip ?? ''}
@@ -118,12 +136,19 @@ export function RtlsEditor({ open, onOpenChange, record, seed, rows, saving, onS
               value={Number.isFinite(sub.port) ? sub.port : ''}
               disabled={ro}
               onChange={(e) =>
-                updVendor({ port: e.target.value === '' ? (NaN as number) : Number(e.target.value) })
+                updVendor({
+                  port: e.target.value === '' ? (NaN as number) : Number(e.target.value),
+                })
               }
               className="max-w-[160px]"
             />
           </FieldRow>
-          <FieldRow label="Multicast MAC" htmlFor="rtls-mac" error={dirty ? errs.mcast : null} required>
+          <FieldRow
+            label="Multicast MAC"
+            htmlFor="rtls-mac"
+            error={dirty ? errs.mcast : null}
+            required
+          >
             <Input
               id="rtls-mac"
               value={sub.mcast ?? ''}

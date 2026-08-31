@@ -52,7 +52,11 @@ export function ApGeneralTab({
         </FieldRow>
       )}
       <FieldRow label="Description">
-        <Input value={form.description ?? ''} className="w-72" onChange={(e) => upd('description', e.target.value)} />
+        <Input
+          value={form.description ?? ''}
+          className="w-72"
+          onChange={(e) => upd('description', e.target.value)}
+        />
       </FieldRow>
       <FieldRow label="IP Address">
         <Input readOnly value={form.ipAddress ?? ''} className={RO} />
@@ -77,7 +81,10 @@ export function ApGeneralTab({
           className="w-72"
           value={dg?.id ?? ''}
           placeholder={form.hostSite ? 'Select...' : 'Select a site first'}
-          options={[{ id: '', label: '— Select —' }, ...deviceGroups.map((g) => ({ id: g.id, label: g.groupName }))]}
+          options={[
+            { id: '', label: '— Select —' },
+            ...deviceGroups.map((g) => ({ id: g.id, label: g.groupName })),
+          ]}
           onChange={(v) => onDeviceGroupChange(deviceGroups.find((g) => g.id === v) ?? null)}
         />
       </FieldRow>
@@ -90,7 +97,12 @@ export function ApGeneralTab({
 
       {!hasFeature(form.features, 'WIFI7') && (
         <FieldRow label="Environment">
-          <ApSelect className="w-52" value={form.environment || 'indoor'} options={['indoor', 'outdoor']} onChange={(v) => upd('environment', v)} />
+          <ApSelect
+            className="w-52"
+            value={form.environment || 'indoor'}
+            options={['indoor', 'outdoor']}
+            onChange={(v) => upd('environment', v)}
+          />
         </FieldRow>
       )}
 

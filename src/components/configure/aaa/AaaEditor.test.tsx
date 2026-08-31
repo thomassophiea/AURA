@@ -107,11 +107,13 @@ describe('AaaEditor deny/reauth reveals (A2-A4)', () => {
   it('deny toggle reveals the three member inputs with in-range defaults', () => {
     renderNew();
     expect(screen.queryByLabelText('Consecutive failed Authentications')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('switch', { name: 'Deny on repeated failed Authentications' }));
+    fireEvent.click(
+      screen.getByRole('switch', { name: 'Deny on repeated failed Authentications' })
+    );
     expect(screen.getByLabelText('Consecutive failed Authentications')).toHaveValue(5);
-    expect(
-      screen.getByLabelText('Elapsed time for failed Authentications (seconds)')
-    ).toHaveValue(5);
+    expect(screen.getByLabelText('Elapsed time for failed Authentications (seconds)')).toHaveValue(
+      5
+    );
     expect(screen.getByLabelText('Quiet Timeout (seconds)')).toHaveValue(300);
   });
 
@@ -134,9 +136,7 @@ describe('AaaEditor deny/reauth reveals (A2-A4)', () => {
 
   it('renders reauth checked when the record carries reauthTimeoutOvr > 0 (A4)', () => {
     renderEdit({ reauthTimeoutOvr: 120 });
-    expect(
-      screen.getByRole('switch', { name: 'Override Reauthentication Timeout' })
-    ).toBeChecked();
+    expect(screen.getByRole('switch', { name: 'Override Reauthentication Timeout' })).toBeChecked();
     expect(screen.getByLabelText('Reauthentication Timeout (seconds)')).toHaveValue(120);
   });
 });
@@ -147,7 +147,9 @@ describe('AaaEditor save payload semantics', () => {
       name: 'Policy1',
       attributes: { calledStationId: 'Bssid', nasIpAddress: '1.2.3.4', nasId: 'nas1' },
     });
-    fireEvent.click(screen.getByRole('switch', { name: 'Deny on repeated failed Authentications' }));
+    fireEvent.click(
+      screen.getByRole('switch', { name: 'Deny on repeated failed Authentications' })
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     expect(onSave).toHaveBeenCalledTimes(1);
     const payload = onSave.mock.calls[0][0];

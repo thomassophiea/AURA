@@ -24,7 +24,15 @@ export interface PSelectProps {
   ariaLabel?: string;
 }
 
-export function PSelect({ value, options, onChange, disabled, placeholder, className, ariaLabel }: PSelectProps) {
+export function PSelect({
+  value,
+  options,
+  onChange,
+  disabled,
+  placeholder,
+  className,
+  ariaLabel,
+}: PSelectProps) {
   const toItem = (id: string) => (id === '' ? NONE : id);
   const current = value == null || value === '' ? NONE : value;
   return (

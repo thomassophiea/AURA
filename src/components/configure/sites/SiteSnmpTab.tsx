@@ -7,25 +7,36 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { FieldRow } from '../_kit';
 import type { SiteTabProps } from './siteEditorTypes';
 import { IP_RE, SNMP_VERSION, TRAP_SEVERITY, getPath } from './siteModel';
 
-function Chips({ items, onRemove, empty }: { items: string[]; onRemove: (i: number) => void; empty: string }) {
-  if (items.length === 0) return <span className="text-[12.5px] text-muted-foreground">{empty}</span>;
+function Chips({
+  items,
+  onRemove,
+  empty,
+}: {
+  items: string[];
+  onRemove: (i: number) => void;
+  empty: string;
+}) {
+  if (items.length === 0)
+    return <span className="text-[12.5px] text-muted-foreground">{empty}</span>;
   return (
     <div className="flex flex-wrap gap-1.5">
       {items.map((t, i) => (
-        <span key={`${t}-${i}`} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-2.5 py-1 text-[12.5px]">
+        <span
+          key={`${t}-${i}`}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-2.5 py-1 text-[12.5px]"
+        >
           {t}
-          <button type="button" className="text-destructive" onClick={() => onRemove(i)} aria-label={`Remove ${t}`}>
+          <button
+            type="button"
+            className="text-destructive"
+            onClick={() => onRemove(i)}
+            aria-label={`Remove ${t}`}
+          >
             <X className="h-3 w-3" />
           </button>
         </span>
@@ -96,7 +107,9 @@ export function SiteSnmpTab({ form, update }: SiteTabProps) {
 
           {version === 'V2C' && (
             <div className="pt-2">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">v2c Communities</p>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                v2c Communities
+              </p>
               <Chips
                 items={Object.keys(v2)}
                 onRemove={(i) => {
@@ -108,12 +121,20 @@ export function SiteSnmpTab({ form, update }: SiteTabProps) {
                 empty="No communities"
               />
               <div className="mt-2 flex gap-2">
-                <Input value={draft.v2} placeholder="Community name" onChange={(e) => setDraft({ ...draft, v2: e.target.value })} className="max-w-[240px]" />
+                <Input
+                  value={draft.v2}
+                  placeholder="Community name"
+                  onChange={(e) => setDraft({ ...draft, v2: e.target.value })}
+                  className="max-w-[240px]"
+                />
                 <Button
                   variant="outline"
                   disabled={!draft.v2.trim()}
                   onClick={() => {
-                    update('snmpConfig.v2Communities', { ...v2, [draft.v2]: { communityName: draft.v2 } });
+                    update('snmpConfig.v2Communities', {
+                      ...v2,
+                      [draft.v2]: { communityName: draft.v2 },
+                    });
                     setDraft({ ...draft, v2: '' });
                   }}
                 >
@@ -125,14 +146,26 @@ export function SiteSnmpTab({ form, update }: SiteTabProps) {
 
           {version === 'V3' && (
             <div className="pt-2">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">v3 Users</p>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                v3 Users
+              </p>
               <Chips
                 items={v3.map((u) => u.name ?? '')}
-                onRemove={(i) => update('snmpConfig.v3Users', v3.filter((_, x) => x !== i))}
+                onRemove={(i) =>
+                  update(
+                    'snmpConfig.v3Users',
+                    v3.filter((_, x) => x !== i)
+                  )
+                }
                 empty="No users"
               />
               <div className="mt-2 flex gap-2">
-                <Input value={draft.v3} placeholder="User name" onChange={(e) => setDraft({ ...draft, v3: e.target.value })} className="max-w-[240px]" />
+                <Input
+                  value={draft.v3}
+                  placeholder="User name"
+                  onChange={(e) => setDraft({ ...draft, v3: e.target.value })}
+                  className="max-w-[240px]"
+                />
                 <Button
                   variant="outline"
                   disabled={!draft.v3.trim()}
@@ -148,14 +181,26 @@ export function SiteSnmpTab({ form, update }: SiteTabProps) {
           )}
 
           <div className="pt-2">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Notifications</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Notifications
+            </p>
             <Chips
               items={noti.map((n) => n.ipAddress ?? '')}
-              onRemove={(i) => update('snmpConfig.notifications', noti.filter((_, x) => x !== i))}
+              onRemove={(i) =>
+                update(
+                  'snmpConfig.notifications',
+                  noti.filter((_, x) => x !== i)
+                )
+              }
               empty="No notification targets"
             />
             <div className="mt-2 flex gap-2">
-              <Input value={draft.notif} placeholder="Manager IP address" onChange={(e) => setDraft({ ...draft, notif: e.target.value })} className="max-w-[240px]" />
+              <Input
+                value={draft.notif}
+                placeholder="Manager IP address"
+                onChange={(e) => setDraft({ ...draft, notif: e.target.value })}
+                className="max-w-[240px]"
+              />
               <Button
                 variant="outline"
                 disabled={!draft.notif.trim() || notifBad}

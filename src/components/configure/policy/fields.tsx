@@ -6,13 +6,7 @@
 import React from 'react';
 import { Button } from '../../ui/button';
 import { Input } from '../../ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import type { Opt } from './constants';
 
 const EMPTY_SENTINEL = '__empty__';
@@ -49,7 +43,10 @@ export function EnumSelect({
       </SelectTrigger>
       <SelectContent>
         {options.map((o) => (
-          <SelectItem key={o.id === '' ? EMPTY_SENTINEL : o.id} value={o.id === '' ? EMPTY_SENTINEL : o.id}>
+          <SelectItem
+            key={o.id === '' ? EMPTY_SENTINEL : o.id}
+            value={o.id === '' ? EMPTY_SENTINEL : o.id}
+          >
             {o.label}
           </SelectItem>
         ))}
@@ -58,8 +55,10 @@ export function EnumSelect({
   );
 }
 
-export interface NumInputProps
-  extends Omit<React.ComponentProps<typeof Input>, 'type' | 'value' | 'onChange'> {
+export interface NumInputProps extends Omit<
+  React.ComponentProps<typeof Input>,
+  'type' | 'value' | 'onChange'
+> {
   value: number | '' | null | undefined;
   onChange: (value: number | '') => void;
 }

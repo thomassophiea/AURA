@@ -15,7 +15,11 @@ export function WiredPortsTab({ ctx }: { ctx: ProfileTabContext }) {
   const showEee = F('ENERGY-EFF-ETH');
 
   if (!ports.length) {
-    return <p className="p-4 text-sm text-muted-foreground">This platform has no configurable wired ports.</p>;
+    return (
+      <p className="p-4 text-sm text-muted-foreground">
+        This platform has no configurable wired ports.
+      </p>
+    );
   }
 
   const updPort = (i: number, key: string, value: unknown) =>

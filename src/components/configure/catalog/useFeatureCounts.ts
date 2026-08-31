@@ -6,6 +6,12 @@
 import { useEffect, useState } from 'react';
 import {
   aaaPolicyService,
+  acCertificatesService,
+  acGroupsService,
+  acLdapConfigurationsService,
+  acLocalPasswordUsersService,
+  acRadiusServersService,
+  acRulesService,
   administratorsService,
   adspService,
   analyticsService,
@@ -24,6 +30,7 @@ import {
   sitesService,
   topologiesService,
   vlanGroupsService,
+  xlocationService,
 } from '../../../services/configure';
 import type { CountKey } from './catalogData';
 
@@ -48,6 +55,13 @@ const LOADERS: Record<CountKey, Loader> = {
   esl: () => eslProfileService.list(),
   positioning: () => positioningService.list(),
   analytics: () => analyticsService.list(),
+  xlocation: () => xlocationService.list(),
+  acradius: () => acRadiusServersService.list(),
+  acldap: () => acLdapConfigurationsService.list(),
+  acrepos: () => acLocalPasswordUsersService.list(),
+  acgroups: () => acGroupsService.list(),
+  acrules: () => acRulesService.list(),
+  accerts: () => acCertificatesService.list(),
   administrators: () => administratorsService.list(),
 };
 
@@ -67,18 +81,34 @@ export function useFeatureCounts(): UseFeatureCountsResult {
     let alive = true;
     const keys = Object.keys(LOADERS) as CountKey[];
 
-    Promise.allSettled(keys.map((key) => LOADERS[key]())).then((results) => {
-      if (!alive) return;
-      const next: FeatureCounts = {};
-      results.forEach((result, index) => {
-        const key = keys[index];
-        next[key] =
-          result.status === 'fulfilled' && Array.isArray(result.value)
-            ? result.value.length
-            : null;
-      });
-      setCounts(next);
-      setLoading(false);
+    /* Bounded concurrency: the catalog backs 26 list calls; firing them all at
+       once spikes the gateway and trips its rate limiting on slow links. A
+       small worker pool keeps at most BATCH in flight, and counts land on the
+       grid incrementally as each resolves (cards show skeletons meanwhile). */
+    const BATCH = 6;
+    let cursor = 0;
+
+    const runOne = async (key: CountKey) => {
+      let value: number | null = null;
+      try {
+        const rows = await LOADERS[key]();
+        value = Array.isArray(rows) ? rows.length : null;
+      } catch {
+        value = null;
+      }
+      if (alive) setCounts((prev) => ({ ...prev, [key]: value }));
+    };
+
+    const worker = async (): Promise<void> => {
+      while (alive && cursor < keys.length) {
+        const key = keys[cursor];
+        cursor += 1;
+        await runOne(key);
+      }
+    };
+
+    void Promise.all(Array.from({ length: Math.min(BATCH, keys.length) }, worker)).then(() => {
+      if (alive) setLoading(false);
     });
 
     return () => {

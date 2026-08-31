@@ -18,16 +18,10 @@ import { RfChannelPowerTab } from './RfChannelPowerTab';
 import { RfScanningTab } from './RfScanningTab';
 import { RfRecoveryTab } from './RfRecoveryTab';
 import { RfSelectShutdownTab } from './RfSelectShutdownTab';
+import { RfAutoSensorTab } from './RfAutoSensorTab';
 import { RfAcsInterferenceTab } from './RfAcsInterferenceTab';
 import type { RfTabProps } from './rfControls';
-import {
-  RF_TABS_ACS,
-  RF_TABS_SMART,
-  getPath,
-  setPath,
-  toRfPayload,
-  validateRf,
-} from './rfModel';
+import { RF_TABS_ACS, RF_TABS_SMART, getPath, setPath, toRfPayload, validateRf } from './rfModel';
 
 export interface RfEditorSheetProps {
   open: boolean;
@@ -69,10 +63,17 @@ export function RfEditorSheet({
   const smartMon = !isAcs && !!getPath(cfg, 'scanning.smartMonitoring');
   const recEnabled = smartMon && (!!basic.neighborRecovery || !!basic.interferenceRecovery);
 
+  // Auto Sensor (10.20): the Gateway shows the tab ng-disabled unless Smart
+  // Monitoring; this strip has no disabled state, so it follows the Select
+  // Shutdown hide idiom.
   const tabs: string[] = isAcs
     ? [...RF_TABS_ACS]
     : RF_TABS_SMART.filter((t) =>
-        t === 'Recovery' ? recEnabled : t === 'Select Shutdown' ? smartMon : true
+        t === 'Recovery'
+          ? recEnabled
+          : t === 'Select Shutdown' || t === 'Auto Sensor'
+            ? smartMon
+            : true
       );
   const [tab, setTab] = useState<string>('Basic');
   const activeTab = tabs.includes(tab) ? tab : 'Basic';
@@ -160,6 +161,9 @@ export function RfEditorSheet({
                 </TabsContent>
                 <TabsContent value="Select Shutdown" className="pt-4">
                   <RfSelectShutdownTab {...tabProps} />
+                </TabsContent>
+                <TabsContent value="Auto Sensor" className="pt-4">
+                  <RfAutoSensorTab {...tabProps} />
                 </TabsContent>
               </>
             )}

@@ -7,13 +7,7 @@ import React from 'react';
 import { FieldRow } from '../_kit';
 import { Input } from '../../ui/input';
 import { Switch } from '../../ui/switch';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import type { Numeric } from './aaaModel';
 
 /** Accessible name for the control when the visual label is a plain string. */
@@ -67,6 +61,7 @@ export interface SelectFieldProps {
   options: ReadonlyArray<{ readonly id: string; readonly label: string }>;
   error?: string | null;
   description?: React.ReactNode;
+  required?: boolean;
   disabled?: boolean;
 }
 
@@ -77,10 +72,11 @@ export function SelectField({
   options,
   error,
   description,
+  required,
   disabled,
 }: SelectFieldProps) {
   return (
-    <FieldRow label={label} error={error} description={description}>
+    <FieldRow label={label} error={error} description={description} required={required}>
       <Select value={value} onValueChange={onChange} disabled={disabled}>
         <SelectTrigger className="max-w-[320px]" aria-label={ariaLabel(label)}>
           <SelectValue />

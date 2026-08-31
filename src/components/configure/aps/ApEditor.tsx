@@ -16,6 +16,7 @@ import { AP_NAME_RE, RADIO_MODE_LABEL, apBandOf, inRange, hasFeature } from './a
 import { ApGeneralTab } from './ApGeneralTab';
 import { ApRadiosTab } from './ApRadiosTab';
 import { ApWiredPortsTab } from './ApWiredPortsTab';
+import { ApLocationInfoTab } from './ApLocationInfoTab';
 import { ApMeshpointsTab } from './ApMeshpointsTab';
 import { ApUwbTab } from './ApUwbTab';
 import { ApAfcTab } from './ApAfcTab';
@@ -35,7 +36,14 @@ export interface ApEditorProps {
   onDelete: (ap: ApDetail) => void;
 }
 
-export function ApEditor({ open, onOpenChange, initial, saving, onSubmit, onDelete }: ApEditorProps) {
+export function ApEditor({
+  open,
+  onOpenChange,
+  initial,
+  saving,
+  onSubmit,
+  onDelete,
+}: ApEditorProps) {
   const { form, upd, replace, dirty } = useApDraft<ApDetail>(initial);
   const refData = useApRefData();
   const [advOpen, setAdvOpen] = useState(false);
@@ -82,6 +90,9 @@ export function ApEditor({ open, onOpenChange, initial, saving, onSubmit, onDele
 
   const hasMesh = (form.meshpoints ?? []).length > 0;
   const hasUwb = hasFeature(form.features, 'UWB-ELECTION');
+  // Location Info (FTM / 802.11MC) sits after Wired Ports and only on an AP
+  // that carries the 802.11MC capability — the same gate ap.html uses.
+  const hasFtm = hasFeature(form.features, '802.11MC');
 
   return (
     <>
@@ -97,14 +108,26 @@ export function ApEditor({ open, onOpenChange, initial, saving, onSubmit, onDele
         onSave={() => void onSubmit(form, form.serialNumber)}
         footerExtra={
           <div className="flex gap-2">
-            <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={() => setConfirmAct('Locate')}>
+            <button
+              type="button"
+              className="text-sm text-muted-foreground hover:text-foreground"
+              onClick={() => setConfirmAct('Locate')}
+            >
               Locate
             </button>
-            <button type="button" className="text-sm text-muted-foreground hover:text-foreground" onClick={() => setConfirmAct('Reboot')}>
+            <button
+              type="button"
+              className="text-sm text-muted-foreground hover:text-foreground"
+              onClick={() => setConfirmAct('Reboot')}
+            >
               Reboot
             </button>
             {form.canDelete !== false && (
-              <button type="button" className="text-sm text-destructive hover:text-destructive/80" onClick={() => setConfirmAct('Delete')}>
+              <button
+                type="button"
+                className="text-sm text-destructive hover:text-destructive/80"
+                onClick={() => setConfirmAct('Delete')}
+              >
                 Delete
               </button>
             )}
@@ -114,10 +137,18 @@ export function ApEditor({ open, onOpenChange, initial, saving, onSubmit, onDele
         <div className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <FieldRow label="Name" required error={dirty ? errs.name : undefined}>
-              <Input value={form.apName ?? ''} disabled={locked} onChange={(e) => upd('apName', e.target.value)} />
+              <Input
+                value={form.apName ?? ''}
+                disabled={locked}
+                onChange={(e) => upd('apName', e.target.value)}
+              />
             </FieldRow>
             <FieldRow label="Serial Number">
-              <Input readOnly value={form.serialNumber ?? ''} className="bg-muted text-muted-foreground" />
+              <Input
+                readOnly
+                value={form.serialNumber ?? ''}
+                className="bg-muted text-muted-foreground"
+              />
             </FieldRow>
             <FieldRow label="Model">
               <span className="text-sm font-semibold text-primary">
@@ -131,6 +162,7 @@ export function ApEditor({ open, onOpenChange, initial, saving, onSubmit, onDele
               <TabsTrigger value="general">General</TabsTrigger>
               <TabsTrigger value="radios">Radios</TabsTrigger>
               <TabsTrigger value="wired">Wired Ports</TabsTrigger>
+              {hasFtm && <TabsTrigger value="location">Location Info</TabsTrigger>}
               {hasMesh && <TabsTrigger value="mesh">Meshpoints</TabsTrigger>}
               {hasUwb && <TabsTrigger value="uwb">UWB</TabsTrigger>}
               <TabsTrigger value="afc">AFC</TabsTrigger>
@@ -161,6 +193,11 @@ export function ApEditor({ open, onOpenChange, initial, saving, onSubmit, onDele
             <TabsContent value="wired" className="pt-4">
               <ApWiredPortsTab form={form} upd={upd} />
             </TabsContent>
+            {hasFtm && (
+              <TabsContent value="location" className="pt-4">
+                <ApLocationInfoTab form={form} upd={upd} />
+              </TabsContent>
+            )}
             {hasMesh && (
               <TabsContent value="mesh" className="pt-4">
                 <ApMeshpointsTab form={form} refData={refData} onEditOverrides={setMeshAdv} />
@@ -179,20 +216,45 @@ export function ApEditor({ open, onOpenChange, initial, saving, onSubmit, onDele
       </EditorSheet>
 
       {advOpen && (
-        <ApAdvancedDialog form={form} open onOpenChange={setAdvOpen} onApply={(v) => { replace(v); setAdvOpen(false); }} />
+        <ApAdvancedDialog
+          form={form}
+          open
+          onOpenChange={setAdvOpen}
+          onApply={(v) => {
+            replace(v);
+            setAdvOpen(false);
+          }}
+        />
       )}
       {profInst && (
-        <ProfInstallDialog form={form} open onOpenChange={setProfInst} onApply={(v) => { replace(v); setProfInst(false); }} />
+        <ProfInstallDialog
+          form={form}
+          open
+          onOpenChange={setProfInst}
+          onApply={(v) => {
+            replace(v);
+            setProfInst(false);
+          }}
+        />
       )}
       {wlanOvr && (
-        <WlanOvrDialog form={form} services={refData.services} open onOpenChange={setWlanOvr} onApply={applyWlanOvr} />
+        <WlanOvrDialog
+          form={form}
+          services={refData.services}
+          open
+          onOpenChange={setWlanOvr}
+          onApply={applyWlanOvr}
+        />
       )}
       {radioAdv != null && radios[radioAdv] && (
         <RadioAdvDialog
           radio={radios[radioAdv] as ApRadio}
           open
           onOpenChange={() => setRadioAdv(null)}
-          onApply={(v) => { upd(`radios.${radioAdv}`, v); setRadioAdv(null); }}
+          onApply={(v) => {
+            upd(`radios.${radioAdv}`, v);
+            setRadioAdv(null);
+          }}
         />
       )}
       {meshAdv != null && (form.meshpoints ?? [])[meshAdv] && (
@@ -201,7 +263,10 @@ export function ApEditor({ open, onOpenChange, initial, saving, onSubmit, onDele
           features={(form.features as string[]) ?? []}
           open
           onOpenChange={() => setMeshAdv(null)}
-          onApply={(v) => { upd(`meshpoints.${meshAdv}`, v); setMeshAdv(null); }}
+          onApply={(v) => {
+            upd(`meshpoints.${meshAdv}`, v);
+            setMeshAdv(null);
+          }}
         />
       )}
 

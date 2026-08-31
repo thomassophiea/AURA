@@ -12,6 +12,10 @@ export interface IBeaconAdvertisement {
   major: number;
   minor: number;
   measuredRssi: number;
+  /** Multi-application model (IOT-MULTI-APP): Tx Power label, e.g. '3 dBm'. */
+  txPower?: string | number;
+  /** Multi-application model: Batch Reporting URL (ble_scan http_server). */
+  url?: string;
 }
 
 export interface IotScanBase {
@@ -30,6 +34,8 @@ export interface EddystoneAdvertisement {
   url: string;
   interval: number;
   measuredRssi: number;
+  /** Multi-application model (IOT-MULTI-APP): Tx Power label, e.g. '3 dBm'. */
+  txPower?: string | number;
 }
 
 export interface GenericScanVendor {
@@ -63,8 +69,20 @@ export interface IotProfile extends ResourceBase {
   eddystoneScan?: IotScanBase;
   genericScan?: GenericScan;
   threadGateway?: ThreadGateway;
+  /* ── IOT-MULTI-APP model (Gateway 10.20) ──
+     `apps` is the set of concurrently enabled applications — the API already
+     carries that shape as ble_beacon.applications[] / ble_scan.applications[]
+     (which adaptIot reads); the single-application model collapses it to one. */
+  apps?: string[];
+  /** BLE reporting granularity: 'LATEST_ONLY' | 'ALL_RECORDS'. */
+  bleData?: string;
+  /** Shared scan Destination mode — UDP real-time monitoring. */
+  iBeaconRealTimeMonitoring?: boolean;
+  /** Shared scan Destination mode — HTTP batch reporting. */
+  iBeaconRealBatchReporting?: boolean;
   /* Summary fields observed on the live list response */
   app_supported?: unknown;
   ble_beacon?: unknown;
   ble_scan?: unknown;
+  ble_data?: unknown;
 }

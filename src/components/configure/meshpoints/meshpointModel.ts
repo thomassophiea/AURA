@@ -31,31 +31,37 @@ export function hasPrivacy(form: Meshpoint): boolean {
 }
 
 /**
- * Neighbour Timeout must be a natural number, max 6 digits (gap 10). Only
- * validated when distributed support is available (the row is otherwise
- * hidden, gap 12).
+ * PLM 2026-08-26: the API is the source of truth for validation semantics.
+ * MeshpointElement.neighborTimeout is 60-86400 in the OpenAPI spec (v1.25.1);
+ * the Gateway template's looser natural-number-max-6-digits rule is
+ * superseded. Only validated when distributed support is available (the row
+ * is otherwise hidden, gap 12).
  */
 function validTimeout(v: unknown): boolean {
   if (v === '' || v == null) return false;
   const n = Number(v);
-  return Number.isInteger(n) && n >= 1 && String(v).replace('-', '').length <= 6;
+  return Number.isInteger(n) && n >= 60 && n <= 86400;
+}
+
+/** MeshpointElement.meshId: number, minimum 1, maximum 32 (OpenAPI v1.25.1). */
+function validMeshId(v: unknown): boolean {
+  const n = Number(v);
+  return Number.isInteger(n) && n >= 1 && n <= 32;
 }
 
 export interface MeshValidationCtx {
   supportDistributed: boolean;
 }
 
-export function validateMeshpoint(
-  form: Meshpoint,
-  ctx: MeshValidationCtx
-): Record<string, string> {
+export function validateMeshpoint(form: Meshpoint, ctx: MeshValidationCtx): Record<string, string> {
   const errs: Record<string, string> = {};
   const name = String(form.name ?? '').trim();
   if (!name) errs.name = 'Meshpoint name is required';
   else if (!MESH_NAME_RE.test(form.name)) errs.name = 'Name contains invalid characters';
   if (!String(form.meshId ?? '').trim()) errs.meshId = 'Mesh ID is required';
+  else if (!validMeshId(form.meshId)) errs.meshId = 'Valid range 1 to 32';
   if (ctx.supportDistributed && !validTimeout(form.neighborTimeout))
-    errs.neighborTimeout = 'Must be a natural number (max 6 digits)';
+    errs.neighborTimeout = 'Valid range 60 to 86400';
   const psk = form.privacy?.PskElement?.presharedKey;
   if (form.privacy?.PskElement && psk != null && String(psk).length > 63)
     errs.psk = 'Maximum 63 characters';

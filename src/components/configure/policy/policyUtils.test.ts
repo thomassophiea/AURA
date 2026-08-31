@@ -27,6 +27,9 @@ import {
   tosFromBits,
   tosFromDscp,
   tosHex,
+  peerAddressApplies,
+  peerAddressError,
+  peerBlockVisible,
   vlanGroupErrors,
   vlanOptionLabel,
 } from './policyUtils';
@@ -117,14 +120,23 @@ describe('newRuleDraft', () => {
 
 describe('ruleErrors', () => {
   it('requires a valid FQDN for hostName subnet type', () => {
-    const draft = { ...newRuleDraft('l3Filters'), subnetType: 'hostName', ipAddressRange: 'not a fqdn' };
+    const draft = {
+      ...newRuleDraft('l3Filters'),
+      subnetType: 'hostName',
+      ipAddressRange: 'not a fqdn',
+    };
     expect(ruleErrors('l3Filters', draft).addr).toMatch(/FQDN/);
     draft.ipAddressRange = 'portal.example.com';
     expect(ruleErrors('l3Filters', draft).addr).toBeUndefined();
   });
 
   it('validates user-defined port ranges 0-65535', () => {
-    const draft = { ...newRuleDraft('l3Filters'), port: 'userDefined', portLow: 70000 as number, portHigh: 80 as number };
+    const draft = {
+      ...newRuleDraft('l3Filters'),
+      port: 'userDefined',
+      portLow: 70000 as number,
+      portHigh: 80 as number,
+    };
     expect(ruleErrors('l3Filters', draft).port).toMatch(/65535/);
   });
 
@@ -140,7 +152,11 @@ describe('ruleErrors', () => {
   });
 
   it('requires a hex ethertype for user-defined L2 rules', () => {
-    const draft = { ...newRuleDraft('l2Filters'), ethertype: 'userDefined', ethertypeValue: '8100' };
+    const draft = {
+      ...newRuleDraft('l2Filters'),
+      ethertype: 'userDefined',
+      ethertypeValue: '8100',
+    };
     expect(ruleErrors('l2Filters', draft).ether).toMatch(/Hex/);
     draft.ethertypeValue = '0x8100';
     expect(ruleErrors('l2Filters', draft).ether).toBeUndefined();
@@ -157,9 +173,17 @@ describe('ruleErrors', () => {
 
   it('validates nested src-dest endpoint ports and FQDNs', () => {
     const draft = newRuleDraft('l3SrcDestFilters');
-    draft.source = { subnetType: 'hostName', address: 'bad host', port: { known: 'any', low: 0, high: 0 } };
+    draft.source = {
+      subnetType: 'hostName',
+      address: 'bad host',
+      port: { known: 'any', low: 0, high: 0 },
+    };
     expect(ruleErrors('l3SrcDestFilters', draft).sourceAddr).toMatch(/FQDN/);
-    draft.destination = { subnetType: 'anyIpAddress', address: '', port: { known: 'userDefined', low: -1, high: 10 } };
+    draft.destination = {
+      subnetType: 'anyIpAddress',
+      address: '',
+      port: { known: 'userDefined', low: -1, high: 10 },
+    };
     expect(ruleErrors('l3SrcDestFilters', draft).destination).toMatch(/65535/);
   });
 });
@@ -195,10 +219,12 @@ describe('hasRedirectRule', () => {
 
 describe('roleErrors', () => {
   it('requires name, valid CIR in cir mode, and a containment VLAN', () => {
-    expect(roleErrors({ name: '' }, { enabled: false, mode: 'cir', cirKbps: '' }).name).toBeTruthy();
     expect(
-      roleErrors({ name: 'R' }, { enabled: true, mode: 'cir', cirKbps: 100 }).cir
-    ).toMatch(/128 to 500000/);
+      roleErrors({ name: '' }, { enabled: false, mode: 'cir', cirKbps: '' }).name
+    ).toBeTruthy();
+    expect(roleErrors({ name: 'R' }, { enabled: true, mode: 'cir', cirKbps: 100 }).cir).toMatch(
+      /128 to 500000/
+    );
     expect(
       roleErrors({ name: 'R' }, { enabled: true, mode: 'cir', cirKbps: 1000 }).cir
     ).toBeUndefined();
@@ -216,8 +242,16 @@ describe('topologyErrors', () => {
     expect(topologyErrors({ name: '', vlanid: 10 }).name).toBeTruthy();
     expect(topologyErrors({ name: 'x'.repeat(33), vlanid: 10 }).name).toMatch(/32/);
     expect(topologyErrors({ name: 'v', vlanid: 5000 }).vlanid).toMatch(/4094/);
-    expect(topologyErrors({ name: 'v', vlanid: 10, mode: 'FabricAttach', isid: 0 }).isid).toBeTruthy();
-    const vx = topologyErrors({ name: 'v', vlanid: 10, mode: 'Vxlan', vni: 0, remoteVtepIp: '0.0.0.0' });
+    expect(
+      topologyErrors({ name: 'v', vlanid: 10, mode: 'FabricAttach', isid: 0 }).isid
+    ).toBeTruthy();
+    const vx = topologyErrors({
+      name: 'v',
+      vlanid: 10,
+      mode: 'Vxlan',
+      vni: 0,
+      remoteVtepIp: '0.0.0.0',
+    });
     expect(vx.vni).toBeTruthy();
     expect(vx.vtep).toBeTruthy();
   });
@@ -238,10 +272,32 @@ describe('topologyErrors', () => {
       mode: 'BridgedAtAc',
       l3Presence: true,
       ipAddress: '0.0.0.0',
-      cidr: 0,
+      cidr: 33,
     });
     expect(bridgedAc.ip).toBeTruthy();
     expect(bridgedAc.cidr).toBeTruthy();
+  });
+
+  it('accepts the OpenAPI CIDR floor of /0 (API-is-truth ruling)', () => {
+    const zero = topologyErrors({
+      name: 'v',
+      vlanid: 10,
+      mode: 'BridgedAtAc',
+      l3Presence: true,
+      ipAddress: '10.0.0.1',
+      cidr: 0,
+    });
+    expect(zero.cidr).toBeUndefined();
+    // Absent CIDR is still an error — the floor moved, the requirement did not.
+    expect(
+      topologyErrors({
+        name: 'v',
+        vlanid: 10,
+        mode: 'BridgedAtAc',
+        l3Presence: true,
+        ipAddress: '10.0.0.1',
+      }).cidr
+    ).toBeTruthy();
   });
 });
 
@@ -292,5 +348,38 @@ describe('CoS / rate limiter validation', () => {
     expect(rateLimiterErrors({ name: 'RL', cirKbps: 500001 }).cir).toBeTruthy();
     expect(rateLimiterErrors({ name: 'RL', cirKbps: 128 }).cir).toBeUndefined();
     expect(rateLimiterErrors({ name: '', cirKbps: 128 }).name).toBeTruthy();
+  });
+});
+
+describe('Peer Address (availability pair, foreignIpAddress)', () => {
+  const l3Ac = { mode: 'BridgedAtAc', l3Presence: true };
+
+  it('applies only when paired AND Bridged@AC AND Layer 3', () => {
+    expect(peerAddressApplies(true, l3Ac)).toBe(true);
+    expect(peerAddressApplies(false, l3Ac)).toBe(false);
+    expect(peerAddressApplies(true, { mode: 'BridgedAtAc', l3Presence: false })).toBe(false);
+    expect(peerAddressApplies(true, { mode: 'BridgedAtAp', l3Presence: true })).toBe(false);
+    expect(peerAddressApplies(true, { mode: 'Gre', l3Presence: true })).toBe(false);
+  });
+
+  it('shows the block on a paired appliance for every mode except Bridged@AP', () => {
+    expect(peerBlockVisible(true, { mode: 'BridgedAtAc' })).toBe(true);
+    expect(peerBlockVisible(true, { mode: 'Gre' })).toBe(true);
+    expect(peerBlockVisible(true, { mode: 'BridgedAtAp' })).toBe(false);
+    // an absent mode defaults to Bridged@AP, like the editor
+    expect(peerBlockVisible(true, {})).toBe(false);
+    expect(peerBlockVisible(false, { mode: 'BridgedAtAc' })).toBe(false);
+  });
+
+  it('requires a valid non-zero foreignIpAddress only when it applies', () => {
+    expect(peerAddressError(true, { ...l3Ac, foreignIpAddress: '' }).peer).toBeTruthy();
+    expect(peerAddressError(true, { ...l3Ac, foreignIpAddress: '0.0.0.0' }).peer).toBeTruthy();
+    expect(peerAddressError(true, { ...l3Ac, foreignIpAddress: 'not-an-ip' }).peer).toBeTruthy();
+    expect(peerAddressError(true, { ...l3Ac, foreignIpAddress: '10.0.0.2' }).peer).toBeUndefined();
+    // not applicable → never an error, even with a bad value on the record
+    expect(peerAddressError(false, { ...l3Ac, foreignIpAddress: '' })).toEqual({});
+    expect(peerAddressError(true, { mode: 'Gre', l3Presence: true, foreignIpAddress: '' })).toEqual(
+      {}
+    );
   });
 });

@@ -5,6 +5,12 @@
  * api/ap-detail-sample.json (ftm.*, ipAddress/ipNetmask/ipGateway,
  * maintainClientSession, apPersistence). secureTunnelMode is absent from the
  * capture (audit UQ-5) and therefore omitted.
+ *
+ * Actions tab: Retrieve/Download Trace are wired to the real endpoints the
+ * gateway's own UI uses (apsData.retrieveTrace / listTraceFiles /
+ * downloadTraceFiles — see apsData.ts for the recovered contract). Retrieve
+ * is a write (PUT aps/{serial}/logs) wired per controller spec, not
+ * live-fired.
  */
 import React, { useMemo, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
@@ -17,7 +23,21 @@ import { ApSelect, NumberField } from './controls';
 import { ApAdvancedOverridesTab } from './ApAdvancedOverridesTab';
 import { useApDraft, getIn } from './useApDraft';
 import { hasFeature, inRange, IP_RE } from './apHelpers';
+import { apsData, traceDownloadName } from './apsData';
+import { getUserFriendlyMessage } from '../../../services/errorHandler';
 import type { ApDetail } from '../../../types/configure';
+
+/** Hand the fetched tar to the browser as a normal file save. */
+function saveBlob(blob: Blob, fileName: string): void {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = fileName;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
 
 export interface ApAdvancedDialogProps {
   form: ApDetail;
@@ -29,12 +49,57 @@ export interface ApAdvancedDialogProps {
 export function ApAdvancedDialog({ form, open, onOpenChange, onApply }: ApAdvancedDialogProps) {
   const { form: d, upd, dirty } = useApDraft<ApDetail>(form);
   const [traceMsg, setTraceMsg] = useState('');
+  const [traceBusy, setTraceBusy] = useState(false);
   const F = (f: string) => hasFeature(d.features, f);
   const dhcp = d.addrAssn !== false;
 
+  /** PUT /v1/aps/{serial}/logs — the AP uploads its trace archive to the Gateway. */
+  const handleRetrieveTrace = async () => {
+    setTraceBusy(true);
+    setTraceMsg('');
+    try {
+      await apsData.retrieveTrace(d.serialNumber, d);
+      setTraceMsg(
+        'Trace retrieval requested — the AP is uploading its trace archive to the Gateway. Use Download Trace once it completes.'
+      );
+    } catch (err) {
+      setTraceMsg(`Trace retrieval failed: ${getUserFriendlyMessage(err)}`);
+    } finally {
+      setTraceBusy(false);
+    }
+  };
+
+  /** GET traceurls, then GET downloadtrace/{files} and save the tar locally. */
+  const handleDownloadTrace = async () => {
+    setTraceBusy(true);
+    setTraceMsg('');
+    try {
+      const files = await apsData.listTraceFiles(d.serialNumber);
+      if (files.length === 0) {
+        setTraceMsg(
+          'No trace archive is available on the Gateway for this AP — run Retrieve Trace first.'
+        );
+        return;
+      }
+      const blob = await apsData.downloadTraceFiles(files);
+      const fileName = traceDownloadName(files[0]);
+      saveBlob(blob, fileName);
+      setTraceMsg(`Downloaded ${fileName}.`);
+    } catch (err) {
+      setTraceMsg(`Trace download failed: ${getUserFriendlyMessage(err)}`);
+    } finally {
+      setTraceBusy(false);
+    }
+  };
+
   const errs = useMemo(() => {
     const e: Record<string, string> = {};
-    if (d.mgmtVlanIdOvr && d.mgmtVlanId != null && d.mgmtVlanId !== -1 && !inRange(d.mgmtVlanId, 1, 4094)) {
+    if (
+      d.mgmtVlanIdOvr &&
+      d.mgmtVlanId != null &&
+      d.mgmtVlanId !== -1 &&
+      !inRange(d.mgmtVlanId, 1, 4094)
+    ) {
       e.vlan = 'Valid range 1 to 4094';
     }
     const mtuMax = F('JUMBO-FRAMES') ? 1800 : 1500;
@@ -78,34 +143,66 @@ export function ApAdvancedDialog({ form, open, onOpenChange, onApply }: ApAdvanc
           {F('AP-TRACE') ? (
             <div className="space-y-3">
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setTraceMsg('Trace retrieval requested (prototype stub — no controller connection).')}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={traceBusy}
+                  onClick={() => void handleRetrieveTrace()}
+                >
                   Retrieve Trace
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setTraceMsg('Trace download requested (prototype stub — no controller connection).')}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={traceBusy}
+                  onClick={() => void handleDownloadTrace()}
+                >
                   Download Trace
                 </Button>
               </div>
               {traceMsg && <p className="text-sm text-muted-foreground">{traceMsg}</p>}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">AP trace is not supported on this model.</p>
+            <p className="text-sm text-muted-foreground">
+              AP trace is not supported on this model.
+            </p>
           )}
         </TabsContent>
 
         <TabsContent value="ip" className="space-y-4 pt-4">
           <FieldRow label="IP Address Assignment" inline>
-            <ApSelect className="w-36" value={dhcp ? 'DHCP' : 'Static'} options={['DHCP', 'Static']} onChange={(v) => upd('addrAssn', v === 'DHCP')} />
+            <ApSelect
+              className="w-36"
+              value={dhcp ? 'DHCP' : 'Static'}
+              options={['DHCP', 'Static']}
+              onChange={(v) => upd('addrAssn', v === 'DHCP')}
+            />
           </FieldRow>
           {!dhcp && (
             <>
               <FieldRow label="IP Address" error={errs.ipAddress}>
-                <Input className="w-56" value={d.ipAddress ?? ''} placeholder="192.168.1.10" onChange={(e) => upd('ipAddress', e.target.value)} />
+                <Input
+                  className="w-56"
+                  value={d.ipAddress ?? ''}
+                  placeholder="192.168.1.10"
+                  onChange={(e) => upd('ipAddress', e.target.value)}
+                />
               </FieldRow>
               <FieldRow label="Netmask" error={errs.ipNetmask}>
-                <Input className="w-56" value={d.ipNetmask ?? ''} placeholder="255.255.255.0" onChange={(e) => upd('ipNetmask', e.target.value)} />
+                <Input
+                  className="w-56"
+                  value={d.ipNetmask ?? ''}
+                  placeholder="255.255.255.0"
+                  onChange={(e) => upd('ipNetmask', e.target.value)}
+                />
               </FieldRow>
               <FieldRow label="Gateway" error={errs.ipGateway}>
-                <Input className="w-56" value={d.ipGateway ?? ''} placeholder="192.168.1.1" onChange={(e) => upd('ipGateway', e.target.value)} />
+                <Input
+                  className="w-56"
+                  value={d.ipGateway ?? ''}
+                  placeholder="192.168.1.1"
+                  onChange={(e) => upd('ipGateway', e.target.value)}
+                />
               </FieldRow>
             </>
           )}
@@ -120,44 +217,89 @@ export function ApAdvancedDialog({ form, open, onOpenChange, onApply }: ApAdvanc
           >
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs text-muted-foreground">Lat</span>
-              <NumberField className="w-24" value={getIn(d, 'ftm.wgs84.latitude') as number} onChange={(v) => upd('ftm.wgs84.latitude', v)} />
+              <NumberField
+                className="w-24"
+                value={getIn(d, 'ftm.wgs84.latitude') as number}
+                onChange={(v) => upd('ftm.wgs84.latitude', v)}
+              />
               <span className="text-xs text-muted-foreground">Long</span>
-              <NumberField className="w-24" value={getIn(d, 'ftm.wgs84.longitude') as number} onChange={(v) => upd('ftm.wgs84.longitude', v)} />
+              <NumberField
+                className="w-24"
+                value={getIn(d, 'ftm.wgs84.longitude') as number}
+                onChange={(v) => upd('ftm.wgs84.longitude', v)}
+              />
               <span className="text-xs text-muted-foreground">Alt</span>
-              <NumberField className="w-20" value={getIn(d, 'ftm.wgs84.altitude') as number} onChange={(v) => upd('ftm.wgs84.altitude', v)} />
+              <NumberField
+                className="w-20"
+                value={getIn(d, 'ftm.wgs84.altitude') as number}
+                onChange={(v) => upd('ftm.wgs84.altitude', v)}
+              />
             </div>
           </OvrRow>
 
-          <h4 className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Z-Subelement</h4>
+          <h4 className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Z-Subelement
+          </h4>
           <FieldRow label="Expected To Move" inline>
-            <Switch checked={!!getIn(d, 'ftm.zSubelement.expectedToMove')} onCheckedChange={(v) => upd('ftm.zSubelement.expectedToMove', v)} />
+            <Switch
+              checked={!!getIn(d, 'ftm.zSubelement.expectedToMove')}
+              onCheckedChange={(v) => upd('ftm.zSubelement.expectedToMove', v)}
+            />
           </FieldRow>
           <FieldRow label="Floor Number">
-            <NumberField value={getIn(d, 'ftm.zSubelement.floorNumber') as number} onChange={(v) => upd('ftm.zSubelement.floorNumber', v)} />
+            <NumberField
+              value={getIn(d, 'ftm.zSubelement.floorNumber') as number}
+              onChange={(v) => upd('ftm.zSubelement.floorNumber', v)}
+            />
           </FieldRow>
           <FieldRow label="Height Above Floor [m]">
-            <NumberField value={getIn(d, 'ftm.zSubelement.aboveFloor.height') as number} onChange={(v) => upd('ftm.zSubelement.aboveFloor.height', v)} />
+            <NumberField
+              value={getIn(d, 'ftm.zSubelement.aboveFloor.height') as number}
+              onChange={(v) => upd('ftm.zSubelement.aboveFloor.height', v)}
+            />
           </FieldRow>
           <FieldRow label="Height Uncertainty [m]">
-            <NumberField value={getIn(d, 'ftm.zSubelement.aboveFloor.uncertainty') as number} onChange={(v) => upd('ftm.zSubelement.aboveFloor.uncertainty', v)} />
+            <NumberField
+              value={getIn(d, 'ftm.zSubelement.aboveFloor.uncertainty') as number}
+              onChange={(v) => upd('ftm.zSubelement.aboveFloor.uncertainty', v)}
+            />
           </FieldRow>
 
-          <h4 className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Civic Address (RFC 4776)</h4>
+          <h4 className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Civic Address (RFC 4776)
+          </h4>
           <OvrRow
             label="Civic Address Override"
             overridden={!!getIn(d, 'ftm.civicAddress.ovr')}
             onOverriddenChange={(v) => upd('ftm.civicAddress.ovr', v)}
             inheritedDisplay="Inherited from site"
           >
-            <Input className="w-full" value={gs('ftm.civicAddress.addr')} placeholder="TLV hex string" onChange={(e) => upd('ftm.civicAddress.addr', e.target.value)} />
+            <Input
+              className="w-full"
+              value={gs('ftm.civicAddress.addr')}
+              placeholder="TLV hex string"
+              onChange={(e) => upd('ftm.civicAddress.addr', e.target.value)}
+            />
           </OvrRow>
 
-          <h4 className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Session</h4>
+          <h4 className="pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Session
+          </h4>
           <FieldRow label="Maintain Client Session" inline>
-            <ApSelect className="w-36" value={d.maintainClientSession} options={['enabled', 'disabled']} onChange={(v) => upd('maintainClientSession', v)} />
+            <ApSelect
+              className="w-36"
+              value={d.maintainClientSession}
+              options={['enabled', 'disabled']}
+              onChange={(v) => upd('maintainClientSession', v)}
+            />
           </FieldRow>
           <FieldRow label="AP Persistence" inline>
-            <ApSelect className="w-36" value={d.apPersistence} options={['enabled', 'disabled']} onChange={(v) => upd('apPersistence', v)} />
+            <ApSelect
+              className="w-36"
+              value={d.apPersistence}
+              options={['enabled', 'disabled']}
+              onChange={(v) => upd('apPersistence', v)}
+            />
           </FieldRow>
         </TabsContent>
       </Tabs>

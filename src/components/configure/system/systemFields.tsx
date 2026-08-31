@@ -9,13 +9,7 @@ import { FieldRow } from '../_kit';
 import { Input } from '../../ui/input';
 import { Switch } from '../../ui/switch';
 import { MaskedInput } from '../_kit';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 
 /** Accessible name for the control when the visual label is a plain string. */
 function ariaLabel(label: React.ReactNode): string | undefined {

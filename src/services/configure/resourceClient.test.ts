@@ -115,9 +115,7 @@ describe('createResourceClient', () => {
       basePaths: ['/v3/roles'],
       supportsNameToIdMap: true,
     });
-    mockRequest.mockImplementation(() =>
-      Promise.resolve(jsonResponse({ id: 'r1', name: 'x' }))
-    );
+    mockRequest.mockImplementation(() => Promise.resolve(jsonResponse({ id: 'r1', name: 'x' })));
 
     await client.get('r1');
     await client.create({ name: 'x' });
@@ -153,9 +151,7 @@ describe('createSingletonClient', () => {
       resource: 'snmp',
       path: '/v1/snmp',
     });
-    mockRequest.mockImplementation(() =>
-      Promise.resolve(jsonResponse({ trapSeverity: 'Major' }))
-    );
+    mockRequest.mockImplementation(() => Promise.resolve(jsonResponse({ trapSeverity: 'Major' })));
     await expect(client.get()).resolves.toEqual({ trapSeverity: 'Major' });
     await client.update({ trapSeverity: 'Critical' });
     expect(mockRequest.mock.calls[1][0]).toBe('/v1/snmp');

@@ -16,8 +16,7 @@ import {
 import type { RoleRuleDraft, RoleRuleGroupKey, TopologyDraft } from './localTypes';
 
 export const IP_RE = /^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/;
-export const FQDN_RE =
-  /^(?=.{1,64}$)([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
+export const FQDN_RE = /^(?=.{1,64}$)([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
 export const HEX_RE = /^0x[0-9a-fA-F]{1,4}$/;
 
 export function inRange(v: unknown, min: number, max: number): boolean {
@@ -187,11 +186,19 @@ export function ruleErrors(key: RoleRuleGroupKey, draft: RoleRuleDraft): Record<
     }
     const proto = ruleProtocolName(d, key);
     const icmp = proto === 'icmp' || proto === 'icmpv6';
-    if (d.port === 'userDefined' && !icmp && (!inRange(d.portLow, 0, 65535) || !inRange(d.portHigh, 0, 65535))) {
+    if (
+      d.port === 'userDefined' &&
+      !icmp &&
+      (!inRange(d.portLow, 0, 65535) || !inRange(d.portHigh, 0, 65535))
+    ) {
       e.port = 'Valid port range 0 to 65535';
     }
   }
-  if (key === 'l2Filters' && d.ethertype === 'userDefined' && !HEX_RE.test(String(d.ethertypeValue || ''))) {
+  if (
+    key === 'l2Filters' &&
+    d.ethertype === 'userDefined' &&
+    !HEX_RE.test(String(d.ethertypeValue || ''))
+  ) {
     e.ether = 'Hex value required, e.g. 0x8100';
   }
   if (key === 'l3SrcDestFilters') {
@@ -249,7 +256,9 @@ export function ruleMatchText(rule: RoleRuleDraft, key: RoleRuleGroupKey): strin
     return `${String(getIn(rule, 'protocol.name') || 'any')} ${String(getIn(rule, 'source.address') || 'any')} > ${String(getIn(rule, 'destination.address') || 'any')}`;
   }
   const port =
-    rule.port && rule.port !== 'any' ? ` :${rule.portLow != null && rule.portLow !== '' ? rule.portLow : rule.port}` : '';
+    rule.port && rule.port !== 'any'
+      ? ` :${rule.portLow != null && rule.portLow !== '' ? rule.portLow : rule.port}`
+      : '';
   return `${ruleProtocolName(rule, key)}${port} ${String(rule.ipAddressRange || 'any')}`;
 }
 
@@ -312,9 +321,45 @@ export function topologyErrors(form: TopologyDraft): Record<string, string> {
     if (!IP_RE.test(String(form.ipAddress || '')) || form.ipAddress === '0.0.0.0') {
       e.ip = 'A valid non-zero IPv4 address is required';
     }
-    if (!inRange(form.cidr, 1, 32)) e.cidr = 'Valid range 1 to 32';
+    /* 0, not 1. The Campus Controller OpenAPI spec gives TopologyElement.cidr
+       as minimum 0, maximum 32; the Gateway UI's /1 floor was superseded by
+       the API-is-truth ruling, so a topology the API accepts stays authorable. */
+    if (!inRange(form.cidr, 0, 32)) e.cidr = 'Valid range 0 to 32';
   }
   return e;
+}
+
+/* ── availability-pair Peer Address (foreignIpAddress) ── */
+
+/**
+ * The Peer Address value applies only when the appliance is HA-paired AND the
+ * topology is Bridged@AC with Layer 3 — the Gateway's own gate
+ * (topology.html ng-required="paired && mode==='BridgedAtAc' && l3Presence").
+ */
+export function peerAddressApplies(paired: boolean, form: TopologyDraft): boolean {
+  return (
+    paired === true &&
+    String(form.mode || 'BridgedAtAp') === 'BridgedAtAc' &&
+    form.l3Presence === true
+  );
+}
+
+/**
+ * The Peer Address BLOCK is shown more broadly than the input: on a paired
+ * appliance for every mode except Bridged@AP
+ * (topology.html ng-if="paired && topology.mode !== 'BridgedAtAp'").
+ */
+export function peerBlockVisible(paired: boolean, form: TopologyDraft): boolean {
+  return paired === true && String(form.mode || 'BridgedAtAp') !== 'BridgedAtAp';
+}
+
+/** foreignIpAddress is REQUIRED whenever the peer address applies. */
+export function peerAddressError(paired: boolean, form: TopologyDraft): Record<string, string> {
+  if (!peerAddressApplies(paired, form)) return {};
+  if (!IP_RE.test(String(form.foreignIpAddress || '')) || form.foreignIpAddress === '0.0.0.0') {
+    return { peer: 'A valid non-zero IPv4 address is required on a paired appliance' };
+  }
+  return {};
 }
 
 /* ── VLAN group helpers ── */

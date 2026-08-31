@@ -98,8 +98,39 @@ export const RF_TABS_SMART = [
   'Scanning',
   'Recovery',
   'Select Shutdown',
+  'Auto Sensor',
 ] as const;
 export const RF_TABS_ACS = ['Basic', 'Power & Channel', 'Interference Recovery'] as const;
+
+/* ── Smart RF Auto Sensor (Gateway 10.20) ──
+   Writes smartRf.autoSensor.{algorithm,band,trigger}. The Gateway filters
+   autoSensorBandOptions to drop 2.4 GHz whenever
+   interferenceRecovery.selectShutdown is on; an existing Band24 value then
+   falls back to Band5. Start is a runtime action performed on the Gateway,
+   so the tab renders it present but inert. */
+export const RF_AUTO_SENSOR_ALGORITHMS: RfOption[] = [
+  { id: 'SPARSE', label: 'Sparse' },
+  { id: 'DENSE', label: 'Dense' },
+];
+export const RF_AUTO_SENSOR_TRIGGERS: RfOption[] = [
+  { id: 'AUTO', label: 'Auto' },
+  { id: 'MANUAL', label: 'Manual' },
+];
+
+/** Band options — Band24 is removed while Select Shutdown is enabled. */
+export function autoSensorBandOpts(selectShutdown: boolean): RfOption[] {
+  return [
+    { id: 'Band5', label: '5 GHz' },
+    { id: 'Band24', label: '2.4 GHz' },
+    { id: 'Band6', label: '6 GHz' },
+  ].filter((b) => !(selectShutdown && b.id === 'Band24'));
+}
+
+/** Effective band value — an existing 2.4 GHz choice falls back to Band5 while Select Shutdown is on. */
+export function autoSensorBandValue(band: unknown, selectShutdown: boolean): string {
+  const b = band == null || band === '' ? 'Band5' : String(band);
+  return selectShutdown && (b === 'Band24' || b === '2.4GHZ') ? 'Band5' : b;
+}
 
 // --- immutable nested-path helpers (dot path, numeric segments index arrays) ---
 type Dict = Record<string, unknown>;
@@ -177,10 +208,7 @@ export interface RfValidationCtx {
 }
 
 /** Full controller validation set (gap 13); returns a field->message map. */
-export function validateRf(
-  form: RfMgmtPolicy,
-  ctx: RfValidationCtx
-): Record<string, string> {
+export function validateRf(form: RfMgmtPolicy, ctx: RfValidationCtx): Record<string, string> {
   const errs: Record<string, string> = {};
   const name = String(form.name ?? '').trim();
   if (!name) errs.name = 'Name is required';
@@ -202,11 +230,7 @@ export function validateRf(
     const b = bandOf(cfg, 'powerAndChannel', bandId);
     if (!inRange(b.txMinPower, 1, 20)) errs[`txMin${bandId}`] = 'Valid range 1 to 20';
     if (!inRange(b.txMaxPower, 1, 20)) errs[`txMax${bandId}`] = 'Valid range 1 to 20';
-    if (
-      b.txMinPower != null &&
-      b.txMaxPower != null &&
-      num(b.txMinPower) > num(b.txMaxPower)
-    )
+    if (b.txMinPower != null && b.txMaxPower != null && num(b.txMinPower) > num(b.txMaxPower))
       errs[`power${bandId}`] = 'Max Power is below Min Power';
   });
 
@@ -219,7 +243,8 @@ export function validateRf(
       if (custom && !inRange(b.freq, 1, 120)) errs[`freq${bandId}`] = 'Valid range 1 to 120';
       if (custom && !inRange(b.extFreq, 0, 50)) errs[`extFreq${bandId}`] = 'Valid range 0 to 50';
       if (!inRange(b.sampleCount, 1, 15)) errs[`sc${bandId}`] = 'Valid range 1 to 15';
-      if (b.clientAware && !inRange(b.clientCount, 1, 255)) errs[`cc${bandId}`] = 'Valid range 1 to 255';
+      if (b.clientAware && !inRange(b.clientCount, 1, 255))
+        errs[`cc${bandId}`] = 'Valid range 1 to 255';
       if (b.txLoadAware && !inRange(b.txLoadAwarePercent, 1, 100))
         errs[`tl${bandId}`] = 'Valid range 1 to 100';
       if (custom && !inRange(bandOf(cfg, 'neighbourRecovery', bandId).powerThreshold, -85, -55))
@@ -248,7 +273,8 @@ export function validateRf(
   } else {
     ['Band24', 'Band5'].forEach((bandId) => {
       const b = bandOf(cfg, 'interferenceRecovery', bandId);
-      if (!inRange(b.channelOccupancyThreshold, 10, 100)) errs[`occ${bandId}`] = 'Valid range 10 to 100';
+      if (!inRange(b.channelOccupancyThreshold, 10, 100))
+        errs[`occ${bandId}`] = 'Valid range 10 to 100';
       if (!inRange(b.noiseThreshold, -95, -50)) errs[`noi${bandId}`] = 'Valid range -95 to -50';
       if (!inRange(b.updatePeriod, 0, 15)) errs[`upd${bandId}`] = 'Valid range 0 to 15';
     });

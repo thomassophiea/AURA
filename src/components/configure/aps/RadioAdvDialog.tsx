@@ -1,7 +1,10 @@
 /**
  * Per-radio Advanced modal (radioAdvanced.html, gap 12): Aggregate MPDU, LDPC,
- * STBC, Beamforming (TxBF). Hidden for b/g mode by the caller. Fields verified
- * against api/ap-detail-sample.json radios[].
+ * STBC. Hidden for b/g mode by the caller. Fields verified against
+ * api/ap-detail-sample.json radios[]. Beamforming (txBf) is intentionally NOT
+ * authored here — PLM ruling 2026-08-26: Beamforming configuration stays on
+ * the controller. The txBf field remains on the radio record as round-trip
+ * payload (the draft clone preserves it); do not reintroduce the control.
  */
 import React from 'react';
 import { FieldRow } from '../_kit';
@@ -11,13 +14,6 @@ import { ApSelect } from './controls';
 import { useApDraft } from './useApDraft';
 import type { ApRadio } from '../../../types/configure';
 
-const TXBF_OPTS = [
-  { id: 'disabled', label: 'Disabled' },
-  { id: 'suMimo', label: 'TX SU-MIMO' },
-  { id: 'muMimo', label: 'TX MU-MIMO' },
-  { id: 'ulMuMimo', label: 'UL MU-MIMO' },
-  { id: 'dlUlMuMimo', label: 'DL & UL MU-MIMO' },
-];
 const STATUS = [
   { id: 'enabled', label: 'Enabled' },
   { id: 'disabled', label: 'Disabled' },
@@ -59,14 +55,6 @@ export function RadioAdvDialog({ radio, open, onOpenChange, onApply }: RadioAdvD
       </FieldRow>
       <FieldRow label="STBC" inline>
         <Switch checked={!!form.stbc} onCheckedChange={(v) => upd('stbc', v)} />
-      </FieldRow>
-      <FieldRow label="Beamforming (TxBF)" inline>
-        <ApSelect
-          className="w-52"
-          value={form.txBf || 'disabled'}
-          options={TXBF_OPTS}
-          onChange={(v) => upd('txBf', v)}
-        />
       </FieldRow>
     </EditorDialog>
   );

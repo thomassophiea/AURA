@@ -191,7 +191,11 @@ export function SrcDestEndpointFields({
   isIcmp,
   title,
   base,
-}: RuleBlockProps & { isIcmp: boolean; title: 'Source' | 'Destination'; base: 'source' | 'destination' }) {
+}: RuleBlockProps & {
+  isIcmp: boolean;
+  title: 'Source' | 'Destination';
+  base: 'source' | 'destination';
+}) {
   const subnetType = str(draft, `${base}.subnetType`) || 'anyIpAddress';
   const known = str(draft, `${base}.port.known`) || 'any';
   return (

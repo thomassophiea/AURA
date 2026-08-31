@@ -4,13 +4,7 @@
  * sensitivity, no coverage hole). Mirrors add-edit-smart-rf.html / acs.html.
  */
 import React from 'react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../../ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
 import { Switch } from '../../ui/switch';
 import { LabelRow, type RfTabProps } from './rfControls';
 import { RF_SENSITIVITY, getPath } from './rfModel';

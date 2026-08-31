@@ -113,9 +113,9 @@ export function VlanGroupsPage() {
                 VLAN Groups are not supported on this controller
               </p>
               <p className="text-sm text-muted-foreground">
-                The controller answered 404 for both /v1/vlangroups and /v3/vlangroups. VLAN
-                groups require a controller build that ships the feature; individual VLANs remain
-                fully manageable from the VLANs tab.
+                The controller answered 404 for both /v1/vlangroups and /v3/vlangroups. VLAN groups
+                require a controller build that ships the feature; individual VLANs remain fully
+                manageable from the VLANs tab.
               </p>
             </div>
           </CardContent>

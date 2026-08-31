@@ -14,6 +14,7 @@ import {
   isEnterprise,
   isPureWpa3,
   isWpa,
+  portalTypeOptions,
   privacyLabel,
 } from './wlanModel';
 import { LAB_6GHZ, SKYNET, withPrivacy } from './wlanFixtures';
@@ -29,6 +30,7 @@ describe('deriveAuthType — privacy element is authoritative', () => {
 
   it.each([
     ['WepElement', 'WEP'],
+    ['WpaPpskElement', 'WPA2-Private PSK'],
     ['WpaSaePskElement', 'WPA3-Compatibility'],
     ['WpaEnterpriseElement', 'WPA2-Enterprise (802.1X/EAP)'],
     ['Dot1xElement', 'WPA2-Enterprise (802.1X/EAP)'],
@@ -58,12 +60,39 @@ describe('deriveAuthType — privacy element is authoritative', () => {
 });
 
 describe('auth-type ↔ element mapping', () => {
+  it('offers the controller-exact 11 auth types', () => {
+    expect(WLAN_AUTH_TYPES).toHaveLength(11);
+    expect(WLAN_AUTH_TYPES).toContain('WPA2-Private PSK');
+  });
+
   it('round-trips every persistable auth type through its element', () => {
     for (const auth of WLAN_AUTH_TYPES) {
       const element = AUTH_TO_ELEMENT[auth];
-      if (!element) continue; // Open / OWE persist no dedicated element
+      if (!element) continue; // Open persists no dedicated element
       expect(deriveAuthType(withPrivacy(element, {}))).toBe(auth);
     }
+  });
+
+  it('maps OWE to OweElement (10.20 rename) so saves round-trip the element', () => {
+    expect(AUTH_TO_ELEMENT['OWE']).toBe('OweElement');
+  });
+});
+
+describe('portal type options (PLM 2026-08-21 guest scope)', () => {
+  it('offers exactly External + Guest Essentials for new records', () => {
+    expect(portalTypeOptions(null).map((o) => o.id)).toEqual(['External', 'GuestEssentials']);
+    expect(portalTypeOptions('External').map((o) => o.id)).toEqual(['External', 'GuestEssentials']);
+  });
+
+  it('keeps a legacy Internal value selectable with the deprecated label', () => {
+    const options = portalTypeOptions('Internal');
+    expect(options.map((o) => o.id)).toEqual(['External', 'GuestEssentials', 'Internal']);
+    expect(options[2].label).toBe('Internal (Local CWP — deprecated)');
+  });
+
+  it('keeps EGuest / CWA values selectable without rewriting them', () => {
+    expect(portalTypeOptions('EGuest').at(-1)).toEqual({ id: 'EGuest', label: 'Extreme Guest' });
+    expect(portalTypeOptions('CWA').at(-1)).toEqual({ id: 'CWA', label: 'CWA' });
   });
 });
 

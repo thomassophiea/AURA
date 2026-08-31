@@ -8,14 +8,7 @@
  */
 import React, { useMemo } from 'react';
 import { Info } from 'lucide-react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../../ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../ui/table';
 import { Badge } from '../../ui/badge';
 import type { ApDetail } from '../../../types/configure';
 import { buildGeoDiagnostics, type GeoFloorRow } from './siteAfcModel';
@@ -41,9 +34,9 @@ export function SiteGeoDiagnosticsTab({ aps, apRanging, loading }: SiteGeoDiagno
       <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
         <Info className="mt-0.5 h-4 w-4 shrink-0" />
         <p>
-          Rollup derived from per-AP config (GPS anchor, WGS-84 fix, floor number). Live
-          per-floor diagnostics — Last Location Update, Subgraph Complete / Incomplete — are
-          runtime telemetry not exposed by the controller config API.
+          Rollup derived from per-AP config (GPS anchor, WGS-84 fix, floor number). Live per-floor
+          diagnostics — Last Location Update, Subgraph Complete / Incomplete — are runtime telemetry
+          not exposed by the controller config API.
         </p>
       </div>
 
