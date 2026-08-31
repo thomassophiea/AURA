@@ -1,0 +1,158 @@
+### hostapd version
+hostapd v2.10-MLO
+### test config (secrets shown are lab throwaway keys)
+interface=wl0.4
+driver=nl80211
+ctrl_interface=/tmp/aura_ppsk_ctrl
+ssid=Aura-PPSK-Lab
+hw_mode=g
+channel=1
+ieee80211n=1
+wmm_enabled=1
+auth_algs=1
+wpa=2
+wpa_key_mgmt=WPA-PSK
+wpa_pairwise=CCMP
+rsn_pairwise=CCMP
+wpa_psk_file=/tmp/aura_ppsk.psk
+### AP identity
+export AP_VERSION=10.20.1.0-020R
+export BOARD_TYPE=mapleleaf
+BOARD_TYPE_mapleleaf=1
+BOARD_ID_SUBTYPE_NAME="BOARD_ID_SUBTYPE"
+BOARD_ID_VMAP=0x09
+BOARD_ID_SEQUOIA=0x10
+BOARD_ID_PINE=0x11
+BOARD_ID_MAPLE=0x12
+BOARD_ID_SPRUCE=0x13
+BOARD_ID_MAPLELEAF=0x14
+BOARD_ID_PINELEAF=0x15
+BOARD_ID_SUBTYPE_INVALID=0xFFFF
+BOARD_ID_SUBTYPE_UNKNOWN=0x0000
+BOARD_ID_SUBTYPE_VMAP=0x0100
+BOARD_ID_SUBTYPE_5XX=0x1000
+BOARD_ID_SUBTYPE_5XX_ETH_5G_E=0x1001
+BOARD_ID_SUBTYPE_5XX_ETH_2_5G_I=0x1003
+BOARD_ID_SUBTYPE_5XX_ETH_5G_H=0x1004
+BOARD_ID_SUBTYPE_4XX_IN=0x1100
+BOARD_ID_SUBTYPE_4XX_OUT=0x1101
+BOARD_ID_SUBTYPE_3XX_IN=0x1102
+BOARD_ID_SUBTYPE_3XX_OUT=0x1103
+BOARD_ID_SUBTYPE_410_C=0x1104
+BOARD_ID_SUBTYPE_305_C=0x1105
+BOARD_ID_SUBTYPE_460_C=0x1106
+BOARD_ID_SUBTYPE_305_CX=0x1107
+BOARD_ID_SUBTYPE_302_W=0x1108
+BOARD_ID_SUBTYPE_4000=0x1109
+BOARD_ID_SUBTYPE_4000_U=0x110A
+BOARD_ID_SUBTYPE_4020__=0x110B
+BOARD_ID_SUBTYPE_4020_X=0x110C
+BOARD_ID_SUBTYPE_4020FX=0x110D
+BOARD_ID_SUBTYPE_4060__=0x110E
+BOARD_ID_SUBTYPE_4060_X=0x110F
+BOARD_ID_SUBTYPE_3020_W=0x1110
+BOARD_ID_SUBTYPE_3020__=0x1111
+BOARD_ID_SUBTYPE_3020_X=0x1112
+BOARD_ID_SUBTYPE_3060__=0x1113
+BOARD_ID_SUBTYPE_5010_U=0x1200
+BOARD_ID_SUBTYPE_5010__=0x1201
+BOARD_ID_SUBTYPE_5050_U=0x1202
+BOARD_ID_SUBTYPE_5050_D=0x1203
+BOARD_ID_SUBTYPE_5020__=0x1204
+BOARD_ID_SUBTYPE_5060_U=0x1205
+BOARD_ID_SUBTYPE_5060_D=0x1206
+BOARD_ID_SUBTYPE_5022__=0x1207
+BOARD_ID_SUBTYPE_5022FX=0x1208
+BOARD_ID_SUBTYPE_5022S6D=0x1209
+BOARD_ID_SUBTYPE_5060_U_LPI=0x120A
+BOARD_ID_SUBTYPE_5060_D_LPI=0x120B
+BOARD_ID_SUBTYPE_50XX_LAST=BOARD_ID_SUBTYPE_5060_D_LPI
+BOARD_ID_SUBTYPE_3000__=0x1300
+BOARD_ID_SUBTYPE_3000_X=0x1301
+MODEL=AP5020-WW
+MODEL_COMP=AP5020-FCC
+MODEL_REGION=0
+SERIAL#=CV012408S-C0102
+mfg_hardware_model=AP5020-WW
+mfg_hardware_model_comp=AP5020-FCC
+### CANDIDATE-PSK MATCHING + KEYID EVENTS (the proof)
+1788211226.034976: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211226.034984: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211226.325347: WPA: b6:11:d3:dd:f7:ec WPA_PTK entering state DISCONNECTED
+1788211226.341451: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211226.341459: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211226.639421: WPA: b6:11:d3:dd:f7:ec WPA_PTK entering state DISCONNECTED
+1788211226.701866: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211226.701873: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211226.704566: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211226.710383: wpa_verify_key_mic2124 mic mis-match
+1788211226.710393: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=0x16bd4d4
+1788211226.728585: wl0.4: AP-STA-CONNECTED b6:11:d3:dd:f7:ec keyid=Thomas-Test
+1788211280.499527: WPA: b6:11:d3:dd:f7:ec WPA_PTK entering state DISCONNECTED
+1788211314.321899: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211314.321906: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211314.336559: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211314.360752: wl0.4: AP-STA-CONNECTED b6:11:d3:dd:f7:ec keyid=Printer-Test
+1788211382.595955: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211382.595962: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211384.211566: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211384.217615: wpa_verify_key_mic2124 mic mis-match
+1788211384.217625: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=0x16d518c
+1788211385.198058: WPA: b6:11:d3:dd:f7:ec WPA_PTK entering state DISCONNECT
+1788211385.199634: WPA: b6:11:d3:dd:f7:ec WPA_PTK entering state DISCONNECTED
+1788211385.201879: WPA: b6:11:d3:dd:f7:ec WPA_PTK entering state DISCONNECTED
+1788211386.425626: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211386.425633: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211386.441566: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211386.447408: wpa_verify_key_mic2124 mic mis-match
+1788211386.447417: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=0x16d518c
+1788211386.642532: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211386.648415: wpa_verify_key_mic2124 mic mis-match
+1788211386.648425: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=0x16d518c
+1788211387.032537: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211387.038539: wpa_verify_key_mic2124 mic mis-match
+1788211387.038549: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=0x16d518c
+1788211388.034584: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211388.040681: wpa_verify_key_mic2124 mic mis-match
+1788211388.040690: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=0x16d518c
+1788211389.031002: WPA: b6:11:d3:dd:f7:ec WPA_PTK entering state DISCONNECT
+1788211389.032669: WPA: b6:11:d3:dd:f7:ec WPA_PTK entering state DISCONNECTED
+1788211389.040927: WPA: b6:11:d3:dd:f7:ec WPA_PTK entering state DISCONNECTED
+1788211409.644299: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211409.644306: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211409.657558: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211409.663462: wpa_verify_key_mic2124 mic mis-match
+1788211409.663472: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=0x16d518c
+1788211409.854531: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211409.860645: wpa_verify_key_mic2124 mic mis-match
+1788211409.860658: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=0x16d518c
+1788211410.249550: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211410.255550: wpa_verify_key_mic2124 mic mis-match
+1788211410.255560: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=0x16d518c
+1788211411.250551: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211411.256657: wpa_verify_key_mic2124 mic mis-match
+1788211411.256668: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=0x16d518c
+1788211412.237051: WPA: b6:11:d3:dd:f7:ec WPA_PTK entering state DISCONNECT
+1788211412.239853: WPA: b6:11:d3:dd:f7:ec WPA_PTK entering state DISCONNECTED
+1788211412.248880: WPA: b6:11:d3:dd:f7:ec WPA_PTK entering state DISCONNECTED
+1788211413.398386: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211413.398393: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211413.402559: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211413.408460: wpa_verify_key_mic2124 mic mis-match
+1788211413.408469: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=0x16d518c
+1788211413.602535: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211413.608423: wpa_verify_key_mic2124 mic mis-match
+1788211413.608432: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=0x16d518c
+1788211414.009718: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211414.016577: wpa_verify_key_mic2124 mic mis-match
+1788211414.016604: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=0x16d518c
+1788211415.011581: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211415.017667: wpa_verify_key_mic2124 mic mis-match
+1788211415.017676: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=0x16d518c
+1788211415.998023: WPA: b6:11:d3:dd:f7:ec WPA_PTK entering state DISCONNECT
+1788211416.003032: WPA: b6:11:d3:dd:f7:ec WPA_PTK entering state DISCONNECTED
+1788211416.012979: WPA: b6:11:d3:dd:f7:ec WPA_PTK entering state DISCONNECTED
+1788211429.122187: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211429.122194: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211429.125561: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
+1788211429.151846: wl0.4: AP-STA-CONNECTED b6:11:d3:dd:f7:ec keyid=Thomas-Test
