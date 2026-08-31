@@ -84,3 +84,46 @@ Configure ▸ **Private Pre-Shared Key** (`configure-ppsk`) — a `ResourceGridP
 of identities (create / edit / enable-disable / delete / reveal / generate) plus a
 **wpa_psk_file** preview dialog per SSID. Marked *Experimental* in the header
 because provisioning is not yet controller-driven.
+
+## Applying it out of band (lab runbook)
+
+Until the controller emits the key file, `scripts/ppsk-provision-lab.sh` is the
+concrete "apply out of band" path — the repeatable form of the hardware proof.
+It side-loads a second hostapd on a **spare, controller-unused VAP** (e.g.
+`wl0.4`), so it never touches the live controller-managed BSSes, and refuses any
+VAP that is not a spare `down` interface. **Lab only** — a controller re-sync
+will not touch the spare VAP, but this is not a production path.
+
+```bash
+# 1. Render the key file from AURA (operator token; see docs/PPSK_HARDWARE_FINDINGS.md)
+curl -s "$AURA/api/v1/ppsk/keyfile?ssid=Aura-PPSK-Lab" \
+  -H "Authorization: Bearer $TOK" -H "X-Controller-URL: $CTRL" \
+  | python3 -c 'import sys,json;print(json.load(sys.stdin)["content"])' > aura.psk
+
+# 2. Provision to a lab AP (spare VAP, channel-matched to the live radio)
+scripts/ppsk-provision-lab.sh --ap 192.168.100.141 --pass '<ap-pw>' \
+  --ssid Aura-PPSK-Lab --keyfile aura.psk --iface wl0.4
+
+# 3. Join from a client with any key in the file; read the matched identity
+ssh admin@192.168.100.141 'grep AP-STA-CONNECTED /tmp/aura_ppsk.log'
+#   → AP-STA-CONNECTED <mac> keyid=Thomas-Test
+
+# 4. Revoke: disable the key in AURA, re-render, re-push, reload
+ssh admin@192.168.100.141 'kill -HUP $(pgrep -f aura_ppsk.cfg)'
+
+# 5. Tear down (leaves the AP pristine; asserts the live radio is untouched)
+scripts/ppsk-provision-lab.sh --ap 192.168.100.141 --pass '<ap-pw>' --teardown --iface wl0.4
+```
+
+The script prints the live radio's station count before and after bring-up so an
+operator can confirm the production BSSes were undisturbed.
+
+## Tests
+
+- `server/ppsk/pmk.test.js` — crypto vectors, validation, key-file rendering.
+- `server/ppsk/ppskRouter.test.js` — RBAC, 400/409/501/503, honest enforcement,
+  in-process HTTP driver with an injected store.
+- `server/ppsk/ppskStore.db.test.js` — real-PostgreSQL integration (encryption at
+  rest, `(ssid, keyid)` unique constraint, the enabled/unexpired key-file filter).
+  Runs only with `TEST_DATABASE_URL` set; **skips loudly** otherwise, so a green
+  run without it never implies the SQL was checked.
