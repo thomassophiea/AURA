@@ -1,9 +1,14 @@
 # Private SAE on 6 GHz — executive decision
 
 **Date:** 2026-09-01 · **Author:** overnight architecture investigation (Red Queen / ArchAngel)
-**Confidence:** High on the protocol verdict and the Campus OS gap (hardware + source + standards);
-Medium-High on the recommended path (AP capability proven; on-air per-user *selection* awaits a
-controller-native test — one honest open item, L1).
+**Confidence:** High. Protocol verdict, Campus OS gap, and the recommended path are all backed by
+hardware. **Update 2026-09-01:** per-user WPA3-SAE is now **proven end-to-end on real hardware** —
+a native macOS client with a randomized MAC completed SAE (H2E + PMF) against a per-user credential
+bound to its MAC, got an address and internet; a wrong credential was rejected. The former open
+item L1 is **closed** (`evidence/psae-live-demo-2026-09-01.md`). It also confirmed the thesis's
+sharp edge: the SAE Password Identifier broke native association (macOS -3912), pure MAC binding
+connected cleanly. The AURA credential plane is built, tested, and flag-gated; controller
+auto-provisioning remains the one platform dependency.
 
 Supporting docs in this directory: `CURRENT_PPSK_TRACE.md`, `PRIVATE_SAE_PROTOCOL_ANALYSIS.md`,
 `COMPETITIVE_PRIVATE_SAE_MATRIX.md`, `PRIVATE_SAE_OPTIONS_SCORECARD.md`,
@@ -82,7 +87,8 @@ config-generation, identical in shape to the PPSK gap.**
 |---|---|
 | WPA3-SAE on 6 GHz, native on all modern clients (single shared password) | **Works now** (controller emits single-PSK SAE; H2E/PMF proven) |
 | AP capability for per-user MAC-bound SAE (multi-`sae_password`, per-key VLAN, H2E, PMF, FT-SAE) | **Proven on hardware** (config plane) |
-| Per-user SAE **selection** on air (AP picks the credential by MAC, completes 4-frame SAE) | **Unverified via lab side-load** (Broadcom AUTH-frame interception); needs controller-native test |
+| Per-user SAE **selection** on air, native client, randomized MAC → connect + IP; wrong cred rejected | **Proven end-to-end on hardware** (Skynet_PSAE demo, 2026-09-01) |
+| AURA credential + enrollment plane (create/rotate/revoke/enroll, render sae_password) | **Built, tested, flag-gated** (`PRIVATE_SAE_ENABLED`; PPSK byte-identical) |
 | Controller emitting a per-key `sae_password` set + reload + identity readback | **Does not exist** — the enhancement (R1–R6) |
 | SAE Password Identifiers as the product mechanism | **Dead** — no mainstream client can provision one |
 | Pure no-MAC/no-identifier multi-password SAE | **Impossible** by the SAE construction (no vendor does it) |
