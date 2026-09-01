@@ -120,6 +120,7 @@ export function getSkeletonVariant(page: string): SkeletonVariant {
     case 'configure-aaa-policies':
     case 'configure-adoption-rules':
     case 'configure-ppsk':
+    case 'configure-private-sae':
     case 'configure-cloud-portal':
     case 'configure-advanced':
     case 'administration':

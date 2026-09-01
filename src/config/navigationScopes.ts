@@ -28,6 +28,7 @@ export const ORG_PAGES = new Set([
   'configure-aaa-policies',
   'configure-adoption-rules',
   'configure-ppsk',
+  'configure-private-sae',
   'configure-advanced',
   // Templates & Variables
   'global-templates',

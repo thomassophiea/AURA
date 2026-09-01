@@ -89,6 +89,7 @@ const configureItems = [
   { id: 'configure-aaa-policies', label: 'AAA Policies', icon: UserCheck },
   { id: 'configure-access-control', label: 'Access Control', icon: KeySquare },
   { id: 'configure-ppsk', label: 'Private Pre-Shared Key', icon: KeyRound },
+  { id: 'configure-private-sae', label: 'Private SAE (WPA3)', icon: ShieldCheck },
   { id: 'configure-cloud-portal', label: 'Cloud Captive Portal', icon: Globe },
   { id: 'configure-service-profiles', label: 'Service Profiles', icon: Radar },
   { id: 'configure-adoption-rules', label: 'Adoption Rules', icon: Zap },

@@ -64,6 +64,9 @@ const ConfigureAdoptionRules = lazy(() =>
 const ConfigurePpsk = lazy(() =>
   import('./components/configure/ppsk').then((m) => ({ default: m.PpskPage }))
 );
+const ConfigurePrivateSae = lazy(() =>
+  import('./components/configure/privateSae').then((m) => ({ default: m.PrivateSaePage }))
+);
 const ConfigureProfiles = lazy(() =>
   import('./components/configure/profiles').then((m) => ({ default: m.ProfilesPage }))
 );
@@ -232,6 +235,7 @@ const pageInfo = {
   'sites-overview': { title: 'Sites Overview', description: 'View and manage network sites' },
   'configure-policy': { title: 'Policy', description: 'Configure network policies' },
   'configure-ppsk': { title: 'Private Pre-Shared Key', description: 'Per-identity keys on one WPA2-Personal WLAN' },
+  'configure-private-sae': { title: 'Private SAE (WPA3)', description: 'Per-user WPA3-Personal (SAE) credentials on one WLAN' },
   'performance-analytics': {
     title: 'Performance Analytics',
     description: 'Analyze network performance and trends',
@@ -1358,6 +1362,12 @@ export default function App() {
         return (
           <ErrorBoundary fallbackTitle="Private Pre-Shared Key">
             <ConfigurePpsk />
+          </ErrorBoundary>
+        );
+      case 'configure-private-sae':
+        return (
+          <ErrorBoundary fallbackTitle="Private SAE (WPA3)">
+            <ConfigurePrivateSae />
           </ErrorBoundary>
         );
       case 'configure-profiles':
