@@ -50,3 +50,36 @@ the AP5020). AURA-CWP = open/captive.
   to run after H5.
 
 Results appended below as each runs.
+
+---
+
+## 2026-09-01 — H1 PASS: AURA_PPSK baseline authenticates (randomized MAC)
+
+**Test:** macOS `en1` joined `AURA_PPSK` with the controller-stored PSK (fetched via API, never
+logged). **Evidence:** client got LAN IP `192.168.100.116`; AP `wl1.1 assoclist` shows the client's
+**randomized** MAC `E6:42:B8:04:07:09` on **band a / ch56 = 5 GHz**. **Verdict:** baseline works,
+on 5 GHz, with a private MAC enabled — no MAC-randomization change required. This is single-PSK
+(shared), which is the current AURA_PPSK; per-user is H2.
+
+---
+
+## 2026-09-01 — H3 PASS: AURA_PSAE (WPA3-SAE) provisioned on 6 GHz via the controller
+
+**Test:** created service `AURA_PSAE` (WpaSaeElement, pmfMode required) via the XCC REST API,
+bound to profile **AP5010-LAB1 only** (radios 1/2/3), verified read-back. **Evidence (on the AP):**
+`wl2.0 ssid="AURA_PSAE" band=6g chanspec=6g109 bss=up`; controller-generated `seccfg_02_0.cfg`:
+`wpa_key_mgmt=SAE`, `wpa=2`, `ieee80211w=2` (PMF required), **`sae_pwe=1` (H2E-only) on the 6 GHz
+radio** vs `sae_pwe=2` on 2.4/5 — the controller is band-aware. A dedicated controller hostapd
+instance owns `wl2.0` (`seccfg_02_0.cfg`). **Blast radius:** AURA_PSAE present in exactly one
+profile, AP5010-LAB1. **Verdict:** the controller data path reaches 6 GHz and SAE runs on the
+Extreme AP — no Pi. This is single (shared) SAE password; per-user is H5.
+
+## 2026-09-01 — H4 PASS: native client associates to AURA_PSAE over 6 GHz, randomized MAC
+
+**Test:** macOS `en1` joined AURA_PSAE with the SAE passphrase. **Evidence:** client's **randomized**
+MAC `D2:C0:84:99:65:5F` appears in **`wl2.0` (6 GHz) assoclist**, while `wl0.2`/`wl1.2` (2.4/5)
+assoclists are **empty** — unambiguously on 6 GHz; client IP `192.168.100.117`, gateway reachable
+over the en1 wireless link. **Falsification:** fresh join (not cached PMK); MAC is
+locally-administered (private); single AP in scope (no roam); Pi not involved. **Verdict:** WPA3-SAE
+on 6 GHz on the Extreme AP with a private MAC — the headline milestone. (Shared password; per-user
+selection is H5.)
