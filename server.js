@@ -473,7 +473,6 @@ const dnsResolve6 = promisify(dns.resolve6);
 
 // In-memory stores for features not available via controller REST API
 const backupStore = [];
-const guestStore = [];
 const alarmStore = [];
 const eventStore = [];
 
@@ -1010,61 +1009,10 @@ app.get('/api/management/v1/security/threats', requireAuth, (_req, res) => {
 });
 
 // ==================== Guest Management ====================
-// Controller uses /v1/eguest for portal config, not individual guest accounts
-
-app.get('/api/management/v1/guests', requireAuth, (_req, res) => {
-  const now = Date.now();
-  res.json(
-    guestStore.filter(
-      (g) => !g.expirationDate || new Date(g.expirationDate).getTime() > now - 86400000
-    )
-  );
-});
-
-app.post('/api/management/v1/guests/create', requireAuth, jsonParser, (req, res) => {
-  const { name, email, duration, company } = req.body || {};
-  if (!name || !email) {
-    return res.status(400).json({ error: 'Name and email are required' });
-  }
-  const guest = {
-    id: crypto.randomUUID(),
-    name,
-    email,
-    company: company || '',
-    duration: duration || 86400,
-    expirationDate: new Date(Date.now() + (duration || 86400) * 1000).toISOString(),
-    createdAt: new Date().toISOString(),
-    status: 'active',
-  };
-  guestStore.push(guest);
-  console.log(`[Guest] Created guest account: ${name} (${email})`);
-  res.status(201).json(guest);
-});
-
-app.delete('/api/management/v1/guests/:id', requireAuth, (req, res) => {
-  const idx = guestStore.findIndex((g) => g.id === req.params.id);
-  if (idx !== -1) {
-    const removed = guestStore.splice(idx, 1);
-    console.log(`[Guest] Deleted guest: ${removed[0].name}`);
-  }
-  res.json({ success: true });
-});
-
-app.post('/api/management/v1/guests/:id/voucher', requireAuth, jsonParser, (req, res) => {
-  const guest = guestStore.find((g) => g.id === req.params.id);
-  if (!guest) {
-    return res.status(404).json({ error: 'Guest not found' });
-  }
-  const voucher = {
-    code: crypto.randomUUID().substring(0, 8).toUpperCase(),
-    guestId: guest.id,
-    guestName: guest.name,
-    expirationDate: guest.expirationDate,
-    createdAt: new Date().toISOString(),
-  };
-  console.log(`[Guest] Generated voucher ${voucher.code} for ${guest.name}`);
-  res.json(voucher);
-});
+// Individual guest accounts live in the CWP ledger (server/guests/guestsRouter
+// → OS-ONE-CWP /api/internal/guests). The in-memory /v1/guests mock routes and
+// guestStore were removed 2026-09-01; the controller itself only exposes
+// /v1/eguest for portal config.
 
 app.get('/api/management/v1/guests/portal/config', requireAuth, (_req, res) => {
   res.json(null);

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeAll } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 
 // jsdom doesn't ship ResizeObserver; cmdk uses it. Stub before the
@@ -26,18 +26,7 @@ beforeAll(() => {
 });
 
 import { CommandPalette } from './CommandPalette';
-
-// Mock next-themes so we can spy on setTheme calls.
-const setTheme = vi.fn();
-let themeValue = 'dark';
-vi.mock('next-themes', () => ({
-  useTheme: () => ({ theme: themeValue, setTheme }),
-}));
-
-beforeEach(() => {
-  setTheme.mockClear();
-  themeValue = 'dark';
-});
+import { ALL_CONFIGURE_FEATURES } from '@/config/featureRegistry';
 
 afterEach(() => {
   // Close any open palette to avoid bleed-over.
@@ -85,21 +74,42 @@ describe('CommandPalette — open/close behaviour', () => {
 
 describe('CommandPalette — items', () => {
   it('lists every group heading when open', () => {
-    render(<CommandPalette />);
+    render(<CommandPalette onToggleTheme={() => {}} />);
     openPalette();
     expect(screen.getByText('Navigate')).toBeInTheDocument();
     expect(screen.getByText('Configure')).toBeInTheDocument();
-    expect(screen.getByText('Visualize')).toBeInTheDocument();
     expect(screen.getByText('Operate')).toBeInTheDocument();
     expect(screen.getByText('Actions')).toBeInTheDocument();
   });
 
-  it('renders Dashboard / Access Points / Connected Clients in Navigate', () => {
+  it('renders Network Overview / Access Points / Clients in Navigate', () => {
     render(<CommandPalette />);
     openPalette();
-    expect(screen.getByText('Dashboard')).toBeInTheDocument();
-    expect(screen.getByText('Access Points')).toBeInTheDocument();
-    expect(screen.getByText('Connected Clients')).toBeInTheDocument();
+    expect(screen.getByText('Network Overview')).toBeInTheDocument();
+    // "Access Points" exists in both Navigate (monitoring) and Configure —
+    // deliberate multiple entry points onto different pages.
+    expect(screen.getAllByText('Access Points').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Clients')).toBeInTheDocument();
+  });
+
+  it('lists every registry Configure feature', () => {
+    render(<CommandPalette />);
+    openPalette();
+    for (const feature of ALL_CONFIGURE_FEATURES) {
+      expect(
+        screen.getAllByText(feature.label).length,
+        `${feature.label} missing from palette`
+      ).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it('finds Private Credentials by its protocol aliases', () => {
+    render(<CommandPalette onNavigate={() => {}} />);
+    openPalette();
+    fireEvent.change(screen.getByPlaceholderText(/Type a command/), {
+      target: { value: 'wpa3' },
+    });
+    expect(screen.getByText('Private Credentials')).toBeInTheDocument();
   });
 
   it('shows the keyboard cheatsheet footer', () => {
@@ -113,18 +123,26 @@ describe('CommandPalette — items', () => {
 });
 
 describe('CommandPalette — selection', () => {
-  it('fires onNavigate with the route page when a route is selected', () => {
+  it('fires onNavigate with the real view id when a route is selected', () => {
     const onNavigate = vi.fn();
     render(<CommandPalette onNavigate={onNavigate} />);
     openPalette();
-    fireEvent.click(screen.getByText('Dashboard'));
-    expect(onNavigate).toHaveBeenCalledWith('dashboard');
+    fireEvent.click(screen.getByText('Network Overview'));
+    expect(onNavigate).toHaveBeenCalledWith('insights');
+  });
+
+  it('fires onNavigate with the unified Private Credentials view id', () => {
+    const onNavigate = vi.fn();
+    render(<CommandPalette onNavigate={onNavigate} />);
+    openPalette();
+    fireEvent.click(screen.getByText('Private Credentials'));
+    expect(onNavigate).toHaveBeenCalledWith('configure-private-credentials');
   });
 
   it('closes after a route selection', () => {
     render(<CommandPalette onNavigate={() => {}} />);
     openPalette();
-    fireEvent.click(screen.getByText('Dashboard'));
+    fireEvent.click(screen.getByText('Network Overview'));
     expect(screen.queryByPlaceholderText(/Type a command/)).not.toBeInTheDocument();
   });
 
@@ -138,20 +156,18 @@ describe('CommandPalette — selection', () => {
 });
 
 describe('CommandPalette — theme toggle', () => {
-  it('switches from dark to light when theme=dark', () => {
-    themeValue = 'dark';
-    render(<CommandPalette />);
+  it('fires onToggleTheme when provided', () => {
+    const onToggleTheme = vi.fn();
+    render(<CommandPalette onToggleTheme={onToggleTheme} />);
     openPalette();
-    fireEvent.click(screen.getByText(/Switch to light theme/));
-    expect(setTheme).toHaveBeenCalledWith('light');
+    fireEvent.click(screen.getByText('Toggle theme'));
+    expect(onToggleTheme).toHaveBeenCalledTimes(1);
   });
 
-  it('switches from light to dark when theme=light', () => {
-    themeValue = 'light';
+  it('omits the theme item when no handler is wired', () => {
     render(<CommandPalette />);
     openPalette();
-    fireEvent.click(screen.getByText(/Switch to dark theme/));
-    expect(setTheme).toHaveBeenCalledWith('dark');
+    expect(screen.queryByText('Toggle theme')).not.toBeInTheDocument();
   });
 });
 

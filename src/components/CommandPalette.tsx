@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useTheme } from 'next-themes';
 import {
   Command,
   CommandEmpty,
@@ -12,25 +11,29 @@ import {
 } from './ui/command';
 import { Dialog, DialogContent, DialogTitle } from './ui/dialog';
 import {
-  BarChart3,
   Bell,
+  Gauge,
   LayoutDashboard,
-  Map,
-  Moon,
   RefreshCw,
-  Server,
-  Settings,
   Shield,
-  Sun,
+  ShieldCheck,
+  SunMoon,
   Users,
   Wifi,
+  Zap,
 } from 'lucide-react';
+import {
+  ALL_CONFIGURE_FEATURES,
+  type ConfigureFeature,
+} from '@/config/featureRegistry';
 
 interface CommandPaletteProps {
   /** Triggered when the user picks a route action; the host wires up navigation. */
   onNavigate?: (page: string) => void;
   /** Triggered for the Refresh action (dispatches anywhere it's wired). */
   onRefresh?: () => void;
+  /** Cycles the app theme (App.tsx owns the 'light' | 'ep1' | 'dev' state). */
+  onToggleTheme?: () => void;
 }
 
 interface RouteItem {
@@ -42,13 +45,21 @@ interface RouteItem {
   keywords?: string[];
 }
 
-const ROUTES: RouteItem[] = [
+// Non-Configure destinations, ids matching App.tsx renderPage() cases exactly.
+const BASE_ROUTES: RouteItem[] = [
   {
-    page: 'dashboard',
-    label: 'Dashboard',
+    page: 'service-levels',
+    label: 'Operational Insights',
     group: 'Navigate',
-    Icon: LayoutDashboard,
-    keywords: ['home'],
+    Icon: ShieldCheck,
+    keywords: ['sle', 'service levels', 'sentinel', 'home'],
+  },
+  {
+    page: 'insights',
+    label: 'Network Overview',
+    group: 'Navigate',
+    Icon: Gauge,
+    keywords: ['dashboard', 'monitoring'],
   },
   {
     page: 'access-points',
@@ -58,54 +69,61 @@ const ROUTES: RouteItem[] = [
     keywords: ['ap', 'aps'],
   },
   {
-    page: 'clients',
-    label: 'Connected Clients',
+    page: 'connected-clients',
+    label: 'Clients',
     group: 'Navigate',
     Icon: Users,
-    keywords: ['stations'],
+    keywords: ['stations', 'devices', 'users'],
   },
   {
-    page: 'configure-networks',
-    label: 'Networks',
-    group: 'Configure',
-    Icon: Wifi,
-    keywords: ['ssid', 'wlan'],
+    page: 'energy-optimization',
+    label: 'Energy',
+    group: 'Navigate',
+    Icon: Zap,
+    keywords: ['power', 'kwh', 'sustainability'],
   },
-  { page: 'configure-policy', label: 'Policy', group: 'Configure', Icon: Shield },
   {
-    page: 'configure-rrm',
-    label: 'RRM',
-    group: 'Configure',
-    Icon: Settings,
-    keywords: ['radio resource'],
+    page: 'workspace',
+    label: 'Report Studio',
+    group: 'Navigate',
+    Icon: LayoutDashboard,
+    keywords: ['reports', 'widgets', 'workspace'],
   },
-  { page: 'topology', label: 'Topology', group: 'Visualize', Icon: Map },
-  { page: 'reports', label: 'Reports', group: 'Visualize', Icon: BarChart3 },
   {
-    page: 'event-alarms',
+    page: 'event-alarm-dashboard',
     label: 'Events & Alarms',
     group: 'Operate',
     Icon: Bell,
-    keywords: ['alerts'],
+    keywords: ['alerts', 'alarms', 'events'],
   },
-  { page: 'os-one', label: 'OS ONE', group: 'Operate', Icon: Server },
-  { page: 'security', label: 'Security', group: 'Operate', Icon: Shield },
+  {
+    page: 'security-dashboard',
+    label: 'Security',
+    group: 'Operate',
+    Icon: Shield,
+    keywords: ['rogue', 'threats', 'wips'],
+  },
 ];
 
+// Every Configure feature comes from the registry — one taxonomy everywhere.
+const CONFIGURE_ROUTES: RouteItem[] = ALL_CONFIGURE_FEATURES.map((f: ConfigureFeature) => ({
+  page: f.id,
+  label: f.label,
+  group: 'Configure',
+  Icon: f.icon,
+  keywords: f.aliases,
+}));
+
+const ROUTES: RouteItem[] = [...BASE_ROUTES, ...CONFIGURE_ROUTES];
+
 /**
- * CommandPalette — Wave 4B starter. Bound to ⌘⇧P / ctrl+shift+P (cmd+K
- * is taken by the chatbot). Provides keyboard-first nav across known
- * routes, theme toggle, and a "Refresh dashboard" action.
- *
- * Future-extension points for follow-up sessions:
- *  - AP search by name/MAC/serial via apiService
- *  - Client search by username/MAC/IP
- *  - Persona switching
- *  - Saved filter shortcuts
+ * CommandPalette — bound to ⌘⇧P / ctrl+shift+P (cmd+K is taken by the
+ * chatbot). Keyboard-first navigation across every registered route, with
+ * legacy/protocol aliases (WLAN → Networks, RADIUS → AAA, PPSK/SAE → Private
+ * Credentials, controller → Gateway pages), plus theme toggle and refresh.
  */
-export function CommandPalette({ onNavigate, onRefresh }: CommandPaletteProps) {
+export function CommandPalette({ onNavigate, onRefresh, onToggleTheme }: CommandPaletteProps) {
   const [open, setOpen] = useState(false);
-  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -165,16 +183,18 @@ export function CommandPalette({ onNavigate, onRefresh }: CommandPaletteProps) {
                 <RefreshCw />
                 <span>Refresh dashboard</span>
               </CommandItem>
-              <CommandItem
-                value="toggle theme dark light mode"
-                onSelect={() => {
-                  setTheme(theme === 'dark' ? 'light' : 'dark');
-                  close();
-                }}
-              >
-                {theme === 'dark' ? <Sun /> : <Moon />}
-                <span>Switch to {theme === 'dark' ? 'light' : 'dark'} theme</span>
-              </CommandItem>
+              {onToggleTheme && (
+                <CommandItem
+                  value="toggle theme dark light mode"
+                  onSelect={() => {
+                    onToggleTheme();
+                    close();
+                  }}
+                >
+                  <SunMoon />
+                  <span>Toggle theme</span>
+                </CommandItem>
+              )}
             </CommandGroup>
           </CommandList>
           <div className="border-t px-3 py-2 text-[10px] uppercase tracking-[0.16em] text-muted-foreground font-mono flex items-center gap-3">

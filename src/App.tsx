@@ -61,11 +61,12 @@ const ConfigureAAAPolicies = lazy(() =>
 const ConfigureAdoptionRules = lazy(() =>
   import('./components/configure/adoption').then((m) => ({ default: m.AdoptionPage }))
 );
-const ConfigurePpsk = lazy(() =>
-  import('./components/configure/ppsk').then((m) => ({ default: m.PpskPage }))
-);
-const ConfigurePrivateSae = lazy(() =>
-  import('./components/configure/privateSae').then((m) => ({ default: m.PrivateSaePage }))
+// Private Credentials — the unified PPSK (WPA2) + Private SAE (WPA3) family.
+// Legacy view ids configure-ppsk / configure-private-sae deep-link to a tab.
+const ConfigurePrivateCredentials = lazy(() =>
+  import('./components/configure/privateCredentials').then((m) => ({
+    default: m.PrivateCredentialsPage,
+  }))
 );
 const ConfigureProfiles = lazy(() =>
   import('./components/configure/profiles').then((m) => ({ default: m.ProfilesPage }))
@@ -154,8 +155,11 @@ const SecurityDashboard = lazy(() =>
 const DiagnosticsSystemHealth = lazy(() =>
   import('./components/diagnostics').then((m) => ({ default: m.DiagnosticsPage }))
 );
-const GuestManagement = lazy(() =>
-  import('./components/GuestManagement').then((m) => ({ default: m.GuestManagement }))
+// Guest Accounts renders the real CWP guest ledger (clients/GuestUsers, backed
+// by /api/v1/guests → OS-ONE-CWP). The old GuestManagement component spoke to
+// an in-memory mock and was retired 2026-09-01.
+const GuestUsersPage = lazy(() =>
+  import('./components/clients/GuestUsers').then((m) => ({ default: m.GuestUsers }))
 );
 const ApiDocumentation = lazy(() =>
   import('./components/ApiDocumentation').then((m) => ({ default: m.ApiDocumentation }))
@@ -233,9 +237,16 @@ const pageInfo = {
     description: 'Manage and monitor wireless access points',
   },
   'sites-overview': { title: 'Sites Overview', description: 'View and manage network sites' },
-  'configure-policy': { title: 'Policy', description: 'Configure network policies' },
-  'configure-ppsk': { title: 'Private Pre-Shared Key', description: 'Per-identity keys on one WPA2-Personal WLAN' },
-  'configure-private-sae': { title: 'Private SAE (WPA3)', description: 'Per-user WPA3-Personal (SAE) credentials on one WLAN' },
+  'configure-policy': {
+    title: 'Roles & Policy',
+    description: 'Client roles, VLANs, CoS, and rate limiters',
+  },
+  'configure-private-credentials': {
+    title: 'Private Credentials',
+    description: 'Per-user Wi-Fi credentials without 802.1X — PPSK (WPA2) and Private SAE (WPA3)',
+  },
+  'configure-ppsk': { title: 'Private Credentials', description: 'Per-identity keys on one WPA2-Personal WLAN' },
+  'configure-private-sae': { title: 'Private Credentials', description: 'Per-user WPA3-Personal (SAE) credentials on one WLAN' },
   'performance-analytics': {
     title: 'Performance Analytics',
     description: 'Analyze network performance and trends',
@@ -1345,11 +1356,13 @@ export default function App() {
       case 'guest-management':
         return (
           <ErrorBoundary fallbackTitle="Guest Management Error">
-            <GuestManagement />
+            <GuestUsersPage />
           </ErrorBoundary>
         );
       case 'configure-catalog':
-        return <ConfigureCatalog onNavigate={setCurrentPage} />;
+        // handlePageChange (not raw setCurrentPage): catalog drill-through must
+        // honor persona gating and scope auto-switching like any nav click.
+        return <ConfigureCatalog onNavigate={handlePageChange} />;
       case 'configure-networks':
         return <ConfigureNetworks />;
       case 'configure-policy':
@@ -1358,16 +1371,23 @@ export default function App() {
         return <ConfigureAAAPolicies />;
       case 'configure-adoption-rules':
         return <ConfigureAdoptionRules />;
+      case 'configure-private-credentials':
+        return (
+          <ErrorBoundary fallbackTitle="Private Credentials">
+            <ConfigurePrivateCredentials />
+          </ErrorBoundary>
+        );
+      // Legacy deep links — same page, protocol tab preselected.
       case 'configure-ppsk':
         return (
-          <ErrorBoundary fallbackTitle="Private Pre-Shared Key">
-            <ConfigurePpsk />
+          <ErrorBoundary fallbackTitle="Private Credentials">
+            <ConfigurePrivateCredentials initialType="ppsk" />
           </ErrorBoundary>
         );
       case 'configure-private-sae':
         return (
-          <ErrorBoundary fallbackTitle="Private SAE (WPA3)">
-            <ConfigurePrivateSae />
+          <ErrorBoundary fallbackTitle="Private Credentials">
+            <ConfigurePrivateCredentials initialType="psae" />
           </ErrorBoundary>
         );
       case 'configure-profiles':
@@ -1683,7 +1703,7 @@ export default function App() {
                         </Button>
                       </>
                     )}
-                    {!device.isMobile && <NotificationsMenu onNavigate={setCurrentPage} />}
+                    {!device.isMobile && <NotificationsMenu onNavigate={handlePageChange} />}
                     {!device.isMobile && <AppsMenu />}
                     <UserMenu
                       onLogout={handleLogout}
@@ -1762,10 +1782,11 @@ export default function App() {
               )}
               {/* Command palette — ⌘⇧P / ctrl+shift+P (⌘K opens Agent Coworker). */}
               <CommandPalette
-                onNavigate={(page) => startTransition(() => setCurrentPage(page))}
+                onNavigate={handlePageChange}
                 onRefresh={() => {
                   window.dispatchEvent(new CustomEvent('aura:dashboard-refresh'));
                 }}
+                onToggleTheme={toggleTheme}
               />
 
               {/* Version Display — dev-mode only. Fetches /api/version at

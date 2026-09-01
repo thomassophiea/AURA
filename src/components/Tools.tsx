@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import {
-  Radio,
   TestTube,
   Zap,
   Network,
@@ -15,7 +14,6 @@ import {
 import { AFCPlanningTool } from './AFCPlanningTool';
 import { AFCRadioHeightCalculator } from './AFCRadioHeightCalculator';
 import { ApiTestTool } from './ApiTestTool';
-import { RFManagementTools } from './RFManagementTools';
 import { PacketCapture } from './PacketCapture';
 import { XIQMigrationTool } from './XIQMigrationTool';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -24,8 +22,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { toast } from 'sonner';
 import { apiService } from '../services/api';
 
+// RF Management policy CRUD lives in Configure > Wireless > RF Management
+// (configure/rf) — the duplicate editor that used to sit here was retired
+// 2026-09-01 so there is exactly one implementation of the /v3/rfmgmt surface.
 export function Tools() {
-  const [activeTab, setActiveTab] = useState('rf-management');
+  const [activeTab, setActiveTab] = useState('afc-planning');
 
   const [logLevel, setLogLevel] = useState<string>('info');
   const [logEntries, setLogEntries] = useState<any[]>([]);
@@ -66,10 +67,6 @@ export function Tools() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
         <div className="border-b">
           <TabsList className="h-12 px-6">
-            <TabsTrigger value="rf-management" className="flex items-center gap-2">
-              <Radio className="h-4 w-4" />
-              RF Management
-            </TabsTrigger>
             <TabsTrigger value="afc-planning" className="flex items-center gap-2">
               <Zap className="h-4 w-4" />
               AFC Planning
@@ -96,10 +93,6 @@ export function Tools() {
             </TabsTrigger>
           </TabsList>
         </div>
-
-        <TabsContent value="rf-management" className="m-0 h-[calc(100%-3rem)]">
-          <RFManagementTools />
-        </TabsContent>
 
         <TabsContent value="afc-planning" className="m-0 h-[calc(100%-3rem)]">
           <AFCPlanningTool />

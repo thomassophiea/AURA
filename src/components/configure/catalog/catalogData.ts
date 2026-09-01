@@ -1,8 +1,15 @@
 /**
  * Configure Feature Catalog — static structure (groups, labels, icons,
- * descriptions) reauthored in AURA's idiom from the EPB-125 reference
- * (config-app.js CATALOG_GROUPS). Navigation targets use the App view keys;
+ * descriptions). The category taxonomy mirrors the Configure left navigation
+ * (src/config/featureRegistry.ts — validated against it by featureRegistry
+ * tests); cards are finer-grained than nav items where one page hosts several
+ * objects behind tabs (`tabHint`). Navigation targets use the App view keys;
  * `countKey` names the list-capable service that backs a live record count.
+ *
+ * Count rule: a card carries a count only when it fronts a collection. Editor
+ * and settings surfaces (Adoption, Availability, SNMP, Cloud Captive Portal…)
+ * carry none. Scope chips render only for non-Gateway scopes — the page header
+ * already names the Gateway the catalog writes to.
  */
 import {
   Activity,
@@ -28,6 +35,7 @@ import {
   Network,
   RadioTower,
   Router,
+  SatelliteDish,
   Server,
   Settings,
   ShieldAlert,
@@ -39,6 +47,7 @@ import {
   Wifi,
   type LucideIcon,
 } from 'lucide-react';
+import type { FeatureScope } from '../../../config/featureRegistry';
 
 /** Keys of features backed by a list-capable service (drive live counts). */
 export type CountKey =
@@ -66,7 +75,8 @@ export type CountKey =
   | 'acgroups'
   | 'acrules'
   | 'accerts'
-  | 'administrators';
+  | 'administrators'
+  | 'privateCredentials';
 
 export type AccentKey = 'wireless' | 'infra' | 'services' | 'access' | 'system';
 
@@ -75,18 +85,22 @@ export interface FeatureCardData {
   label: string;
   description: string;
   icon: LucideIcon;
-  /** App view key to navigate to; null when AURA has no destination (e.g. PPSK). */
+  /** App view key to navigate to; null when AURA has no destination yet. */
   viewId: string | null;
   /** Service-backed count key; omitted when no list-capable service exists. */
   countKey?: CountKey;
+  /** Where this configuration lands; chips render for non-gateway scopes. */
+  scope?: FeatureScope;
   badge?: string;
   flag?: string;
   /** Tab to open on the destination page (consumed via configureNav.ts). */
   tabHint?: string;
+  /** Extra search terms (legacy + protocol names). Never displayed. */
+  aliases?: string[];
 }
 
 export interface CatalogGroup {
-  key: AccentKey;
+  key: string;
   label: string;
   description: string;
   accent: AccentKey;
@@ -137,27 +151,106 @@ export const ACCENTS: Record<
 
 export const CATALOG_GROUPS: CatalogGroup[] = [
   {
+    key: 'foundation',
+    label: 'Foundation & Scope',
+    description: 'Site groups (Gateway boundaries) and the sites configuration applies to',
+    accent: 'infra',
+    items: [
+      {
+        id: 'sites',
+        label: 'Sites & Groups',
+        description: 'Site groups, gateway pairs, and site definitions',
+        icon: MapPin,
+        viewId: 'configure-sites-groups',
+        countKey: 'sites',
+        tabHint: 'site-config',
+        aliases: ['site group', 'gateway', 'controller', 'location', 'venue'],
+      },
+    ],
+  },
+  {
     key: 'wireless',
-    label: 'Wireless Configuration',
-    description: 'Core profiles, policies, and segmentation applied to wireless clients',
+    label: 'Wireless',
+    description: 'The radio estate and what it broadcasts',
     accent: 'wireless',
     items: [
       {
-        id: 'profiles',
-        label: 'Profiles',
-        description: 'Device configuration templates',
-        icon: Layers,
-        viewId: 'configure-profiles',
-        countKey: 'profiles',
-      },
-      {
         id: 'networks',
         label: 'Networks',
-        description: 'SSIDs and WLAN definitions',
+        description: 'WLAN services and the SSIDs they broadcast',
         icon: Wifi,
         viewId: 'configure-networks',
         countKey: 'services',
+        aliases: ['wlan', 'ssid', 'wireless network', 'service'],
       },
+      {
+        id: 'profiles',
+        label: 'Device Profiles',
+        description: 'AP platform templates: radios, networks, ports',
+        icon: Layers,
+        viewId: 'configure-profiles',
+        countKey: 'profiles',
+        aliases: ['ap profile', 'template'],
+      },
+      {
+        id: 'aps',
+        label: 'Access Points',
+        description: 'Per-AP configuration and profile overrides',
+        icon: Router,
+        viewId: 'configure-access-points',
+        aliases: ['ap', 'radio', 'override'],
+      },
+      {
+        id: 'devicegroups',
+        label: 'Device Groups',
+        description: 'One AP platform + profile + RF policy, applied across sites',
+        icon: Boxes,
+        viewId: 'configure-device-groups',
+        aliases: ['ap group'],
+      },
+      {
+        id: 'rfmgmt',
+        label: 'RF Management',
+        description: 'SmartRF / ACS channel, power and radio policies',
+        icon: RadioTower,
+        viewId: 'configure-rrm',
+        countKey: 'rfmgmt',
+        aliases: ['rrm', 'smartrf', 'acs', 'channel', 'power'],
+      },
+      {
+        id: 'meshpoints',
+        label: 'Meshpoints',
+        description: 'Wireless backhaul mesh configuration',
+        icon: Waypoints,
+        viewId: 'configure-meshpoints',
+        aliases: ['mesh', 'backhaul'],
+        countKey: 'meshpoints',
+      },
+      {
+        id: 'siteafc',
+        label: 'Site AFC & Geo',
+        description: 'AFC eligibility and geolocation diagnostics per site',
+        icon: SatelliteDish,
+        viewId: 'configure-site-afc-geo',
+        scope: 'site',
+        aliases: ['afc', '6 ghz', 'standard power', 'geolocation'],
+      },
+      {
+        id: 'adoption',
+        label: 'AP Adoption',
+        description: 'AP registration and gateway assignment',
+        icon: Cable,
+        viewId: 'configure-adoption-rules',
+        aliases: ['registration', 'onboarding'],
+      },
+    ],
+  },
+  {
+    key: 'access',
+    label: 'Access & Authentication',
+    description: 'Who gets on the network, and as what — roles, AAA, credentials, portals',
+    accent: 'access',
+    items: [
       {
         id: 'roles',
         label: 'Roles',
@@ -166,7 +259,101 @@ export const CATALOG_GROUPS: CatalogGroup[] = [
         viewId: 'configure-policy',
         countKey: 'roles',
         tabHint: 'roles',
+        aliases: ['policy', 'user profile', 'firewall'],
       },
+      {
+        id: 'aaa',
+        label: 'AAA Policies',
+        description: 'Authentication, authorization & accounting server sets',
+        icon: KeyRound,
+        viewId: 'configure-aaa-policies',
+        countKey: 'aaapolicy',
+        aliases: ['radius', 'authentication', 'accounting', 'nai'],
+      },
+      {
+        id: 'privatecredentials',
+        label: 'Private Credentials',
+        description: 'Per-user Wi-Fi credentials without 802.1X — PPSK (WPA2) & Private SAE (WPA3)',
+        icon: KeyRound,
+        viewId: 'configure-private-credentials',
+        countKey: 'privateCredentials',
+        scope: 'organization',
+        aliases: ['ppsk', 'psk', 'pre-shared key', 'mpsk', 'sae', 'wpa3', 'wpa2', 'private sae', 'personal'],
+      },
+      {
+        id: 'cloudportal',
+        label: 'Cloud Captive Portal',
+        description: 'Guest portal identity, consent, sponsorship and languages',
+        icon: Globe,
+        viewId: 'configure-cloud-portal',
+        scope: 'organization',
+        aliases: ['captive portal', 'guest portal', 'cwp', 'splash page', 'sponsorship'],
+      },
+      {
+        id: 'acradius',
+        label: 'RADIUS Servers',
+        description: 'Authentication & accounting servers with health checks',
+        icon: Server,
+        viewId: 'configure-access-control',
+        countKey: 'acradius',
+        tabHint: 'radius',
+        aliases: ['radius'],
+      },
+      {
+        id: 'acldap',
+        label: 'LDAP Configurations',
+        description: 'Directory connections and schema definitions',
+        icon: FolderSearch,
+        viewId: 'configure-access-control',
+        countKey: 'acldap',
+        tabHint: 'ldap',
+        aliases: ['directory', 'active directory'],
+      },
+      {
+        id: 'acrepos',
+        label: 'Local Password Repository',
+        description: 'Locally stored user credentials',
+        icon: Lock,
+        viewId: 'configure-access-control',
+        countKey: 'acrepos',
+        tabHint: 'repository',
+      },
+      {
+        id: 'acgroups',
+        label: 'Groups',
+        description: 'User, end-system, device-type, location & time groups',
+        icon: Users,
+        viewId: 'configure-access-control',
+        countKey: 'acgroups',
+        tabHint: 'groups',
+      },
+      {
+        id: 'acrules',
+        label: 'Rules',
+        description: 'Ordered access rules mapping groups to roles & portals',
+        icon: ListOrdered,
+        viewId: 'configure-access-control',
+        countKey: 'acrules',
+        tabHint: 'rules',
+      },
+      {
+        id: 'accerts',
+        label: 'Certificates',
+        description: 'AAA certificates and CRL distribution points',
+        icon: FileKey2,
+        viewId: 'configure-access-control',
+        countKey: 'accerts',
+        tabHint: 'certificates',
+        badge: 'EP1 · Earmarked',
+      },
+    ],
+  },
+  {
+    key: 'services',
+    label: 'Network Services',
+    description: 'Segmentation, quality of service, and the services the network delivers',
+    accent: 'services',
+    items: [
       {
         id: 'vlan',
         label: 'VLAN',
@@ -175,6 +362,7 @@ export const CATALOG_GROUPS: CatalogGroup[] = [
         viewId: 'configure-policy',
         countKey: 'topologies',
         tabHint: 'vlans',
+        aliases: ['topology', 'l2', 'segmentation'],
       },
       {
         id: 'vlangroups',
@@ -193,25 +381,7 @@ export const CATALOG_GROUPS: CatalogGroup[] = [
         viewId: 'configure-policy',
         countKey: 'cos',
         tabHint: 'cos',
-      },
-      {
-        id: 'aaa',
-        label: 'AAA',
-        description: 'Authentication, authorization & accounting',
-        icon: KeyRound,
-        viewId: 'configure-aaa-policies',
-        countKey: 'aaapolicy',
-      },
-      // Placeholder by product decision (2026-08-31): no Gateway backend exists
-      // for organization-scope PPSK keys yet — card stays non-navigable until one does.
-      {
-        id: 'ppsk',
-        label: 'Private Pre-Shared Key',
-        description: 'Global cloud keys for WPA2-Private PSK (organization-wide)',
-        icon: Globe,
-        viewId: null,
-        badge: 'Global',
-        flag: 'Future Use',
+        aliases: ['qos', 'priority'],
       },
       {
         id: 'ratelimiters',
@@ -221,69 +391,8 @@ export const CATALOG_GROUPS: CatalogGroup[] = [
         viewId: 'configure-policy',
         countKey: 'ratelimiters',
         tabHint: 'ratelimiters',
+        aliases: ['bandwidth', 'throttle'],
       },
-    ],
-  },
-  {
-    key: 'infra',
-    label: 'Infrastructure',
-    description: 'Physical and logical device configuration across your sites',
-    accent: 'infra',
-    items: [
-      {
-        id: 'aps',
-        label: 'Access Points',
-        description: 'Managed AP inventory',
-        icon: Router,
-        viewId: 'configure-access-points',
-      },
-      {
-        id: 'devicegroups',
-        label: 'Device Groups',
-        description: 'One AP platform + profile + RF policy, applied across sites',
-        icon: Boxes,
-        viewId: 'configure-device-groups',
-      },
-      {
-        id: 'adoption',
-        label: 'AP Adoption',
-        description: 'Adoption rules and controller assignment',
-        icon: Cable,
-        viewId: 'configure-adoption-rules',
-      },
-      {
-        id: 'rfmgmt',
-        label: 'RF Management',
-        description: 'Channel, power and radio policies',
-        icon: RadioTower,
-        viewId: 'configure-rrm',
-        countKey: 'rfmgmt',
-      },
-      {
-        id: 'meshpoints',
-        label: 'Meshpoints',
-        description: 'Wireless backhaul mesh configuration',
-        icon: Waypoints,
-        viewId: 'configure-meshpoints',
-        countKey: 'meshpoints',
-      },
-      {
-        id: 'sites',
-        label: 'Sites',
-        description: 'Physical site definitions',
-        icon: MapPin,
-        viewId: 'configure-sites-groups',
-        countKey: 'sites',
-        tabHint: 'site-config',
-      },
-    ],
-  },
-  {
-    key: 'services',
-    label: 'Services',
-    description: 'Specialized service profiles for advanced use cases',
-    accent: 'services',
-    items: [
       {
         id: 'airdefense',
         label: 'Air Defense Profiles',
@@ -292,6 +401,7 @@ export const CATALOG_GROUPS: CatalogGroup[] = [
         viewId: 'configure-service-profiles',
         countKey: 'adsp',
         tabHint: 'airdefense',
+        aliases: ['wips', 'rogue'],
       },
       {
         id: 'iot',
@@ -301,6 +411,7 @@ export const CATALOG_GROUPS: CatalogGroup[] = [
         viewId: 'configure-service-profiles',
         countKey: 'iot',
         tabHint: 'iot',
+        aliases: ['ble', 'zigbee', 'sensor'],
       },
       {
         id: 'rtls',
@@ -350,72 +461,9 @@ export const CATALOG_GROUPS: CatalogGroup[] = [
     ],
   },
   {
-    key: 'access',
-    label: 'Access Control',
-    description: 'RADIUS, LDAP, local credentials, groups and rules for network access',
-    accent: 'access',
-    items: [
-      {
-        id: 'acradius',
-        label: 'RADIUS Servers',
-        description: 'Authentication & accounting servers with health checks',
-        icon: Server,
-        viewId: 'configure-access-control',
-        countKey: 'acradius',
-        tabHint: 'radius',
-      },
-      {
-        id: 'acldap',
-        label: 'LDAP Configurations',
-        description: 'Directory connections and schema definitions',
-        icon: FolderSearch,
-        viewId: 'configure-access-control',
-        countKey: 'acldap',
-        tabHint: 'ldap',
-      },
-      {
-        id: 'acrepos',
-        label: 'Local Password Repository',
-        description: 'Locally stored user credentials',
-        icon: Lock,
-        viewId: 'configure-access-control',
-        countKey: 'acrepos',
-        tabHint: 'repository',
-      },
-      {
-        id: 'acgroups',
-        label: 'Groups',
-        description: 'User, end-system, device-type, location & time groups',
-        icon: Users,
-        viewId: 'configure-access-control',
-        countKey: 'acgroups',
-        tabHint: 'groups',
-      },
-      {
-        id: 'acrules',
-        label: 'Rules',
-        description: 'Ordered access rules mapping groups to roles & portals',
-        icon: ListOrdered,
-        viewId: 'configure-access-control',
-        countKey: 'acrules',
-        tabHint: 'rules',
-      },
-      {
-        id: 'accerts',
-        label: 'Certificates',
-        description: 'AAA certificates and CRL distribution points',
-        icon: FileKey2,
-        viewId: 'configure-access-control',
-        countKey: 'accerts',
-        tabHint: 'certificates',
-        badge: 'EP1 · Earmarked',
-      },
-    ],
-  },
-  {
     key: 'system',
     label: 'System & Security',
-    description: 'Appliance-level settings, availability and SNMP',
+    description: 'Appliance-level settings: availability, ACLs, SNMP and service accounts',
     accent: 'system',
     items: [
       {
@@ -424,7 +472,9 @@ export const CATALOG_GROUPS: CatalogGroup[] = [
         description: 'HA pairing, AP balancing and mobility',
         icon: GitCompareArrows,
         viewId: 'configure-system',
+        scope: 'appliance',
         tabHint: 'availability',
+        aliases: ['ha', 'high availability', 'pair', 'mobility'],
       },
       {
         id: 'accesscontrol',
@@ -432,7 +482,9 @@ export const CATALOG_GROUPS: CatalogGroup[] = [
         description: 'Client MAC allow / deny list',
         icon: ListChecks,
         viewId: 'configure-system',
+        scope: 'appliance',
         tabHint: 'access',
+        aliases: ['mac acl', 'blocklist', 'whitelist', 'blacklist'],
       },
       {
         id: 'snmp',
@@ -440,6 +492,7 @@ export const CATALOG_GROUPS: CatalogGroup[] = [
         description: 'SNMP agent, communities & traps',
         icon: Activity,
         viewId: 'configure-system',
+        scope: 'appliance',
         tabHint: 'snmp',
         badge: 'EP1 · Earmarked',
       },
@@ -449,6 +502,7 @@ export const CATALOG_GROUPS: CatalogGroup[] = [
         description: 'Gateway-wide configuration',
         icon: Settings,
         viewId: 'configure-system',
+        scope: 'appliance',
         tabHint: 'global',
       },
       {
@@ -458,7 +512,9 @@ export const CATALOG_GROUPS: CatalogGroup[] = [
         icon: Users,
         viewId: 'configure-system',
         countKey: 'administrators',
+        scope: 'appliance',
         tabHint: 'admins',
+        aliases: ['administrators', 'admins'],
       },
     ],
   },
@@ -489,7 +545,7 @@ export const ARCH_LAYERS: ArchLayer[] = [
   {
     key: 'foundation',
     title: 'Site Foundation',
-    relation: 'Sites and controllers anchor every AP and policy',
+    relation: 'Sites and gateways anchor every AP and policy',
     nodes: [
       {
         id: 'sites',
@@ -512,7 +568,7 @@ export const ARCH_LAYERS: ArchLayer[] = [
         icon: KeyRound,
         viewId: 'configure-aaa-policies',
         countKey: 'aaapolicy',
-        accent: 'wireless',
+        accent: 'access',
       },
     ],
   },
@@ -535,7 +591,7 @@ export const ARCH_LAYERS: ArchLayer[] = [
         icon: RadioTower,
         viewId: 'configure-rrm',
         countKey: 'rfmgmt',
-        accent: 'infra',
+        accent: 'wireless',
       },
       {
         id: 'meshpoints',
@@ -543,7 +599,7 @@ export const ARCH_LAYERS: ArchLayer[] = [
         icon: Waypoints,
         viewId: 'configure-meshpoints',
         countKey: 'meshpoints',
-        accent: 'infra',
+        accent: 'wireless',
       },
     ],
   },
@@ -565,7 +621,6 @@ export const ARCH_LAYERS: ArchLayer[] = [
         label: 'Service Profiles',
         icon: Cpu,
         viewId: 'configure-service-profiles',
-        countKey: 'iot',
         accent: 'services',
       },
     ],
@@ -573,7 +628,7 @@ export const ARCH_LAYERS: ArchLayer[] = [
   {
     key: 'policy',
     title: 'Access Policy',
-    relation: 'Roles, VLANs, and CoS shape per-client access on each network',
+    relation: 'Roles, VLANs, CoS and credentials shape per-client access on each network',
     nodes: [
       {
         id: 'roles',
@@ -581,7 +636,7 @@ export const ARCH_LAYERS: ArchLayer[] = [
         icon: ShieldCheck,
         viewId: 'configure-policy',
         countKey: 'roles',
-        accent: 'wireless',
+        accent: 'access',
       },
       {
         id: 'topologies',
@@ -589,7 +644,7 @@ export const ARCH_LAYERS: ArchLayer[] = [
         icon: Network,
         viewId: 'configure-policy',
         countKey: 'topologies',
-        accent: 'wireless',
+        accent: 'services',
       },
       {
         id: 'cos',
@@ -597,7 +652,7 @@ export const ARCH_LAYERS: ArchLayer[] = [
         icon: Gauge,
         viewId: 'configure-policy',
         countKey: 'cos',
-        accent: 'wireless',
+        accent: 'services',
       },
       {
         id: 'ratelimiters',
@@ -605,7 +660,15 @@ export const ARCH_LAYERS: ArchLayer[] = [
         icon: Timer,
         viewId: 'configure-policy',
         countKey: 'ratelimiters',
-        accent: 'wireless',
+        accent: 'services',
+      },
+      {
+        id: 'privatecredentials',
+        label: 'Private Credentials',
+        icon: KeyRound,
+        viewId: 'configure-private-credentials',
+        countKey: 'privateCredentials',
+        accent: 'access',
       },
     ],
   },

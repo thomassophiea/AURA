@@ -3,11 +3,16 @@
  *
  * AURA uses a two-tier navigation model:
  * - Organization scope (primary): monitoring, configuration, templates, operations, admin
- * - Site Group scope (controller drill-down): firmware, backup, diagnostics, system config
+ * - Site Group scope (Gateway drill-down): firmware, backup, diagnostics, licensing
  *
  * The org level is the primary working level.
- * Users only enter a site group for controller-specific management.
+ * Users only enter a site group for Gateway-appliance management.
+ *
+ * Configure page ids are derived from the feature registry
+ * (src/config/featureRegistry.ts) so the sets cannot drift from the Sidebar
+ * and Feature Catalog again.
  */
+import { CONFIGURE_PAGE_IDS } from './featureRegistry';
 
 /** Pages visible at the organization level (primary scope) */
 export const ORG_PAGES = new Set([
@@ -18,18 +23,11 @@ export const ORG_PAGES = new Set([
   'app-insights',
   'connected-clients',
   'access-points',
+  'energy-optimization',
   'report-widgets',
   'performance-analytics',
-  // Configure
-  'configure-sites-groups',
-  'configure-site-afc-geo',
-  'configure-networks',
-  'configure-policy',
-  'configure-aaa-policies',
-  'configure-adoption-rules',
-  'configure-ppsk',
-  'configure-private-sae',
-  'configure-advanced',
+  // Configure (canonical features + legacy deep-link aliases)
+  ...CONFIGURE_PAGE_IDS,
   // Templates & Variables
   'global-templates',
   'global-variables',
@@ -38,6 +36,8 @@ export const ORG_PAGES = new Set([
   'event-alarm-dashboard',
   'security-dashboard',
   'diagnostics-system-health',
+  'audit-logs',
+  'config-history',
   'pci-report',
   // Admin & Tools
   'tools',
@@ -48,7 +48,7 @@ export const ORG_PAGES = new Set([
   'help',
 ]);
 
-/** Pages that require entering a site group (controller-specific management) */
+/** Pages that require entering a site group (Gateway-appliance management) */
 export const SITE_GROUP_PAGES = new Set([
   'system-backup',
   'firmware-manager',

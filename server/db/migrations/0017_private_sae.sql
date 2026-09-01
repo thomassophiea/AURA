@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS private_sae_credentials (
   name                 text NOT NULL,
   description          text,
   email                text,
-  ssid                 text NOT NULL DEFAULT 'Skynet_PSAE',
+  ssid                 text NOT NULL DEFAULT 'AURA_PSAE',
   keyid                text NOT NULL,
   passphrase_encrypted text NOT NULL,
   akm                  text NOT NULL DEFAULT 'wpa3-sae',

@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Settings, Users, Package } from 'lucide-react';
 import { SystemAdministration } from './SystemAdministration';
-import { AdministratorsManagement } from './AdministratorsManagement';
+// Local Admins is the same /v1/administrators resource Configure > System &
+// Security manages — one implementation, two entry points.
+import { AdministratorsTab } from './configure/system/AdministratorsTab';
 import { ApplicationsManagement } from './ApplicationsManagement';
 
 interface AdministrationProps {
@@ -40,8 +42,8 @@ export function Administration({ networkAssistantEnabled = false, onToggleNetwor
           />
         </TabsContent>
 
-        <TabsContent value="administrators" className="m-0 h-[calc(100%-3rem)]">
-          <AdministratorsManagement />
+        <TabsContent value="administrators" className="m-0 h-[calc(100%-3rem)] overflow-auto">
+          <AdministratorsTab />
         </TabsContent>
 
         <TabsContent value="applications" className="m-0 h-[calc(100%-3rem)]">

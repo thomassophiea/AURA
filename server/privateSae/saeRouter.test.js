@@ -122,7 +122,7 @@ describe('createPrivateSaeRouter', () => {
     });
     expect(created.status).toBe(201);
     expect(created.body.keyid).toBe('Thomas-Test');
-    expect(created.body.ssid).toBe('Skynet_PSAE'); // default SSID
+    expect(created.body.ssid).toBe('AURA_PSAE'); // default SSID
     expect(created.body.akm).toBe('wpa3-sae'); // default AKM
     expect(created.body.enforcement).toMatchObject({ attempted: false, applied: false });
     expect(created.body).not.toHaveProperty('passphrase');

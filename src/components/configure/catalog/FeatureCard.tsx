@@ -1,11 +1,14 @@
 /**
- * FeatureCard — a single catalog tile: icon, label, description and a live
- * record-count badge. Zero-count tiles dim; tiles without an AURA destination
- * (viewId null) render non-interactive. Count `undefined` = still loading.
+ * FeatureCard — a single catalog tile: icon, label, scope chip, description and
+ * a live record-count badge. Zero-count tiles dim; tiles without an AURA
+ * destination (viewId null) render non-interactive. Count `undefined` = still
+ * loading. Scope chips render only for non-Gateway scopes: the catalog header
+ * already names the Gateway, so stamping "Gateway" on every card is noise.
  */
 import { memo } from 'react';
 import { Card } from '../../ui/card';
 import { cn } from '../../ui/utils';
+import { FEATURE_SCOPE_LABELS } from '../../../config/featureRegistry';
 import { ACCENTS, type AccentKey, type FeatureCardData } from './catalogData';
 import { setConfigureTabHint } from './configureNav';
 
@@ -107,6 +110,11 @@ function FeatureCardImpl({ item, accent, count, onSelect }: FeatureCardProps) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate text-sm font-semibold text-foreground">{item.label}</span>
+          {item.scope && item.scope !== 'gateway' && (
+            <span className="shrink-0 rounded border border-border bg-muted/60 px-1.5 py-px text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              {FEATURE_SCOPE_LABELS[item.scope]}
+            </span>
+          )}
           {item.badge && (
             <span className="shrink-0 rounded border border-cyan-500/30 bg-cyan-500/10 px-1.5 py-px text-[10px] font-bold uppercase tracking-wide text-cyan-600 dark:text-cyan-400">
               {item.badge}

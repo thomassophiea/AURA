@@ -9,8 +9,8 @@ vi.mock('./SystemAdministration', () => ({
     </div>
   ),
 }));
-vi.mock('./AdministratorsManagement', () => ({
-  AdministratorsManagement: () => <div data-testid="administrators">Administrators</div>,
+vi.mock('./configure/system/AdministratorsTab', () => ({
+  AdministratorsTab: () => <div data-testid="administrators">Administrators</div>,
 }));
 vi.mock('./ApplicationsManagement', () => ({
   ApplicationsManagement: () => <div data-testid="applications">Applications</div>,

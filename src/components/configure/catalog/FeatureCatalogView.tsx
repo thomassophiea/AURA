@@ -1,6 +1,7 @@
 /**
- * FeatureCatalogView — the 26-feature card grid in four accent-coded sections
- * with a global search that filters by label, description or group name.
+ * FeatureCatalogView — the feature card grid in accent-coded categories with a
+ * global search that filters by label, description, group name, or alias
+ * (legacy and protocol terms like "WLAN", "RADIUS", "PPSK", "WPA3").
  */
 import { useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
@@ -24,7 +25,8 @@ function filterGroups(query: string): CatalogGroup[] {
       (item) =>
         item.label.toLowerCase().includes(q) ||
         item.description.toLowerCase().includes(q) ||
-        group.label.toLowerCase().includes(q)
+        group.label.toLowerCase().includes(q) ||
+        (item.aliases ?? []).some((alias) => alias.toLowerCase().includes(q))
     ),
   })).filter((group) => group.items.length > 0);
 }

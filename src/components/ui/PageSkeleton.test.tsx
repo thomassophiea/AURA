@@ -28,17 +28,16 @@ describe('PageSkeleton', () => {
 
 describe('getSkeletonVariant', () => {
   it('maps dashboard pages to "dashboard"', () => {
-    expect(getSkeletonVariant('dashboard')).toBe('dashboard');
     expect(getSkeletonVariant('service-levels')).toBe('dashboard');
     expect(getSkeletonVariant('insights')).toBe('dashboard');
-    expect(getSkeletonVariant('reports')).toBe('dashboard');
+    expect(getSkeletonVariant('app-insights')).toBe('dashboard');
     expect(getSkeletonVariant('security-dashboard')).toBe('dashboard');
   });
 
   it('maps table pages to "table"', () => {
     expect(getSkeletonVariant('access-points')).toBe('table');
     expect(getSkeletonVariant('connected-clients')).toBe('table');
-    expect(getSkeletonVariant('alerts-events')).toBe('table');
+    expect(getSkeletonVariant('event-alarm-dashboard')).toBe('table');
     expect(getSkeletonVariant('guest-management')).toBe('table');
   });
 

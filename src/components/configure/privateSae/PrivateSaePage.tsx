@@ -65,7 +65,13 @@ function parseCsv(text: string): SaeInput[] {
   return out;
 }
 
-export function PrivateSaePage() {
+export interface PrivateSaePageProps {
+  /** Rendered inside the Private Credentials tab shell: the shell owns the
+   *  page padding, breadcrumb and title, so this page shows only its tools. */
+  embedded?: boolean;
+}
+
+export function PrivateSaePage({ embedded = false }: PrivateSaePageProps = {}) {
   const [keys, setKeys] = useState<SaeCredential[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -330,10 +336,12 @@ export function PrivateSaePage() {
   );
 
   return (
-    <div className="space-y-4 p-6">
-      <div>
-        <p className="text-xs text-muted-foreground">Configuration / Private SAE (WPA3)</p>
-      </div>
+    <div className={embedded ? 'space-y-4 pt-2' : 'space-y-4 p-6'}>
+      {!embedded && (
+        <div>
+          <p className="text-xs text-muted-foreground">Configuration / Private SAE (WPA3)</p>
+        </div>
+      )}
 
       {/* DECOUPLED banner */}
       <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-muted/40 px-4 py-3">
@@ -351,16 +359,18 @@ export function PrivateSaePage() {
         </div>
       </div>
 
-      {/* Title + toolbar */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-primary" />
-            <h1 className="text-xl font-semibold">Private SAE (WPA3)</h1>
-            <Badge variant="outline" className="border-amber-500/50 text-amber-600 dark:text-amber-400">Experimental</Badge>
+      {/* Title + toolbar (title is owned by the Private Credentials shell when embedded) */}
+      <div className={`flex flex-wrap items-start gap-3 ${embedded ? 'justify-end' : 'justify-between'}`}>
+        {!embedded && (
+          <div>
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-primary" />
+              <h1 className="text-xl font-semibold">Private SAE (WPA3)</h1>
+              <Badge variant="outline" className="border-amber-500/50 text-amber-600 dark:text-amber-400">Experimental</Badge>
+            </div>
+            <p className="mt-0.5 text-sm text-muted-foreground">Per-user WPA3-Personal (SAE) credentials on one WLAN</p>
           </div>
-          <p className="mt-0.5 text-sm text-muted-foreground">Per-user WPA3-Personal (SAE) credentials on one WLAN</p>
-        </div>
+        )}
         <div className="flex flex-wrap items-center gap-2">
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter" className="h-9 w-48" />
           <Button type="button" variant="ghost" size="sm" onClick={() => void toggleReveal()}>

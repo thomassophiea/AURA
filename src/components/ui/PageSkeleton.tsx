@@ -103,26 +103,24 @@ export function getSkeletonVariant(page: string): SkeletonVariant {
   switch (page) {
     case 'service-levels':
     case 'insights':
-    case 'dashboard':
-    case 'reports':
     case 'app-insights':
     case 'security-dashboard':
       return 'dashboard';
     case 'access-points':
     case 'connected-clients':
-    case 'alerts-events':
     case 'event-alarm-dashboard':
     case 'guest-management':
       return 'table';
+    case 'configure-catalog':
     case 'configure-networks':
     case 'configure-sites-groups':
     case 'configure-policy':
     case 'configure-aaa-policies':
     case 'configure-adoption-rules':
+    case 'configure-private-credentials':
     case 'configure-ppsk':
     case 'configure-private-sae':
     case 'configure-cloud-portal':
-    case 'configure-advanced':
     case 'administration':
     case 'tools':
       return 'cards';

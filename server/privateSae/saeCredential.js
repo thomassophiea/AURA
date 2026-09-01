@@ -27,7 +27,7 @@ export const MIN_PASSPHRASE = 20;
 export const MAX_PASSPHRASE = 63;
 
 /** The default WLAN this credential set is provisioned onto. */
-export const DEFAULT_SSID = 'Skynet_PSAE';
+export const DEFAULT_SSID = 'AURA_PSAE';
 /** The default AKM — one table can also express migrated WPA2-PPSK credentials. */
 export const DEFAULT_AKM = 'wpa3-sae';
 export const VALID_AKMS = new Set(['wpa3-sae', 'wpa2-psk']);

@@ -31,11 +31,28 @@ import {
   vlanGroupsService,
   xlocationService,
 } from '../../../services/configure';
+import { ppskService } from '../../../services/ppskService';
+import { privateSaeService } from '../../../services/privateSaeService';
 import type { CountKey } from './catalogData';
 
 type Loader = () => Promise<unknown[]>;
 
+/** PPSK + Private SAE together back the Private Credentials card. Either API
+ *  may be independently unavailable (Private SAE is server-flag-gated), so the
+ *  count is the sum of whichever lists answered; only a double failure shows
+ *  the unavailable dash. */
+async function loadPrivateCredentials(): Promise<unknown[]> {
+  const loaders: Array<Promise<unknown[]>> = [ppskService.list(), privateSaeService.list()];
+  const results = await Promise.allSettled(loaders);
+  const fulfilled = results.filter(
+    (r): r is PromiseFulfilledResult<unknown[]> => r.status === 'fulfilled'
+  );
+  if (fulfilled.length === 0) throw new Error('private credentials unavailable');
+  return fulfilled.flatMap((r) => r.value);
+}
+
 const LOADERS: Record<CountKey, Loader> = {
+  privateCredentials: loadPrivateCredentials,
   profiles: () => profilesService.list(),
   services: () => servicesService.list(),
   roles: () => rolesService.list(),
@@ -71,17 +88,24 @@ export interface UseFeatureCountsResult {
   loading: boolean;
 }
 
-export function useFeatureCounts(): UseFeatureCountsResult {
+/**
+ * @param scopeKey identity of the active configuration scope (Site Group id).
+ *   Counts re-fetch when it changes so the catalog never shows the previous
+ *   Gateway's numbers after a scope switch.
+ */
+export function useFeatureCounts(scopeKey?: string): UseFeatureCountsResult {
   const [counts, setCounts] = useState<FeatureCounts>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let alive = true;
+    setCounts({});
+    setLoading(true);
     const keys = Object.keys(LOADERS) as CountKey[];
 
-    /* Bounded concurrency: the catalog backs 26 list calls; firing them all at
-       once spikes the gateway and trips its rate limiting on slow links. A
-       small worker pool keeps at most BATCH in flight, and counts land on the
+    /* Bounded concurrency: the catalog backs two dozen list calls; firing them
+       all at once spikes the gateway and trips its rate limiting on slow links.
+       A small worker pool keeps at most BATCH in flight, and counts land on the
        grid incrementally as each resolves (cards show skeletons meanwhile). */
     const BATCH = 6;
     let cursor = 0;
@@ -112,7 +136,7 @@ export function useFeatureCounts(): UseFeatureCountsResult {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [scopeKey]);
 
   return { counts, loading };
 }

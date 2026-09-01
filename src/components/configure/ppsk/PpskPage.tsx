@@ -41,7 +41,13 @@ function usageLabel(k: PpskIdentity): string {
   return 'Multi-User';
 }
 
-export function PpskPage() {
+export interface PpskPageProps {
+  /** Rendered inside the Private Credentials tab shell: the shell owns the
+   *  page padding, breadcrumb and title, so this page shows only its tools. */
+  embedded?: boolean;
+}
+
+export function PpskPage({ embedded = false }: PpskPageProps = {}) {
   const [keys, setKeys] = useState<PpskIdentity[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -268,10 +274,12 @@ export function PpskPage() {
   );
 
   return (
-    <div className="space-y-4 p-6">
-      <div>
-        <p className="text-xs text-muted-foreground">Configuration / Private Pre-Shared Key</p>
-      </div>
+    <div className={embedded ? 'space-y-4 pt-2' : 'space-y-4 p-6'}>
+      {!embedded && (
+        <div>
+          <p className="text-xs text-muted-foreground">Configuration / Private Pre-Shared Key</p>
+        </div>
+      )}
 
       {/* DECOUPLED banner */}
       <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-muted/40 px-4 py-3">
@@ -289,16 +297,18 @@ export function PpskPage() {
         </div>
       </div>
 
-      {/* Title + toolbar */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <KeyRound className="h-5 w-5 text-primary" />
-            <h1 className="text-xl font-semibold">Pre-Shared Keys</h1>
-            <Badge variant="outline" className="border-amber-500/50 text-amber-600 dark:text-amber-400">Experimental</Badge>
+      {/* Title + toolbar (title is owned by the Private Credentials shell when embedded) */}
+      <div className={`flex flex-wrap items-start gap-3 ${embedded ? 'justify-end' : 'justify-between'}`}>
+        {!embedded && (
+          <div>
+            <div className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5 text-primary" />
+              <h1 className="text-xl font-semibold">Pre-Shared Keys</h1>
+              <Badge variant="outline" className="border-amber-500/50 text-amber-600 dark:text-amber-400">Experimental</Badge>
+            </div>
+            <p className="mt-0.5 text-sm text-muted-foreground">Create pre-shared keys for groups or individuals</p>
           </div>
-          <p className="mt-0.5 text-sm text-muted-foreground">Create pre-shared keys for groups or individuals</p>
-        </div>
+        )}
         <div className="flex flex-wrap items-center gap-2">
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter" className="h-9 w-48" />
           <Button type="button" variant="ghost" size="sm" onClick={() => void toggleReveal()}>

@@ -5,6 +5,7 @@ import type { GlobalElementType } from '../types/globalElements';
 import type { ControllerIdentity } from '../types/controllerIdentity';
 import { tenantService } from '../services/tenantService';
 import { apiService } from '../services/api';
+import { invalidatePairedCache } from '../services/configure/availabilityService';
 
 interface AppContextValue {
   organization: Organization | null;
@@ -99,6 +100,8 @@ export function AppContextProvider({ children, navigationScope, onNavigationScop
     if (siteGroup) {
       apiService.setBaseUrl(`${siteGroup.controller_url}/management`);
     }
+    // The HA-pair answer is per-appliance; drop it when the appliance changes.
+    invalidatePairedCache();
   }, []);
 
   const setActiveSite = useCallback((site: Site | null) => {
@@ -150,6 +153,7 @@ export function AppContextProvider({ children, navigationScope, onNavigationScop
     if (sg) {
       apiService.setBaseUrl(`${sg.controller_url}/management`);
     }
+    invalidatePairedCache();
     setActiveControllerIdentity(null); // clear stale identity before fetch
     void refreshControllerIdentity(sg);
     onNavigationScopeChange('site-group');

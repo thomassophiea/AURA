@@ -8,14 +8,12 @@ import {
   ChevronRight,
   ChevronLeft,
   Cog,
-  Network,
   Shield,
-  UserCheck,
   UserPlus,
-  Braces,
   Zap,
   Layers,
   Link2,
+  Braces,
   BarChart3,
   Wrench,
   AppWindow,
@@ -29,20 +27,10 @@ import {
   LayoutDashboard,
   ShieldCheck,
   CircuitBoard,
-  Building2,
   Globe,
-  Cpu,
-  Radio,
   ScrollText,
   History,
-  Share2,
-  Radar,
-  LayoutGrid,
-  SatelliteDish,
   Stethoscope,
-  Boxes,
-  KeySquare,
-  KeyRound,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
@@ -56,6 +44,11 @@ import { prefetchComponent } from '@/lib/prefetch';
 import { tenantService } from '../services/tenantService';
 import { useAppContext } from '@/contexts/AppContext';
 import { usePersonaContext } from '@/contexts/PersonaContext';
+import {
+  CONFIGURE_NAV_GROUPS,
+  CONFIGURE_ROOT_ITEMS,
+  CONFIGURE_TAIL_ITEMS,
+} from '@/config/featureRegistry';
 
 interface SidebarProps {
   onLogout: () => void;
@@ -75,26 +68,19 @@ const monitoringItems = [
   { id: 'energy-optimization', label: 'Energy', icon: Zap },
 ];
 
-const configureItems = [
-  { id: 'configure-catalog', label: 'Feature Catalog', icon: LayoutGrid },
-  { id: 'configure-sites-groups', label: 'Sites & Groups', icon: Building2 },
-  { id: 'configure-networks', label: 'Networks', icon: Network },
-  { id: 'configure-profiles', label: 'Device Profiles', icon: Cpu },
-  { id: 'configure-access-points', label: 'Access Points', icon: Wifi },
-  { id: 'configure-device-groups', label: 'Device Groups', icon: Boxes },
-  { id: 'configure-site-afc-geo', label: 'Site AFC & Geo', icon: SatelliteDish },
-  { id: 'configure-rrm', label: 'RF Management', icon: Radio },
-  { id: 'configure-meshpoints', label: 'Meshpoints', icon: Share2 },
-  { id: 'configure-policy', label: 'Policy', icon: Shield },
-  { id: 'configure-aaa-policies', label: 'AAA Policies', icon: UserCheck },
-  { id: 'configure-access-control', label: 'Access Control', icon: KeySquare },
-  { id: 'configure-ppsk', label: 'Private Pre-Shared Key', icon: KeyRound },
-  { id: 'configure-private-sae', label: 'Private SAE (WPA3)', icon: ShieldCheck },
-  { id: 'configure-cloud-portal', label: 'Cloud Captive Portal', icon: Globe },
-  { id: 'configure-service-profiles', label: 'Service Profiles', icon: Radar },
-  { id: 'configure-adoption-rules', label: 'Adoption Rules', icon: Zap },
-  { id: 'configure-system', label: 'System & Security', icon: Settings },
-];
+// Configure taxonomy lives in src/config/featureRegistry.ts (single source of
+// truth shared with the Feature Catalog, command palette and scope sets).
+const CONFIGURE_GROUPS_STORAGE_KEY = 'aura.nav.configure-groups';
+
+function readStoredConfigureGroups(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(CONFIGURE_GROUPS_STORAGE_KEY);
+    if (raw) return JSON.parse(raw) as Record<string, boolean>;
+  } catch {
+    /* corrupt or unavailable storage — fall through to defaults */
+  }
+  return {};
+}
 
 // Templates, variables, and assignments form an intent-based config layer that
 // is conceptually separate from the live controller config under Configure.
@@ -142,14 +128,25 @@ export function Sidebar({
 
   // Filter nav items by active persona
   const filteredMonitoringItems = filterItems(monitoringItems);
-  const filteredConfigureItems = filterItems(configureItems);
+  const filteredConfigureRootItems = filterItems(CONFIGURE_ROOT_ITEMS);
+  const filteredConfigureGroups = CONFIGURE_NAV_GROUPS.map((group) => ({
+    ...group,
+    items: filterItems(group.items),
+  })).filter((group) => group.items.length > 0);
+  const filteredConfigureTailItems = filterItems(CONFIGURE_TAIL_ITEMS);
   const filteredGlobalElementsItems = filterItems(globalElementsItems);
   const filteredOperationsItems = filterItems(operationsItems);
   const filteredControllerItems = filterItems(controllerItems);
 
+  const allConfigureItems = [
+    ...filteredConfigureRootItems,
+    ...filteredConfigureGroups.flatMap((g) => g.items),
+    ...filteredConfigureTailItems,
+  ];
+
   // Check if any section sub-item is currently active
   const isMonitoringActive = filteredMonitoringItems.some((item) => currentPage === item.id);
-  const isConfigureActive = filteredConfigureItems.some((item) => currentPage === item.id);
+  const isConfigureActive = allConfigureItems.some((item) => currentPage === item.id);
   const isGlobalElementsActive = filteredGlobalElementsItems.some(
     (item) => currentPage === item.id
   );
@@ -161,6 +158,36 @@ export function Sidebar({
   const [isConfigureExpanded, setIsConfigureExpanded] = useState(isConfigureActive);
   const [isGlobalElementsExpanded, setIsGlobalElementsExpanded] = useState(isGlobalElementsActive);
   const [isOperationsExpanded, setIsOperationsExpanded] = useState(isOperationsActive);
+
+  // Configure category groups: remembered per user, and the group holding the
+  // active page is always opened so the current position stays visible.
+  const [configureGroupState, setConfigureGroupState] = useState<Record<string, boolean>>(
+    readStoredConfigureGroups
+  );
+  const toggleConfigureGroup = (key: string) => {
+    setConfigureGroupState((prev) => {
+      const next = { ...prev, [key]: !(prev[key] ?? true) };
+      try {
+        localStorage.setItem(CONFIGURE_GROUPS_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        /* storage unavailable — expansion just won't persist */
+      }
+      return next;
+    });
+  };
+  useEffect(() => {
+    const owningGroup = CONFIGURE_NAV_GROUPS.find((g) =>
+      g.items.some((item) => item.id === currentPage)
+    );
+    if (!owningGroup && !allConfigureItems.some((item) => item.id === currentPage)) return;
+    setIsConfigureExpanded(true);
+    if (owningGroup) {
+      setConfigureGroupState((prev) =>
+        (prev[owningGroup.key] ?? true) ? prev : { ...prev, [owningGroup.key]: true }
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage]);
 
   // Close mobile sidebar when page changes
   useEffect(() => {
@@ -283,6 +310,115 @@ export function Sidebar({
     </div>
   );
 
+  // A single leaf nav row (used by the grouped Configure section).
+  const renderLeafItem = (
+    item: { id: string; label: string; icon: React.ComponentType<{ className?: string }> },
+    indent: 'item' | 'group-item' = 'item'
+  ) => {
+    const Icon = item.icon;
+    return (
+      <Button
+        key={item.id}
+        variant="ghost"
+        className={cn(
+          'w-full justify-start h-9 text-sm px-3',
+          indent === 'group-item' && 'pl-5',
+          currentPage === item.id
+            ? 'bg-sidebar-primary/15 text-sidebar-primary rounded-lg'
+            : 'text-sidebar-foreground/80 hover:bg-white/5 hover:text-sidebar-foreground rounded-lg'
+        )}
+        onClick={() => handlePageChange(item.id)}
+        onMouseEnter={() => prefetchComponent(item.id)}
+      >
+        <Icon className="h-3 w-3 mr-2 shrink-0" />
+        <span className="truncate">{item.label}</span>
+      </Button>
+    );
+  };
+
+  // Configure — two-level section: root entries, then collapsible category
+  // groups (Wireless / Access & Authentication / Network Services), then the
+  // appliance-scoped tail. Taxonomy comes from the feature registry.
+  const renderConfigureSection = () => {
+    if (isCollapsed) {
+      return (
+        <Button
+          variant="ghost"
+          className={cn(
+            'w-full justify-center h-10 px-0',
+            isConfigureActive
+              ? 'bg-sidebar-primary/15 text-sidebar-primary rounded-lg'
+              : 'text-sidebar-foreground hover:bg-white/5 hover:text-sidebar-foreground rounded-lg'
+          )}
+          onClick={() => setIsConfigureExpanded(!isConfigureExpanded)}
+          title="Configure"
+        >
+          <CircuitBoard className="h-4 w-4" />
+        </Button>
+      );
+    }
+    return (
+      <div className="space-y-1">
+        <Button
+          variant="ghost"
+          className={cn(
+            'w-full justify-start h-10 px-3',
+            isConfigureActive
+              ? 'bg-sidebar-primary/15 text-sidebar-primary rounded-lg'
+              : 'text-sidebar-foreground hover:bg-white/5 hover:text-sidebar-foreground rounded-lg'
+          )}
+          onClick={() => {
+            // Configure header opens the Feature Catalog landing and expands the section.
+            if (!isConfigureExpanded) handlePageChange('configure-catalog');
+            setIsConfigureExpanded(!isConfigureExpanded);
+          }}
+        >
+          <CircuitBoard className="h-4 w-4 mr-2" />
+          <span className="flex-1 text-left">Configure</span>
+          {isConfigureExpanded ? (
+            <ChevronDown className="h-4 w-4" />
+          ) : (
+            <ChevronRight className="h-4 w-4" />
+          )}
+        </Button>
+        {isConfigureExpanded && (
+          <div className="ml-6 space-y-1">
+            {filteredConfigureRootItems.map((item) => renderLeafItem(item))}
+            {filteredConfigureGroups.map((group) => {
+              const expanded = configureGroupState[group.key] ?? true;
+              const groupActive = group.items.some((item) => currentPage === item.id);
+              return (
+                <div key={group.key} className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => toggleConfigureGroup(group.key)}
+                    aria-expanded={expanded}
+                    className={cn(
+                      'flex w-full items-center gap-1.5 rounded px-3 py-1.5 text-left',
+                      'text-[11px] font-medium uppercase tracking-wider transition-colors',
+                      groupActive && !expanded
+                        ? 'text-sidebar-primary'
+                        : 'text-sidebar-foreground/50 hover:text-sidebar-foreground/80'
+                    )}
+                  >
+                    {expanded ? (
+                      <ChevronDown className="h-3 w-3 shrink-0" />
+                    ) : (
+                      <ChevronRight className="h-3 w-3 shrink-0" />
+                    )}
+                    <span className="truncate">{group.label}</span>
+                  </button>
+                  {expanded && group.items.map((item) => renderLeafItem(item, 'group-item'))}
+                </div>
+              );
+            })}
+            {filteredConfigureTailItems.map((item) => renderLeafItem(item))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
       {/* Mobile Overlay */}
@@ -370,20 +506,8 @@ export function Sidebar({
                   onToggle: () => setIsMonitoringExpanded(!isMonitoringExpanded),
                 })}
 
-              {/* Configure Section */}
-              {filteredConfigureItems.length > 0 &&
-                renderCollapsibleSection({
-                  label: 'Configure',
-                  icon: CircuitBoard,
-                  items: filteredConfigureItems,
-                  isActive: isConfigureActive,
-                  isExpanded: isConfigureExpanded,
-                  onToggle: () => {
-                    // Configure header opens the Feature Catalog landing and expands the section.
-                    if (!isConfigureExpanded) handlePageChange('configure-catalog');
-                    setIsConfigureExpanded(!isConfigureExpanded);
-                  },
-                })}
+              {/* Configure Section — grouped taxonomy from the feature registry */}
+              {allConfigureItems.length > 0 && renderConfigureSection()}
 
               {/* Global Elements Section — intent-based config */}
               {filteredGlobalElementsItems.length > 0 &&
