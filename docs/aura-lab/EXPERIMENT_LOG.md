@@ -83,3 +83,48 @@ over the en1 wireless link. **Falsification:** fresh join (not cached PMK); MAC 
 locally-administered (private); single AP in scope (no roam); Pi not involved. **Verdict:** WPA3-SAE
 on 6 GHz on the Extreme AP with a private MAC — the headline milestone. (Shared password; per-user
 selection is H5.)
+
+---
+
+## 2026-09-01 — H5a FALSIFIED (as expected): multiple WILDCARD sae_passwords ≠ per-user
+
+**Test:** injected two wildcard `sae_password` entries (CredA, CredB; no `mac=`) into the 6 GHz
+AURA_PSAE seccfg (`seccfg_02_0.cfg`), SIGHUP'd the radio-2 controller hostapd (AURA_PSAE 6 GHz only;
+backed up first). Then presented each password from the macOS client. **Evidence:** CredA (first
+entry) → **not** associated on wl2.0; CredB (last entry) → **CONNECTED on wl2.0 (6 GHz)**.
+**Verdict:** exactly one wildcard password works (the last-configured) — the AP cannot select among
+wildcard SAE passwords, because SAE fixes the AP's password before the client's Commit reveals
+anything. This reproduces the documented SAE limitation **on the Extreme AP**. Per-user therefore
+requires MAC-bound entries (H5b) or a Password Identifier (rejected — no native client support).
+
+---
+
+## 2026-09-01 — H5b PASS: per-user MAC-bound SAE selection on the Extreme AP, 6 GHz
+
+**Test:** injected two MAC-bound `sae_password` entries into the 6 GHz AURA_PSAE seccfg —
+`CredA|mac=<Mac's private MAC d2:c0:84:99:65:5f>`, `CredB|mac=00:11:22:33:44:55` — SIGHUP'd the
+radio-2 controller hostapd. Updated the client's password **in place** (no forget → per-SSID MAC
+stays stable). **Evidence:** presenting **CredA → CONNECTED on wl2.0 (6 GHz)** with the bound MAC;
+presenting **CredB (bound to a different MAC) → REJECTED** (-3912, wl2.0 assoclist empty).
+**Verdict:** two independently-managed credentials on ONE SSID, selected by MAC, on 6 GHz, on the
+**Extreme AP** (the controller-owned hostapd that legitimately owns wl2.0 — not a foreign/side-loaded
+instance, not the Pi). Randomized/private MAC stayed enabled throughout (the binding is to the
+per-SSID random MAC). Note: when macOS rotated its MAC on repeated forget/fail, the binding no longer
+matched → re-enrollment required (the expected model).
+
+## 2026-09-01 — H5c PASS: revocation isolates one credential
+
+**Test:** removed the CredA line, reloaded, deauth'd the station. **Evidence:** client presenting
+CredA → "Failed to join", wl2.0 assoclist empty (rejected); CredB entry still present and unchanged.
+**Verdict:** revoking one credential prevents it reconnecting **without** rotating the others.
+
+## 2026-09-01 — Method note & clean-up
+
+Per-user SAE is layered onto the controller-provisioned AURA_PSAE WLAN by injecting a `sae_password`
+set into the AP's live seccfg and SIGHUP-reloading the **controller's own** hostapd for that radio
+(the one that owns the VAP, so SAE AUTH frames route correctly — a foreign side-loaded hostapd
+cannot do this on Broadcom). This is the out-of-band provisioning stopgap AURA already renders
+(`GET /api/v1/private-sae/keyfile`), identical in shape to the PPSK `wpa_psk_file` path. The
+controller does not yet emit `sae_password` sets natively (the one platform gap). After the tests
+the 6 GHz seccfg was restored to the controller baseline (single-password SAE); AURA_PSAE remains a
+live WPA3-SAE WLAN on 6 GHz. AURA_PPSK and AURA-CWP verified up and unchanged throughout.
