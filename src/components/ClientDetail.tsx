@@ -26,6 +26,8 @@ import {
 } from 'lucide-react';
 import { apiService, Station, StationEvent, APEvent, RRMEvent } from '../services/api';
 import { DetailRow } from './ui/DetailRow';
+import { MonoCell } from './ui/cells';
+import { ipv6List } from '../lib/ipv6';
 import { RoamingTrail } from './RoamingTrail';
 import { ClientInsights, ClientInsightsFullScreen } from './ClientInsights';
 import { trafficService, StationTrafficStats } from '../services/traffic';
@@ -352,12 +354,16 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
   };
 
   const getRole = (client: Station): string => {
-    // Always prioritize resolved role name from /v1/roles endpoint
+    // The station payload already carries the role *name* — backend truth wins.
+    // The id-based resolver is a fallback only: its synthetic "Role 4459ee6c"
+    // placeholder must never outrank a real name.
+    if (client.role) {
+      return client.role;
+    }
     if (resolvedRoleName && resolvedRoleName !== 'N/A') {
       return resolvedRoleName;
     }
-    // Fallback to client role field, but this should be rare
-    return client.role || 'N/A';
+    return 'N/A';
   };
 
   const getChannel = (client: Station): string => {
@@ -458,7 +464,10 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-1 gap-3">
-            <DetailRow label="Hostname" value={clientDetails.hostName} />
+            <DetailRow
+              label="Hostname"
+              value={clientDetails.hostName || clientDetails.dhcpHostName}
+            />
             <DetailRow
               label="MAC Address"
               value={clientDetails.macAddress}
@@ -472,14 +481,25 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
               copyLabel="IP address"
             />
             <DetailRow
-              label="IPv6 Address"
-              value={clientDetails.ipv6Address}
-              mono
-              copyLabel="IPv6 address"
+              label={
+                ipv6List(clientDetails.ipv6Address).length > 1 ? 'IPv6 Addresses' : 'IPv6 Address'
+              }
+              value={
+                ipv6List(clientDetails.ipv6Address).length > 0 ? (
+                  <span className="flex min-w-0 flex-col items-end gap-1">
+                    {ipv6List(clientDetails.ipv6Address).map((addr) => (
+                      <MonoCell key={addr} value={addr} label="IPv6 address" />
+                    ))}
+                  </span>
+                ) : undefined
+              }
             />
             <DetailRow label="Device Type" value={clientDetails.deviceType} />
             <DetailRow label="Manufacturer" value={clientDetails.manufacturer} />
-            <DetailRow label="Username" value={clientDetails.username} />
+            <DetailRow
+              label="Username"
+              value={clientDetails.username || clientDetails.userName}
+            />
             <DetailRow
               label="Role"
               value={
@@ -1057,11 +1077,14 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
                               <span className="font-mono font-medium">{event.ipAddress}</span>
                             </div>
                           )}
-                          {event.ipv6Address && (
-                            <div className="col-span-2">
+                          {ipv6List(event.ipv6Address).length > 0 && (
+                            <div className="col-span-2 min-w-0">
                               <span className="text-muted-foreground">IPv6: </span>
-                              <span className="font-mono text-xs font-medium">
-                                {event.ipv6Address}
+                              <span
+                                className="font-mono text-xs font-medium break-all"
+                                title={ipv6List(event.ipv6Address).join(', ')}
+                              >
+                                {ipv6List(event.ipv6Address).join(', ')}
                               </span>
                             </div>
                           )}

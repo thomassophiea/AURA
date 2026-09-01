@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { whenAutoRefresh } from '../lib/autoRefresh';
+import { ipv6List } from '../lib/ipv6';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -123,7 +124,7 @@ interface Station {
   deviceType?: string;
   manufacturer?: string;
   status?: string;
-  ipv6Address?: string;
+  ipv6Address?: string | string[];
   username?: string;
   role?: string;
   roleId?: string;
@@ -1708,10 +1709,18 @@ export function ServiceLevelsEnhanced() {
                       {selectedClient.ipAddress || 'N/A'}
                     </p>
                   </div>
-                  {selectedClient.ipv6Address && (
+                  {ipv6List(selectedClient.ipv6Address).length > 0 && (
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">IPv6 Address</p>
-                      <p className="text-sm font-mono font-medium">{selectedClient.ipv6Address}</p>
+                      <p className="text-xs text-muted-foreground mb-1">
+                        {ipv6List(selectedClient.ipv6Address).length > 1
+                          ? 'IPv6 Addresses'
+                          : 'IPv6 Address'}
+                      </p>
+                      {ipv6List(selectedClient.ipv6Address).map((addr) => (
+                        <p key={addr} className="truncate text-sm font-mono font-medium" title={addr}>
+                          {addr}
+                        </p>
+                      ))}
                     </div>
                   )}
                   <div>

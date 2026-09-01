@@ -33,6 +33,7 @@ import {
   controllerCanServeApReport,
   hasHistoricalInsights,
 } from '../services/apInsightsHistory';
+import { insightsErrorMessage } from '../lib/insightsError';
 import { controllerDurationFor, type ResolvedTimeRange } from '../lib/timeRange';
 import type { APInsightsResponse } from '../types/api';
 
@@ -158,9 +159,7 @@ export function useApInsightsData(
         // window's label.
         setInsights(null);
         setUnavailableReason('error');
-        setErrorMessage(
-          error instanceof Error ? error.message : 'Failed to load AP insights'
-        );
+        setErrorMessage(insightsErrorMessage(error, 'Failed to load AP insights.'));
       } finally {
         if (!cancelledRef.current) setIsLoading(false);
       }

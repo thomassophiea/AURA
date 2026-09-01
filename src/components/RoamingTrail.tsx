@@ -28,6 +28,7 @@ import {
   type RoamingIssue,
 } from '../lib/wifi-codes';
 import { formatCompactNumber } from '../lib/units';
+import { ipv6List } from '../lib/ipv6';
 import { RoamingSparkline } from './RoamingSparkline';
 import {
   buildSparklineBuckets,
@@ -65,7 +66,7 @@ interface RoamingEvent {
   radio?: string;
   frequency?: string;
   ipAddress?: string;
-  ipv6Address?: string;
+  ipv6Address?: string | string[];
   authMethod?: string;
   isBandSteering?: boolean;
   bandSteeringFrom?: string;
@@ -2168,7 +2169,7 @@ export function RoamingTrail({
                   )}
 
                   {/* IP Address */}
-                  {(selectedEvent.ipAddress || selectedEvent.ipv6Address) && (
+                  {(selectedEvent.ipAddress || ipv6List(selectedEvent.ipv6Address).length > 0) && (
                     <div>
                       <div className="flex items-center gap-2 mb-1">
                         <MapPin className="h-4 w-4 text-primary" />
@@ -2188,11 +2189,15 @@ export function RoamingTrail({
                           )}
                         </div>
                       )}
-                      {selectedEvent.ipv6Address && (
-                        <div className="ml-6 text-muted-foreground font-mono text-xs truncate">
-                          {selectedEvent.ipv6Address}
+                      {ipv6List(selectedEvent.ipv6Address).map((addr) => (
+                        <div
+                          key={addr}
+                          className="ml-6 text-muted-foreground font-mono text-xs truncate"
+                          title={addr}
+                        >
+                          {addr}
                         </div>
-                      )}
+                      ))}
                     </div>
                   )}
 

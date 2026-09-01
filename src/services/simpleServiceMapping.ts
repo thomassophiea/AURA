@@ -112,8 +112,10 @@ class SimpleServiceMappingService {
     }
 
     try {
-      // Load roles
-      const rolesResponse = await fetch(`${controllerUrl}/management/roles`, {
+      // Load roles — the controller serves the role catalogue at v3 only;
+      // /management/roles is a Jetty 404 and used to make every lookup fall
+      // back to the synthetic "Role <uuid-prefix>" placeholder.
+      const rolesResponse = await fetch(`${controllerUrl}/management/v3/roles`, {
         headers,
         signal: AbortSignal.timeout(5000),
       });

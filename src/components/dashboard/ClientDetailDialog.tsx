@@ -27,6 +27,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { DetailSlideOut } from '../DetailSlideOut';
 import { MonoCell } from '../ui/cells';
+import { ipv6List } from '../../lib/ipv6';
 import { formatBitsPerSecond, formatBytes as formatBytesUnit } from '../../lib/units';
 import { apiService, type StationEvent } from '../../services/api';
 
@@ -110,10 +111,16 @@ function ClientDetailDialogComponent({ isOpen, onClose, selectedClient }: Client
                   <p className="font-mono text-sm">{selectedClient.ipAddress}</p>
                 </div>
               )}
-              {selectedClient.ipv6Address && (
+              {ipv6List(selectedClient.ipv6Address).length > 0 && (
                 <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">IPv6 Address</p>
-                  <MonoCell value={selectedClient.ipv6Address} label="IPv6 address" />
+                  <p className="text-sm text-muted-foreground">
+                    {ipv6List(selectedClient.ipv6Address).length > 1
+                      ? 'IPv6 Addresses'
+                      : 'IPv6 Address'}
+                  </p>
+                  {ipv6List(selectedClient.ipv6Address).map((addr) => (
+                    <MonoCell key={addr} value={addr} label="IPv6 address" />
+                  ))}
                 </div>
               )}
               <div className="space-y-1">

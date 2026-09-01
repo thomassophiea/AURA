@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { apiService } from '../services/api';
+import { insightsErrorMessage } from '../lib/insightsError';
 import { controllerDurationFor, type ResolvedTimeRange } from '../lib/timeRange';
 import type { ClientInsightsResponse } from '../types/api';
 
@@ -95,9 +96,11 @@ export function useClientInsightsData(
         console.error('[ClientInsights] Failed to load insights:', error);
         setInsights(null);
         setUnavailableReason('error');
-        // The actual failure text, not a generic one: it is what tells an
-        // operator whether the controller 502'd or the token expired.
-        setErrorMessage(error instanceof Error ? error.message : 'Failed to load client insights.');
+        // Keep the failure *class* visible (timeout vs auth vs other) but
+        // never the machine text — "SUPPRESSED_ANALYTICS_ERROR: Request
+        // timeout for /v1/report/stations/AA%3A…" is not an error message,
+        // it is a stack trace with a haircut.
+        setErrorMessage(insightsErrorMessage(error, 'Failed to load client insights.'));
       } finally {
         if (!cancelledRef.current) setIsLoading(false);
       }

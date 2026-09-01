@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { cn } from './ui/utils';
+import { normalizeStatus } from '../lib/statusColors';
 import { apiService } from '../services/api';
 import { fetchWidgetData, parseTimeseriesData, parseRankingData } from '../services/widgetService';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
@@ -217,10 +218,12 @@ export function ReportCenter() {
   // ── Computed Metrics ──
   const metrics: ReportMetrics = useMemo(() => {
     const totalAps = apData.length;
-    const onlineAps = apData.filter((a: any) => {
-      const s = (a.status || a.connectionState || '').toLowerCase();
-      return s === 'connected' || s === 'online' || s === 'active';
-    }).length;
+    // The controller's /v1/aps/query reports "InService" for a healthy AP —
+    // a hand-rolled whitelist here read all six lab APs as offline. The
+    // semantic vocabulary in statusColors is the one place that judgement lives.
+    const onlineAps = apData.filter(
+      (a: any) => normalizeStatus(a.status || a.connectionState) === 'healthy'
+    ).length;
 
     const totalClients = stationData.length;
     const authenticated = stationData.filter(
@@ -234,6 +237,13 @@ export function ReportCenter() {
     let rssiSum = 0,
       rssiCount = 0;
     const ssidMap = new Map<string, number>();
+    // Stations carry serviceId, not ssid — resolve through the services we
+    // already fetched, or every client lands under "Unknown".
+    const serviceNameById = new Map<string, string>(
+      serviceData
+        .filter((svc: any) => svc?.id)
+        .map((svc: any) => [svc.id, svc.ssid || svc.serviceName || svc.name])
+    );
 
     stationData.forEach((s: any) => {
       const tx = s.transmittedRate || s.txRate || 0;
@@ -263,7 +273,8 @@ export function ReportCenter() {
         else rssiRanges.poor++;
       }
 
-      const name = s.ssid || s.serviceName || 'Unknown';
+      const name =
+        s.ssid || s.serviceName || serviceNameById.get(s.serviceId) || 'Unknown';
       ssidMap.set(name, (ssidMap.get(name) || 0) + 1);
     });
 

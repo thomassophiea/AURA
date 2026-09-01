@@ -23,6 +23,7 @@ import {
   resolveOs1SiteLabel,
 } from '../services/siteCatalog';
 import { loadXiqAccessPoints } from '../services/xiqInventory';
+import { normalizeStatus } from '../lib/statusColors';
 import { DetailSlideOut } from './DetailSlideOut';
 import {
   DropdownMenu,
@@ -2999,7 +3000,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
               : null;
 
           const onlineCount = (aps: AccessPoint[]) =>
-            aps.filter((a) => a.status === 'connected' || a.status === 'online').length;
+            aps.filter((a) => normalizeStatus(a.status) === 'healthy').length;
 
           const title =
             type === 'site'

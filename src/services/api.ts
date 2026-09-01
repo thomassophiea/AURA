@@ -1485,7 +1485,10 @@ class ApiService {
     logger.log('[API] Fetching AP insights:', { serialNumber, duration, resolution });
 
     try {
-      const response = await this.makeAuthenticatedRequest(endpoint);
+      // Multi-widget reports are the slowest reads the controller serves —
+      // the 6s default timeout aborts them on a busy box. 30s matches the
+      // other heavy report endpoints in this file.
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 30000);
       if (!response.ok) {
         throw new Error(`Failed to fetch AP insights: ${response.status} ${response.statusText}`);
       }
@@ -1554,7 +1557,10 @@ class ApiService {
     logger.log('[API] Fetching Client insights:', { macAddress, duration, resolution, mode });
 
     try {
-      const response = await this.makeAuthenticatedRequest(endpoint);
+      // 'all' mode asks for 11 widgets in one report — far too slow for the 6s
+      // default timeout on a busy controller. 30s matches the other heavy
+      // report endpoints in this file.
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 30000);
       if (!response.ok) {
         throw new Error(
           `Failed to fetch Client insights: ${response.status} ${response.statusText}`

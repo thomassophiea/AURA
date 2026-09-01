@@ -121,7 +121,8 @@ export interface Station {
   // Basic identification
   macAddress: string;
   ipAddress?: string;
-  ipv6Address?: string;
+  /** The controller reports an ARRAY (link-local + globals); older sources a string. Render via lib/ipv6. */
+  ipv6Address?: string | string[];
   hostName?: string;
   status?: string;
 
@@ -216,7 +217,7 @@ export interface StationEvent {
   eventType: string; // Event type: "Roam", "Associate", "Disassociate", "Authenticate", etc.
   macAddress: string; // Client MAC address
   ipAddress?: string; // Client IP address
-  ipv6Address?: string; // Client IPv6 address
+  ipv6Address?: string | string[]; // Client IPv6 address(es) — the controller may report an array
   apName?: string; // Access Point name
   apSerial?: string; // Access Point serial number
   ssid?: string; // SSID name

@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { isRandomizedMac } from '@/services/macAddressUtils';
 import { resolveClientIdentity } from '@/lib/clientIdentity';
+import { primaryIpv6 } from '@/lib/ipv6';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { MonoCell, NumericCell, TimestampCell, TruncatedCell } from '@/components/ui/cells';
 
@@ -339,7 +340,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     sortable: true,
     tooltip: 'IPv6 address',
     renderCell: (station) => (
-      <MonoCell value={station.ipv6Address} label="IPv6 address" className="max-w-[200px]" />
+      <MonoCell value={primaryIpv6(station.ipv6Address)} label="IPv6 address" className="max-w-[200px]" />
     ),
   },
 

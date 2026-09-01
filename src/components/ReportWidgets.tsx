@@ -8,6 +8,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { formatCompactNumber } from '../lib/units';
+import { normalizeStatus } from '../lib/statusColors';
 import {
   Activity,
   Signal,
@@ -197,10 +198,11 @@ export function ReportWidgets() {
                 ? apsData
                 : apsData.aps || apsData.accessPoints || [];
               const totalAPs = aps.length;
-              const connectedAPs = aps.filter((ap: any) => {
-                const status = ap.status?.toLowerCase() || '';
-                return status === 'connected' || status === 'online' || status === 'up';
-              }).length;
+              // "InService" is the controller's healthy state — route through
+              // the semantic vocabulary instead of a local whitelist.
+              const connectedAPs = aps.filter(
+                (ap: any) => normalizeStatus(ap.status) === 'healthy'
+              ).length;
 
               if (totalAPs > 0) {
                 value = Math.round((connectedAPs / totalAPs) * 100);
@@ -374,10 +376,9 @@ export function ReportWidgets() {
               const apsData = await apsResp.json();
               const aps = Array.isArray(apsData) ? apsData : apsData.aps || [];
               const totalAPs = aps.length;
-              const connectedAPs = aps.filter((ap: any) => {
-                const apStatus = ap.status?.toLowerCase() || '';
-                return apStatus === 'connected' || apStatus === 'online';
-              }).length;
+              const connectedAPs = aps.filter(
+                (ap: any) => normalizeStatus(ap.status) === 'healthy'
+              ).length;
 
               if (totalAPs > 0) {
                 apScore = Math.round((connectedAPs / totalAPs) * 50);
