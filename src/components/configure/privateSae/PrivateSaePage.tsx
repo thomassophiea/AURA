@@ -35,7 +35,7 @@ import { PrivateSaeEnrollDialog } from './PrivateSaeEnrollDialog';
 
 type Filter = 'all' | SaeStatus | 'site-bound' | 'global';
 const SAE_ELEMENTS = ['WpaSaeElement', 'WpaSaePskElement'];
-const DEFAULT_SSID = 'Skynet_PSAE';
+const DEFAULT_SSID = 'AURA_PSAE';
 
 /** Minimal CSV parser (quoted fields + commas). One row → one SaeInput. */
 function parseCsv(text: string): SaeInput[] {

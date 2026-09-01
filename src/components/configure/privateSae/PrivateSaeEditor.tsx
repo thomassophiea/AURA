@@ -1,7 +1,7 @@
 /**
  * Add / Edit Private SAE credential modal — mirrors the golden EP1 "Pre-Shared
  * Keys" design, adapted for WPA3-Personal (SAE): KEY IDENTITY · SCOPE · NETWORK
- * (SSID default Skynet_PSAE, VLAN, Role) · USAGE (maxDevices) · CREDENTIAL.
+ * (SSID default AURA_PSAE, VLAN, Role) · USAGE (maxDevices) · CREDENTIAL.
  *
  * A credential is a decoupled object: it may reference a Role and an SSID but is
  * never owned by one. Scope decides where it applies. Usage decides whether it is
@@ -28,7 +28,7 @@ import {
 } from '../../../services/privateSaeService';
 
 /** The default WLAN Private SAE credentials are provisioned onto. */
-export const DEFAULT_SSID = 'Skynet_PSAE';
+export const DEFAULT_SSID = 'AURA_PSAE';
 /** SAE passphrase minimum enforced by the server; mirrored for inline validation. */
 const MIN_PASSPHRASE = 20;
 const MAX_PASSPHRASE = 63;

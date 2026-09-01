@@ -21,8 +21,8 @@ import { ppskService, type PpskInput, type PpskUsage } from '../../../services/p
 const HEADER = 'name,ssid,passphrase,vlan_id,mac,usage,role,email,notify_on_create_or_edit';
 const SAMPLE =
   `${HEADER}\n` +
-  'Corp Laptops,Skynet,Zephyr-8f2a-Quill,1,,Multiple users,Enterprise User,,false\n' +
-  'J. Rivera,Skynet,Cobalt-a90e-Miner,2,A4:83:E7:2C:19:D0,Single user,Guest Access,jrivera@corp.example,true\n';
+  'Corp Laptops,AURA_PPSK,Zephyr-8f2a-Quill,1,,Multiple users,Enterprise User,,false\n' +
+  'J. Rivera,AURA_PPSK,Cobalt-a90e-Miner,2,A4:83:E7:2C:19:D0,Single user,Guest Access,jrivera@corp.example,true\n';
 
 export interface PpskImportDialogProps {
   open: boolean;

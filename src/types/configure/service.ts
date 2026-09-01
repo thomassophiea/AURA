@@ -4,7 +4,7 @@
  */
 import type { FeatureTag, ProxiedScope, ResourceBase } from './common';
 
-/** WPA2-Personal privacy element (observed on live 'Skynet' service). */
+/** WPA2-Personal privacy element (observed on live 'AURA_PPSK' service). */
 export interface WpaPskElement {
   mode: string; // e.g. 'aesOnly'
   pmfMode: string; // 'disabled' | 'enabled' | 'required'
