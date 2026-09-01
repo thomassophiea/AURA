@@ -40,6 +40,7 @@ import { createEnergyRouter } from './server/energy/energyRouter.js';
 import { createLightAwareRouter } from './server/energy/lightAware/router.js';
 import { createGuestsRouter } from './server/guests/guestsRouter.js';
 import { createPpskRouter } from './server/ppsk/ppskRouter.js';
+import { createPrivateSaeRouter } from './server/privateSae/saeRouter.js';
 import { createPortalConfigRouter } from './server/portal/portalConfigRouter.js';
 import { createSystemRouter } from './server/system/systemRouter.js';
 import { createServicesSummaryRouter } from './server/services/servicesSummaryRouter.js';
@@ -2288,6 +2289,24 @@ console.log(
     ? '[Proxy Server] ✓ PPSK API mounted at /api/v1/ppsk/*'
     : '[Proxy Server] ⚠ PPSK API mounted but key creation is inert — set PPSK_ENCRYPTION_KEY'
 );
+
+// ==================== Private SAE (WPA3-Personal) ====================
+// AURA-owned per-user WPA3-SAE credentials for one WLAN — PPSK's identity model
+// on the SAE AKM, plus the MAC-enrollment loop. Gated behind PRIVATE_SAE_ENABLED
+// so it is a no-op until switched on; when off, zero behavior change. Reads
+// require viewer, mutations and reveal require operator. Passphrases are stored
+// encrypted (reusing PPSK_ENCRYPTION_KEY); the controller does not yet emit a
+// sae_password set, so provisioning is rendered but not driven (two-plane honest).
+if (process.env.PRIVATE_SAE_ENABLED === 'true') {
+  app.use('/api', createPrivateSaeRouter());
+  console.log(
+    process.env.PPSK_ENCRYPTION_KEY
+      ? '[Proxy Server] ✓ Private SAE API mounted at /api/v1/private-sae/*'
+      : '[Proxy Server] ⚠ Private SAE API mounted but credential creation is inert — set PPSK_ENCRYPTION_KEY'
+  );
+} else {
+  console.log('[Proxy Server] · Private SAE API disabled — set PRIVATE_SAE_ENABLED=true to mount /api/v1/private-sae/*');
+}
 
 // ==================== Cloud Captive Portal Configuration ====================
 // Operator overlay on the portal's own configuration (sponsorship domains,
