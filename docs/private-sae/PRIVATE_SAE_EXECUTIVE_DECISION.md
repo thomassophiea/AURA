@@ -87,7 +87,8 @@ config-generation, identical in shape to the PPSK gap.**
 |---|---|
 | WPA3-SAE on 6 GHz, native on all modern clients (single shared password) | **Works now** (controller emits single-PSK SAE; H2E/PMF proven) |
 | AP capability for per-user MAC-bound SAE (multi-`sae_password`, per-key VLAN, H2E, PMF, FT-SAE) | **Proven on hardware** (config plane) |
-| Per-user SAE **selection** on air, native client, randomized MAC → connect + IP; wrong cred rejected | **Proven end-to-end on hardware** (Skynet_PSAE demo, 2026-09-01) |
+| Per-user SAE **selection** on air, native client, randomized MAC → connect + IP; wrong cred rejected | **Proven end-to-end on hardware** — first on a Pi AP, then **on the Extreme AP itself at 6 GHz** (AURA_LAB / AP5010U, 2026-09-01; see `docs/aura-lab/`) |
+| Per-user SAE on the **Extreme AP** at **6 GHz** (controller-provisioned WLAN + `sae_password` injection into the controller's own hostapd) | **Proven** — AURA_PSAE on wl2 (6 GHz): MAC-bound select works, wrong cred rejected, revocation isolated; multiple-wildcard shown to select only one (SAE limit) |
 | AURA credential + enrollment plane (create/rotate/revoke/enroll, render sae_password) | **Built, tested, flag-gated** (`PRIVATE_SAE_ENABLED`; PPSK byte-identical) |
 | Controller emitting a per-key `sae_password` set + reload + identity readback | **Does not exist** — the enhancement (R1–R6) |
 | SAE Password Identifiers as the product mechanism | **Dead** — no mainstream client can provision one |
