@@ -21,6 +21,7 @@ import {
   Columns,
 } from 'lucide-react';
 import { MetricCard } from './ui/MetricCard';
+import { ppskService } from '../services/ppskService';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
 import { apiService, Station } from '../services/api';
@@ -225,6 +226,22 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
         // Site-group scope: single controller fetch
         const stationsData = await apiService.getStationsWithSiteCorrelation();
         stationsArray = Array.isArray(stationsData) ? stationsData : [];
+      }
+
+      // Overlay observed PPSK identities onto the Username column. Campus OS does
+      // not report which per-key identity a PPSK client used; an out-of-band
+      // collector supplies the MAC -> keyid map (see docs/PPSK.md). Best-effort:
+      // never blocks or fails the client list.
+      try {
+        const observed = await ppskService.observed();
+        if (Object.keys(observed).length > 0) {
+          stationsArray = stationsArray.map((s) => {
+            const hit = observed[String(s.macAddress || '').toLowerCase()];
+            return hit && !s.username ? { ...s, username: hit.keyid } : s;
+          });
+        }
+      } catch {
+        /* PPSK identity overlay is best-effort observability */
       }
 
       setStations(stationsArray);

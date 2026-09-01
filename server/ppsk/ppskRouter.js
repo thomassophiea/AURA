@@ -24,6 +24,7 @@ import { audit as defaultAudit, listAudit as defaultListAudit } from '../identit
 import { sanitizeError } from '../monitoring/errorSanitizer.js';
 import { isCryptoConfigured } from './ppskCrypto.js';
 import * as defaultStore from './ppskStore.js';
+import * as defaultObservedStore from './ppskObservedStore.js';
 import { validatePassphrase, generatePassphrase, renderPskFile } from './pmk.js';
 
 const VALID_SCOPES = new Set(['global', 'site', 'site-group', 'gateway']);
@@ -150,6 +151,7 @@ function fail(res, error, endpoint) {
 
 export function createPpskRouter({
   store = defaultStore,
+  observedStore = defaultObservedStore,
   requireRole = defaultRequireRole,
   audit = defaultAudit,
   listAudit = defaultListAudit,
@@ -207,6 +209,32 @@ export function createPpskRouter({
       res.json({ entries });
     } catch (error) {
       fail(res, error, '/v1/ppsk/audit');
+    }
+  });
+
+  // ── Observed PPSK identity (the MAC -> keyid bridge) ──
+  // Out-of-band collector posts what it read from the APs; the Clients view
+  // reads the map to fill the Username column. Stopgap for the controller
+  // reporting the keyid itself — see docs/PPSK.md.
+  router.post('/v1/ppsk/observed', requireRole('operator'), jsonBody, async (req, res) => {
+    const list = Array.isArray(req.body?.observations) ? req.body.observations : null;
+    if (!list) return res.status(400).json({ error: 'body must be { observations: [{ mac, keyid, ... }] }' });
+    try {
+      const stored = await observedStore.recordObservations(list, { source: actorFrom(req).actor });
+      if (stored === null) return res.status(503).json({ error: 'persistence unavailable' });
+      res.json({ stored });
+    } catch (error) {
+      fail(res, error, '/v1/ppsk/observed');
+    }
+  });
+
+  router.get('/v1/ppsk/observed', requireRole('viewer'), async (req, res) => {
+    try {
+      const map = await observedStore.getObservedMap();
+      if (map === null) return res.json({ observed: {} }); // inert when no DB
+      res.json({ observed: map });
+    } catch (error) {
+      fail(res, error, '/v1/ppsk/observed');
     }
   });
 
