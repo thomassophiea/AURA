@@ -79,31 +79,38 @@ describe('canonicalMac', () => {
   });
 });
 
-describe('saePasswordLine — id is always last', () => {
-  it('renders a wildcard line (no mac) with id last', () => {
+describe('saePasswordLine — native-safe (no on-air id by default)', () => {
+  it('renders a wildcard line (no mac, no id) by default', () => {
     expect(saePasswordLine({ keyid: 'Thomas', passphrase: 'pass-word-value-1234' })).toBe(
-      'sae_password=pass-word-value-1234|id=Thomas'
+      'sae_password=pass-word-value-1234'
     );
   });
-  it('includes mac and vlanid in order, id last', () => {
+  it('includes mac and vlanid in order, no id', () => {
     expect(
       saePasswordLine({ keyid: 'Printer', passphrase: 'pass-word-value-1234', mac: 'a4:83:e7:2c:19:d0', vlanId: 30 })
-    ).toBe('sae_password=pass-word-value-1234|mac=a4:83:e7:2c:19:d0|vlanid=30|id=Printer');
+    ).toBe('sae_password=pass-word-value-1234|mac=a4:83:e7:2c:19:d0|vlanid=30');
   });
   it('omits vlanid when unset', () => {
     expect(saePasswordLine({ keyid: 'K', passphrase: 'pass-word-value-1234', mac: 'a4:83:e7:2c:19:d0' })).toBe(
-      'sae_password=pass-word-value-1234|mac=a4:83:e7:2c:19:d0|id=K'
+      'sae_password=pass-word-value-1234|mac=a4:83:e7:2c:19:d0'
     );
+  });
+  it('emits id LAST only when explicitly opted in (diagnostics)', () => {
+    expect(
+      saePasswordLine({ keyid: 'Printer', passphrase: 'pass-word-value-1234', mac: 'a4:83:e7:2c:19:d0', vlanId: 30, emitId: true })
+    ).toBe('sae_password=pass-word-value-1234|mac=a4:83:e7:2c:19:d0|vlanid=30|id=Printer');
   });
 });
 
 describe('renderSaePasswordFile', () => {
-  it('emits a wildcard line for a credential with no bindings', () => {
+  it('emits a wildcard line + keyid comment for a credential with no bindings', () => {
     const body = renderSaePasswordFile([{ keyid: 'Solo', passphrase: 'pass-word-value-1234', vlanId: null, macs: [] }]);
-    expect(body).toContain('sae_password=pass-word-value-1234|id=Solo');
+    expect(body).toContain('sae_password=pass-word-value-1234');
+    expect(body).toContain('# keyid=Solo');
     expect(body).not.toContain('|mac=');
+    expect(body).not.toContain('|id='); // native-safe: no on-air identifier
   });
-  it('emits one line per bound MAC for a multi-binding credential', () => {
+  it('emits one line per bound MAC for a multi-binding credential, no id', () => {
     const body = renderSaePasswordFile([
       {
         keyid: 'Shared',
@@ -114,8 +121,16 @@ describe('renderSaePasswordFile', () => {
     ]);
     const lines = body.trimEnd().split('\n').filter((l) => !l.startsWith('#'));
     expect(lines).toHaveLength(2);
-    expect(lines[0]).toBe('sae_password=pass-word-value-1234|mac=a4:83:e7:2c:19:d0|vlanid=40|id=Shared');
-    expect(lines[1]).toBe('sae_password=pass-word-value-1234|mac=b4:83:e7:2c:19:d1|vlanid=40|id=Shared');
+    expect(lines[0]).toBe('sae_password=pass-word-value-1234|mac=a4:83:e7:2c:19:d0|vlanid=40');
+    expect(lines[1]).toBe('sae_password=pass-word-value-1234|mac=b4:83:e7:2c:19:d1|vlanid=40');
+    expect(body).toContain('# keyid=Shared vlan=40');
+  });
+  it('opt-in emitId appends id last on every entry', () => {
+    const body = renderSaePasswordFile(
+      [{ keyid: 'Solo', passphrase: 'pass-word-value-1234', vlanId: null, macs: [] }],
+      { emitId: true }
+    );
+    expect(body).toContain('sae_password=pass-word-value-1234|id=Solo');
   });
   it('is empty-safe', () => {
     expect(renderSaePasswordFile([])).toContain('# sae_password file');

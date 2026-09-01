@@ -98,43 +98,57 @@ export function canonicalMac(mac) {
 
 /**
  * Render one sae_password line for a credential + optional bound MAC:
- *   sae_password=<passphrase>[|mac=<mac>][|vlanid=<N>]|id=<keyid>
+ *   sae_password=<passphrase>[|mac=<mac>][|vlanid=<N>][|id=<keyid>]
  *
- * `id=` is ALWAYS last — the AP authenticator requires the identifier as the
- * final field. `|mac=` is included only when a bound MAC is passed (the selector
- * the AP uses to pick the password by station). `|vlanid=` is omitted when VLAN
- * is unset. A credential with no binding renders a wildcard line (no mac=).
+ * `|mac=` is the selector the AP uses to pick the password by station, and is
+ * included only when a bound MAC is passed. `|vlanid=` is omitted when VLAN is
+ * unset. A credential with no binding renders a wildcard line (no mac=).
+ *
+ * `|id=` (SAE Password Identifier) is OFF by default (`emitId=false`) and should
+ * stay off for any real deployment: no native client OS (Windows, macOS, iOS,
+ * iPadOS, Android, ChromeOS) can present a Password Identifier, and an AP that
+ * advertises one breaks native association — proven on hardware 2026-09-01
+ * (macOS returned err -3912 at association until `id=` was removed; pure MAC
+ * binding then connected cleanly). It is exposed only as an opt-in for
+ * wpa_supplicant-level diagnostics. Identity mapping (keyid ↔ station) is carried
+ * out of band by the controller (requirements R3), never as an on-air identifier.
  */
-export function saePasswordLine({ keyid, passphrase, mac = null, vlanId = null }) {
+export function saePasswordLine({ keyid, passphrase, mac = null, vlanId = null, emitId = false }) {
   let line = `sae_password=${passphrase}`;
   if (mac) line += `|mac=${mac}`;
   if (vlanId != null && Number.isInteger(vlanId)) line += `|vlanid=${vlanId}`;
-  line += `|id=${keyidFor(keyid)}`;
+  if (emitId) line += `|id=${keyidFor(keyid)}`;
   return line;
 }
 
 /**
  * Render a full sae_password file body from a set of live credentials. Each
- * credential contributes one wildcard line when it has no bindings, or one line
- * per bound MAC when it has one or more. This is the exact artifact the
- * controller would push to the AP; operators can also apply it by hand for a lab
- * bring-up. Caller passes only credentials that should be live (enabled,
- * unexpired, in scope), each as { keyid, passphrase, vlanId, macs: string[] }.
+ * credential is preceded by a `# keyid=<keyid> [vlan=<N>]` comment (the operator/
+ * controller identity mapping — a full-line comment, so hostapd ignores it) and
+ * contributes one wildcard line when it has no bindings, or one line per bound
+ * MAC. This is the exact artifact the controller would push to the AP; operators
+ * can also apply it by hand for a lab bring-up. Caller passes only credentials
+ * that should be live (enabled, unexpired, in scope), each as
+ * { keyid, passphrase, vlanId, macs: string[] }. `emitId` defaults to false — see
+ * saePasswordLine for why an on-air identifier must not be used in production.
  */
-export function renderSaePasswordFile(entries) {
+export function renderSaePasswordFile(entries, { emitId = false } = {}) {
   const header =
     '# sae_password file rendered by AURA Private SAE — one WPA3-Personal (SAE)\n' +
     '# WLAN, per-user credentials. The AP selects a credential by station MAC\n' +
-    '# pre-Commit (mac=) or offers a wildcard credential when no MAC is bound.\n' +
-    '# id=<keyid> is the last field; it is echoed on AP-STA-CONNECTED.\n';
+    '# pre-Commit (mac=); a wildcard credential (no mac=) is offered for enrollment.\n' +
+    '# id= (SAE Password Identifier) is OFF: no native client OS can present one and\n' +
+    '# advertising it breaks native association (proven on hardware 2026-09-01).\n' +
+    '# keyid is carried as a per-credential comment for the identity mapping instead.\n';
   const lines = [];
   for (const e of entries) {
     const macs = Array.isArray(e.macs) ? e.macs.filter(Boolean) : [];
+    lines.push(`# keyid=${keyidFor(e.keyid)}${e.vlanId != null && Number.isInteger(e.vlanId) ? ` vlan=${e.vlanId}` : ''}`);
     if (macs.length === 0) {
-      lines.push(saePasswordLine({ keyid: e.keyid, passphrase: e.passphrase, vlanId: e.vlanId ?? null }));
+      lines.push(saePasswordLine({ keyid: e.keyid, passphrase: e.passphrase, vlanId: e.vlanId ?? null, emitId }));
     } else {
       for (const mac of macs) {
-        lines.push(saePasswordLine({ keyid: e.keyid, passphrase: e.passphrase, mac, vlanId: e.vlanId ?? null }));
+        lines.push(saePasswordLine({ keyid: e.keyid, passphrase: e.passphrase, mac, vlanId: e.vlanId ?? null, emitId }));
       }
     }
   }

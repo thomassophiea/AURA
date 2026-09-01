@@ -175,7 +175,7 @@ describe('createPrivateSaeRouter', () => {
     expect(res.body.enforcement).toMatchObject({ attempted: false, applied: false });
   });
 
-  it('renders a sae_password file: wildcard, mac-bound, and vlan ordering with id last', async () => {
+  it('renders a native-safe sae_password file: wildcard, mac-bound, vlan ordering, no on-air id', async () => {
     const a = app({ store });
     // Wildcard credential (no binding), no VLAN.
     await request(a, { method: 'POST', path: '/api/v1/private-sae', body: { name: 'Solo', ssid: 'Lab', passphrase: 'AAAA-value-solo-1234' } });
@@ -190,11 +190,13 @@ describe('createPrivateSaeRouter', () => {
     const kf = await request(a, { path: '/api/v1/private-sae/keyfile?ssid=Lab' });
     expect(kf.status).toBe(200);
     expect(kf.body.provisioning.supported).toBe(false);
-    // Wildcard line: no |mac=, id last.
-    expect(kf.body.content).toContain('sae_password=AAAA-value-solo-1234|id=Solo');
-    // Bound lines: one per MAC, mac then vlanid then id.
-    expect(kf.body.content).toContain('sae_password=BBBB-value-shar-1234|mac=a4:83:e7:2c:19:d0|vlanid=40|id=Shared');
-    expect(kf.body.content).toContain('sae_password=BBBB-value-shar-1234|mac=b4:83:e7:2c:19:d1|vlanid=40|id=Shared');
+    // Wildcard line: no |mac=; keyid carried as a comment, never as an on-air id.
+    expect(kf.body.content).toContain('sae_password=AAAA-value-solo-1234');
+    expect(kf.body.content).toContain('# keyid=Solo');
+    // Bound lines: one per MAC, mac then vlanid, no id (native-client-safe).
+    expect(kf.body.content).toContain('sae_password=BBBB-value-shar-1234|mac=a4:83:e7:2c:19:d0|vlanid=40');
+    expect(kf.body.content).toContain('sae_password=BBBB-value-shar-1234|mac=b4:83:e7:2c:19:d1|vlanid=40');
+    expect(kf.body.content).not.toContain('|id='); // proven on hardware: id= breaks native association
     // Disabled credential excluded.
     expect(kf.body.content).not.toContain('CCCC-value-offf-1234');
   });
