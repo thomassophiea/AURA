@@ -152,6 +152,33 @@ scripts/ppsk-provision-lab.sh --ap 192.168.100.141 --pass '<ap-pw>' --teardown -
 The script prints the live radio's station count before and after bring-up so an
 operator can confirm the production BSSes were undisturbed.
 
+## Observed identity — filling the Clients "Username" (the bridge)
+
+**The note, kept:** Campus OS does not report which PPSK key a client used. The
+AP's authenticator knows the `keyid`, but it never reaches the controller's
+client record — its `userName` field stays empty and there is no keyid field at
+all. So AURA's Clients ▸ Username is blank for PPSK clients out of the box. This
+is the observability half of the gap in `PPSK_HARDWARE_FINDINGS.md`.
+
+**The clean fix** is the controller populating the station `userName` from the
+AP's keyid. AURA already maps its Username column to `userName`, so that change
+lights up the column with **zero AURA changes**.
+
+**The bridge (stopgap, until that ships)** has two halves:
+
+- *AURA side (durable, in this repo):* `POST /v1/ppsk/observed` ingests a
+  MAC→keyid map; `GET /v1/ppsk/observed` serves it; the Clients view overlays it
+  onto Username (best-effort — never blocks the client list). Store:
+  `ppsk_observed` (migration `0016`, lazy-ensure twin, lock key
+  `8270119004461016`), rows aged out after 30 min. This half is clean and works
+  with *any* keyid source — including the eventual controller fix.
+- *Collector side (fragile, out-of-band):* `scripts/ppsk-identity-collector.sh`
+  scrapes MAC→keyid from the APs' hostapd and posts it. It depends on
+  **debug-level hostapd logging enabled per-AP** (the keyid only prints at `-dd`),
+  does **not** survive a controller re-sync or AP reboot, and holds AP SSH creds
+  only in the operator's shell — never in AURA. This is lab-grade; treat it as a
+  demo aid, not production.
+
 ## Tests
 
 - `server/ppsk/pmk.test.js` — crypto vectors, validation, key-file rendering.

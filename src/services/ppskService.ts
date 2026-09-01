@@ -74,6 +74,13 @@ export function ppskStatus(k: PpskIdentity): PpskStatus {
   return k.enabled ? 'active' : 'paused';
 }
 
+export interface PpskObservation {
+  keyid: string;
+  ssid: string | null;
+  apName: string | null;
+  seenAt: string;
+}
+
 export interface PpskAuditEntry {
   id: number;
   actor: string | null;
@@ -199,6 +206,20 @@ export const ppskService = {
   async audit(limit = 200): Promise<PpskAuditEntry[]> {
     const data = await request<{ entries: PpskAuditEntry[] }>(`/audit?limit=${limit}`);
     return data.entries;
+  },
+
+  /**
+   * Observed MAC -> PPSK identity map (keyed by canonical lowercase MAC).
+   * Fills the Clients "Username" column for PPSK clients until Campus OS reports
+   * the keyid itself. Returns {} when unconfigured — never throws for the caller.
+   */
+  async observed(signal?: AbortSignal): Promise<Record<string, PpskObservation>> {
+    try {
+      const data = await request<{ observed: Record<string, PpskObservation> }>('/observed', {}, signal);
+      return data.observed ?? {};
+    } catch {
+      return {};
+    }
   },
 
   /** Bulk create from parsed CSV rows; returns per-row outcomes. */
