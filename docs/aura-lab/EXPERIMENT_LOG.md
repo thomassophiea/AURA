@@ -128,3 +128,25 @@ cannot do this on Broadcom). This is the out-of-band provisioning stopgap AURA a
 controller does not yet emit `sae_password` sets natively (the one platform gap). After the tests
 the 6 GHz seccfg was restored to the controller baseline (single-password SAE); AURA_PSAE remains a
 live WPA3-SAE WLAN on 6 GHz. AURA_PPSK and AURA-CWP verified up and unchanged throughout.
+
+---
+
+## 2026-09-01 — Deployed to main + Aura UI verified live on Integration
+
+Merged `feat/aura-lab-hardware` → `main` (fast-forward, `cb4e561`), pushed; Integration
+auto-deployed (version endpoint confirmed `commit cb4e561`, health 200). Set
+`PRIVATE_SAE_ENABLED=true` on the Integration service (`PPSK_ENCRYPTION_KEY` already present);
+`/api/v1/private-sae` returns 401 unauth (mounted, not 404).
+
+**UI walkthrough (Playwright, real browser, logged in):** Configure now lists **Private SAE
+(WPA3)** beside Private Pre-Shared Key. Verified every flow end-to-end against the live backend:
+page render (DECOUPLED banner, status pills, grid, toolbar); **Create** (Alice-Laptop → POST →
+Postgres → grid); **Enroll Device** (bound a MAC → POST → grid Bound Devices=1); **sae_password
+preview** renders the native-safe file (`sae_password=…|mac=…`, **no `|id=`**, keyid as comment,
+honest "controller does not yet emit" banner) reflecting the binding; **Delete** (with binding
+cascade → empty). Screenshot: `aura-private-sae-keyfile.png`.
+
+**Nomenclature cleanup (code + live data):** retired stale "Skynet" — code defaults →
+`AURA_PSAE`/`AURA_PPSK` (committed); and updated the 10 live PPSK demo identities on Integration
+from SSID `Skynet_PPSK` → `AURA_PPSK` via the app API (passphrases preserved). 0 Skynet references
+remain in the live UI. No regression to the PPSK screen.
