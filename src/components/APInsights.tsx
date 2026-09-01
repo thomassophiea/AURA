@@ -36,12 +36,7 @@ import {
   ArrowLeft,
   AlertTriangle,
 } from 'lucide-react';
-import {
-  apiService,
-  APDetails,
-  APInsightsReport,
-  APInsightsStatistic,
-} from '../services/api';
+import { apiService, APDetails, APInsightsReport, APInsightsStatistic } from '../services/api';
 import { controllerDurationFor } from '../lib/timeRange';
 import { COMPACT_TOOLTIP_STYLE } from '../lib/chartStyle';
 import { timelineChartHandlers } from '../lib/timelineChartEvents';
@@ -76,11 +71,11 @@ interface APInsightsProps {
  * than `3H` anyway.
  */
 
-
 // Format timestamp for chart
 function formatTime(timestamp: number, duration: string): string {
   const date = new Date(timestamp);
-  if (duration === '3H' || duration === '24H') {
+  if (!['3D', '7D', '14D'].includes(duration)) {
+    // Sub-day windows label by time of day; only multi-day windows label by date.
     return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   }
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -452,7 +447,12 @@ function LiveCorrelationStrip({
 
     const rss = getValueAtTimestamp(rssData, t, ['Rss']).Rss;
     if (rss !== null) {
-      items.push({ key: 'rss', label: 'RSS', value: `${rss.toFixed(0)} dBm`, color: CHART_COLORS.cyan });
+      items.push({
+        key: 'rss',
+        label: 'RSS',
+        value: `${rss.toFixed(0)} dBm`,
+        color: CHART_COLORS.cyan,
+      });
     }
 
     // Busy airtime = everything that is not "Available". Falls back to
@@ -467,11 +467,21 @@ function LiveCorrelationStrip({
     const utilFields = ['Available', 'ClientData', 'CoChannel', 'Interference'];
     const busy5 = busyPercent(getValueAtTimestamp(channelUtil5Data, t, utilFields));
     if (busy5 !== null) {
-      items.push({ key: 'util5', label: '5 GHz busy', value: `${busy5.toFixed(0)}%`, color: CHART_COLORS.warning });
+      items.push({
+        key: 'util5',
+        label: '5 GHz busy',
+        value: `${busy5.toFixed(0)}%`,
+        color: CHART_COLORS.warning,
+      });
     }
     const busy24 = busyPercent(getValueAtTimestamp(channelUtil24Data, t, utilFields));
     if (busy24 !== null) {
-      items.push({ key: 'util24', label: '2.4 GHz busy', value: `${busy24.toFixed(0)}%`, color: CHART_COLORS.warning });
+      items.push({
+        key: 'util24',
+        label: '2.4 GHz busy',
+        value: `${busy24.toFixed(0)}%`,
+        color: CHART_COLORS.warning,
+      });
     }
 
     // Noise is negative dBm; the highest (least negative) radio is the worst.
@@ -501,11 +511,7 @@ function LiveCorrelationStrip({
   ]);
 
   return (
-    <CorrelationStrip
-      timestamp={timeline.currentTime}
-      isLocked={timeline.isLocked}
-      items={items}
-    />
+    <CorrelationStrip timestamp={timeline.currentTime} isLocked={timeline.isLocked} items={items} />
   );
 }
 
@@ -544,7 +550,7 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
   // whether the controller 502'd or the token expired.
   const error = unavailableReason === 'error' ? errorMessage : null;
   // Chart formatters below switch label granularity on this.
-  const duration = servedFromHistory ? '24H' : controllerDurationFor(range) ?? '24H';
+  const duration = servedFromHistory ? '24H' : (controllerDurationFor(range) ?? '24H');
 
   // Timeline navigation hook
   // Charts render only locked-cursor UI, so hover tracking must not
@@ -554,7 +560,8 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
   // Helper function to format X-axis ticks
   const formatXAxisTick = (timestamp: number, duration: string): string => {
     const date = new Date(timestamp);
-    if (duration === '3H' || duration === '24H') {
+    if (!['3D', '7D', '14D'].includes(duration)) {
+      // Sub-day windows label by time of day; only multi-day windows label by date.
       return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     }
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -594,8 +601,7 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
   // Power context is computed from the raw response, not the transformed chart
   // rows, so null readings stay distinguishable from real zeroes.
   const powerContext = useMemo(
-    () =>
-      timeline.isLocked ? buildPowerContext(insights, timeline.currentTime) : null,
+    () => (timeline.isLocked ? buildPowerContext(insights, timeline.currentTime) : null),
     [insights, timeline.isLocked, timeline.currentTime]
   );
 
@@ -1481,9 +1487,7 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <AlertTriangle className="h-16 w-16 text-destructive/30 mb-4" />
                 <h3 className="text-lg font-medium mb-2">Error Loading Insights</h3>
-                <p className="text-sm text-muted-foreground max-w-md mb-4">
-                  {error}
-                </p>
+                <p className="text-sm text-muted-foreground max-w-md mb-4">{error}</p>
                 <Button onClick={handleRefresh} variant="outline" size="sm">
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Try Again

@@ -40,10 +40,7 @@ import {
   AlertTriangle,
   History,
 } from 'lucide-react';
-import {
-  APInsightsReport,
-  APInsightsStatistic,
-} from '../services/api';
+import { APInsightsReport, APInsightsStatistic } from '../services/api';
 import { useTimelineNavigation } from '../hooks/useTimelineNavigation';
 import { useSelectedTimeRange } from '../hooks/useSelectedTimeRange';
 import { useClientInsightsData } from '../hooks/useClientInsightsData';
@@ -67,11 +64,11 @@ interface ClientInsightsProps {
  * no longer resets the range you were looking at.
  */
 
-
 // Format timestamp for chart
 function formatTime(timestamp: number, duration: string): string {
   const date = new Date(timestamp);
-  if (duration === '3H' || duration === '24H') {
+  if (!['3D', '7D', '14D'].includes(duration)) {
+    // Sub-day windows label by time of day; only multi-day windows label by date.
     return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   }
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -161,7 +158,11 @@ function hasActualChartData(data: any[]): boolean {
 
 // Chart colors
 // Chart colors - standardized from centralized palette
-import { CHART_COLORS as PALETTE_COLORS, DONUT_COLORS as PALETTE_DONUT_COLORS, TIMELINE_COLORS } from '../config/colorPalette';
+import {
+  CHART_COLORS as PALETTE_COLORS,
+  DONUT_COLORS as PALETTE_DONUT_COLORS,
+  TIMELINE_COLORS,
+} from '../config/colorPalette';
 
 const CHART_COLORS = {
   primary: 'var(--primary)',
@@ -411,7 +412,8 @@ export function ClientInsightsFullScreen({
   // Helper function to format X-axis ticks
   const formatXAxisTick = (timestamp: number, duration: string): string => {
     const date = new Date(timestamp);
-    if (duration === '3H' || duration === '24H') {
+    if (!['3D', '7D', '14D'].includes(duration)) {
+      // Sub-day windows label by time of day; only multi-day windows label by date.
       return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     }
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -1791,9 +1793,7 @@ export function ClientInsightsFullScreen({
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <AlertTriangle className="h-16 w-16 text-destructive/30 mb-4" />
                 <h3 className="text-lg font-medium mb-2">Error Loading Insights</h3>
-                <p className="text-sm text-muted-foreground max-w-md mb-4">
-                  {error}
-                </p>
+                <p className="text-sm text-muted-foreground max-w-md mb-4">{error}</p>
                 <Button onClick={handleRefresh} variant="outline" size="sm">
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Try Again

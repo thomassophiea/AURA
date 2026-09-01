@@ -1454,6 +1454,78 @@ class ApiService {
   }
 
   /**
+   * The report durations the controller's `/v1/report/{stations,aps}` actually
+   * serves. Probed against the live Gateway on 2026-09-01: `3H`, `3D` and `14D`
+   * answer 200 in about a second for every station, AP and widget; every other
+   * token — `15M`, `30M`, `1H`, `24H`, `7D`, `1D`, `12H`, … — burns ~31 seconds
+   * and returns `500 {"errorMessage": "Exception: null"}`. It is an enum, not a
+   * free-form window.
+   */
+  private static readonly SERVABLE_REPORT_DURATIONS = ['3H', '3D', '14D'] as const;
+
+  private static readonly REPORT_DURATION_MS: Record<string, number> = {
+    '15M': 15 * 60_000,
+    '30M': 30 * 60_000,
+    '1H': 60 * 60_000,
+    '3H': 3 * 3_600_000,
+    '12H': 12 * 3_600_000,
+    '24H': 24 * 3_600_000,
+    '3D': 3 * 86_400_000,
+    '7D': 7 * 86_400_000,
+    '14D': 14 * 86_400_000,
+  };
+
+  /**
+   * Map a requested window onto the controller's duration enum: the smallest
+   * servable token that covers it, plus the window to trim the response back
+   * to. Asking for `24H` directly would stall 31s and fail; asking for `3D`
+   * and keeping the last 24 hours answers the same question in a second.
+   */
+  private resolveReportDuration(requested: string): { token: string; trimToMs: number | null } {
+    const up = requested.toUpperCase();
+    const servable = ApiService.SERVABLE_REPORT_DURATIONS as readonly string[];
+    if (servable.includes(up)) return { token: up, trimToMs: null };
+    const wantMs = ApiService.REPORT_DURATION_MS[up];
+    if (!wantMs) return { token: '3H', trimToMs: null };
+    const token =
+      servable.find((t) => ApiService.REPORT_DURATION_MS[t] >= wantMs) ?? '14D';
+    return { token, trimToMs: wantMs };
+  }
+
+  /**
+   * Trim every timeseries in a report response to the requested window, in
+   * place. Walks for `values: [{timestamp(ms), …}]` arrays wherever they sit,
+   * so both station and AP report shapes are covered. Aggregate widgets (e.g.
+   * topAppGroupsByThroughputReport's name/value pairs) carry no timestamps and
+   * pass through — a slightly wider aggregate beats an error page, and the
+   * timeseries the charts draw stay exact.
+   */
+  private trimReportToWindow(node: unknown, cutoffMs: number): void {
+    if (Array.isArray(node)) {
+      for (const item of node) this.trimReportToWindow(item, cutoffMs);
+      return;
+    }
+    if (node && typeof node === 'object') {
+      const record = node as Record<string, unknown>;
+      for (const key of Object.keys(record)) {
+        const value = record[key];
+        if (
+          key === 'values' &&
+          Array.isArray(value) &&
+          value.length > 0 &&
+          typeof (value[0] as { timestamp?: unknown })?.timestamp === 'number'
+        ) {
+          record[key] = (value as Array<{ timestamp: number }>).filter(
+            (point) => point.timestamp >= cutoffMs
+          );
+        } else {
+          this.trimReportToWindow(value, cutoffMs);
+        }
+      }
+    }
+  }
+
+  /**
    * Get AP Insights data including throughput, power, clients, channel utilization, etc.
    * Endpoint: GET /v1/report/aps/{serialNumber}
    * @param serialNumber AP serial number
@@ -1480,9 +1552,10 @@ class ApiService {
     ];
 
     const widgetList = encodeURIComponent(widgets.join(','));
-    const endpoint = `/v1/report/aps/${encodeURIComponent(serialNumber)}?noCache=${noCache}&duration=${duration}&resolution=${resolution}&widgetList=${widgetList}`;
+    const { token, trimToMs } = this.resolveReportDuration(duration);
+    const endpoint = `/v1/report/aps/${encodeURIComponent(serialNumber)}?noCache=${noCache}&duration=${token}&resolution=${resolution}&widgetList=${widgetList}`;
 
-    logger.log('[API] Fetching AP insights:', { serialNumber, duration, resolution });
+    logger.log('[API] Fetching AP insights:', { serialNumber, duration, token, resolution });
 
     try {
       // Multi-widget reports are the slowest reads the controller serves —
@@ -1493,6 +1566,7 @@ class ApiService {
         throw new Error(`Failed to fetch AP insights: ${response.status} ${response.statusText}`);
       }
       const data = await response.json();
+      if (trimToMs !== null) this.trimReportToWindow(data, Date.now() - trimToMs);
       logger.log('[API] AP insights data received');
       return data;
     } catch (error) {
@@ -1552,9 +1626,10 @@ class ApiService {
     }
 
     const widgetList = encodeURIComponent(widgets.join(','));
-    const endpoint = `/v1/report/stations/${encodeURIComponent(macAddress)}?noCache=${noCache}&duration=${duration}&resolution=${resolution}&widgetList=${widgetList}`;
+    const { token, trimToMs } = this.resolveReportDuration(duration);
+    const endpoint = `/v1/report/stations/${encodeURIComponent(macAddress)}?noCache=${noCache}&duration=${token}&resolution=${resolution}&widgetList=${widgetList}`;
 
-    logger.log('[API] Fetching Client insights:', { macAddress, duration, resolution, mode });
+    logger.log('[API] Fetching Client insights:', { macAddress, duration, token, resolution, mode });
 
     try {
       // 'all' mode asks for 11 widgets in one report — far too slow for the 6s
@@ -1567,6 +1642,7 @@ class ApiService {
         );
       }
       const data = await response.json();
+      if (trimToMs !== null) this.trimReportToWindow(data, Date.now() - trimToMs);
       logger.log('[API] Client insights data received');
       return data;
     } catch (error) {
