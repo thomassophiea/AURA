@@ -227,6 +227,9 @@ export function createIdentityRouter() {
     res.json({
       ssoEnabled: Boolean(sso?.enabled && sso?.issuer && sso?.clientId),
       cortexEnabled: Boolean(cortex?.enabled),
+      // Mirrors the server-side gate in server.js so the Private Credentials
+      // page can present a disabled state instead of dead API calls.
+      privateSaeEnabled: process.env.PRIVATE_SAE_ENABLED === 'true',
     });
   });
 

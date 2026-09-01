@@ -57,6 +57,17 @@ interface Form {
   maxDevices: string;
   passphrase: string;
   notify: boolean;
+  /** datetime-local value; empty = never expires. */
+  expiresAt: string;
+}
+
+/** ISO timestamp → the local-time string a datetime-local input expects. */
+function isoToLocalInput(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function fromRecord(record: SaeCredential | null): Form {
@@ -73,6 +84,7 @@ function fromRecord(record: SaeCredential | null): Form {
     maxDevices: record?.maxDevices != null ? String(record.maxDevices) : '',
     passphrase: '',
     notify: record?.notify ?? false,
+    expiresAt: isoToLocalInput(record?.expiresAt),
   };
 }
 
@@ -121,6 +133,8 @@ export function PrivateSaeEditor({
     if (form.maxDevices && (!/^\d+$/.test(form.maxDevices) || +form.maxDevices < 1))
       e.maxDevices = 'Max devices must be a positive number';
     if (form.scope !== 'global' && !form.scopeRef.trim()) e.scopeRef = 'Name the Site or Site Group';
+    if (form.expiresAt && Number.isNaN(new Date(form.expiresAt).getTime()))
+      e.expiresAt = 'Enter a valid date and time';
     return e;
   }, [form, isEdit]);
   const valid = Object.keys(errors).length === 0;
@@ -158,6 +172,8 @@ export function PrivateSaeEditor({
       usage: form.usage,
       maxDevices: form.maxDevices ? Number(form.maxDevices) : null,
       notify: form.notify,
+      // Always sent: an explicit null clears a previously set expiry.
+      expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : null,
     };
     if (form.passphrase) payload.passphrase = form.passphrase;
     await onSave(payload);
@@ -280,6 +296,26 @@ export function PrivateSaeEditor({
                 onChange={(e) => set('maxDevices', e.target.value)} />
               {errors.maxDevices ? <p className="mt-1 text-xs text-destructive">{errors.maxDevices}</p>
                 : <InheritNote>Caps how many device MACs may enroll onto this key. Blank = unlimited.</InheritNote>}
+            </div>
+            <div className="mt-3">
+              <Label htmlFor="s-expires">
+                Expires<OptionalTag />
+              </Label>
+              <div className="mt-1 flex items-center gap-2">
+                <Input id="s-expires" type="datetime-local" className="max-w-[240px]"
+                  value={form.expiresAt} onChange={(e) => set('expiresAt', e.target.value)} />
+                {form.expiresAt && (
+                  <button type="button" className="text-xs font-semibold text-primary hover:underline"
+                    onClick={() => set('expiresAt', '')}>
+                    Clear
+                  </button>
+                )}
+              </div>
+              {errors.expiresAt ? (
+                <p className="mt-1 text-xs text-destructive">{errors.expiresAt}</p>
+              ) : (
+                <InheritNote>The credential stops authenticating and leaves the sae_password set after this time. Empty = never expires.</InheritNote>
+              )}
             </div>
           </section>
 

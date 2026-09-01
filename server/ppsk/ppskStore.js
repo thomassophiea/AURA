@@ -206,7 +206,10 @@ export async function updateIdentity(id, patch) {
        scope = COALESCE($9, scope),
        scope_ref = COALESCE($10, scope_ref),
        enabled = COALESCE($11, enabled),
-       expires_at = COALESCE($12, expires_at),
+       -- An explicit expiresAt in the patch (including null) replaces the
+       -- stored value; an absent one keeps it. COALESCE alone made expiry
+       -- impossible to clear.
+       expires_at = CASE WHEN $20 THEN $12 ELSE expires_at END,
        max_devices = COALESCE($13, max_devices),
        email = COALESCE($14, email),
        usage = COALESCE($15, usage),
@@ -237,6 +240,7 @@ export async function updateIdentity(id, patch) {
       patch.mac ?? null,
       patch.notify ?? null,
       patch.storeLocally ?? null,
+      'expiresAt' in patch,
     ]
   );
   return rows[0] ? rowToIdentity(rows[0]) : null;

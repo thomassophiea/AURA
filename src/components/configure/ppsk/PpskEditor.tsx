@@ -64,6 +64,17 @@ interface Form {
   mac: string;
   passphrase: string;
   notify: boolean;
+  /** datetime-local value; empty = never expires. */
+  expiresAt: string;
+}
+
+/** ISO timestamp → the local-time string a datetime-local input expects. */
+export function isoToLocalInput(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function fromRecord(record: PpskIdentity | null): Form {
@@ -81,6 +92,7 @@ function fromRecord(record: PpskIdentity | null): Form {
     mac: record?.mac ?? '',
     passphrase: '',
     notify: record?.notify ?? false,
+    expiresAt: isoToLocalInput(record?.expiresAt),
   };
 }
 
@@ -121,6 +133,8 @@ export function PpskEditor({
         !/^([0-9a-fA-F]{2}([:-]?)){5}[0-9a-fA-F]{2}$/.test(form.mac))
       e.mac = 'Enter a MAC like AA:BB:CC:DD:EE:FF';
     if (form.scope !== 'global' && !form.scopeRef.trim()) e.scopeRef = 'Name the Site or Site Group';
+    if (form.expiresAt && Number.isNaN(new Date(form.expiresAt).getTime()))
+      e.expiresAt = 'Enter a valid date and time';
     return e;
   }, [form, isEdit]);
   const valid = Object.keys(errors).length === 0;
@@ -159,6 +173,8 @@ export function PpskEditor({
       macMode: form.usage === 'single' ? form.macMode : null,
       mac: form.usage === 'single' && form.macMode === 'specify' ? form.mac.trim() || null : null,
       notify: form.notify,
+      // Always sent: an explicit null clears a previously set expiry.
+      expiresAt: form.expiresAt ? new Date(form.expiresAt).toISOString() : null,
     };
     if (form.passphrase) payload.passphrase = form.passphrase;
     await onSave(payload);
@@ -299,6 +315,26 @@ export function PpskEditor({
                 )}
               </div>
             )}
+            <div className="mt-3">
+              <Label htmlFor="k-expires">
+                Expires<OptionalTag />
+              </Label>
+              <div className="mt-1 flex items-center gap-2">
+                <Input id="k-expires" type="datetime-local" className="max-w-[240px]"
+                  value={form.expiresAt} onChange={(e) => set('expiresAt', e.target.value)} />
+                {form.expiresAt && (
+                  <button type="button" className="text-xs font-semibold text-primary hover:underline"
+                    onClick={() => set('expiresAt', '')}>
+                    Clear
+                  </button>
+                )}
+              </div>
+              {errors.expiresAt ? (
+                <p className="mt-1 text-xs text-destructive">{errors.expiresAt}</p>
+              ) : (
+                <InheritNote>The key stops authenticating and leaves the wpa_psk_file after this time. Empty = never expires.</InheritNote>
+              )}
+            </div>
           </section>
 
           {/* CREDENTIAL */}

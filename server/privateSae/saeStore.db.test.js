@@ -144,4 +144,28 @@ describe.skipIf(!hasTestDatabase)('saeStore (PostgreSQL)', () => {
     expect(await getCredential(a.id)).toBeNull();
     expect(await listCredentials()).toHaveLength(1);
   });
+
+  it('expiry: explicit null clears, absence keeps, value sets', async () => {
+    const future = new Date(Date.now() + 86400000).toISOString();
+    const created = await createCredential({
+      name: 'Expiring-Key',
+      passphrase: 'Expire-7284-ThisIsLongEnough',
+      expiresAt: future,
+    });
+    expect(new Date(created.expiresAt).toISOString()).toBe(future);
+
+    // A patch WITHOUT expiresAt keeps the stored value.
+    const renamed = await updateCredential(created.id, { description: 'still expiring' });
+    expect(new Date(renamed.expiresAt).toISOString()).toBe(future);
+
+    // An explicit null clears it — the UI's "Clear" control depends on this.
+    const cleared = await updateCredential(created.id, { expiresAt: null });
+    expect(cleared.expiresAt).toBeNull();
+
+    // And a new value sets it again.
+    const later = new Date(Date.now() + 172800000).toISOString();
+    const reset = await updateCredential(created.id, { expiresAt: later });
+    expect(new Date(reset.expiresAt).toISOString()).toBe(later);
+  });
+
 });

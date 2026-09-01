@@ -10,8 +10,8 @@
  * rather than pretending the mechanisms are identical. Legacy view ids
  * `configure-ppsk` / `configure-private-sae` deep-link to the matching tab.
  */
-import { useState } from 'react';
-import { KeyRound } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { KeyRound, ShieldOff } from 'lucide-react';
 import { Badge } from '../../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import { consumeConfigureTabHint } from '../catalog/configureNav';
@@ -31,6 +31,25 @@ export function PrivateCredentialsPage({ initialType }: PrivateCredentialsPagePr
   const [tab, setTab] = useState<string>(
     () => initialType ?? consumeConfigureTabHint(TAB_VALUES) ?? 'ppsk'
   );
+
+  // Server-side gate mirror (/api/settings/public → PRIVATE_SAE_ENABLED).
+  // null = unknown (endpoint unreachable): render the page as before rather
+  // than falsely reporting the feature disabled.
+  const [saeEnabled, setSaeEnabled] = useState<boolean | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/settings/public', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s) => {
+        if (alive && s && typeof s.privateSaeEnabled === 'boolean') {
+          setSaeEnabled(s.privateSaeEnabled);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   return (
     <div className="space-y-4 p-6">
@@ -69,7 +88,19 @@ export function PrivateCredentialsPage({ initialType }: PrivateCredentialsPagePr
           <PpskPage embedded />
         </TabsContent>
         <TabsContent value="psae">
-          <PrivateSaePage embedded />
+          {saeEnabled === false ? (
+            <div className="mt-4 flex flex-col items-center gap-2 rounded-md border border-border bg-muted/40 px-6 py-12 text-center">
+              <ShieldOff className="h-8 w-8 text-muted-foreground" aria-hidden />
+              <p className="text-sm font-medium">Private SAE is not enabled on this deployment</p>
+              <p className="max-w-md text-sm text-muted-foreground">
+                Set <code className="font-mono text-xs">PRIVATE_SAE_ENABLED=true</code> on the AURA
+                service to activate per-user WPA3-SAE credentials. Pre-Shared Keys (WPA2) remain
+                fully available.
+              </p>
+            </div>
+          ) : (
+            <PrivateSaePage embedded />
+          )}
         </TabsContent>
       </Tabs>
     </div>

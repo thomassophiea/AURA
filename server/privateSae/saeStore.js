@@ -219,7 +219,8 @@ export async function updateCredential(id, patch) {
        scope = COALESCE($11, scope),
        scope_ref = COALESCE($12, scope_ref),
        enabled = COALESCE($13, enabled),
-       expires_at = COALESCE($14, expires_at),
+       -- Explicit expiresAt (including null) replaces; absent keeps.
+       expires_at = CASE WHEN $19 THEN $14 ELSE expires_at END,
        max_devices = COALESCE($15, max_devices),
        email = COALESCE($16, email),
        notify = COALESCE($17, notify),
@@ -246,6 +247,7 @@ export async function updateCredential(id, patch) {
       patch.email ?? null,
       patch.notify ?? null,
       patch.storeLocally ?? null,
+      'expiresAt' in patch,
     ]
   );
   if (!rows[0]) return null;

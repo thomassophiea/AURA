@@ -114,4 +114,29 @@ describe.skipIf(!hasTestDatabase)('ppskStore (PostgreSQL)', () => {
     expect(await getIdentity(a.id)).toBeNull();
     expect(await listIdentities()).toHaveLength(1);
   });
+
+  it('expiry: explicit null clears, absence keeps, value sets', async () => {
+    const future = new Date(Date.now() + 86400000).toISOString();
+    const created = await createIdentity({
+      name: 'Expiring-Key',
+      ssid: 'Aura-PPSK-Lab',
+      passphrase: 'Expire-7284',
+      expiresAt: future,
+    });
+    expect(new Date(created.expiresAt).toISOString()).toBe(future);
+
+    // A patch WITHOUT expiresAt keeps the stored value.
+    const renamed = await updateIdentity(created.id, { description: 'still expiring' });
+    expect(new Date(renamed.expiresAt).toISOString()).toBe(future);
+
+    // An explicit null clears it — the UI's "Clear" control depends on this.
+    const cleared = await updateIdentity(created.id, { expiresAt: null });
+    expect(cleared.expiresAt).toBeNull();
+
+    // And a new value sets it again.
+    const later = new Date(Date.now() + 172800000).toISOString();
+    const reset = await updateIdentity(created.id, { expiresAt: later });
+    expect(new Date(reset.expiresAt).toISOString()).toBe(later);
+  });
+
 });
