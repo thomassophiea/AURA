@@ -64,72 +64,39 @@ class SimpleServiceMappingService {
     return `Role ${shortId}`;
   }
 
-  // Simple data loading - only called once
+  // Simple data loading - only called once.
+  //
+  // Goes through apiService — same-origin proxy, auth, refresh — like every
+  // other read. The previous implementation fetched the controller's public
+  // URL directly, which the app's CSP (`connect-src 'self'`) blocks outright,
+  // so neither map ever loaded and every lookup fell back to the synthetic
+  // "Role <uuid-prefix>" / "Service <uuid-prefix>" placeholders.
   private async loadData(): Promise<void> {
     if (this.loaded) return;
 
-    const accessToken = apiService.getAccessToken();
-    if (!accessToken) {
-      this.loaded = true;
-      return;
-    }
-
-    const { tenantService } = await import('./tenantService');
-    const controllerUrl = tenantService.getControllerUrl();
-    if (!controllerUrl) {
-      this.loaded = true;
-      return;
-    }
-
-    const headers = {
-      Authorization: `Bearer ${accessToken}`,
-      Accept: 'application/json',
-    };
-
     try {
-      // Load services
-      const servicesResponse = await fetch(`${controllerUrl}/management/v1/services`, {
-        headers,
-        signal: AbortSignal.timeout(5000),
-      });
-
-      if (servicesResponse.ok) {
-        const servicesData = await servicesResponse.json();
-        if (Array.isArray(servicesData)) {
-          servicesData.forEach((service: Record<string, unknown>) => {
-            if (service && service.id) {
-              this.services.set(service.id as string, {
-                ssid: (service.ssid as string) || 'N/A',
-                networkName: (service.name as string) || 'N/A',
-                vlan: String(service.vlan ?? service.dot1dPortNumber ?? 'N/A'),
-              });
-            }
+      const services = await apiService.getServices();
+      services.forEach((service: Record<string, unknown>) => {
+        if (service && service.id) {
+          this.services.set(service.id as string, {
+            ssid: (service.ssid as string) || 'N/A',
+            networkName: (service.name as string) || 'N/A',
+            vlan: String(service.vlan ?? service.dot1dPortNumber ?? 'N/A'),
           });
         }
-      }
+      });
     } catch {
       // silently suppress — services endpoint may not be available
     }
 
     try {
-      // Load roles — the controller serves the role catalogue at v3 only;
-      // /management/roles is a Jetty 404 and used to make every lookup fall
-      // back to the synthetic "Role <uuid-prefix>" placeholder.
-      const rolesResponse = await fetch(`${controllerUrl}/management/v3/roles`, {
-        headers,
-        signal: AbortSignal.timeout(5000),
-      });
-
-      if (rolesResponse.ok) {
-        const rolesData = await rolesResponse.json();
-        if (Array.isArray(rolesData)) {
-          rolesData.forEach((role: Record<string, unknown>) => {
-            if (role?.id && role?.name) {
-              this.roles.set(role.id as string, role.name as string);
-            }
-          });
+      // The role catalogue lives at /v3/roles; /management/roles is a 404.
+      const roles = await apiService.getRoles();
+      roles.forEach((role: Record<string, unknown>) => {
+        if (role?.id && role?.name) {
+          this.roles.set(role.id as string, role.name as string);
         }
-      }
+      });
     } catch {
       // silently suppress — roles endpoint may not be available on all systems
     }
