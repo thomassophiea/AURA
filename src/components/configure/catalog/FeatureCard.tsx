@@ -65,6 +65,10 @@ function FeatureCardImpl({ item, accent, count, onSelect }: FeatureCardProps) {
   const Icon = item.icon;
   const dim = count === 0;
   const interactive = item.viewId !== null;
+  // Count rule: only collection-backed cards carry a count badge. An editor or
+  // settings surface has no countKey and shows nothing — a dash there would
+  // wrongly read as "failed to load".
+  const showCount = item.countKey !== undefined;
 
   const handleClick = () => {
     if (item.viewId) {
@@ -129,7 +133,7 @@ function FeatureCardImpl({ item, accent, count, onSelect }: FeatureCardProps) {
           <p className="truncate text-xs text-muted-foreground">{item.description}</p>
         )}
       </div>
-      <CountBadge count={count} accent={accent} />
+      {showCount && <CountBadge count={count} accent={accent} />}
     </Card>
   );
 }

@@ -59,7 +59,9 @@ function ArchNodeCard({
       </span>
       <div className="min-w-0">
         <div className="truncate text-sm font-semibold text-foreground">{node.label}</div>
-        <div className="text-xs text-muted-foreground">{countLabel(count)}</div>
+        {/* Only collection-backed nodes carry a count; a dash on an editor
+            surface would wrongly read as a load failure. */}
+        {node.countKey && <div className="text-xs text-muted-foreground">{countLabel(count)}</div>}
       </div>
     </Card>
   );
