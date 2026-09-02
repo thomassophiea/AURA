@@ -329,7 +329,7 @@ export function CloudPortalPage() {
               )}
               {group === 'experience' && (
                 <>
-                  <BrandingSection view={view} form={form} patch={patch} />
+                  <BrandingSection view={view} form={form} patch={patch} onImagesChanged={() => void refresh()} />
                   <LanguagesSection view={view} form={form} patch={patch} />
                   <AccessibilitySection />
                 </>

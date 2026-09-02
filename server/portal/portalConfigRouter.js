@@ -16,6 +16,8 @@ import {
   loadCwpConfig,
   getPortalConfig as cwpGetPortalConfig,
   updatePortalConfig as cwpUpdatePortalConfig,
+  uploadPortalImage as cwpUploadPortalImage,
+  clearPortalImage as cwpClearPortalImage,
   CwpRequestError,
   CwpUnavailableError,
 } from '../guests/cwpClient.js';
@@ -47,12 +49,21 @@ function respondToCwpError(res, error) {
 
 export function createPortalConfigRouter({
   requireAuthFn = null,
-  cwp = { get: cwpGetPortalConfig, update: cwpUpdatePortalConfig },
+  cwp = {
+    get: cwpGetPortalConfig,
+    update: cwpUpdatePortalConfig,
+    uploadImage: cwpUploadPortalImage,
+    clearImage: cwpClearPortalImage,
+  },
   configFn = loadCwpConfig,
   fetchFn = null,
 } = {}) {
   const router = Router();
   const jsonBody = expressJson({ limit: '16kb' });
+  // The background image alone is allowed up to 5 MB of real bytes on the
+  // portal side; base64 inflates that by ~1/3, plus the small JSON
+  // envelope around it — 8 MB covers both fields with headroom.
+  const imageJsonBody = expressJson({ limit: '8mb' });
   const requireGatewayAuth = requireAuthFn ?? createRequireGatewayAuth({ fetchFn });
 
   router.use('/v1/portal-config', requireGatewayAuth);
@@ -89,6 +100,31 @@ export function createPortalConfigRouter({
     }
     try {
       return res.json(await cwp.update(req.body, { config, actor: actorFrom(req) }));
+    } catch (error) {
+      return respondToCwpError(res, error);
+    }
+  });
+
+  router.put('/v1/portal-config/:kind(logo|background)', imageJsonBody, async (req, res) => {
+    const config = ensureConfigured(res);
+    if (!config) return undefined;
+    if (typeof req.body !== 'object' || req.body === null || Array.isArray(req.body)) {
+      return res.status(400).json({ error: 'Body must be a JSON object' });
+    }
+    try {
+      return res.json(
+        await cwp.uploadImage(req.params.kind, req.body, { config, actor: actorFrom(req) })
+      );
+    } catch (error) {
+      return respondToCwpError(res, error);
+    }
+  });
+
+  router.delete('/v1/portal-config/:kind(logo|background)', async (req, res) => {
+    const config = ensureConfigured(res);
+    if (!config) return undefined;
+    try {
+      return res.json(await cwp.clearImage(req.params.kind, { config, actor: actorFrom(req) }));
     } catch (error) {
       return respondToCwpError(res, error);
     }

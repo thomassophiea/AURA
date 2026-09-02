@@ -48,6 +48,12 @@ export interface PortalBrandingView {
   alignment: 'left' | 'center' | 'right';
   /** null = legacy portal-name footer; true = branded line; false = none. */
   footer: boolean | null;
+  /** Always resolvable — the bundled Extreme mark when nothing is uploaded. */
+  logoUrl: string;
+  /** Whether `logoUrl` is an operator upload rather than the default. */
+  hasCustomLogo: boolean;
+  /** Null when no background image has ever been set. */
+  backgroundUrl: string | null;
 }
 
 export interface PortalLegalView {
@@ -249,8 +255,8 @@ function buildHeaders(): Record<string, string> {
   return headers;
 }
 
-async function request<T>(init: RequestInit = {}): Promise<T> {
-  const response = await fetch(BASE, { ...init, headers: buildHeaders() });
+async function request<T>(init: RequestInit = {}, path: string = BASE): Promise<T> {
+  const response = await fetch(path, { ...init, headers: buildHeaders() });
   if (!response.ok) {
     let body: Record<string, unknown> = {};
     try {
@@ -302,4 +308,39 @@ export function resetPortalEcpInfoCache(): void {
 
 export function updatePortalConfig(update: PortalConfigUpdate): Promise<PortalConfigView> {
   return request<PortalConfigView>({ method: 'PUT', body: JSON.stringify(update) });
+}
+
+// ---------------------------------------------------------------------------
+// Brand images — logo and background. Separate from `updatePortalConfig`
+// because a base64 image payload does not belong inside that endpoint's
+// otherwise-small JSON body; validation (size, decoded pixel dimensions) is
+// the portal's, same as every other value here — this file only relays.
+
+export type BrandImageKind = 'logo' | 'background';
+
+export interface BrandImageUploadResult {
+  width: number;
+  height: number;
+  bytes: number;
+  branding: PortalBrandingView;
+}
+
+/**
+ * `file` is read client-side and sent as a `data:<mime>;base64,...` URL —
+ * the same shape `FileReader.readAsDataURL` produces, so a caller can pass
+ * its result straight through.
+ */
+export function uploadPortalImage(
+  kind: BrandImageKind,
+  dataUrl: string,
+  mimeType: string
+): Promise<BrandImageUploadResult> {
+  return request<BrandImageUploadResult>(
+    { method: 'PUT', body: JSON.stringify({ data: dataUrl, mimeType }) },
+    `${BASE}/${kind}`
+  );
+}
+
+export function clearPortalImage(kind: BrandImageKind): Promise<{ branding: PortalBrandingView }> {
+  return request<{ branding: PortalBrandingView }>({ method: 'DELETE' }, `${BASE}/${kind}`);
 }
