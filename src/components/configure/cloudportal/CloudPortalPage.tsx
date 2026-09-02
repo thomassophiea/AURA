@@ -43,7 +43,7 @@ import {
   SecureAccessSection,
   SponsorshipSection,
 } from './editorSections';
-import { BrandingSection, LanguagesSection } from './experienceSections';
+import { AccessibilitySection, BrandingSection, LanguagesSection } from './experienceSections';
 import { LegalDocumentsSection, LegalPrivacySection } from './factSections';
 import { selectedAccessPolicy } from './portalFormModel';
 import { GuestPreview } from './GuestPreview';
@@ -75,6 +75,7 @@ function statusChips(view: PortalConfigView) {
         <Badge variant="outline">Access: {view.effective.accessPolicy}</Badge>
       )}
       {view.preview && <Badge variant="outline">{view.preview.locales.length} languages</Badge>}
+      <Badge variant="outline">WCAG 2.1 AA</Badge>
     </div>
   );
 }
@@ -330,6 +331,7 @@ export function CloudPortalPage() {
                 <>
                   <BrandingSection view={view} form={form} patch={patch} />
                   <LanguagesSection view={view} form={form} patch={patch} />
+                  <AccessibilitySection />
                 </>
               )}
               {group === 'legal' && (
