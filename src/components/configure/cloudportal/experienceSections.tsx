@@ -129,6 +129,55 @@ export function BrandingSection({ view, form, patch }: EditorSectionProps) {
   );
 }
 
+/**
+ * Accessibility is a guarantee the portal makes, not a setting — there is no
+ * switch here because there is nothing to turn on or off. Shipped 2026-09-02
+ * (WCAG 2.1 AA), triggered by a field-team report from SUNY Potsdam: a
+ * visually impaired student could not self-register for guest Wi-Fi with a
+ * screen reader. Worth surfacing here rather than only in the portal's own
+ * docs — it is a real answer to a public-sector procurement question ("does
+ * your captive portal have an ACR / VPAT position"), and this is the page an
+ * SE pulls up mid-call.
+ */
+export function AccessibilitySection() {
+  return (
+    <Section
+      title="Accessibility"
+      description="Every guest page meets WCAG 2.1 AA out of the box. Nothing below is a toggle — there is no setting because it is never off."
+    >
+      <ul className="space-y-2 text-sm text-muted-foreground">
+        <li>
+          <span className="font-medium text-foreground">Screen readers get the right language.</span>{' '}
+          <code className="text-xs">&lt;html lang&gt;</code> and the page title follow the guest&apos;s
+          resolved locale on every page, not a hardcoded default.
+        </li>
+        <li>
+          <span className="font-medium text-foreground">A session that&apos;s about to expire says so.</span>{' '}
+          Consent, the sponsor wait screen, and secure setup all warn at the two-minute mark with a
+          keyboard-operable way to extend, instead of silently dropping the guest.
+        </li>
+        <li>
+          <span className="font-medium text-foreground">State changes are announced.</span> Sponsor
+          approval and denial are read out to a screen reader the moment they happen — not only shown
+          visually.
+        </li>
+        <li>
+          <span className="font-medium text-foreground">Contrast is measured, not eyeballed.</span> The
+          4.5:1 check on the brand colour above is the same check the portal itself re-runs on save.
+        </li>
+        <li>
+          <span className="font-medium text-foreground">It stays that way.</span> A WCAG 2.x automated
+          scan runs in the portal&apos;s CI on every change and fails the build on a real violation.
+        </li>
+      </ul>
+      <p className="text-xs text-muted-foreground">
+        Independent third-party audit and a portal-specific VPAT/ACR are not done yet — that is a
+        procurement step, not a code change.
+      </p>
+    </Section>
+  );
+}
+
 export function LanguagesSection({ view, form, patch }: EditorSectionProps) {
   const catalogue = view.preview?.locales ?? [];
   const supported = view.effective.enabledLocales !== undefined && catalogue.length > 0;
