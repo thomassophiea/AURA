@@ -48,19 +48,20 @@ function limitMessage(limits: ImageLimits): string {
   return `Invalid image: ${sizeText}.`;
 }
 
-function readImageDimensions(file: File): Promise<{ width: number; height: number }> {
+/**
+ * Reads pixel dimensions from a data: URL, not a `URL.createObjectURL`
+ * blob: URL — AURA's own `img-src` CSP is `'self' data: https:`, no
+ * `blob:`, so a blob-URL `<img>` silently fails to load here and every
+ * upload would report "not a readable image" regardless of the real file.
+ * Caught live: a correctly-sized PNG was rejected until this switched to
+ * `data:`, which the same policy already allows.
+ */
+function readImageDimensions(dataUrl: string): Promise<{ width: number; height: number }> {
   return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
     const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve({ width: img.naturalWidth, height: img.naturalHeight });
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error('not a readable image'));
-    };
-    img.src = url;
+    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    img.onerror = () => reject(new Error('not a readable image'));
+    img.src = dataUrl;
   });
 }
 
@@ -99,10 +100,7 @@ export function UploadImageModal({
     setError(null);
     setDragOver(false);
     setUploading(false);
-    setPreviewUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return null;
-    });
+    setPreviewUrl(null);
   }, []);
 
   const close = useCallback(
@@ -124,8 +122,10 @@ export function UploadImageModal({
         setError(limitMessage(limits));
         return;
       }
+      let dataUrl: string;
       try {
-        const { width, height } = await readImageDimensions(candidate);
+        dataUrl = await readAsDataUrl(candidate);
+        const { width, height } = await readImageDimensions(dataUrl);
         if ((limits.maxWidth && width > limits.maxWidth) || (limits.maxHeight && height > limits.maxHeight)) {
           setError(limitMessage(limits));
           return;
@@ -135,10 +135,7 @@ export function UploadImageModal({
         return;
       }
       setFile(candidate);
-      setPreviewUrl((prev) => {
-        if (prev) URL.revokeObjectURL(prev);
-        return URL.createObjectURL(candidate);
-      });
+      setPreviewUrl(dataUrl);
     },
     [limits]
   );
@@ -154,12 +151,14 @@ export function UploadImageModal({
   );
 
   const upload = useCallback(async () => {
-    if (!file) return;
+    if (!file || !previewUrl) return;
     setUploading(true);
     setError(null);
     try {
-      const dataUrl = await readAsDataUrl(file);
-      await uploadPortalImage(kind, dataUrl, file.type);
+      // Already read once in `acceptFile` to check dimensions — the same
+      // data: URL is exactly what the upload needs, so this reuses it
+      // rather than reading the file from disk a second time.
+      await uploadPortalImage(kind, previewUrl, file.type);
       onUploaded();
       close(false);
     } catch (err) {
@@ -170,7 +169,7 @@ export function UploadImageModal({
       );
       setUploading(false);
     }
-  }, [file, kind, onUploaded, close]);
+  }, [file, previewUrl, kind, onUploaded, close]);
 
   return (
     <Dialog open={open} onOpenChange={close}>
