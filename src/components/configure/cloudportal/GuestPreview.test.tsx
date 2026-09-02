@@ -187,4 +187,55 @@ describe('GuestPreview', () => {
     render(<GuestPreview view={view} form={formFromView(view)} />);
     expect(screen.getByText(/needs the updated portal service/)).toBeInTheDocument();
   });
+
+  it('renders the effective logo, not a draft value — upload applies immediately', () => {
+    const view = makeView();
+    view.effective.branding = {
+      color: '#2563eb',
+      alignment: 'center',
+      footer: null,
+      logoUrl: 'https://portal.example.com/portal-assets/logo?v=1',
+      hasCustomLogo: true,
+      backgroundUrl: null,
+    };
+    // The mockup's logo is `alt=""` (decorative — the real page's copy of
+    // it, not this one, is what a screen reader needs), so it has no
+    // accessible name and does not carry role="img"; find it by tag.
+    const { container } = render(<GuestPreview view={view} form={formFromView(view)} />);
+    const logo = container.querySelector('img');
+    expect(logo).toHaveAttribute('src', 'https://portal.example.com/portal-assets/logo?v=1');
+  });
+
+  it('paints the background image when one is configured', () => {
+    const view = makeView();
+    view.effective.branding = {
+      color: '#2563eb',
+      alignment: 'center',
+      footer: null,
+      logoUrl: 'https://portal.example.com/portal-assets/logo?v=0',
+      hasCustomLogo: false,
+      backgroundUrl: 'https://portal.example.com/portal-assets/background?v=1',
+    };
+    const { container } = render(<GuestPreview view={view} form={formFromView(view)} />);
+    const frame = container.querySelector('.rounded-\\[24px\\]');
+    expect(frame).toHaveStyle({
+      backgroundImage: 'url(https://portal.example.com/portal-assets/background?v=1)',
+    });
+  });
+
+  it('draws no logo at all under the open policy — there is no page to put it on', () => {
+    const view = makeView();
+    const form = formFromView(view);
+    form.accessPolicy = 'open';
+    view.effective.branding = {
+      color: '#2563eb',
+      alignment: 'center',
+      footer: null,
+      logoUrl: 'https://portal.example.com/portal-assets/logo?v=0',
+      hasCustomLogo: false,
+      backgroundUrl: null,
+    };
+    const { container } = render(<GuestPreview view={view} form={form} />);
+    expect(container.querySelector('img')).toBeNull();
+  });
 });

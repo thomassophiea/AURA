@@ -170,3 +170,16 @@ export function getPortalConfig(options = {}) {
 export function updatePortalConfig(body, options = {}) {
   return cwpRequest('/api/internal/config', { ...options, method: 'PUT', body });
 }
+
+/**
+ * Logo and background image. Their own routes, not fields on
+ * `updatePortalConfig` — a base64 image payload is a different size class
+ * (kilobytes to low megabytes) than every other value this client relays.
+ */
+export function uploadPortalImage(kind, body, options = {}) {
+  return cwpRequest(`/api/internal/config/${kind}`, { ...options, method: 'PUT', body });
+}
+
+export function clearPortalImage(kind, options = {}) {
+  return cwpRequest(`/api/internal/config/${kind}`, { ...options, method: 'DELETE' });
+}

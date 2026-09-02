@@ -104,6 +104,12 @@ export function GuestPreview({ view, form }: GuestPreviewProps) {
   // Look, exactly as the portal resolves it: draft override, else effective.
   const brandColor = form.brandColor || view.effective.branding?.color || '#2563eb';
   const alignment = form.brandAlignment || view.effective.branding?.alignment || 'center';
+  // Logo and background are not draft-edited (upload applies immediately,
+  // like the portal's own upload endpoint) — always the effective value.
+  const logoUrl = view.effective.branding?.logoUrl;
+  const backgroundUrl = view.effective.branding?.backgroundUrl;
+  const logoJustify =
+    alignment === 'left' ? 'justify-start' : alignment === 'right' ? 'justify-end' : 'justify-center';
   const termsShown = form.termsText.trim() || messages.consent.terms;
   const privacyPolicyText =
     form.privacyPolicyText.trim() || view.envDefaults.privacyPolicyText || '';
@@ -130,8 +136,16 @@ export function GuestPreview({ view, form }: GuestPreviewProps) {
         </Select>
       </div>
 
-      <div className="mx-auto w-full max-w-[340px] overflow-hidden rounded-[24px] border-4 border-[#1e293b] bg-[#ffffff] shadow-lg">
+      <div
+        className="mx-auto w-full max-w-[340px] overflow-hidden rounded-[24px] border-4 border-[#1e293b] bg-[#ffffff] bg-cover bg-center shadow-lg"
+        style={backgroundUrl ? { backgroundImage: `url(${backgroundUrl})` } : undefined}
+      >
         <div className="max-h-[560px] overflow-y-auto p-4 text-left">
+          {policy !== 'open' && logoUrl && (
+            <div className={`mb-3 flex ${logoJustify}`}>
+              <img src={logoUrl} alt="" className="h-8 max-w-[60%] object-contain" />
+            </div>
+          )}
           {policy === 'open' ? (
             <div className="flex min-h-[240px] flex-col items-center justify-center gap-2 px-4 text-center">
               <p className="text-xs font-semibold text-[#0f172a]">No portal page is drawn</p>

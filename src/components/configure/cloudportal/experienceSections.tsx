@@ -1,10 +1,10 @@
 /**
  * Experience group: the look of the guest page (primary colour, alignment,
- * footer) and the languages offered to guests. Both drive the live preview.
- * Logo and background-image upload need an asset store the portal does not
- * have yet, so the page says so instead of drawing dead drop zones.
+ * footer, logo, background) and the languages offered to guests. All of it
+ * drives the live preview.
  */
-import { Check } from 'lucide-react';
+import { useState } from 'react';
+import { Check, RotateCcw, UploadCloud } from 'lucide-react';
 import { Badge } from '../../ui/badge';
 import { Input } from '../../ui/input';
 import { cn } from '../../ui/utils';
@@ -17,6 +17,8 @@ import {
   type FormState,
 } from './portalFormModel';
 import type { EditorSectionProps } from './editorSections';
+import { UploadImageModal } from './UploadImageModal';
+import { clearPortalImage, type BrandImageKind } from '../../../services/portalConfigService';
 
 // Radix Select refuses an empty-string item value, so the default carries a
 // sentinel and is mapped back to '' (no override) on change.
@@ -33,8 +35,83 @@ const FOOTER_OPTIONS = [
   { id: 'none', label: 'No footer line' },
 ] as const;
 
-export function BrandingSection({ view, form, patch }: EditorSectionProps) {
+function ImageTile({
+  label,
+  kind,
+  previewUrl,
+  isCustom,
+  disabled,
+  onOpenUpload,
+  onReset,
+}: {
+  label: string;
+  kind: BrandImageKind;
+  previewUrl: string | null | undefined;
+  /** Whether there is something to reset — false means already at the default/empty state. */
+  isCustom: boolean;
+  disabled: boolean;
+  onOpenUpload: () => void;
+  onReset: () => void;
+}) {
+  const [resetting, setResetting] = useState(false);
+  return (
+    <div className="space-y-1.5">
+      <span className="text-sm">{label}</span>
+      <button
+        type="button"
+        onClick={onOpenUpload}
+        disabled={disabled}
+        className={cn(
+          'flex h-20 w-full items-center justify-center overflow-hidden rounded-md border border-dashed border-border bg-muted/30 transition-colors hover:bg-accent/30',
+          disabled && 'cursor-not-allowed opacity-50'
+        )}
+        aria-label={`Upload ${label.toLowerCase()}`}
+      >
+        {previewUrl ? (
+          <img
+            src={previewUrl}
+            alt=""
+            className={kind === 'logo' ? 'h-12 max-w-[80%] object-contain' : 'h-full w-full object-cover'}
+          />
+        ) : (
+          <UploadCloud className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
+        )}
+      </button>
+      {isCustom ? (
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 text-xs text-muted-foreground underline hover:text-foreground disabled:opacity-50"
+          disabled={disabled || resetting}
+          onClick={async () => {
+            setResetting(true);
+            try {
+              await clearPortalImage(kind);
+            } finally {
+              setResetting(false);
+            }
+            onReset();
+          }}
+        >
+          <RotateCcw className="h-3 w-3" aria-hidden="true" />
+          {resetting ? 'Resetting…' : kind === 'logo' ? 'Use default' : 'Remove'}
+        </button>
+      ) : (
+        <span className="text-xs text-muted-foreground">
+          {kind === 'logo' ? 'Extreme default' : 'None set'}
+        </span>
+      )}
+    </div>
+  );
+}
+
+export function BrandingSection({
+  view,
+  form,
+  patch,
+  onImagesChanged,
+}: EditorSectionProps & { onImagesChanged: () => void }) {
   const supported = view.effective.branding !== undefined;
+  const [uploadModal, setUploadModal] = useState<BrandImageKind | null>(null);
   const effectiveColor = form.brandColor || view.effective.branding?.color || '#2563eb';
   const customValid = form.brandColor === '' || isAcceptableBrandColor(form.brandColor);
   return (
@@ -121,10 +198,44 @@ export function BrandingSection({ view, form, patch }: EditorSectionProps) {
         disabled={!supported}
         description="The one line under the page, on every guest screen."
       />
+      <div className="grid grid-cols-2 gap-4 max-w-sm">
+        <ImageTile
+          label="Logo"
+          kind="logo"
+          previewUrl={view.effective.branding?.logoUrl}
+          isCustom={Boolean(view.effective.branding?.hasCustomLogo)}
+          disabled={!supported}
+          onOpenUpload={() => setUploadModal('logo')}
+          onReset={onImagesChanged}
+        />
+        <ImageTile
+          label="Background"
+          kind="background"
+          previewUrl={view.effective.branding?.backgroundUrl}
+          isCustom={Boolean(view.effective.branding?.backgroundUrl)}
+          disabled={!supported}
+          onOpenUpload={() => setUploadModal('background')}
+          onReset={onImagesChanged}
+        />
+      </div>
       <p className="text-xs text-muted-foreground">
-        Logo and background-image upload need an asset store the portal does not have yet — the
-        guest page renders its shipped layout until then.
+        The logo appears at the top of every guest screen; the background fills the page behind
+        the card. Extreme&apos;s mark is the logo default — there is no default background image.
       </p>
+
+      {uploadModal && (
+        <UploadImageModal
+          kind={uploadModal}
+          open={uploadModal !== null}
+          onOpenChange={(open) => {
+            if (!open) setUploadModal(null);
+          }}
+          onUploaded={() => {
+            setUploadModal(null);
+            onImagesChanged();
+          }}
+        />
+      )}
     </Section>
   );
 }
