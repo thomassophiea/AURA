@@ -23,6 +23,12 @@ import { attachConsoleShell } from './server/consoleShell.js';
 import { createValidationRouter } from './server/validationEngine/validationRouter.js';
 import { driftMonitor } from './server/validationEngine/driftMonitor.js';
 import { registerResolver } from './server/cortex/toolDispatcher.js';
+import { parseWirelessIntent } from './server/cortex/wirelessIntentParser.js';
+import { validateWlanIntent } from './server/validationEngine/wlanConfigValidator.js';
+import { provisionWlan } from './server/cortex/wlanProvisioningEngine.js';
+import { transcribeWithGroq } from './server/cortex/groqSpeechToText.js';
+import { requireRole } from './server/identity/identityRouter.js';
+import { audit } from './server/identity/identityStore.js';
 import { sentinelEngine } from './server/sentinel/sentinelEngine.js';
 import { createSentinelRouter } from './server/sentinel/sentinelRouter.js';
 import { createSleThresholdsRouter } from './server/sle/thresholdsRouter.js';
@@ -2421,16 +2427,156 @@ app.post(
 );
 
 app.post('/api/cortex/tool-call', requireAuth, jsonParser, (_req, res) => {
-  res.status(501).json({ error: 'Tool calling not yet implemented (Phase 3)' });
+  res.status(501).json({ error: 'Generic tool calling is not exposed to the LLM — see /wireless/intent' });
 });
 
-app.post('/api/cortex/config/preview', requireAuth, jsonParser, (_req, res) => {
-  res.status(501).json({ error: 'Config preview not yet implemented (Phase 3)' });
+// ==================== Push-to-talk speech-to-text ====================
+// Provider-neutral: browser (Web Speech API, no server round-trip, default)
+// or server (Groq Whisper, opt-in via SPEECH_TO_TEXT_PROVIDER=server).
+// Audio is never logged and is discarded immediately after transcription.
+
+const SPEECH_MAX_UPLOAD_BYTES = Number(process.env.SPEECH_MAX_UPLOAD_BYTES) || 8 * 1024 * 1024; // 8 MB
+const SPEECH_MAX_DURATION_SECONDS = Number(process.env.SPEECH_MAX_DURATION_SECONDS) || 60;
+const speechRateLimit = rateLimit({ windowMs: 60_000, max: 10 });
+
+function serverSpeechConfigured() {
+  return process.env.SPEECH_TO_TEXT_PROVIDER === 'server' && Boolean(process.env.GROQ_API_KEY);
+}
+
+app.get('/api/cortex/speech/config', requireAuth, (_req, res) => {
+  res.json({
+    provider: serverSpeechConfigured() ? 'server' : 'browser',
+    maxDurationSeconds: SPEECH_MAX_DURATION_SECONDS,
+    maxUploadBytes: SPEECH_MAX_UPLOAD_BYTES,
+  });
 });
 
-app.post('/api/cortex/config/commit', requireAuth, jsonParser, (_req, res) => {
-  res.status(501).json({ error: 'Config commit not yet implemented (Phase 3)' });
+app.post(
+  '/api/cortex/speech/transcribe',
+  requireAuth,
+  speechRateLimit,
+  express.raw({ type: () => true, limit: SPEECH_MAX_UPLOAD_BYTES }),
+  async (req, res) => {
+    if (!serverSpeechConfigured()) {
+      return res.status(501).json({ error: 'Server-side speech-to-text is not configured' });
+    }
+    const durationHeader = Number(req.headers['x-audio-duration-seconds']);
+    if (Number.isFinite(durationHeader) && durationHeader > SPEECH_MAX_DURATION_SECONDS) {
+      return res.status(413).json({ error: `Audio exceeds the ${SPEECH_MAX_DURATION_SECONDS}s limit` });
+    }
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+      return res.status(400).json({ error: 'No audio data received' });
+    }
+    const mimeType = req.headers['x-audio-mime-type'] || 'audio/webm';
+    try {
+      const result = await transcribeWithGroq(req.body, String(mimeType), {
+        language: req.headers['x-audio-language'],
+      });
+      res.json({ text: result.text, isFinal: true, provider: result.provider });
+    } catch (err) {
+      // err.message may echo Groq's error body, never the audio bytes.
+      console.error('[Cortex] speech transcription failed:', err.message);
+      res.status(502).json({ error: 'Transcription failed' });
+    } finally {
+      req.body = null; // discard the audio buffer as soon as this request is done
+    }
+  }
+);
+
+// ==================== Wireless configuration pipeline ====================
+// parse (deterministic, no LLM) -> validate (plan hash + signed token) ->
+// provision (operator-gated, audited, token-verified). Replaces the old
+// Phase-3 stubs; text/voice intake both land here as plain text.
+
+app.post('/api/cortex/wireless/intent', requireAuth, cortexRateLimit, jsonParser, (req, res) => {
+  const { input, source } = req.body ?? {};
+  if (!input || typeof input !== 'string') {
+    return res.status(400).json({ error: 'input is required' });
+  }
+  try {
+    const parsed = parseWirelessIntent(input, {
+      requestedBy: req.auraActor ?? 'unknown',
+      source: source === 'voice' ? 'voice' : 'text',
+    });
+    res.json(parsed);
+  } catch (err) {
+    console.error('[Cortex] wireless/intent error:', err.message);
+    res.status(500).json({ error: 'Failed to parse instruction' });
+  }
 });
+
+app.post('/api/cortex/wireless/validate', requireAuth, cortexRateLimit, jsonParser, async (req, res) => {
+  const { intent, ephemeralPassword } = req.body ?? {};
+  if (!intent || typeof intent !== 'object') {
+    return res.status(400).json({ error: 'intent is required' });
+  }
+  try {
+    const controllerUrl = req.headers['x-controller-url'] ?? DEFAULT_CONTROLLER_URL ?? '';
+    const authToken = req.headers['x-controller-auth'] ?? req.headers['authorization'] ?? '';
+    const report = await validateWlanIntent(intent, { authToken, controllerUrl, ephemeralPassword });
+    res.json(report);
+  } catch (err) {
+    console.error('[Cortex] wireless/validate error:', err.message);
+    res.status(503).json({ error: 'Validation failed — controller may be unreachable' });
+  }
+});
+
+const cortexOperator = requireRole('operator');
+
+app.post(
+  '/api/cortex/wireless/provision',
+  cortexOperator,
+  cortexRateLimit,
+  jsonParser,
+  async (req, res) => {
+    const { intent, planHash, validationToken, ephemeralPassword, profileIds, approvedBy } = req.body ?? {};
+    if (!intent || !planHash || !validationToken) {
+      return res.status(400).json({ error: 'intent, planHash and validationToken are required' });
+    }
+    const correlationId = crypto.randomUUID();
+    const controllerUrl = req.headers['x-controller-url'] ?? DEFAULT_CONTROLLER_URL ?? '';
+    const authToken = req.headers['x-controller-auth'] ?? req.headers['authorization'] ?? '';
+
+    try {
+      const result = await provisionWlan({
+        intent,
+        planHash,
+        validationToken,
+        ephemeralPassword,
+        // Omit entirely (not []) when the caller didn't supply an explicit
+        // list — [] would mean "bind to zero profiles", not "auto-resolve".
+        ...(profileIds ? { profileIds } : {}),
+        authToken,
+        controllerUrl,
+      });
+
+      audit('cortex.wireless.provision', {
+        actor: req.auraActor,
+        source: req.auraActorSource,
+        target: intent.wlanName ?? intent.ssid ?? 'unknown-wlan',
+        detail: {
+          correlationId,
+          action: intent.action,
+          siteId: intent.siteId ?? null,
+          planHash,
+          status: result.status,
+          approvedBy: approvedBy ?? req.auraActor,
+        },
+      });
+
+      res.status(result.status === 'failed' ? 502 : 200).json({ ...result, correlationId });
+    } catch (err) {
+      console.error('[Cortex] wireless/provision error:', err.message);
+      audit('cortex.wireless.provision', {
+        actor: req.auraActor,
+        source: req.auraActorSource,
+        target: intent.wlanName ?? intent.ssid ?? 'unknown-wlan',
+        detail: { correlationId, status: 'failed', error: err.message },
+      });
+      res.status(500).json({ error: 'Provisioning failed', correlationId });
+    }
+  }
+);
 // ==================== End Cortex Routes ====================
 
 // Proxy all /api/* requests to Campus Controller (with dynamic routing support)
