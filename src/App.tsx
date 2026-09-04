@@ -384,18 +384,6 @@ interface DetailPanelState {
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  // Admin-enabled platform capabilities (fetched post-auth; default off).
-  const [cortexEnabled, setCortexEnabled] = useState(false);
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    fetch('/api/settings/public', { credentials: 'include' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((flags) => {
-        if (flags) setCortexEnabled(Boolean(flags.cortexEnabled));
-      })
-      .catch(() => undefined);
-  }, [isAuthenticated]);
   const [currentPage, setCurrentPage] = useState('service-levels');
   const [navigationScope, setNavigationScope] = useState<NavigationScope>('global');
   const [adminRole, setAdminRole] = useState<string | null>(null);
@@ -1748,10 +1736,9 @@ export default function App() {
                 {renderDetailPanel()}
               </div>
 
-              {/* Floating shell bar + slideout. Available in Dev mode, or for
-                  everyone once an administrator enables AURA Cortex under
-                  Administration (the server refuses Cortex calls otherwise). */}
-              {(theme === 'dev' || cortexEnabled) && networkAssistantEnabled && (
+              {/* Floating shell bar + slideout — Dev theme only, regardless of
+                  whether an administrator has enabled AURA Cortex org-wide. */}
+              {theme === 'dev' && networkAssistantEnabled && (
                 <AgentCoworker
                   onShowClientDetail={handleShowClientDetail}
                   onShowAccessPointDetail={handleShowAccessPointDetail}
