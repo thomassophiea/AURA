@@ -111,4 +111,25 @@ describe('WirelessAssistantPanel', () => {
     await waitFor(() => expect(screen.getByText(/AURA Cortex is disabled/i)).toBeDefined());
     expect(sendMessage).not.toHaveBeenCalled();
   });
+
+  it('shows an honest "recognized, not yet supported" notice for a non-WLAN configuration domain, not chat or the workflow view', async () => {
+    vi.mocked(cortexApiClient.parseWirelessInstruction).mockResolvedValue({
+      intent: { action: 'validate_only', requestedBy: 'u', source: 'text', rawInstruction: 'x' },
+      missingFields: [],
+      ambiguities: ['Local Controller API: POST /v3/roles'],
+      riskLevel: 'low',
+      humanReadable: 'Recognized "Role Configuration" — not yet supported through this assistant.',
+      classification: 'unimplemented',
+      domain: 'role',
+    });
+
+    render(<WirelessAssistantPanel />);
+    const input = screen.getByPlaceholderText(/ask me anything/i);
+    fireEvent.change(input, { target: { value: 'define traffic rules for the role' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    await waitFor(() => expect(screen.getByText(/Role Configuration/i)).toBeDefined());
+    expect(sendMessage).not.toHaveBeenCalled();
+    expect(screen.queryByText(/AURA interpreted/i)).toBeNull();
+  });
 });

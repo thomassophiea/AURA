@@ -34,11 +34,13 @@ export interface UseWirelessAssistantResult {
   validationReport: WirelessValidationReport | null;
   provisioning: WirelessProvisioningResult | null;
   error: string | null;
+  /** A recognized-but-unimplemented-domain message (informational, not a failure) — see classification 'unimplemented'. */
+  notice: string | null;
   canApproveNow: boolean;
 
   /** Returns which pipeline the instruction belongs to, so the caller can
    *  route read-only questions to the existing chat/Q&A path instead. */
-  submitInstruction: (text: string, source: 'voice' | 'text') => Promise<'read_only' | 'mutating' | 'error'>;
+  submitInstruction: (text: string, source: 'voice' | 'text') => Promise<'read_only' | 'mutating' | 'error' | 'unimplemented'>;
   /** Patch any field the operator fills in after a missing-field prompt (site, security, password). Invalidates prior validation. */
   updateIntentField: (patch: Partial<WirelessConfigurationIntent>, password?: string) => void;
   validate: () => Promise<void>;
@@ -54,16 +56,29 @@ export function useWirelessAssistant(): UseWirelessAssistantResult {
   const [validationReport, setValidationReport] = useState<WirelessValidationReport | null>(null);
   const [provisioning, setProvisioning] = useState<WirelessProvisioningResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const ephemeralPasswordRef = useRef<string | undefined>(undefined);
 
   const submitInstruction = useCallback(
-    async (text: string, source: 'voice' | 'text'): Promise<'read_only' | 'mutating' | 'error'> => {
+    async (text: string, source: 'voice' | 'text'): Promise<'read_only' | 'mutating' | 'error' | 'unimplemented'> => {
       setError(null);
+      setNotice(null);
       setTranscript(text);
       setWorkflowState(source === 'voice' ? 'transcribing' : 'entering_text');
       try {
         const result = await parseWirelessInstruction(text, source);
+
+        if (result.classification === 'unimplemented') {
+          // Recognized, real, API-backed — just not configurable through
+          // natural language yet. Informational, not an error: stays out of
+          // the workflow view (no WLAN-shaped intent to show) and out of
+          // the chat pipeline (no LLM call that might paper over the gap).
+          setNotice([result.humanReadable, ...result.ambiguities].join(' '));
+          setWorkflowState('idle');
+          return 'unimplemented';
+        }
+
         ephemeralPasswordRef.current = result._ephemeralPassword;
         setParsedIntent(result);
         setValidationReport(null);
@@ -181,6 +196,7 @@ export function useWirelessAssistant(): UseWirelessAssistantResult {
     setValidationReport(null);
     setProvisioning(null);
     setError(null);
+    setNotice(null);
     setWorkflowState('cancelled');
   }, []);
 
@@ -193,6 +209,7 @@ export function useWirelessAssistant(): UseWirelessAssistantResult {
     validationReport,
     provisioning,
     error,
+    notice,
     canApproveNow,
     submitInstruction,
     updateIntentField,

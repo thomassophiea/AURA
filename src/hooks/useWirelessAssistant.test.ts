@@ -19,6 +19,16 @@ const READ_ONLY: ParsedWirelessIntent = {
   classification: 'read_only',
 };
 
+const UNIMPLEMENTED_DOMAIN: ParsedWirelessIntent = {
+  intent: { action: 'validate_only', requestedBy: 'u', source: 'text', rawInstruction: 'define traffic rules for the role' },
+  missingFields: [],
+  ambiguities: ['Local Controller API: POST /v3/roles', 'AURA support: src/services/configure/rolesService.ts'],
+  riskLevel: 'low',
+  humanReadable: 'Recognized "Role Configuration" — not yet supported through this assistant.',
+  classification: 'unimplemented',
+  domain: 'role',
+};
+
 const COMPLETE_CREATE: ParsedWirelessIntent = {
   intent: {
     action: 'create_wlan',
@@ -93,6 +103,23 @@ describe('useWirelessAssistant — intake', () => {
     expect(result.current.error).toContain('AURA Cortex is disabled');
     // Falls back to idle (not stuck mid-flow) so the chat view — and this
     // error — stay visible instead of a blank panel.
+    expect(result.current.workflowState).toBe('idle');
+    expect(result.current.parsedIntent).toBeNull();
+  });
+
+  it('surfaces a recognized-but-unimplemented domain as a notice, not an error or a workflow', async () => {
+    vi.mocked(cortexApiClient.parseWirelessInstruction).mockResolvedValue(UNIMPLEMENTED_DOMAIN);
+    const { result } = renderHook(() => useWirelessAssistant());
+
+    let outcome: string | undefined;
+    await act(async () => {
+      outcome = await result.current.submitInstruction('define traffic rules for the role', 'text');
+    });
+
+    expect(outcome).toBe('unimplemented');
+    expect(result.current.notice).toContain('Role Configuration');
+    expect(result.current.notice).toContain('/v3/roles');
+    expect(result.current.error).toBeNull();
     expect(result.current.workflowState).toBe('idle');
     expect(result.current.parsedIntent).toBeNull();
   });

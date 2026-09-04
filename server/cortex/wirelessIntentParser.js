@@ -14,6 +14,8 @@
  * see the migration matrix's deferred scope.
  */
 
+import { detectConfigurationDomain } from './configurationDomainCatalog.js';
+
 const CREATE_VERBS =
   /\b(create|add|make|stand up|set up|deploy|push|build|configure)\b.*\b(wlan|ssid|wifi|wi-fi|wireless network|guest network|network)\b/i;
 const DELETE_VERBS = /\b(delete|remove|tear down)\b.*\b(wlan|ssid|network)\b/i;
@@ -49,6 +51,11 @@ const SUPPORTED_ACTIONS = new Set([
 ]);
 
 const IMPLEMENTED_ACTIONS = new Set(['create_wlan', 'validate_only']);
+
+// The 30 non-WLAN configuration domains from the Ascend IQC Skills Catalog
+// audit — recognized honestly (name + real Local API it would use), never
+// silently built into a WLAN intent and never silently dropped into generic
+// chat. See docs/AURA_NETWORK_INTELLIGENCE_CONFIGURATION_ROADMAP.md.
 
 function extractQuoted(input) {
   const matches = input.match(/["“]([^"”]{1,32})["”]/g) ?? [];
@@ -120,7 +127,8 @@ function classify(input) {
  *   ambiguities: string[],
  *   riskLevel: 'low'|'medium'|'high',
  *   humanReadable: string,
- *   classification: 'read_only'|'mutating',
+ *   classification: 'read_only'|'mutating'|'unimplemented',
+ *   domain?: string,
  * }}
  */
 export function parseWirelessIntent(input, meta = {}) {
@@ -145,6 +153,29 @@ export function parseWirelessIntent(input, meta = {}) {
   }
 
   if (classification === 'read_only' || action === 'validate_only') {
+    // Not a WLAN action and not phrased as a question — before defaulting to
+    // "read-only investigation" (which would silently hand an imperative
+    // configuration request like "create a role" or "set up NTP" to the
+    // generic chat pipeline), check whether it's a real, API-backed domain
+    // AURA just doesn't have a natural-language path for yet.
+    if (!READ_ONLY_LEAD.test(trimmed)) {
+      const domain = detectConfigurationDomain(trimmed);
+      if (domain) {
+        return {
+          intent: { action: 'validate_only', requestedBy: meta.requestedBy ?? 'unknown', source: meta.source ?? 'text', rawInstruction: trimmed },
+          missingFields: [],
+          ambiguities: [
+            `AURA recognizes this as a "${domain.name}" request but cannot configure it through natural language yet.`,
+            `Local Controller API: ${domain.localApi}`,
+            `AURA support: ${domain.auraSupport}`,
+          ],
+          riskLevel: 'low',
+          humanReadable: `Recognized "${domain.name}" — not yet supported through this assistant.`,
+          classification: 'unimplemented',
+          domain: domain.id,
+        };
+      }
+    }
     return {
       intent: { action: 'validate_only', requestedBy: meta.requestedBy ?? 'unknown', source: meta.source ?? 'text', rawInstruction: trimmed },
       missingFields: [],

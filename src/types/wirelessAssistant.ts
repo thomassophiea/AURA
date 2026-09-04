@@ -87,7 +87,17 @@ export interface ParsedWirelessIntent {
   ambiguities: string[];
   riskLevel: 'low' | 'medium' | 'high';
   humanReadable: string;
-  classification: 'read_only' | 'mutating';
+  /**
+   * `unimplemented`: a real, API-backed configuration domain (see the
+   * Ascend IQC Skills Catalog audit — Role, VLAN, AAA Policy, Profile,
+   * RRM, and 26 others) that AURA recognizes but cannot yet configure
+   * through natural language. `domain` names which one; `ambiguities`
+   * carries the real Local Controller API and AURA's existing support
+   * status for it.
+   */
+  classification: 'read_only' | 'mutating' | 'unimplemented';
+  /** Set only when classification is 'unimplemented' — the domain id from configurationDomainCatalog.js. */
+  domain?: string;
   /**
    * A password/PSK the parser pulled out of free text, held only for the
    * single validate/provision round-trip — never rendered, never included

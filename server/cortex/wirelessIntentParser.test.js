@@ -67,3 +67,38 @@ describe('parseWirelessIntent — create_wlan slot fill', () => {
     expect(r.ambiguities.some((a) => a.includes('not yet implemented'))).toBe(true);
   });
 });
+
+describe('parseWirelessIntent — non-WLAN configuration domains (Ascend IQC Skills Catalog)', () => {
+  it('recognizes a Role-configuration request as "unimplemented", not a WLAN intent or silent chat handoff', () => {
+    const r = parseWirelessIntent('define client traffic enforcement rules for the Role');
+    expect(r.classification).toBe('unimplemented');
+    expect(r.domain).toBe('role');
+    expect(r.intent.action).toBe('validate_only');
+    expect(r.ambiguities.some((a) => a.includes('Role Configuration'))).toBe(true);
+    expect(r.ambiguities.some((a) => a.includes('/v3/roles'))).toBe(true);
+  });
+
+  it('recognizes a VLAN-domain create request distinctly from a WLAN create request', () => {
+    const r = parseWirelessIntent('create a new VLAN 40 for IoT');
+    expect(r.classification).toBe('unimplemented');
+    expect(r.domain).toBe('vlan');
+  });
+
+  it('still classifies a real WLAN creation request as mutating, unaffected by the domain catalog', () => {
+    const r = parseWirelessIntent('create a guest wlan at boston office wpa2 password guestwifi1');
+    expect(r.classification).toBe('mutating');
+    expect(r.intent.action).toBe('create_wlan');
+    expect(r.domain).toBeUndefined();
+  });
+
+  it('leaves a real question alone even if it mentions a recognized domain (routes to read-only investigation)', () => {
+    const r = parseWirelessIntent('show me the ap device list');
+    expect(r.classification).toBe('read_only');
+  });
+
+  it('falls back to read_only for text matching no WLAN action and no known domain', () => {
+    const r = parseWirelessIntent('the weather today');
+    expect(r.classification).toBe('read_only');
+    expect(r.domain).toBeUndefined();
+  });
+});
