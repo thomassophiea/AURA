@@ -1,34 +1,20 @@
 // src/components/AgentCoworker/agentTypes.ts
+//
+// The Terminal/Ops tab types (PrimaryTab, ActivePanel) and the client-only
+// plan/audit/timeline machinery (ExecutionPlan, DiffEntry, AuditEntry,
+// APITimelineEntry, OperationIntent, ExecutionResult) were removed with the
+// AURA Network Intelligence rebuild — the write path they backed
+// (src/services/agentService.ts) sent every mutation to a literal `/unknown`
+// URL and never actually configured anything. The real mutating pipeline is
+// server/cortex/wirelessIntentParser.js -> wlanConfigValidator.js ->
+// wlanProvisioningEngine.js, typed in src/types/wirelessAssistant.ts.
 
 import type { CortexWirelessAnswer } from '@/cortex/types';
 
 export type WorkspaceSize = 'compact' | 'standard' | 'expanded';
-// pixel widths:            400         520           720
+// pixel widths:            480         640           860
 
 export type WorkspaceMode = 'idle' | 'open' | 'minimized' | 'pinned';
-
-export type PrimaryTab = 'terminal' | 'ops';
-
-export type ActivePanel =
-  | 'conversation'
-  | 'execution'
-  | 'diff'
-  | 'audit'
-  | 'timeline'
-  | 'validate'
-  | 'drift';
-
-export type PlanStatus =
-  | 'building'
-  | 'pending'
-  | 'approved'
-  | 'executing'
-  | 'completed'
-  | 'rejected'
-  | 'rolledback'
-  | 'failed';
-
-export type StepStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
 
 export interface AgentToolCall {
   id: string;
@@ -48,82 +34,9 @@ export interface AgentMessage {
   timestamp: Date;
   reasoning?: string;
   showReasoning?: boolean;
-  executionPlan?: ExecutionPlan;
-  diff?: DiffEntry[];
   feedback?: 'up' | 'down' | null;
   wirelessAnswer?: CortexWirelessAnswer;
   toolCalls?: AgentToolCall[];
-}
-
-export interface ExecutionPlan {
-  id: string;
-  title: string;
-  description: string;
-  status: PlanStatus;
-  steps: PlanStep[];
-  impactedObjects: ImpactedObject[];
-  createdAt: Date;
-  approvedAt?: Date;
-  completedAt?: Date;
-}
-
-export interface PlanStep {
-  id: string;
-  label: string;
-  description: string;
-  status: StepStatus;
-  apiEndpoint?: string;
-  duration?: number;
-}
-
-export interface DiffEntry {
-  field: string;
-  scope: string;
-  before: unknown;
-  after: unknown;
-}
-
-export interface ImpactedObject {
-  type: 'site' | 'ap' | 'ssid' | 'policy' | 'vlan';
-  id: string;
-  name: string;
-  count?: number;
-}
-
-export interface AuditEntry {
-  id: string;
-  timestamp: Date;
-  action: string;
-  operator: string;
-  planId: string;
-  status: 'completed' | 'failed' | 'rejected' | 'rolledback';
-  impactedObjects: ImpactedObject[];
-}
-
-export interface APITimelineEntry {
-  id: string;
-  timestamp: Date;
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
-  endpoint: string;
-  status: number;
-  duration: number;
-  planStepId?: string;
-}
-
-export interface OperationIntent {
-  action: string;
-  targetType: ImpactedObject['type'];
-  targetIds: string[];
-  parameters: Record<string, unknown>;
-  requiresApproval: true;
-}
-
-export interface ExecutionResult {
-  planId: string;
-  success: boolean;
-  completedSteps: number;
-  failedStep?: string;
-  error?: string;
 }
 
 export const WORKSPACE_WIDTHS: Record<WorkspaceSize, number> = {

@@ -47,6 +47,9 @@ const STATUS_VOCABULARY: Record<string, SemanticStatus> = {
   ready: 'healthy',
   synced: 'healthy',
   'in sync': 'healthy',
+  completed: 'healthy',
+  bound: 'healthy',
+  high: 'healthy',
 
   // warning
   warning: 'warning',
@@ -60,6 +63,7 @@ const STATUS_VOCABULARY: Record<string, SemanticStatus> = {
   drift: 'warning',
   expiring: 'warning',
   'needs attention': 'warning',
+  medium: 'warning',
 
   // critical
   critical: 'critical',
@@ -77,6 +81,9 @@ const STATUS_VOCABULARY: Record<string, SemanticStatus> = {
   poor: 'critical',
   'non-compliant': 'critical',
   noncompliant: 'critical',
+  block: 'critical',
+  blocked: 'critical',
+  low: 'critical',
 
   // offline — a device/system state, distinct from an alarm severity
   offline: 'offline',

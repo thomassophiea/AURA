@@ -32,6 +32,18 @@ describe('normalizeStatus', () => {
     }
   });
 
+  it('folds the wireless-assistant provisioning/confidence vocabulary', () => {
+    for (const raw of ['completed', 'bound', 'HIGH']) {
+      expect(normalizeStatus(raw), raw).toBe('healthy');
+    }
+    for (const raw of ['MEDIUM']) {
+      expect(normalizeStatus(raw), raw).toBe('warning');
+    }
+    for (const raw of ['block', 'blocked', 'LOW']) {
+      expect(normalizeStatus(raw), raw).toBe('critical');
+    }
+  });
+
   it('folds offline vocabulary — device state, not alarm severity', () => {
     for (const raw of ['offline', 'Disconnected', 'down', 'Inactive', 'unreachable', 'Out Of Service']) {
       expect(normalizeStatus(raw), raw).toBe('offline');

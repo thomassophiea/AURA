@@ -1,9 +1,20 @@
 /**
- * CortexContext — Central React context for the Cortex AI copilot
+ * CortexContext — Central React context for AURA's read-only investigation
+ * pipeline (page-aware Q&A: tool-use loop + the deterministic wireless
+ * diagnostic pipeline).
+ *
+ * Mutating WLAN configuration is a separate, real pipeline —
+ * `useWirelessAssistant` (src/hooks/useWirelessAssistant.ts) driving
+ * server/cortex/{wirelessIntentParser,wlanProvisioningEngine}.js — not this
+ * context. The two used to be conflated here via a client-only "execution
+ * plan" path (src/services/agentService.ts) that never worked: every write
+ * it attempted sent requests to a literal `/unknown` URL. That path is
+ * removed rather than fixed in place; see the migration matrix in
+ * docs/AURA_NETWORK_INTELLIGENCE_MIGRATION_MATRIX.md.
  *
  * Manages:
  * - Full page-aware context merging (App.tsx base context + internal state)
- * - Conversation state (messages, isThinking, pendingPlan)
+ * - Conversation state (messages, isThinking)
  * - Workspace open/close state (isOpen)
  * - Page analysis state (suggestedPrompts, pageInsights)
  */
@@ -18,18 +29,12 @@ import React, {
   useState,
 } from 'react';
 import { useAppContext } from './AppContext';
-import { agentService } from '../services/agentService';
 import {
   createCortexSession,
   sendCortexMessage,
   queryCortexWireless,
 } from '../services/cortexApiClient';
-import type {
-  AgentMessage,
-  AuditEntry,
-  APITimelineEntry,
-  ExecutionPlan,
-} from '../components/AgentCoworker/agentTypes';
+import type { AgentMessage } from '../components/AgentCoworker/agentTypes';
 import type { CortexAvailableAction, CortexInsight, CortexPageContext } from '../types/cortex';
 import { CORTEX_SUGGESTED_PROMPTS } from '../types/cortex';
 
@@ -83,23 +88,16 @@ export interface CortexContextValue {
   // Session/conversation state
   sessionId: string | null;
   messages: AgentMessage[];
-  pendingPlan: ExecutionPlan | null;
   suggestedPrompts: string[];
   pageInsights: CortexInsight[];
   isThinking: boolean;
   wirelessStage: 'detecting' | 'planning' | 'fetching' | 'classifying' | 'generating' | null;
-  auditEntries: AuditEntry[];
-  apiTimeline: APITimelineEntry[];
 
   // Actions
   sendMessage: (message: string) => Promise<void>;
   confirmWirelessAction: (question: string, confirmationToken: string) => Promise<void>;
   refreshPageAnalysis: () => Promise<void>;
   clearConversation: () => void;
-  approvePlan: (planId: string) => Promise<void>;
-  rejectPlan: (planId: string) => void;
-  rollbackPlan: (planId: string) => Promise<void>;
-  refreshAuditAndTimeline: () => void;
   addFeedback: (msgId: string, feedback: 'up' | 'down') => void;
   toggleReasoning: (msgId: string) => void;
 }
@@ -142,7 +140,6 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
     sessionIdRef.current = sessionId;
   }, [sessionId]);
   const [messages, setMessages] = useState<AgentMessage[]>([]);
-  const [pendingPlan, setPendingPlan] = useState<ExecutionPlan | null>(null);
   const [isThinking, setIsThinking] = useState(false);
   const [wirelessStage, setWirelessStage] = useState<
     'detecting' | 'planning' | 'fetching' | 'classifying' | 'generating' | null
@@ -151,10 +148,6 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
   // ---- Page analysis ----
   const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([]);
   const [pageInsights, setPageInsights] = useState<CortexInsight[]>([]);
-
-  // ---- Audit / timeline (derived from agentService) ----
-  const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
-  const [apiTimeline, setApiTimeline] = useState<APITimelineEntry[]>([]);
 
   // ============================================
   // Merged full context
@@ -258,7 +251,7 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
   }, [pageContext.route, refreshPageAnalysis]);
 
   // ============================================
-  // sendMessage (Phase 1)
+  // sendMessage — read-only investigation
   // ============================================
 
   const runWirelessQuery = useCallback(
@@ -323,23 +316,6 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
           if (handled) return;
         }
 
-        const intent = await agentService.parseIntent(message);
-
-        if (intent) {
-          const plan = await agentService.buildExecutionPlan(intent);
-          const agentMsg: AgentMessage = {
-            id: `agent-${Date.now()}`,
-            role: 'agent',
-            content: `I've built an execution plan for: **${plan.title}**\n\nThis will affect ${plan.impactedObjects.map((o) => o.name).join(', ')}. Review the plan and approve to proceed.`,
-            timestamp: new Date(),
-            executionPlan: plan,
-            reasoning: `Detected write intent: "${intent.action}" targeting ${intent.targetType}. Built ${plan.steps.length}-step plan.`,
-          };
-          setMessages((prev) => [...prev, agentMsg]);
-          setPendingPlan(plan);
-          return;
-        }
-
         let sid = sessionIdRef.current;
         if (!sid) {
           const { sessionId: newId } = await createCortexSession(cortexContextRef.current);
@@ -375,21 +351,6 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
           }
         }
         setMessages((prev) => [...prev, reply]);
-
-        // Surface tool calls in the API timeline so the user can see
-        // exactly which controller endpoints Cortex investigated.
-        if (reply.toolCalls?.length) {
-          const ts = new Date();
-          const entries: APITimelineEntry[] = reply.toolCalls.map((tc) => ({
-            id: tc.id,
-            timestamp: ts,
-            method: 'GET',
-            endpoint: tc.path ?? tc.tool,
-            status: tc.status ?? (tc.ok ? 200 : 0),
-            duration: tc.durationMs ?? 0,
-          }));
-          setApiTimeline((prev) => [...entries, ...prev].slice(0, 50));
-        }
       } catch (err) {
         const detail = err instanceof Error ? err.message : String(err);
         console.error('[Cortex] sendMessage failed:', detail);
@@ -432,55 +393,9 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
   // ============================================
 
   const clearConversation = useCallback(() => {
-    agentService.clearHistory();
     setMessages([]);
-    setPendingPlan(null);
     setSessionId(null);
     sessionIdRef.current = null;
-  }, []);
-
-  // ============================================
-  // Plan actions
-  // ============================================
-
-  const approvePlan = useCallback(async (planId: string) => {
-    try {
-      const result = await agentService.executeApprovedPlan(planId);
-      setAuditEntries(agentService.getAuditHistory());
-      setApiTimeline(agentService.getAPITimeline());
-      if (result.success) {
-        setPendingPlan(null);
-      } else {
-        setPendingPlan((prev) =>
-          prev?.id === planId ? { ...prev, status: 'failed' as const } : prev
-        );
-      }
-    } catch {
-      setPendingPlan((prev) =>
-        prev?.id === planId ? { ...prev, status: 'failed' as const } : prev
-      );
-    }
-  }, []);
-
-  const rejectPlan = useCallback((planId: string) => {
-    agentService.rejectPlan(planId);
-    setPendingPlan(null);
-    setAuditEntries(agentService.getAuditHistory());
-  }, []);
-
-  const rollbackPlan = useCallback(async (planId: string) => {
-    await agentService.rollbackOperation(planId);
-    setPendingPlan(null);
-    setAuditEntries(agentService.getAuditHistory());
-  }, []);
-
-  // ============================================
-  // Audit / timeline refresh
-  // ============================================
-
-  const refreshAuditAndTimeline = useCallback(() => {
-    setAuditEntries(agentService.getAuditHistory());
-    setApiTimeline(agentService.getAPITimeline());
   }, []);
 
   const addFeedback = useCallback((msgId: string, feedback: 'up' | 'down') => {
@@ -573,21 +488,14 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
       closeCortex,
       sessionId,
       messages,
-      pendingPlan,
       suggestedPrompts,
       pageInsights,
       isThinking,
       wirelessStage,
-      auditEntries,
-      apiTimeline,
       sendMessage,
       confirmWirelessAction,
       refreshPageAnalysis,
       clearConversation,
-      approvePlan,
-      rejectPlan,
-      rollbackPlan,
-      refreshAuditAndTimeline,
       addFeedback,
       toggleReasoning,
     }),
@@ -606,21 +514,14 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
       closeCortex,
       sessionId,
       messages,
-      pendingPlan,
       suggestedPrompts,
       pageInsights,
       isThinking,
       wirelessStage,
-      auditEntries,
-      apiTimeline,
       sendMessage,
       confirmWirelessAction,
       refreshPageAnalysis,
       clearConversation,
-      approvePlan,
-      rejectPlan,
-      rollbackPlan,
-      refreshAuditAndTimeline,
       addFeedback,
       toggleReasoning,
     ]
