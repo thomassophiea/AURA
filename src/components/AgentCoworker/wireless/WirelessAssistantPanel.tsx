@@ -196,6 +196,7 @@ export function WirelessAssistantPanel() {
           onStop={voice.stop}
           onCancel={voice.cancel}
           disabled={isProvisioning}
+          error={voice.error}
         />
       </div>
     </div>

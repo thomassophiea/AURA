@@ -11,7 +11,7 @@ const STATE_LABEL: Record<VoiceState, string> = {
   transcript_ready: 'Talk again',
   permission_denied: 'Microphone permission denied',
   unsupported: 'Speech-to-text is not configured',
-  error: 'Speech recognition error — try again',
+  error: 'Speech recognition error',
   cancelled: 'Talk',
 };
 
@@ -22,6 +22,16 @@ interface VoiceInputControlProps {
   onCancel: () => void;
   /** Disables the control entirely without changing its label (e.g. while provisioning). */
   disabled?: boolean;
+  /**
+   * The raw browser error code (e.g. "not-allowed", "service-not-allowed",
+   * "audio-capture", "network") from useVoiceInput. `permission_denied` and
+   * `error` cover several distinct SpeechRecognition failure codes — without
+   * this, "not-allowed" (real permission denial) and "service-not-allowed"
+   * (a browser/enterprise policy blocking the speech service specifically,
+   * independent of the mic permission the operator actually granted) look
+   * identical, which makes a real permission grant look like it "didn't work".
+   */
+  error?: string;
 }
 
 /**
@@ -29,9 +39,11 @@ interface VoiceInputControlProps {
  * presses once to start, again to stop; the mic is requested and released
  * exactly around that window (see useVoiceInput).
  */
-export function VoiceInputControl({ state, onStart, onStop, onCancel, disabled }: VoiceInputControlProps) {
+export function VoiceInputControl({ state, onStart, onStop, onCancel, disabled, error }: VoiceInputControlProps) {
   const isListening = state === 'listening';
   const isBusy = state === 'requesting_permission' || state === 'transcribing';
+  const showsError = state === 'permission_denied' || state === 'error';
+  const label = showsError && error ? `${STATE_LABEL[state]} (${error})` : STATE_LABEL[state];
 
   if (state === 'unsupported') {
     return (
@@ -67,14 +79,7 @@ export function VoiceInputControl({ state, onStart, onStop, onCancel, disabled }
           Cancel
         </Button>
       )}
-      <span
-        className={cn(
-          'text-xs',
-          state === 'permission_denied' || state === 'error' ? 'text-red-400' : 'text-muted-foreground'
-        )}
-      >
-        {STATE_LABEL[state]}
-      </span>
+      <span className={cn('text-xs', showsError ? 'text-red-400' : 'text-muted-foreground')}>{label}</span>
     </div>
   );
 }
