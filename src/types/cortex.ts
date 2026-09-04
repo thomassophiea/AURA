@@ -224,7 +224,6 @@ export const CORTEX_PAGE_NAMES: Record<string, string> = {
   'site-group-settings': 'Site Group Settings',
   tools: 'Tools',
   administration: 'Administration',
-  'api-test': 'API Test',
   'api-documentation': 'API Documentation',
   help: 'Help',
 };
@@ -285,7 +284,6 @@ export const CORTEX_PAGE_TYPES: Record<string, CortexPageType> = {
   'configure-sites-groups': 'configuration',
   tools: 'unknown',
   administration: 'unknown',
-  'api-test': 'unknown',
   'api-documentation': 'unknown',
   help: 'unknown',
 };

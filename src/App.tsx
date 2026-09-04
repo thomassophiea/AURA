@@ -110,9 +110,6 @@ const Administration = lazy(() =>
   import('./components/Administration').then((m) => ({ default: m.Administration }))
 );
 const Tools = lazy(() => import('./components/Tools').then((m) => ({ default: m.Tools })));
-const ApiTestTool = lazy(() =>
-  import('./components/ApiTestTool').then((m) => ({ default: m.ApiTestTool }))
-);
 const AccessPointDetail = lazy(() =>
   import('./components/AccessPointDetail').then((m) => ({ default: m.AccessPointDetail }))
 );
@@ -303,7 +300,6 @@ const pageInfo = {
     title: 'Administration',
     description: 'System administration, users, applications, and licensing',
   },
-  'api-test': { title: 'API Test Tool', description: 'Test and explore API endpoints' },
   'api-documentation': {
     title: 'API Documentation',
     description: 'AURA Mobility Core REST API reference',
@@ -1435,8 +1431,6 @@ export default function App() {
             onToggleNetworkAssistant={handleToggleNetworkAssistant}
           />
         );
-      case 'api-test':
-        return <ApiTestTool />;
       case 'api-documentation':
         return <ApiDocumentation onBack={() => setCurrentPage('insights')} />;
       case 'help':
@@ -1671,19 +1665,14 @@ export default function App() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => setCurrentPage('api-test')}
-                          title="API Test Tool"
-                          style={
-                            currentPage === 'api-test'
-                              ? {
-                                  color: 'var(--primary)',
-                                  backgroundColor:
-                                    'color-mix(in srgb, var(--primary) 20%, transparent)',
-                                  boxShadow:
-                                    '0 0 0 1px color-mix(in srgb, var(--primary) 50%, transparent)',
-                                }
-                              : undefined
+                          onClick={() =>
+                            window.open(
+                              'https://api-one.up.railway.app/',
+                              '_blank',
+                              'noopener,noreferrer'
+                            )
                           }
+                          title="API ONE — Gateway API explorer"
                         >
                           <FlaskConical className="h-4 w-4" />
                         </Button>

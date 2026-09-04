@@ -42,7 +42,6 @@ export const ORG_PAGES = new Set([
   // Admin & Tools
   'tools',
   'administration',
-  'api-test',
   'api-documentation',
   // Help
   'help',

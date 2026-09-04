@@ -122,7 +122,6 @@ export const PERSONA_DEFINITIONS: PersonaDefinition[] = [
     description: 'NetDevOps — infrastructure as code, automation, API tools',
     allowedPages: [
       'workspace',
-      'api-test',
       'api-documentation',
       'tools',
       'configure-networks',
@@ -197,7 +196,6 @@ export const PERSONA_DEFINITIONS: PersonaDefinition[] = [
     description: 'Data sharing, integrations, cross-product communication',
     allowedPages: [
       'workspace',
-      'api-test',
       'api-documentation',
       'tools',
       'event-alarm-dashboard',
@@ -212,7 +210,7 @@ export const PERSONA_DEFINITIONS: PersonaDefinition[] = [
     label: 'Platform Admin',
     group: 'Cloud & Virtualization',
     description: 'Full control over clusters and infrastructure',
-    allowedPages: ALL_PAGES.filter((p) => p !== 'api-test' && p !== 'api-documentation'),
+    allowedPages: ALL_PAGES.filter((p) => p !== 'api-documentation'),
   },
   {
     id: 'app-owner',
@@ -222,7 +220,6 @@ export const PERSONA_DEFINITIONS: PersonaDefinition[] = [
     allowedPages: [
       'workspace',
       'app-insights',
-      'api-test',
       'api-documentation',
       'tools',
       'configure-networks',

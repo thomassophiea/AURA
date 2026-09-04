@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import {
-  TestTube,
+  ExternalLink,
   Zap,
   Network,
   FileText,
@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import { AFCPlanningTool } from './AFCPlanningTool';
 import { AFCRadioHeightCalculator } from './AFCRadioHeightCalculator';
-import { ApiTestTool } from './ApiTestTool';
 import { PacketCapture } from './PacketCapture';
 import { XIQMigrationTool } from './XIQMigrationTool';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -65,8 +64,8 @@ export function Tools() {
   return (
     <div className="h-full">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
-        <div className="border-b">
-          <TabsList className="h-12 px-6">
+        <div className="border-b flex items-center justify-between px-6">
+          <TabsList className="h-12 px-0">
             <TabsTrigger value="afc-planning" className="flex items-center gap-2">
               <Zap className="h-4 w-4" />
               AFC Planning
@@ -74,10 +73,6 @@ export function Tools() {
             <TabsTrigger value="afc-heights" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
               Radio Height Calc
-            </TabsTrigger>
-            <TabsTrigger value="api-test" className="flex items-center gap-2">
-              <TestTube className="h-4 w-4" />
-              API Test
             </TabsTrigger>
             <TabsTrigger value="packet-capture" className="flex items-center gap-2">
               <Network className="h-4 w-4" />
@@ -92,6 +87,18 @@ export function Tools() {
               XIQ Migration
             </TabsTrigger>
           </TabsList>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex items-center gap-2"
+            onClick={() =>
+              window.open('https://api-one.up.railway.app/', '_blank', 'noopener,noreferrer')
+            }
+            title="Open API ONE — Gateway API explorer (separate app)"
+          >
+            API ONE
+            <ExternalLink className="h-4 w-4" />
+          </Button>
         </div>
 
         <TabsContent value="afc-planning" className="m-0 h-[calc(100%-3rem)]">
@@ -100,10 +107,6 @@ export function Tools() {
 
         <TabsContent value="afc-heights" className="m-0 h-[calc(100%-3rem)] overflow-auto">
           <AFCRadioHeightCalculator />
-        </TabsContent>
-
-        <TabsContent value="api-test" className="m-0 h-[calc(100%-3rem)]">
-          <ApiTestTool />
         </TabsContent>
 
         <TabsContent value="packet-capture" className="m-0 h-[calc(100%-3rem)]">
