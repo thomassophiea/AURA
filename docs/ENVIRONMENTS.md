@@ -163,10 +163,24 @@ controller does not auto-create it, and every other failure surfaces as a
 misleading `422 "Policy not found"`. The full set of traps is recorded in the
 `ai-first` skill's `references/gotchas.md`.
 
+`POST /v3/roles` **ignores a client-supplied `id`** and assigns one of its own.
+Because the service id has to equal the role id, the *role* decides the pair's
+id, and a deleted ECP WLAN cannot be recreated at its original id. `PUT
+/v3/roles/{id}` does not upsert — it answers `422 "Can not find Role"`. Create
+the role, read its id back, then POST the service with that id.
+
+`AURA-PROD-CWP` was rebuilt this way on 2026-09-04 after it was found missing
+from the controller (every production gateway check was failing or skipping on
+`422 Can not find Service`). Its id therefore changed from
+`ba3b44b0-3e0f-4195-b8eb-c70e48e3922e` to
+`f4554eab-7d26-4976-95e2-29b2e02fc849`; the pipeline's `lib/topology.js` and the
+`archangel` skill's references were updated to match. Configuration is otherwise
+identical to the reference, and it is bound to `AP5010-LAB1` radios 1 and 2.
+
 ### Rolling back the gateway change
 
 ```
-DELETE /management/v1/services/ba3b44b0-3e0f-4195-b8eb-c70e48e3922e
+DELETE /management/v1/services/f4554eab-7d26-4976-95e2-29b2e02fc849
 ```
 
 Removing the service also removes it from every profile's `radioIfList`.
