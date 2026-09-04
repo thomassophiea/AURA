@@ -40,7 +40,11 @@ function writeStored(value: string) {
 
 export function useCortexModel() {
   const [providers, setProviders] = useState<string[]>([]);
-  const [defaultModel, setDefaultModel] = useState<string>('mock');
+  // Never a placeholder like 'mock' — an empty string renders as "Unavailable"
+  // in ModelSelector rather than a fake-looking model id, and stays that way
+  // if /api/cortex/models never successfully responds (e.g. an admin has
+  // Cortex disabled, which is its default state).
+  const [defaultModel, setDefaultModel] = useState<string>('');
   const [models, setModels] = useState<CortexModel[]>([]);
   const [selectedModel, setSelectedModelState] = useState<string | null>(readStored);
   const [loading, setLoading] = useState(true);

@@ -36,7 +36,19 @@ async function cortexFetch<T>(path: string, body: unknown): Promise<T> {
   });
 
   if (!resp.ok) {
-    const msg = await resp.text().catch(() => resp.statusText);
+    const raw = await resp.text().catch(() => resp.statusText);
+    // Every /api/cortex/* error body is `{ error: string }` — surface that
+    // plain-text message (e.g. "AURA Cortex is disabled...") rather than the
+    // raw JSON blob, since this reaches the operator directly in the panel.
+    // The `${resp.status}` prefix is preserved: queryCortexWireless matches
+    // on the literal substring '422' in this message.
+    let msg = raw;
+    try {
+      const parsed = JSON.parse(raw);
+      if (typeof parsed?.error === 'string') msg = parsed.error;
+    } catch {
+      // Not JSON — use the raw text as-is.
+    }
     throw new Error(`Cortex API error ${resp.status}: ${msg}`);
   }
 

@@ -115,4 +115,21 @@ describe('useCortexModel', () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.error).toBeTruthy();
   });
+
+  it('never surfaces the internal "mock" placeholder as a selectable/displayed model', async () => {
+    // /api/cortex/models 403s when an admin has Cortex disabled (its normal
+    // default state) — the picker must never be left showing an internal
+    // placeholder id as if it were a real model.
+    globalThis.fetch = vi.fn(async () => ({
+      ok: false,
+      status: 403,
+      json: async () => ({ error: 'AURA Cortex is disabled.' }),
+    })) as unknown as typeof fetch;
+
+    const { result } = renderHook(() => useCortexModel());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.selectedModel).not.toBe('mock');
+    expect(result.current.defaultModel).not.toBe('mock');
+    expect(result.current.models).toEqual([]);
+  });
 });

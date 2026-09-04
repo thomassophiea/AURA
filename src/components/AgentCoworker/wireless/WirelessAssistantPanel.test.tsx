@@ -97,4 +97,18 @@ describe('WirelessAssistantPanel', () => {
     await waitFor(() => expect(screen.getByText(/AURA interpreted/i)).toBeDefined());
     expect(sendMessage).not.toHaveBeenCalled();
   });
+
+  it('shows a visible error instead of doing nothing when intake fails (e.g. Cortex disabled)', async () => {
+    vi.mocked(cortexApiClient.parseWirelessInstruction).mockRejectedValue(
+      new Error('Cortex API error 403: AURA Cortex is disabled.')
+    );
+
+    render(<WirelessAssistantPanel />);
+    const input = screen.getByPlaceholderText(/ask me anything/i);
+    fireEvent.change(input, { target: { value: 'create a guest wlan' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    await waitFor(() => expect(screen.getByText(/AURA Cortex is disabled/i)).toBeDefined());
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
 });

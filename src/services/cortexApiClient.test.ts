@@ -66,6 +66,23 @@ describe('refreshCortexContext', () => {
   });
 });
 
+describe('error message extraction', () => {
+  it('surfaces the plain-text {error} field from a JSON error body, not the raw JSON blob', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 403,
+        statusText: 'Forbidden',
+        text: () => Promise.resolve(JSON.stringify({ error: 'AURA Cortex is disabled.' })),
+      })
+    );
+    await expect(parseWirelessInstruction('create a guest wlan')).rejects.toThrow(
+      'Cortex API error 403: AURA Cortex is disabled.'
+    );
+  });
+});
+
 describe('parseWirelessInstruction', () => {
   it('POSTs to /api/cortex/wireless/intent with the input and source', async () => {
     vi.stubGlobal(

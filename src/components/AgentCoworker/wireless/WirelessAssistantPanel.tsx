@@ -127,6 +127,11 @@ export function WirelessAssistantPanel() {
               suggestedPrompts={cortex.suggestedPrompts}
             />
           </div>
+          {assistant.error && !assistant.parsedIntent && (
+            <div className="shrink-0 mx-3 mb-2 px-3 py-2 rounded border border-red-700/40 bg-red-900/20 text-xs text-red-300">
+              {assistant.error}
+            </div>
+          )}
           <div className="shrink-0 px-3 py-2 border-t border-border/40 text-xs text-muted-foreground">
             Tell AURA what wireless configuration you want — AURA previews and validates changes before configuring
             anything.

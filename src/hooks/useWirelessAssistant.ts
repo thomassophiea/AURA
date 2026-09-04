@@ -38,7 +38,7 @@ export interface UseWirelessAssistantResult {
 
   /** Returns which pipeline the instruction belongs to, so the caller can
    *  route read-only questions to the existing chat/Q&A path instead. */
-  submitInstruction: (text: string, source: 'voice' | 'text') => Promise<'read_only' | 'mutating'>;
+  submitInstruction: (text: string, source: 'voice' | 'text') => Promise<'read_only' | 'mutating' | 'error'>;
   /** Patch any field the operator fills in after a missing-field prompt (site, security, password). Invalidates prior validation. */
   updateIntentField: (patch: Partial<WirelessConfigurationIntent>, password?: string) => void;
   validate: () => Promise<void>;
@@ -58,22 +58,32 @@ export function useWirelessAssistant(): UseWirelessAssistantResult {
   const ephemeralPasswordRef = useRef<string | undefined>(undefined);
 
   const submitInstruction = useCallback(
-    async (text: string, source: 'voice' | 'text'): Promise<'read_only' | 'mutating'> => {
+    async (text: string, source: 'voice' | 'text'): Promise<'read_only' | 'mutating' | 'error'> => {
       setError(null);
       setTranscript(text);
       setWorkflowState(source === 'voice' ? 'transcribing' : 'entering_text');
-      const result = await parseWirelessInstruction(text, source);
-      ephemeralPasswordRef.current = result._ephemeralPassword;
-      setParsedIntent(result);
-      setValidationReport(null);
-      setProvisioning(null);
+      try {
+        const result = await parseWirelessInstruction(text, source);
+        ephemeralPasswordRef.current = result._ephemeralPassword;
+        setParsedIntent(result);
+        setValidationReport(null);
+        setProvisioning(null);
 
-      if (result.classification === 'read_only') {
+        if (result.classification === 'read_only') {
+          setWorkflowState('idle');
+          return 'read_only';
+        }
+        setWorkflowState(result.missingFields.length > 0 ? 'missing_information' : 'entering_text');
+        return 'mutating';
+      } catch (err) {
+        // A failure here (e.g. an admin has Cortex disabled, or a network
+        // error) must never look like nothing happened — surface it and
+        // fall back to idle so the chat view (and this message) stay
+        // visible rather than a blank panel.
+        setError(err instanceof Error ? err.message : String(err));
         setWorkflowState('idle');
-        return 'read_only';
+        return 'error';
       }
-      setWorkflowState(result.missingFields.length > 0 ? 'missing_information' : 'entering_text');
-      return 'mutating';
     },
     []
   );

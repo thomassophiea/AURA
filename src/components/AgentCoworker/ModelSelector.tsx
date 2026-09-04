@@ -71,7 +71,11 @@ export function ModelSelector({
   loading = false,
 }: ModelSelectorProps) {
   const current = models.find((m) => m.id === selectedModel);
-  const label = current?.label ?? selectedModel ?? 'Loading…';
+  // Never render a raw internal id (e.g. the pre-fetch placeholder) as if it
+  // were a real model name — an empty/unmatched model list is a genuine
+  // "Unavailable" state (most commonly: an admin has Cortex disabled), not
+  // a loading flicker once `loading` has settled.
+  const label = current?.label ?? (loading ? 'Loading…' : models.length === 0 ? 'Unavailable' : selectedModel);
   const grouped = groupModelsByProvider(models);
   const titleText =
     providers.length > 0

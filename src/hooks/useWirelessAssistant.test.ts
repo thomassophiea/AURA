@@ -77,6 +77,26 @@ describe('useWirelessAssistant — intake', () => {
     expect(result.current.workflowState).toBe('idle');
   });
 
+  it('surfaces an intake failure instead of leaving the operator with no feedback', async () => {
+    // e.g. an admin has Cortex disabled — /api/cortex/wireless/intent 403s.
+    vi.mocked(cortexApiClient.parseWirelessInstruction).mockRejectedValue(
+      new Error('Cortex API error 403: AURA Cortex is disabled.')
+    );
+    const { result } = renderHook(() => useWirelessAssistant());
+
+    let outcome: string | undefined;
+    await act(async () => {
+      outcome = await result.current.submitInstruction('create a guest wlan', 'text');
+    });
+
+    expect(outcome).toBe('error');
+    expect(result.current.error).toContain('AURA Cortex is disabled');
+    // Falls back to idle (not stuck mid-flow) so the chat view — and this
+    // error — stay visible instead of a blank panel.
+    expect(result.current.workflowState).toBe('idle');
+    expect(result.current.parsedIntent).toBeNull();
+  });
+
   it('enters missing_information when required fields are absent', async () => {
     vi.mocked(cortexApiClient.parseWirelessInstruction).mockResolvedValue(INCOMPLETE_CREATE);
     const { result } = renderHook(() => useWirelessAssistant());
