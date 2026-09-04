@@ -2,42 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AgentWorkspace } from './AgentWorkspace';
 
-vi.mock('./panels/ConsoleShell', () => ({
-  ConsoleShell: () => <div data-testid="red-queen-shell">Terminal</div>,
-}));
-vi.mock('./panels/ConversationStream', () => ({
-  ConversationStream: () => <div data-testid="conversation-stream">Chat</div>,
-}));
-vi.mock('./panels/ValidationPanel', () => ({
-  ValidationPanel: () => <div data-testid="validation-panel">Validate</div>,
-}));
-vi.mock('./panels/DriftPanel', () => ({
-  DriftPanel: () => <div data-testid="drift-panel">Drift</div>,
-}));
-vi.mock('./panels/ExecutionPlanView', () => ({
-  ExecutionPlanView: () => <div data-testid="execution-panel">Execution</div>,
-}));
-vi.mock('./panels/ConfigDiffView', () => ({
-  ConfigDiffView: () => <div data-testid="diff-panel">Diff</div>,
-}));
-vi.mock('./panels/AuditHistoryView', () => ({
-  AuditHistoryView: () => <div data-testid="audit-panel">Audit</div>,
-}));
-vi.mock('./panels/APITimelineView', () => ({
-  APITimelineView: () => <div data-testid="timeline-panel">Timeline</div>,
-}));
-vi.mock('../../contexts/CortexContext', () => ({
-  useCortexContext: () => ({
-    messages: [],
-    isThinking: false,
-    wirelessStage: null,
-    suggestedPrompts: [],
-    pendingPlan: null,
-    auditEntries: [],
-    apiTimeline: [],
-    sendMessage: vi.fn(),
-    confirmWirelessAction: vi.fn(),
-  }),
+vi.mock('./wireless/WirelessAssistantPanel', () => ({
+  WirelessAssistantPanel: () => <div data-testid="wireless-assistant-panel">AURA workflow</div>,
 }));
 vi.mock('../../hooks/useCortexModel', () => ({
   useCortexModel: () => ({
@@ -68,43 +34,57 @@ beforeEach(() => {
 const defaultProps = {
   mode: 'open' as const,
   size: 'standard' as const,
-  primaryTab: 'terminal' as const,
-  activePanel: 'conversation' as const,
   onClose: vi.fn(),
   onMinimize: vi.fn(),
   onPin: vi.fn(),
   onDismiss: vi.fn(),
   onSetSize: vi.fn(),
-  onSetPrimaryTab: vi.fn(),
-  onSetActivePanel: vi.fn(),
 };
 
-describe('AgentWorkspace tabs', () => {
-  it('shows Terminal tab content by default', async () => {
+describe('AgentWorkspace', () => {
+  it('renders the single unified AURA workflow panel — no Terminal/Ops tabs', async () => {
     render(<AgentWorkspace {...defaultProps} />);
-    await waitFor(() => expect(screen.getByTestId('red-queen-shell')).toBeDefined());
+    await waitFor(() => expect(screen.getByTestId('wireless-assistant-panel')).toBeDefined());
+    expect(screen.queryByRole('tab')).toBeNull();
   });
 
-  it('shows Ops tab content when primaryTab is ops', async () => {
-    render(<AgentWorkspace {...defaultProps} primaryTab="ops" />);
-    await waitFor(() => expect(screen.getByTestId('conversation-stream')).toBeDefined());
+  it('renders a minimized rail when mode is minimized', () => {
+    render(<AgentWorkspace {...defaultProps} mode="minimized" />);
+    expect(screen.getByTitle('Expand AURA Agent')).toBeDefined();
   });
 
-  it('calls onSetPrimaryTab when Ops tab is clicked', async () => {
-    const onSetPrimaryTab = vi.fn();
-    render(<AgentWorkspace {...defaultProps} onSetPrimaryTab={onSetPrimaryTab} />);
-    await waitFor(() => screen.getByRole('tab', { name: /ops/i }));
-    fireEvent.click(screen.getByRole('tab', { name: /ops/i }));
-    expect(onSetPrimaryTab).toHaveBeenCalledWith('ops');
+  it('calls onClose/onMinimize/onPin/onSetSize from header controls', () => {
+    const onClose = vi.fn();
+    const onMinimize = vi.fn();
+    const onPin = vi.fn();
+    const onSetSize = vi.fn();
+    render(
+      <AgentWorkspace
+        {...defaultProps}
+        onClose={onClose}
+        onMinimize={onMinimize}
+        onPin={onPin}
+        onSetSize={onSetSize}
+      />
+    );
+
+    fireEvent.click(screen.getByTitle('Minimize'));
+    expect(onMinimize).toHaveBeenCalled();
+    fireEvent.click(screen.getByTitle('Pin open'));
+    expect(onPin).toHaveBeenCalled();
+    fireEvent.click(screen.getByTitle('Toggle expanded'));
+    expect(onSetSize).toHaveBeenCalledWith('expanded');
+    fireEvent.click(screen.getByTitle('Close'));
+    expect(onClose).toHaveBeenCalled();
   });
 
-  it('shows DriftPanel when activePanel is drift (Ops tab)', async () => {
-    render(<AgentWorkspace {...defaultProps} primaryTab="ops" activePanel="drift" />);
-    await waitFor(() => expect(screen.getByTestId('drift-panel')).toBeDefined());
-  });
-
-  it('shows ValidationPanel when activePanel is validate (Ops tab)', async () => {
-    render(<AgentWorkspace {...defaultProps} primaryTab="ops" activePanel="validate" />);
-    await waitFor(() => expect(screen.getByTestId('validation-panel')).toBeDefined());
+  it('reports drift count from /api/drift', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ alerts: [{ id: '1' }, { id: '2' }] }) })
+    );
+    const onDriftCount = vi.fn();
+    render(<AgentWorkspace {...defaultProps} onDriftCount={onDriftCount} />);
+    await waitFor(() => expect(onDriftCount).toHaveBeenCalledWith(2));
   });
 });

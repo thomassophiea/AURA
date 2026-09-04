@@ -37,23 +37,33 @@ Browser -> Express (port 3000) -> Campus Controller API (/api/management)
 server.js                  Express proxy server
 server/
   cortex/                  AURA Cortex pipeline modules (intent, tools, wireless query)
+    wirelessIntentParser.js    Deterministic text/voice -> typed WirelessConfigurationIntent
+    wlanProvisioningEngine.js  Mirror-then-deviate WLAN create + radio binding + verification
+    validationToken.js         Signed plan-hash tokens (create_wlan approval gate)
+    groqSpeechToText.js        Optional server-side push-to-talk adapter (Groq Whisper)
   cortexOrchestrator.js    Session & LLM round-trip management
   cortexLlmProvider.js     Multi-provider LLM factory
   cortexModelRegistry.js   Model/provider discovery & registration
-  consoleShell.js          SSH PTY WebSocket server (AURA Console)
+  consoleShell.js          SSH PTY WebSocket server (AURA Console; not surfaced in the AURA panel)
   validationEngine/        Network intent validation & drift detection
+    wlanConfigValidator.js     Full WirelessValidationReport (site/AP/VLAN/radio checks + plan hash)
 src/
   components/              250+ React TSX components
-    AgentCoworker/         AURA workspace slideout (Terminal | Ops tabs)
+    AgentCoworker/         AURA workspace slideout — one unified workflow, no Terminal/Ops tabs
+      wireless/                WirelessAssistantPanel + its sub-components (voice, transcript,
+                                validation, preview, approval, provisioning, verification)
   cortex/                  AURA Cortex UI components (AnswerCard, FollowUpChips, etc.)
   contexts/
-    CortexContext.tsx       AI agent conversation state (messages, plan, audit, timeline)
+    CortexContext.tsx       Read-only investigation state (messages, session, page context)
   hooks/
     useCortexModel.ts       Multi-provider model picker hook
+    useWirelessAssistant.ts WLAN-configuration workflow state machine (intake -> approval -> verify)
+    useVoiceInput.ts        Push-to-talk (browser SpeechRecognition or server MediaRecorder+Groq)
   services/
     cortexApiClient.ts      HTTP client for /api/cortex/* routes
   types/
     cortex.ts               CortexPageContext, CortexPageType, CORTEX_PAGE_NAMES
+    wirelessAssistant.ts     WirelessConfigurationIntent, WirelessValidationReport, NetworkScope
   services/                47 service files (API, data, business logic)
   hooks/                   30+ custom React hooks
   lib/                     Utilities & helpers
@@ -150,6 +160,13 @@ src/
 **AURA Cortex (AI agent engine) overrides:**
 - `CORTEX_LLM_PROVIDER` -- force a specific provider (`openai`, `anthropic`, `groq`, etc.; default: auto-detect from API keys)
 - `CORTEX_LLM_MODEL` -- force a default model ID (overrides registry default)
+
+**AURA push-to-talk speech-to-text (optional):**
+- `SPEECH_TO_TEXT_PROVIDER` -- `browser` (default, Web Speech API, no server component) or `server` (Groq Whisper via `POST /api/cortex/speech/transcribe`, requires `GROQ_API_KEY`)
+- `SPEECH_MAX_DURATION_SECONDS` / `SPEECH_MAX_UPLOAD_BYTES` -- server-provider limits (default 60s / 8MB)
+
+**Identity / session signing:**
+- `SESSION_SECRET` -- HMAC secret for signed session cookies and WLAN-provisioning validation tokens (`server/identity/sessionService.js`, `server/cortex/validationToken.js`). Without it a random per-boot secret is used, so sessions and any pending validation tokens don't survive a restart.
 
 **Security rule:** NEVER use `VITE_` prefixed variables for credentials or secrets. Vite exposes these in the browser bundle.
 

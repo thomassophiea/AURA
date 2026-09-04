@@ -4,32 +4,6 @@ import React from 'react';
 import { CortexContextProvider, useCortexContext } from './CortexContext';
 import type { CortexPageContext } from '../types/cortex';
 
-// Mock agentService singleton — expose all methods used by CortexContext
-vi.mock('../services/agentService', () => ({
-  agentService: {
-    clearHistory: vi.fn(),
-    getAuditHistory: vi.fn(() => []),
-    getAPITimeline: vi.fn(() => []),
-    parseIntent: vi.fn(() => Promise.resolve(null)),
-    buildExecutionPlan: vi.fn(() =>
-      Promise.resolve({
-        id: 'plan-1',
-        title: 'Test Plan',
-        description: 'A plan',
-        status: 'pending',
-        steps: [],
-        impactedObjects: [{ type: 'ap', id: 'ap-1', name: 'AP-1' }],
-        createdAt: new Date(),
-      })
-    ),
-    executeApprovedPlan: vi.fn(() =>
-      Promise.resolve({ planId: 'plan-1', success: true, completedSteps: 0 })
-    ),
-    rejectPlan: vi.fn(),
-    rollbackOperation: vi.fn(() => Promise.resolve()),
-  },
-}));
-
 // Mock cortexApiClient
 vi.mock('../services/cortexApiClient', () => ({
   createCortexSession: vi.fn(() => Promise.resolve({ sessionId: 'sess-1' })),
@@ -71,9 +45,6 @@ describe('CortexContext', () => {
     expect(result.current.messages).toEqual([]);
     expect(result.current.isThinking).toBe(false);
     expect(result.current.isOpen).toBe(false);
-    expect(result.current.auditEntries).toEqual([]);
-    expect(result.current.apiTimeline).toEqual([]);
-    expect(result.current.pendingPlan).toBeNull();
     expect(result.current.sessionId).toBeNull();
   });
 
@@ -134,24 +105,14 @@ describe('CortexContext', () => {
     expect(result.current.messages).toEqual([]);
   });
 
-  it('clearConversation resets messages and pendingPlan', () => {
+  it('clearConversation resets messages and the session', () => {
     const { result } = renderHook(() => useCortexContext(), { wrapper });
 
     act(() => {
       result.current.clearConversation();
     });
     expect(result.current.messages).toEqual([]);
-    expect(result.current.pendingPlan).toBeNull();
-  });
-
-  it('rejectPlan is callable without crashing (no pending plan)', () => {
-    const { result } = renderHook(() => useCortexContext(), { wrapper });
-    expect(typeof result.current.rejectPlan).toBe('function');
-    // rejectPlan calls agentService.rejectPlan which throws if plan not found
-    // but the context catches nothing — test that it doesn't throw from React side
-    act(() => {
-      result.current.rejectPlan('plan-nonexistent');
-    });
+    expect(result.current.sessionId).toBeNull();
   });
 
   it('cortexContext merges pageContext with org data', () => {

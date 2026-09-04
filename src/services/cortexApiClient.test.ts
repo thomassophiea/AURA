@@ -3,7 +3,9 @@ import {
   createCortexSession,
   sendCortexMessage,
   refreshCortexContext,
-  executeCortexToolCall,
+  parseWirelessInstruction,
+  validateWirelessIntent,
+  provisionWirelessIntent,
   queryCortexWireless,
 } from './cortexApiClient';
 
@@ -64,13 +66,43 @@ describe('refreshCortexContext', () => {
   });
 });
 
-describe('executeCortexToolCall', () => {
-  it('POSTs to /api/cortex/tool-call and returns result', async () => {
-    vi.stubGlobal('fetch', mockFetch({ result: 'done' }));
-    const result = await executeCortexToolCall('sess-1', 'listSites', { siteId: 's1' });
-    expect(result).toEqual({ result: 'done' });
+describe('parseWirelessInstruction', () => {
+  it('POSTs to /api/cortex/wireless/intent with the input and source', async () => {
+    vi.stubGlobal(
+      'fetch',
+      mockFetch({ intent: { action: 'create_wlan' }, missingFields: [], ambiguities: [], riskLevel: 'high', humanReadable: '', classification: 'mutating' })
+    );
+    const result = await parseWirelessInstruction('create a guest wlan', 'text');
+    expect(result.classification).toBe('mutating');
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(url).toBe('/api/cortex/wireless/intent');
+    expect(JSON.parse(init?.body as string)).toEqual({ input: 'create a guest wlan', source: 'text' });
+  });
+});
+
+describe('validateWirelessIntent', () => {
+  it('POSTs to /api/cortex/wireless/validate and returns the report', async () => {
+    const report = { intent: {}, checks: [], confidence: { score: 90, band: 'HIGH', blockingIssues: [], warnings: [] }, recommendation: 'ok', planHash: 'abc', validationToken: 'tok', expiresAt: '2026-01-01T00:00:00Z' };
+    vi.stubGlobal('fetch', mockFetch(report));
+    const result = await validateWirelessIntent({ action: 'create_wlan', requestedBy: 'u', source: 'text', rawInstruction: 'x' });
+    expect(result.planHash).toBe('abc');
+    expect(vi.mocked(fetch).mock.calls[0][0]).toBe('/api/cortex/wireless/validate');
+  });
+});
+
+describe('provisionWirelessIntent', () => {
+  it('POSTs to /api/cortex/wireless/provision with the full approval payload', async () => {
+    vi.stubGlobal('fetch', mockFetch({ status: 'completed', serviceId: 'svc-1' }));
+    const result = await provisionWirelessIntent({
+      intent: { action: 'create_wlan', requestedBy: 'u', source: 'text', rawInstruction: 'x' },
+      planHash: 'abc',
+      validationToken: 'tok',
+      profileIds: ['p1'],
+      approvedBy: 'operator1',
+    });
+    expect(result.status).toBe('completed');
     const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1]?.body as string);
-    expect(body.toolName).toBe('listSites');
+    expect(body.approvedBy).toBe('operator1');
   });
 });
 

@@ -6,6 +6,12 @@
 import type { CortexPageContext } from '@/types/cortex';
 import type { AgentMessage, AgentToolCall } from '../components/AgentCoworker/agentTypes';
 import type { CortexWirelessAnswer } from '@/cortex/types';
+import type {
+  ParsedWirelessIntent,
+  WirelessConfigurationIntent,
+  WirelessValidationReport,
+  WirelessProvisioningResult,
+} from '@/types/wirelessAssistant';
 import { apiService, getDynamicControllerUrl } from './api';
 
 function getAuthHeader(): string {
@@ -71,32 +77,37 @@ export async function refreshCortexContext(
   await cortexFetch('/api/cortex/context', { sessionId, context });
 }
 
-/** Execute a named tool call within a session (Phase 3). */
-export async function executeCortexToolCall(
-  sessionId: string,
-  toolName: string,
-  args: Record<string, unknown>
-): Promise<unknown> {
-  return cortexFetch('/api/cortex/tool-call', { sessionId, toolName, args });
+/** Deterministic, non-LLM parse of a text/voice instruction into a typed intent. */
+export async function parseWirelessInstruction(
+  input: string,
+  source: 'voice' | 'text' = 'text'
+): Promise<ParsedWirelessIntent> {
+  return cortexFetch('/api/cortex/wireless/intent', { input, source });
 }
 
-/** Generate a config change preview diff (Phase 3). */
-export async function previewCortexConfigChange(
-  sessionId: string,
-  changePlan: unknown
-): Promise<unknown> {
-  return cortexFetch('/api/cortex/config/preview', { sessionId, changePlan });
+/** Full pre-provision validation — returns a plan hash + signed, time-limited token. */
+export async function validateWirelessIntent(
+  intent: WirelessConfigurationIntent,
+  ephemeralPassword?: string
+): Promise<WirelessValidationReport> {
+  return cortexFetch('/api/cortex/wireless/validate', { intent, ephemeralPassword });
 }
 
 /**
- * Commit an approved config change (Phase 3).
- * IMPORTANT: Only call after explicit human approval in the UI.
+ * Provision an approved WLAN plan. Operator-role-gated and audited server-side.
+ * IMPORTANT: only call after explicit operator approval in the UI — the server
+ * independently re-verifies the plan hash and token before writing anything.
  */
-export async function commitCortexConfigChange(
-  sessionId: string,
-  approvedChangeId: string
-): Promise<unknown> {
-  return cortexFetch('/api/cortex/config/commit', { sessionId, approvedChangeId });
+export async function provisionWirelessIntent(params: {
+  intent: WirelessConfigurationIntent;
+  planHash: string;
+  validationToken: string;
+  ephemeralPassword?: string;
+  /** Omit to auto-resolve from the intent's site/AP scope server-side. */
+  profileIds?: string[];
+  approvedBy: string;
+}): Promise<WirelessProvisioningResult> {
+  return cortexFetch('/api/cortex/wireless/provision', params);
 }
 
 /** Run the wireless query pipeline; returns null if not a wireless question. */

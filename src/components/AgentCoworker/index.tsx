@@ -20,16 +20,6 @@ export function AgentCoworker(_props: AgentCoworkerProps) {
   const [driftCount, setDriftCount] = useState(0);
 
   useEffect(() => {
-    const OPS_PANEL_KEYS: Record<string, Parameters<typeof ws.setActivePanel>[0]> = {
-      '1': 'conversation',
-      '2': 'validate',
-      '3': 'drift',
-      '4': 'execution',
-      '5': 'diff',
-      '6': 'audit',
-      '7': 'timeline',
-    };
-
     const handler = (e: KeyboardEvent) => {
       const isOpen = ws.mode === 'open' || ws.mode === 'pinned';
 
@@ -45,35 +35,7 @@ export function AgentCoworker(_props: AgentCoworkerProps) {
         return;
       }
 
-      if (!isOpen) return;
-
-      // ⌘1 / Ctrl+1 → Terminal tab, ⌘2 / Ctrl+2 → Ops tab
-      if ((e.metaKey || e.ctrlKey) && e.key === '1') {
-        e.preventDefault();
-        ws.setPrimaryTab('terminal');
-        return;
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === '2') {
-        e.preventDefault();
-        ws.setPrimaryTab('ops');
-        return;
-      }
-
-      // 1–7 without modifier → Ops sub-panel (only when Ops tab is active)
-      if (!e.metaKey && !e.ctrlKey && !e.altKey && ws.primaryTab === 'ops') {
-        const panel = OPS_PANEL_KEYS[e.key];
-        if (
-          panel &&
-          !(e.target instanceof HTMLInputElement) &&
-          !(e.target instanceof HTMLTextAreaElement)
-        ) {
-          e.preventDefault();
-          ws.setActivePanel(panel);
-          return;
-        }
-      }
-
-      if (e.key === 'Escape') {
+      if (isOpen && e.key === 'Escape') {
         ctx.closeCortex();
         ws.dismiss();
       }
@@ -82,8 +44,10 @@ export function AgentCoworker(_props: AgentCoworkerProps) {
     return () => window.removeEventListener('keydown', handler);
   }, [ctx, ws]);
 
-  // Let distant pages (alert rows, detail panels) open the workspace with a
-  // pre-seeded question — and let them detect whether it is mounted at all.
+  // Let distant pages (alert rows, detail panels) open the workspace — the
+  // prompt itself is picked up and routed (read-only vs. WLAN configuration)
+  // by WirelessAssistantPanel's own CORTEX_DIAGNOSE_EVENT listener, which is
+  // always mounted once the workspace exists.
   useEffect(() => {
     markCortexAvailable(true);
     const diagnose = (e: Event) => {
@@ -91,9 +55,6 @@ export function AgentCoworker(_props: AgentCoworkerProps) {
       if (typeof prompt !== 'string' || !prompt) return;
       ctx.openCortex();
       ws.open();
-      ws.setPrimaryTab('ops');
-      ws.setActivePanel('conversation');
-      void ctx.sendMessage(prompt);
     };
     window.addEventListener(CORTEX_DIAGNOSE_EVENT, diagnose);
     return () => {
@@ -117,8 +78,6 @@ export function AgentCoworker(_props: AgentCoworkerProps) {
       <AgentWorkspace
         mode={ws.mode}
         size={ws.size}
-        primaryTab={ws.primaryTab}
-        activePanel={ws.activePanel}
         onClose={() => {
           ws.dismiss();
           ctx.closeCortex();
@@ -130,8 +89,6 @@ export function AgentCoworker(_props: AgentCoworkerProps) {
           ctx.closeCortex();
         }}
         onSetSize={ws.setSize}
-        onSetPrimaryTab={ws.setPrimaryTab}
-        onSetActivePanel={ws.setActivePanel}
         onDriftCount={setDriftCount}
       />
     </>
