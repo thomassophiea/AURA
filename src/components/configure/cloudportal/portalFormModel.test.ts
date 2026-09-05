@@ -80,6 +80,25 @@ describe('formFromView', () => {
     const form = formFromView(makeView());
     expect(form.fieldModes).toEqual({ fullName: 'optional', email: 'off' });
   });
+
+  it('defaults the sponsorship switch to the portal effective state, not a hardcoded guess', () => {
+    expect(formFromView(makeView()).sponsorshipEnabled).toBe(true);
+
+    const notOffered = makeView();
+    notOffered.effective.sponsorship.enabled = false;
+    expect(formFromView(notOffered).sponsorshipEnabled).toBe(false);
+  });
+
+  it('respects a stored sponsorship override either direction', () => {
+    const offButEffectiveOn = makeView();
+    offButEffectiveOn.stored.sponsorshipEnabled = false;
+    expect(formFromView(offButEffectiveOn).sponsorshipEnabled).toBe(false);
+
+    const onButEffectiveOff = makeView();
+    onButEffectiveOff.effective.sponsorship.enabled = false;
+    onButEffectiveOff.stored.sponsorshipEnabled = true;
+    expect(formFromView(onButEffectiveOff).sponsorshipEnabled).toBe(true);
+  });
 });
 
 describe('updateFromForm', () => {

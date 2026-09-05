@@ -96,6 +96,7 @@ export interface FormState {
   privacyPolicyText: string;
   marketingEnabled: boolean;
   marketingText: string;
+  /** Unset mirrors the portal's own effective state, not a hardcoded default. */
   sponsorshipEnabled: boolean;
   /** Comma-separated; blank = use the service environment's domains. */
   domainsText: string;
@@ -176,7 +177,10 @@ export function formFromView(view: PortalConfigView): FormState {
     privacyPolicyText: view.stored.privacyPolicyText ?? '',
     marketingEnabled: view.stored.marketingEnabled === true,
     marketingText: view.stored.marketingText ?? '',
-    sponsorshipEnabled: view.stored.sponsorshipEnabled ?? true,
+    // Unset falls back to what the portal is actually doing right now, not a
+    // hardcoded guess — an unconfigured portal shouldn't preview a sponsored-
+    // access offer it was never asked to make.
+    sponsorshipEnabled: view.stored.sponsorshipEnabled ?? view.effective.sponsorship.enabled,
     domainsText: view.stored.sponsorAllowedDomains?.join(', ') ?? '',
     addressesText: view.stored.sponsorAllowedAddresses?.join(', ') ?? '',
     ttlSeconds: view.stored.sponsorshipTtlSeconds ?? '',
