@@ -1,11 +1,12 @@
 /**
  * Configure → Cloud Captive Portal.
  *
- * One portal object, opened in full: grouped section navigation (Access,
- * Guest form, Experience, Legal & privacy) with a live guest preview beside
- * it — the preview renders the portal's own page copy, so what the operator
- * sees is what the guest gets. Modeled on the Captive Web Portal golden
- * design; adapted to the single running portal this deployment manages.
+ * One portal object, opened in full: a top tab bar groups the sections
+ * (Access, Guest form, Experience, Legal & privacy), with a live guest
+ * preview beside the active one — the preview renders the portal's own page
+ * copy, so what the operator sees is what the guest gets. Modeled on the
+ * Captive Web Portal golden design; adapted to the single running portal
+ * this deployment manages.
  *
  * The portal stores and validates everything; this page shows the stored
  * overrides beside the *effective* values, because "what did I set" and
@@ -22,7 +23,7 @@ import { Badge } from '../../ui/badge';
 import { Button } from '../../ui/button';
 import { Card, CardContent } from '../../ui/card';
 import { Skeleton } from '../../ui/skeleton';
-import { cn } from '../../ui/utils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../ui/tabs';
 import {
   getPortalConfig,
   updatePortalConfig,
@@ -278,43 +279,29 @@ export function CloudPortalPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-[176px_minmax(0,1fr)_364px]">
-          <nav
-            aria-label="Portal configuration sections"
-            className="lg:sticky lg:top-4 lg:self-start"
-          >
-            <ul className="flex gap-1 overflow-x-auto lg:flex-col">
-              {GROUPS.map((g) => (
-                <li key={g.id}>
-                  <button
-                    onClick={() => setGroup(g.id)}
-                    aria-current={group === g.id ? 'page' : undefined}
-                    className={cn(
-                      'w-full whitespace-nowrap rounded-md px-3 py-1.5 text-left text-sm transition-colors',
-                      group === g.id
-                        ? 'bg-accent font-medium text-accent-foreground'
-                        : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
-                    )}
-                  >
-                    {g.label}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </nav>
+        <Tabs
+          value={group}
+          onValueChange={(v) => setGroup(v as GroupId)}
+          className="gap-4"
+        >
+          <TabsList aria-label="Portal configuration sections" className="w-full justify-start overflow-x-auto">
+            {GROUPS.map((g) => (
+              <TabsTrigger key={g.id} value={g.id}>
+                {g.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
 
-          <Card>
-            <CardContent className="space-y-6 p-4">
-              {group === 'access' && (
-                <>
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_364px]">
+            <Card>
+              <CardContent className="space-y-6 p-4">
+                <TabsContent value="access" className="m-0 space-y-6">
                   <GeneralSection view={view} form={form} patch={patch} />
                   <AccessPolicySection view={view} form={form} patch={patch} />
                   <SponsorshipSection view={view} form={form} patch={patch} />
                   <SecureAccessSection view={view} form={form} patch={patch} />
-                </>
-              )}
-              {group === 'guestForm' && (
-                <>
+                </TabsContent>
+                <TabsContent value="guestForm" className="m-0 space-y-6">
                   {selectedAccessPolicy(form, view) !== 'form' && (
                     <Alert>
                       <AlertTitle>These fields are not shown right now</AlertTitle>
@@ -325,38 +312,34 @@ export function CloudPortalPage() {
                     </Alert>
                   )}
                   <GuestFieldsSection view={view} form={form} patch={patch} />
-                </>
-              )}
-              {group === 'experience' && (
-                <>
+                </TabsContent>
+                <TabsContent value="experience" className="m-0 space-y-6">
                   <BrandingSection view={view} form={form} patch={patch} onImagesChanged={() => void refresh()} />
                   <LanguagesSection view={view} form={form} patch={patch} />
                   <AccessibilitySection />
-                </>
-              )}
-              {group === 'legal' && (
-                <>
+                </TabsContent>
+                <TabsContent value="legal" className="m-0 space-y-6">
                   <LegalDocumentsSection view={view} form={form} patch={patch} />
                   <LegalPrivacySection view={view} />
-                </>
-              )}
-              {view.stored.updatedAt && (
-                <p className="text-xs text-muted-foreground">
-                  Last saved {new Date(view.stored.updatedAt).toLocaleString()}
-                  {view.stored.updatedBy ? ` by ${view.stored.updatedBy}` : ''}.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          <div className="lg:sticky lg:top-4 lg:self-start">
-            <Card>
-              <CardContent className="p-4">
-                <GuestPreview view={view} form={form} />
+                </TabsContent>
+                {view.stored.updatedAt && (
+                  <p className="text-xs text-muted-foreground">
+                    Last saved {new Date(view.stored.updatedAt).toLocaleString()}
+                    {view.stored.updatedBy ? ` by ${view.stored.updatedBy}` : ''}.
+                  </p>
+                )}
               </CardContent>
             </Card>
+
+            <div className="lg:sticky lg:top-4 lg:self-start">
+              <Card>
+                <CardContent className="p-4">
+                  <GuestPreview view={view} form={form} />
+                </CardContent>
+              </Card>
+            </div>
           </div>
-        </div>
+        </Tabs>
       )}
     </div>
   );
