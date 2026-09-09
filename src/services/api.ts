@@ -1676,7 +1676,22 @@ class ApiService {
     try {
       return await this.makeRequestWithRetry(async () => {
         const queryString = this.buildQueryString(options);
-        const response = await this.makeAuthenticatedRequest('/v1/stations' + queryString);
+        // /v1/stations returns the controller's FULL station collection — there
+        // is no pagination (see the AURA scale constraint: 100K APs, thousands
+        // of sites). On a live controller this routinely runs past the 6s
+        // default: it was measured at 8.5s here, well within normal variance.
+        // `/stations` is classified as an analytics endpoint, so a timeout is
+        // swallowed as SUPPRESSED_ANALYTICS_ERROR below and silently returned
+        // as an empty array — which is exactly why Operational Insights (SLE
+        // dashboard) showed "No data" for every station-derived metric while
+        // AP-derived ones (Capacity, AP Health) still populated: real client
+        // data existed, the fetch just never got the chance to return it. 30s
+        // matches the other heavy, unpaginated report endpoints in this file.
+        const response = await this.makeAuthenticatedRequest(
+          '/v1/stations' + queryString,
+          {},
+          30000
+        );
         if (!response.ok) {
           throw new Error(`Failed to fetch stations: ${response.status} ${response.statusText}`);
         }
