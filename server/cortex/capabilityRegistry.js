@@ -18,6 +18,8 @@
  * differently-configured Gateway does not inherit this box's verdicts.
  */
 
+import { loadMonitoringConfig } from '../monitoring/config.js';
+
 /**
  * @typedef {'available'|'derived'|'partial'|'inert'|'unavailable'} Availability
  * @typedef {{ availability: Availability, source: string, note?: string,
@@ -285,9 +287,10 @@ export const DEFAULT_CAPABILITIES = {
     availability: 'unavailable',
     source: 'metric_samples.client_external_id',
     note:
-      'NULL on every row: MONITORING_PERSIST_CLIENT_IDENTIFIERS is off by default. Device, radio, ' +
-      'WLAN and site history are available; a specific client\'s past is not. Enabling it is a ' +
-      'privacy decision and would store pseudonymised identifiers, not raw MACs.',
+      'Off unless MONITORING_PERSIST_CLIENT_IDENTIFIERS is enabled with a pseudonym salt. When ' +
+      'off, client_external_id is NULL on every row and no client-scoped series exists. When on, ' +
+      'the client collector stores pseudonymised ids (HMAC-SHA256), never raw MACs, and history ' +
+      'accrues forward only — there is no backfill. probe() re-measures this per deployment.',
   },
 
   // ── scoring layer ──────────────────────────────────────────────────────
@@ -413,6 +416,25 @@ export class CapabilityRegistry {
     // Audit log: proves the param shape on this build.
     const audit = await evidence.auditLogs({ hours: 1 }).catch(() => ({ ok: false }));
     if (!audit.ok) set('config.audit_log', 'unavailable', 'audit log route rejected the request');
+
+    // Per-client history is a deployment policy, not a Gateway feature: it
+    // depends on whether this AURA instance is configured to store
+    // pseudonymised client ids. Read the config rather than assuming the
+    // default, or Cortex will keep declining a question it can now answer.
+    try {
+      const cfg = loadMonitoringConfig();
+      if (cfg.persistClientIdentifiers && cfg.clientPseudonymSalt) {
+        set(
+          'history.client_metrics',
+          'available',
+          'Per-client collection is enabled; ids are pseudonymised. Forward-only — a window ' +
+            'before collection started holds nothing, which is not the same as healthy.'
+        );
+      }
+    } catch {
+      // A misconfiguration (flag on, salt missing) leaves the default
+      // 'unavailable' standing, which is the safe reading.
+    }
 
     // QoE: confirm it is still dark rather than assuming.
     if (session?.get) {

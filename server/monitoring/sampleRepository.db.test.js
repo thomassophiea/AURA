@@ -307,6 +307,69 @@ describe.skipIf(!hasTestDatabase)('sampleRepository (PostgreSQL)', () => {
       expect(points.map((p) => p.numericValue)).not.toContain(99);
     });
 
+    it('narrows to one client by pseudonym', async () => {
+      // The client filter is the only way a stored pseudonym can be read back.
+      // Without it the collector writes per-client rows that nothing can query,
+      // and getClientHistory returns an empty window forever.
+      const alice = 'a'.repeat(32);
+      const bob = 'b'.repeat(32);
+      await insertSamples([
+        makeSample({
+          monitoredSourceId: source.id,
+          clientExternalId: alice,
+          metricFamily: 'client',
+          metricName: 'rss',
+          observedAt: new Date('2026-08-05T12:00:00Z'),
+          numericValue: -80,
+        }),
+        makeSample({
+          monitoredSourceId: source.id,
+          clientExternalId: bob,
+          metricFamily: 'client',
+          metricName: 'rss',
+          observedAt: new Date('2026-08-05T12:00:00Z'),
+          numericValue: -55,
+        }),
+      ]);
+
+      const { points } = await queryHistory({
+        sourceIds: [source.id],
+        start: new Date('2026-08-05T00:00:00Z'),
+        end: new Date('2026-08-06T00:00:00Z'),
+        clientExternalId: alice,
+        metricFamily: 'client',
+      });
+      expect(points.map((p) => p.numericValue)).toEqual([-80]);
+    });
+
+    it('keeps two clients in separate series rather than colliding them', async () => {
+      // client_key participates in the uniqueness index. If it did not, two
+      // clients reporting the same metric at the same instant would upsert over
+      // each other and one client's history would overwrite the other's.
+      const alice = 'c'.repeat(32);
+      const bob = 'd'.repeat(32);
+      const at = new Date('2026-08-05T13:00:00Z');
+      const result = await insertSamples([
+        makeSample({
+          monitoredSourceId: source.id,
+          clientExternalId: alice,
+          metricFamily: 'client',
+          metricName: 'rss',
+          observedAt: at,
+          numericValue: -80,
+        }),
+        makeSample({
+          monitoredSourceId: source.id,
+          clientExternalId: bob,
+          metricFamily: 'client',
+          metricName: 'rss',
+          observedAt: at,
+          numericValue: -55,
+        }),
+      ]);
+      expect(result).toMatchObject({ inserted: 2, updated: 0 });
+    });
+
     it('returns nothing for an empty authorized scope', async () => {
       const result = await queryHistory({
         sourceIds: [],

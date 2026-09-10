@@ -41,6 +41,10 @@ import {
   collectApReports,
   COLLECTOR_NAME as AP_COLLECTOR,
 } from './collectors/apReportCollector.js';
+import {
+  collectClients,
+  COLLECTOR_NAME as CLIENT_COLLECTOR,
+} from './collectors/clientCollector.js';
 import { probeDurations, capabilitiesAreStale } from './backfill.js';
 
 const LOCK_PREFIX = 'aura:monitoring:source:';
@@ -219,6 +223,17 @@ export async function collectSource({ source, config, now = new Date(), deps = {
           now,
           getCursor: readCursor,
         }),
+    });
+  }
+
+  // Per-client history. Gated on the privacy flag rather than a collector
+  // switch of its own: the flag is what authorises storing a client-scoped row
+  // at all, and the collector writes nothing but a pseudonym plus numbers.
+  if (config.persistClientIdentifiers) {
+    collectors.push({
+      name: CLIENT_COLLECTOR,
+      run: () =>
+        collectClients({ session, source: sourceWithCapabilities, config, now }),
     });
   }
 

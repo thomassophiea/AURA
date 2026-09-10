@@ -71,6 +71,9 @@ export const METRIC_FAMILIES = Object.freeze({
   INVENTORY: 'inventory',
   STATION: 'station',
   THROUGHPUT: 'throughput',
+  // Per-client series. Only ever written with a pseudonymised client id, and
+  // only when MONITORING_PERSIST_CLIENT_IDENTIFIERS is on.
+  CLIENT: 'client',
 });
 
 /**

@@ -34,13 +34,67 @@
 
 import { queryHistory, getEarliestObservedAt, queryLatest } from '../monitoring/sampleRepository.js';
 import { listSources, normalizeBaseUrl } from '../monitoring/sourceRepository.js';
+import { loadMonitoringConfig } from '../monitoring/config.js';
+import { pseudonymize } from '../monitoring/credentialCrypto.js';
+import { METRIC_FAMILIES } from '../monitoring/metricRegistry.js';
+import { normaliseMac, isIpv4 } from './clientResolver.js';
 
-/** History is per-device; the client dimension is deliberately not collected. */
+/** Said when the per-client collector is not enabled on this deployment. */
 export const CLIENT_HISTORY_UNAVAILABLE =
-  'Per-client history is not collected. MONITORING_PERSIST_CLIENT_IDENTIFIERS is off by ' +
-  'default, so client_external_id is NULL on every stored sample. Device, radio, WLAN and ' +
-  'site history are available; a specific client\'s past is not. Enabling it is a ' +
-  'deliberate privacy decision and would store pseudonymised identifiers, not raw MACs.';
+  'Per-client history is not being collected on this deployment. ' +
+  'MONITORING_PERSIST_CLIENT_IDENTIFIERS is off, so client_external_id is NULL on every ' +
+  'stored sample and no client-scoped series exists. Device, radio, WLAN and site history ' +
+  'are still available, and live telemetry still answers the client\'s CURRENT state. ' +
+  'Enabling it is a deliberate privacy decision: identifiers are stored pseudonymised ' +
+  '(HMAC-SHA256), not raw MACs, and collection is forward-only with no backfill.';
+
+/**
+ * The pseudonym a MAC is stored under, or why it cannot be computed.
+ *
+ * The collector never writes a MAC — it writes HMAC-SHA256(salt, normalised
+ * MAC) truncated to 32 hex. Because that is deterministic, a lookup by MAC is
+ * possible: hash the question through the same function. It also means the salt
+ * is load-bearing history — rotating it orphans every pseudonym already stored.
+ *
+ * @returns {{ok: boolean, pseudonym: string|null, reason: string|null}}
+ */
+export function clientPseudonym(mac, { config = null } = {}) {
+  let cfg = config;
+  if (!cfg) {
+    try {
+      cfg = loadMonitoringConfig();
+    } catch (err) {
+      // loadMonitoringConfig throws when the flag is on without a salt. That
+      // is a misconfiguration, not an empty history, and must not read as one.
+      return { ok: false, pseudonym: null, reason: err?.message ?? String(err) };
+    }
+  }
+  if (!cfg.persistClientIdentifiers || !cfg.clientPseudonymSalt) {
+    return { ok: false, pseudonym: null, reason: CLIENT_HISTORY_UNAVAILABLE };
+  }
+  // IPv4 BEFORE MAC. `192.168.100.122` strips to exactly twelve hex digits, so
+  // a MAC test alone accepts it and hashes an address as though it were a MAC —
+  // producing a pseudonym that matches nothing and an empty window that reads
+  // as "this client has no history".
+  if (isIpv4(mac)) {
+    return {
+      ok: false,
+      pseudonym: null,
+      reason:
+        `"${mac}" is an IP address, not a MAC. History is keyed on the MAC; resolve the ` +
+        'client with findClient first, then ask for its history by MAC.',
+    };
+  }
+  const normalised = normaliseMac(mac);
+  if (!normalised) {
+    return { ok: false, pseudonym: null, reason: `"${mac}" is not a MAC address` };
+  }
+  return {
+    ok: true,
+    pseudonym: pseudonymize(normalised, cfg.clientPseudonymSalt),
+    reason: null,
+  };
+}
 
 /**
  * Monitoring source ids for one Gateway.
@@ -118,6 +172,7 @@ export async function historyWindow({
   deviceExternalId = null,
   siteId = null,
   wlanExternalId = null,
+  clientExternalId = null,
   metricFamily = null,
   metricNames = [],
   maxPoints = 20_000,
@@ -134,6 +189,7 @@ export async function historyWindow({
         deviceExternalId,
         siteId,
         wlanExternalId,
+        clientExternalId,
         radioExternalId: null,
         metricFamily,
         metricNames,
@@ -162,6 +218,38 @@ export async function historyWindow({
   } catch (err) {
     return { ok: false, metrics: {}, meta: {}, error: err?.message ?? String(err) };
   }
+}
+
+/**
+ * One historical window for a single client, addressed by MAC.
+ *
+ * The MAC is hashed to its pseudonym and only the pseudonym reaches the query —
+ * the database is never asked about a MAC, because it does not hold any.
+ *
+ * @returns {Promise<{ok: boolean, metrics: object, meta: object, error: string|null}>}
+ */
+export async function clientHistoryWindow({ sourceIds, mac, start, end, config = null }) {
+  const id = clientPseudonym(mac, { config });
+  if (!id.ok) {
+    return { ok: false, metrics: {}, meta: { collected: false }, error: id.reason };
+  }
+  const result = await historyWindow({
+    sourceIds,
+    start,
+    end,
+    clientExternalId: id.pseudonym,
+    metricFamily: METRIC_FAMILIES.CLIENT,
+  });
+  return {
+    ...result,
+    meta: {
+      ...result.meta,
+      collected: true,
+      // Enabling collection does not backfill. Until a full window has
+      // elapsed, an empty result means "not yet collected", not "was fine".
+      identifierPolicy: 'pseudonymised (HMAC-SHA256, no MAC stored)',
+    },
+  };
 }
 
 /**

@@ -36,6 +36,8 @@ import { scoreClient, scoreRadio, summariseFindings } from './findingsEngine.js'
 import {
   resolveSourceIds,
   historyWindow,
+  clientHistoryWindow,
+  clientPseudonym,
   findVanishedDevices as findVanished,
   CLIENT_HISTORY_UNAVAILABLE,
 } from './historyEvidence.js';
@@ -74,6 +76,7 @@ export const TOOL_ACTIVITY = {
   getRecentChanges: 'Looking for recent configuration changes…',
   getCapabilities: 'Checking what this Gateway can report…',
   getMetricHistory: 'Comparing against stored history…',
+  getClientHistory: 'Reading this client\'s stored history…',
   findVanishedDevices: 'Checking for devices that have dropped out of inventory…',
 };
 
@@ -1023,13 +1026,136 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
             biggestChanges: changes.slice(0, 15),
             metricsOnlyInRecent: Object.keys(recent.metrics).filter((k) => !earlier.metrics[k]),
             metricsOnlyInEarlier: Object.keys(earlier.metrics).filter((k) => !recent.metrics[k]),
-            clientHistory: CLIENT_HISTORY_UNAVAILABLE,
+            // Truthful either way: this used to be a flat "never collected",
+            // which became a lie the moment the client collector was enabled.
+            clientHistory: clientPseudonym('00:00:00:00:00:00').ok
+              ? 'Per-client history IS collected on this deployment — use getClientHistory for a specific client.'
+              : CLIENT_HISTORY_UNAVAILABLE,
             note:
               'delta = median now minus median then, in the metric\'s own unit. A metric listed as ' +
               'only-in-one-window is a collection gap, not a trend. neverCollected true means ' +
               'nothing has ever been stored, which is different from a quiet window.',
           },
           'AURA monitoring database (metric_samples)'
+        );
+      },
+    },
+
+    // ────────────────────────────────────────────────────────────────────
+    getClientHistory: {
+      risk: RISK.READ,
+      spec: {
+        name: 'getClientHistory',
+        description:
+          'One client\'s own stored history — "was this client worse yesterday?". Available only when per-client collection is enabled on the deployment; the tool says plainly when it is not. Covers rss, snr, rfqi, the three RTT splits, rates, downlink loss and whether the client held an IPv4 address. Use getMetricHistory instead for AP/radio/WLAN/site trends.',
+        parameters: {
+          type: 'object',
+          properties: {
+            mac: { type: 'string', description: 'Client MAC address' },
+            hoursAgo: {
+              type: ['integer', 'null'],
+              description: 'How far back the comparison window sits (default 24 = yesterday)',
+            },
+            windowHours: {
+              type: ['integer', 'null'],
+              description: 'Width of each window in hours (default 3, matching the live window)',
+            },
+          },
+          required: ['mac'],
+          additionalProperties: false,
+        },
+      },
+      handler: async ({ mac, hoursAgo = 24, windowHours = 3 } = {}) => {
+        // Check the policy gate before anything else: if collection is off,
+        // there is nothing to query and the reason is the answer.
+        const id = clientPseudonym(mac);
+        if (!id.ok) {
+          return {
+            basis: 'unknown',
+            unavailable: true,
+            reason: id.reason,
+            instruction:
+              'Say per-client history is not available and why. Do NOT infer the client was fine ' +
+              'yesterday, and do NOT substitute the live 3-hour window for history. Live state and ' +
+              'the event timeline are still available.',
+          };
+        }
+
+        const src = await historySources();
+        if (!src.ok || !src.sourceIds.length) {
+          return {
+            basis: 'unknown',
+            unavailable: true,
+            reason:
+              `No stored history is reachable for this Gateway${src.error ? ` (${src.error})` : ''}.`,
+            instruction: 'Say history is unavailable. Do NOT infer that nothing changed.',
+          };
+        }
+
+        const now = Date.now();
+        const w = Math.max(1, windowHours) * 3600_000;
+        const back = Math.max(1, hoursAgo) * 3600_000;
+
+        const [recent, earlier] = await Promise.all([
+          clientHistoryWindow({
+            sourceIds: src.sourceIds,
+            mac,
+            start: new Date(now - w),
+            end: new Date(now),
+          }),
+          clientHistoryWindow({
+            sourceIds: src.sourceIds,
+            mac,
+            start: new Date(now - back - w),
+            end: new Date(now - back),
+          }),
+        ]);
+
+        if (!recent.ok || !earlier.ok) {
+          return {
+            basis: 'unknown',
+            unavailable: true,
+            reason: `Client history query failed: ${recent.error ?? earlier.error}`,
+            instruction: 'This is a failed query, not an absence of change.',
+          };
+        }
+
+        const changes = [];
+        for (const [name, then] of Object.entries(earlier.metrics)) {
+          const nowSummary = recent.metrics[name];
+          if (!nowSummary) continue;
+          changes.push({
+            metric: name,
+            medianThen: then.median,
+            medianNow: nowSummary.median,
+            delta: Number((nowSummary.median - then.median).toFixed(3)),
+            samplesThen: then.count,
+            samplesNow: nowSummary.count,
+          });
+        }
+        changes.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+
+        // Collection is forward-only — there is no backfill. An empty earlier
+        // window on a recently-enabled deployment means "not yet collected",
+        // which is emphatically not "the client was fine".
+        const earlierEmpty = Object.keys(earlier.metrics).length === 0;
+
+        return observed(
+          {
+            client: untrusted(mac),
+            identifier: 'looked up by pseudonym; no MAC address is stored',
+            recentWindow: { ...recent.meta, metricCount: Object.keys(recent.metrics).length },
+            earlierWindow: { ...earlier.meta, metricCount: Object.keys(earlier.metrics).length },
+            changes,
+            note: earlierEmpty
+              ? 'The earlier window holds NOTHING for this client. Per-client collection is ' +
+                'forward-only with no backfill, so this means it was not being collected then, or ' +
+                'the client was not associated — NOT that it was healthy. Say which is unknown.'
+              : 'delta = median now minus median then, in the metric\'s own unit. has_ipv4 is 1/0 ' +
+                'per sample, so a median below 1 means the client spent part of the window with no ' +
+                'address — a DHCP problem, not an RF one.',
+          },
+          'AURA monitoring database (metric_samples, family=client)'
         );
       },
     },
