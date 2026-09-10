@@ -532,7 +532,7 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
       spec: {
         name: 'getApHealth',
         description:
-          'AP inventory and health: status, site, platform; per-AP adds tunnel state and radio channel/power (catches an AP healthy on paper with radios off air). No disconnect REASON is available.',
+          'AP inventory and health: status, site, platform, plus statusCounts; per-AP adds tunnel state and radio channel/power (catches an AP healthy on paper with radios off air). No disconnect REASON is available, and a removed or unadopted AP vanishes from inventory rather than showing as unhealthy — so a clean list is not proof the fleet is healthy.',
         parameters: {
           type: 'object',
           properties: { apSerial: { type: 'string' } },
@@ -554,7 +554,20 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
                 status: a.status,
                 platform: a.platformName,
               })),
-              note: 'A "critical" AP carries no reason code on this build — troubles[] is empty even then.',
+              statusCounts: aps.reduce((acc, a) => {
+                const k = a.status ?? 'unknown';
+                acc[k] = (acc[k] ?? 0) + 1;
+                return acc;
+              }, {}),
+              note:
+                'A "critical" AP carries no reason code on this build — troubles[] is empty even then.',
+              inventoryCaveat:
+                'This lists only APs the Gateway currently knows about. An AP that has been ' +
+                'removed, or has fully lost adoption, DISAPPEARS from inventory rather than ' +
+                'appearing as unhealthy — measured: an AP that read "critical" was later absent ' +
+                'entirely and /v1/aps/{serial} answered 422 "Can not find AP". So an all-healthy ' +
+                'list is NOT proof that nothing is wrong; it can mean the broken AP is no longer ' +
+                'counted. Say so when reporting a clean fleet.',
             },
             '/v1/aps/query'
           );

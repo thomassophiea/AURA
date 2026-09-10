@@ -26,7 +26,7 @@ import { validateWlanIntent } from './server/validationEngine/wlanConfigValidato
 import { provisionWlan } from './server/cortex/wlanProvisioningEngine.js';
 import { transcribeWithGroq } from './server/cortex/groqSpeechToText.js';
 import { GatewayEvidence } from './server/cortex/gatewayEvidence.js';
-import { CapabilityRegistry } from './server/cortex/capabilityRegistry.js';
+import { CapabilityRegistry, getCapabilitiesFor } from './server/cortex/capabilityRegistry.js';
 import { createDiagnosticTools, TOOL_ACTIVITY } from './server/cortex/diagnosticTools.js';
 import { runInvestigation, auditAnswer } from './server/cortex/investigationAgent.js';
 import { sessionFromRequest } from './server/cortex/requestScopedSession.js';
@@ -2550,10 +2550,20 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
   });
 
   try {
-    const capabilities = new CapabilityRegistry();
+    // Do NOT block the question on a capability probe. Measured, that probe
+    // costs ~67 s against the lab Gateway (four flex/report reads) and was paid
+    // on every single question — the dominant cause of Cortex feeling slow.
+    // The registry is available immediately from the measured baseline plus any
+    // cached overrides; a refresh runs in the background when stale.
     const evidence = new GatewayEvidence(sess.session);
-    send('activity', { label: 'Checking what this Gateway can report…', tool: 'getCapabilities' });
-    await capabilities.probe(evidence, { session: sess.session });
+    const { registry: capabilities, refreshing } = getCapabilitiesFor({
+      key: sess.controllerUrl,
+      evidence,
+      session: sess.session,
+    });
+    if (refreshing) {
+      console.log('[Cortex] capability probe refreshing in background for', sess.controllerUrl);
+    }
 
     const tools = createDiagnosticTools({ session: sess.session, scope, capabilities });
 

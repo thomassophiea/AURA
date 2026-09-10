@@ -348,6 +348,7 @@ export class CapabilityRegistry {
 
     // MuTable is load-bearing: if it fails, almost nothing else is answerable.
     const mu = await evidence.clients().catch(() => ({ ok: false, rows: [] }));
+    // (retained for the `conclusive` flag returned below)
     if (!mu.ok) {
       for (const k of Object.keys(this.#caps)) {
         if (this.#caps[k].source?.includes('MuTable')) {
@@ -390,6 +391,95 @@ export class CapabilityRegistry {
     }
 
     this.#probedAt = new Date().toISOString();
-    return this.snapshot();
+    // `conclusive` distinguishes "this Gateway cannot do X" from "the Gateway
+    // did not answer just now". MuTable is load-bearing: when it fails, probe()
+    // marks every capability sourced from it unavailable, and caching THAT as a
+    // verdict would let one transient outage convince Cortex for ten minutes
+    // that the Gateway has no client telemetry at all.
+    return { ...this.snapshot(), conclusive: Boolean(mu?.ok) };
   }
+}
+
+// ── Probe cache ─────────────────────────────────────────────────────────────
+//
+// Capability probing costs real time. Measured against the lab Gateway:
+//   MuTable 16.2s · ApTable 18.0s · SmartRfNeighborTable 18.1s · QoE 14.7s
+//   = 67 s, and the endpoint paid it on EVERY question before the model even
+//   started. That was the dominant source of Cortex feeling slow, and it is
+//   waste: capabilities describe the Gateway BUILD, not the question. They
+//   change when the appliance is upgraded or reconfigured — not between two
+//   questions thirty seconds apart.
+//
+// So a question never waits for a probe. It gets a registry immediately —
+// DEFAULT_CAPABILITIES, which is itself measured truth for this build, plus any
+// overrides a previous probe established — and a refresh runs in the
+// background when the cache is stale.
+
+const PROBE_TTL_MS = 10 * 60 * 1000;
+
+/** key -> { overrides, probedAt, inFlight } */
+const probeCache = new Map();
+
+/**
+ * A registry for this Gateway, available immediately.
+ *
+ * @param {object} opts
+ * @param {string} opts.key        cache key — the Gateway base URL
+ * @param {object} opts.evidence   GatewayEvidence, for the background refresh
+ * @param {object} [opts.session]
+ * @param {boolean} [opts.refresh] set false to suppress the background probe
+ * @returns {{registry: CapabilityRegistry, probedAt: string|null, refreshing: boolean}}
+ */
+export function getCapabilitiesFor({ key, evidence, session, refresh = true }) {
+  const entry = probeCache.get(key);
+  const fresh = entry?.probedAt && Date.now() - entry.probedAt < PROBE_TTL_MS;
+  const registry = new CapabilityRegistry(entry?.overrides ?? {});
+
+  let refreshing = false;
+  if (refresh && !fresh && !entry?.inFlight) {
+    refreshing = true;
+    const pending = (async () => {
+      try {
+        const probeRegistry = new CapabilityRegistry();
+        const snap = await probeRegistry.probe(evidence, { session });
+
+        if (!snap.conclusive) {
+          // The Gateway did not answer its load-bearing read. That is an outage,
+          // not a capability verdict — keep the measured baseline and retry
+          // after the TTL rather than recording "no client telemetry".
+          const prev = probeCache.get(key);
+          probeCache.set(key, { ...(prev ?? {}), inFlight: null, probedAt: Date.now() });
+          return;
+        }
+
+        // Store only what differs from the baseline, so a later baseline change
+        // is not silently masked by a stale probe.
+        const overrides = {};
+        for (const [k, v] of Object.entries(snap.capabilities)) {
+          const base = DEFAULT_CAPABILITIES[k];
+          if (!base || base.availability !== v.availability || base.note !== v.note) {
+            overrides[k] = v;
+          }
+        }
+        probeCache.set(key, { overrides, probedAt: Date.now(), inFlight: null });
+      } catch {
+        // A failed probe must not poison the cache: keep serving the measured
+        // baseline and try again after the TTL.
+        const prev = probeCache.get(key);
+        probeCache.set(key, { ...(prev ?? {}), inFlight: null, probedAt: Date.now() });
+      }
+    })();
+    probeCache.set(key, { ...(entry ?? {}), inFlight: pending });
+  }
+
+  return {
+    registry,
+    probedAt: entry?.probedAt ? new Date(entry.probedAt).toISOString() : null,
+    refreshing,
+  };
+}
+
+/** Testing / redeploy hook. */
+export function clearCapabilityCache() {
+  probeCache.clear();
 }
