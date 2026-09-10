@@ -62,6 +62,12 @@ export function untrusted(value) {
   return { __untrusted__: true, value: String(value) };
 }
 
+/**
+ * Floor for a history window, in hours: one minute. Samples are 60 seconds
+ * apart, so anything narrower cannot contain a point.
+ */
+const MIN_WINDOW_HOURS = 1 / 60;
+
 /** Human-readable progress label shown in the UI instead of a function name. */
 export const TOOL_ACTIVITY = {
   findClient: 'Looking up client…',
@@ -943,13 +949,19 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
               type: ['string', 'null'],
               description: 'One of: ap_report, sle, throughput, site_report',
             },
+            // `number`, not `integer`: "the last 15 minutes" is an obvious
+            // question, and an integer-only schema made the provider reject
+            // windowHours 0.25 outright — failing the whole investigation
+            // rather than answering a narrower window. Measured on Integration.
             hoursAgo: {
-              type: ['integer', 'null'],
-              description: 'How far back the comparison window sits (default 24 = yesterday)',
+              type: ['number', 'null'],
+              description:
+                'How far back the comparison window sits, in hours (default 24 = yesterday). Fractions allowed: 0.25 = 15 minutes.',
             },
             windowHours: {
-              type: ['integer', 'null'],
-              description: 'Width of each window in hours (default 3, matching the live window)',
+              type: ['number', 'null'],
+              description:
+                'Width of each window in hours (default 3, matching the live window). Fractions allowed; samples are 60s apart, so a window under a minute may hold nothing.',
             },
           },
           additionalProperties: false,
@@ -970,8 +982,11 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
         }
 
         const now = Date.now();
-        const w = Math.max(1, windowHours) * 3600_000;
-        const back = Math.max(1, hoursAgo) * 3600_000;
+        // A one-MINUTE floor, not a one-hour one. Clamping a 15-minute request
+        // up to an hour would silently answer a different question than the
+        // one asked, and report it as if it were the asked-for window.
+        const w = Math.max(MIN_WINDOW_HOURS, windowHours) * 3600_000;
+        const back = Math.max(MIN_WINDOW_HOURS, hoursAgo) * 3600_000;
 
         const [recent, earlier] = await Promise.all([
           historyWindow({
@@ -1053,12 +1068,14 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
           properties: {
             mac: { type: 'string', description: 'Client MAC address' },
             hoursAgo: {
-              type: ['integer', 'null'],
-              description: 'How far back the comparison window sits (default 24 = yesterday)',
+              type: ['number', 'null'],
+              description:
+                'How far back the comparison window sits, in hours (default 24 = yesterday). Fractions allowed: 0.25 = 15 minutes.',
             },
             windowHours: {
-              type: ['integer', 'null'],
-              description: 'Width of each window in hours (default 3, matching the live window)',
+              type: ['number', 'null'],
+              description:
+                'Width of each window in hours (default 3, matching the live window). Fractions allowed; samples are 60s apart, so a window under a minute may hold nothing.',
             },
           },
           required: ['mac'],
@@ -1093,8 +1110,11 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
         }
 
         const now = Date.now();
-        const w = Math.max(1, windowHours) * 3600_000;
-        const back = Math.max(1, hoursAgo) * 3600_000;
+        // A one-MINUTE floor, not a one-hour one. Clamping a 15-minute request
+        // up to an hour would silently answer a different question than the
+        // one asked, and report it as if it were the asked-for window.
+        const w = Math.max(MIN_WINDOW_HOURS, windowHours) * 3600_000;
+        const back = Math.max(MIN_WINDOW_HOURS, hoursAgo) * 3600_000;
 
         const [recent, earlier] = await Promise.all([
           clientHistoryWindow({

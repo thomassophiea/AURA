@@ -303,3 +303,19 @@ describe('untrusted marking', () => {
     expect(untrusted(null)).toBeNull();
   });
 });
+
+describe('history window schemas accept sub-hour windows', () => {
+  it('declares hoursAgo/windowHours as number, not integer', () => {
+    // MEASURED ON INTEGRATION: asked to compare the last 15 minutes, the model
+    // sent windowHours 0.25 and the provider rejected the call outright —
+    // "expected integer or null, but got number" — failing the whole
+    // investigation instead of answering a narrower window.
+    const tools = createDiagnosticTools({ session: { get: async () => ({ ok: true, data: [] }) } });
+    for (const name of ['getMetricHistory', 'getClientHistory']) {
+      const props = tools[name].spec.parameters.properties;
+      expect(props.hoursAgo.type, name).toEqual(['number', 'null']);
+      expect(props.windowHours.type, name).toEqual(['number', 'null']);
+    }
+  });
+});
+
