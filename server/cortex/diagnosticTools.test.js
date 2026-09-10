@@ -111,6 +111,20 @@ describe('tool surface', () => {
     }
   });
 
+  it('lets optional parameters accept null, because models emit null for "unset"', () => {
+    // Groq validates tool calls strictly. A model emitting {siteName: null}
+    // against type:'string' aborted a whole investigation with
+    // tool_use_failed. Optional params must accept null; required must not.
+    const specs = toolSpecs(make());
+    const overview = specs.find((x) => x.name === 'getSiteOverview');
+    expect(overview.parameters.properties.siteName.type).toEqual(['string', 'null']);
+    expect(overview.parameters.properties.worst.type).toEqual(['integer', 'null']);
+
+    const diagnose = specs.find((x) => x.name === 'diagnoseClient');
+    // `mac` is required — a null there is a genuine error, not a default.
+    expect(diagnose.parameters.properties.mac.type).toBe('string');
+  });
+
   it('produces provider-compatible specs', () => {
     const specs = toolSpecs(make());
     expect(specs.length).toBeGreaterThan(5);

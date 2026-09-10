@@ -27,6 +27,24 @@
 
 import { untrusted } from './diagnosticTools.js';
 
+
+/**
+ * Drop null/undefined arguments before invoking a tool.
+ *
+ * A model emitting `{siteName: null, worst: 10}` means "no site filter", but a
+ * JS default (`{ worst = 10 } = {}`) only fires for `undefined` — a literal
+ * null sails through and becomes a filter for the site named "null". Stripping
+ * them restores the intended defaults.
+ */
+export function stripNullArgs(args) {
+  if (!args || typeof args !== 'object' || Array.isArray(args)) return {};
+  const out = {};
+  for (const [k, v] of Object.entries(args)) {
+    if (v !== null && v !== undefined) out[k] = v;
+  }
+  return out;
+}
+
 export const DEFAULT_LIMITS = {
   /** Model turns that may contain tool calls. */
   maxIterations: 8,
@@ -369,7 +387,7 @@ export async function runInvestigation({
         break;
       }
 
-      const signature = `${call.name}:${JSON.stringify(call.arguments ?? {})}`;
+      const signature = `${call.name}:${JSON.stringify(stripNullArgs(call.arguments))}`;
       const seen = (callCounts.get(signature) ?? 0) + 1;
       callCounts.set(signature, seen);
 
@@ -410,7 +428,7 @@ export async function runInvestigation({
       const t0 = Date.now();
       let result;
       try {
-        result = await withTimeout(tool.handler(call.arguments ?? {}), lim.maxToolMs);
+        result = await withTimeout(tool.handler(stripNullArgs(call.arguments)), lim.maxToolMs);
       } catch (err) {
         result = {
           basis: 'unknown',

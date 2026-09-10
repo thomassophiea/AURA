@@ -958,9 +958,40 @@ function lossFor(row) {
   };
 }
 
+/**
+ * Make every OPTIONAL parameter accept null as well as its declared type.
+ *
+ * Models routinely emit `null` to mean "not specified" for a parameter they
+ * chose not to use. Groq validates tool calls against the schema strictly and
+ * rejects the whole call:
+ *
+ *   Tool call validation failed: parameters for tool getSiteOverview did not
+ *   match schema: [`/siteName`: expected string, but got null]
+ *   failed_generation: {"siteName": null, "worst": 10}
+ *
+ * That aborted an entire investigation over a parameter the model was
+ * correctly declining to set. Required parameters stay strict — a null there
+ * is a real error worth surfacing.
+ *
+ * Applied centrally rather than per-tool so a new tool cannot forget it.
+ */
+function allowNullOnOptionals(spec) {
+  const params = spec.parameters ?? {};
+  const required = new Set(params.required ?? []);
+  const props = {};
+  for (const [name, def] of Object.entries(params.properties ?? {})) {
+    if (required.has(name) || !def?.type || Array.isArray(def.type)) {
+      props[name] = def;
+      continue;
+    }
+    props[name] = { ...def, type: [def.type, 'null'] };
+  }
+  return { ...spec, parameters: { ...params, properties: props } };
+}
+
 /** OpenAI/Groq-compatible specs for the provider layer. */
 export function toolSpecs(tools) {
-  return Object.values(tools).map((t) => t.spec);
+  return Object.values(tools).map((t) => allowNullOnOptionals(t.spec));
 }
 
 /** Register every tool with the existing dispatcher's resolver mechanism. */
