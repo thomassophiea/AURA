@@ -5,6 +5,7 @@ import {
   AnthropicLlmProvider,
   createLlmProvider,
   createLlmProviderForModel,
+  OllamaLlmProvider,
 } from './cortexLlmProvider.js';
 
 /**
@@ -170,10 +171,14 @@ describe('createLlmProviderForModel', () => {
     expect(providerName).toBe('deepseek');
   });
 
-  it('routes a dynamically discovered Ollama id to the local endpoint', () => {
+  it('routes a discovered Ollama id to the NATIVE provider, not the /v1 shim', () => {
+    // Measured: Ollama's OpenAI-compatible shim returns no structured
+    // tool_calls, so routing Cortex through OpenAiLlmProvider silently turned
+    // a tool request into a final answer.
     process.env.OLLAMA_ENABLED = 'true';
     const { provider, providerName } = createLlmProviderForModel('llama3.2', ['llama3.2']);
-    expect(provider).toBeInstanceOf(OpenAiLlmProvider);
+    expect(provider).toBeInstanceOf(OllamaLlmProvider);
+    expect(provider).not.toBeInstanceOf(OpenAiLlmProvider);
     expect(providerName).toBe('ollama');
   });
 });

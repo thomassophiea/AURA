@@ -329,6 +329,186 @@ export class AnthropicLlmProvider {
   }
 }
 
+
+// ── Ollama provider (native API) ─────────────────────────────────────────────
+
+/**
+ * Ollama, via its NATIVE /api/chat endpoint rather than the OpenAI-compatible
+ * /v1 shim.
+ *
+ * WHY NOT THE SHIM
+ * ----------------
+ * Cortex is entirely tool-driven, and the shim does not surface tool calls.
+ * Measured on the lab box (nobara-pc, Ollama + qwen2.5:7b, 2026-09-10):
+ *
+ *   POST /v1/chat/completions  -> tool_calls: 0, finish_reason: "stop",
+ *     content: 'ombok\n {"name": "getSiteOverview", "arguments": {...}}\n</tool_call>'
+ *   POST /api/chat             -> message.tool_calls: 1, parsed correctly
+ *
+ * The model produces a correct call either way; only the native endpoint parses
+ * it into structured form. Through the shim the call arrives as prose, the loop
+ * sees no toolCalls, and treats a tool request as a final answer — a silent
+ * failure, which is why this class exists.
+ *
+ * TWO SHAPE DIFFERENCES FROM OPENAI, both handled here:
+ *   - Ollama tool calls carry NO id. Our transcript needs a tool_call_id to
+ *     pair a result with its call, so one is synthesised.
+ *   - Ollama `arguments` is already an OBJECT, not a JSON string.
+ */
+export class OllamaLlmProvider {
+  #baseUrl;
+  #timeoutMs;
+
+  constructor({ baseUrl, timeoutMs = 300_000 } = {}) {
+    // Accept either a bare host or a /v1-suffixed URL and normalise to the root,
+    // because OLLAMA_API_BASE is conventionally written with /v1 for the shim.
+    const root = (baseUrl || 'http://localhost:11434').replace(/\/v1\/?$/, '').replace(/\/+$/, '');
+    this.#baseUrl = root;
+    // Local inference is slow: measured 6-7 s on a 7B and 67 s on a 14B for a
+    // 174-token prompt. A real Cortex turn is an order of magnitude larger, so
+    // the default HTTP timeout is far too short.
+    this.#timeoutMs = timeoutMs;
+  }
+
+  get baseUrl() {
+    return this.#baseUrl;
+  }
+
+  /** Translate our OpenAI-shaped transcript into Ollama's message shape. */
+  #toOllamaMessages(messages) {
+    return messages.map((m) => {
+      if (m.role === 'tool') {
+        // Ollama takes tool output as a plain tool-role message; it does not
+        // read tool_call_id, but sending it is harmless and keeps parity.
+        return { role: 'tool', content: String(m.content ?? '') };
+      }
+      if (m.role === 'assistant' && Array.isArray(m.tool_calls) && m.tool_calls.length) {
+        return {
+          role: 'assistant',
+          content: m.content ?? '',
+          tool_calls: m.tool_calls.map((c) => ({
+            function: {
+              name: c.function?.name ?? c.name,
+              arguments:
+                typeof c.function?.arguments === 'string'
+                  ? safeParseObject(c.function.arguments)
+                  : (c.function?.arguments ?? c.arguments ?? {}),
+            },
+          })),
+        };
+      }
+      return { role: m.role, content: String(m.content ?? '') };
+    });
+  }
+
+  async generateResponse({ model, messages, tools, temperature = 0.2, maxTokens = 1024 }) {
+    const body = {
+      model,
+      stream: false,
+      messages: this.#toOllamaMessages(messages),
+      options: { temperature, num_predict: maxTokens },
+    };
+    if (tools?.length) {
+      body.tools = tools.map((t) => ({
+        type: 'function',
+        function: { name: t.name, description: t.description, parameters: t.parameters },
+      }));
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.#timeoutMs);
+    let resp;
+    try {
+      resp = await fetch(`${this.#baseUrl}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } catch (err) {
+      if (err?.name === 'AbortError') {
+        throw new Error(
+          `Ollama at ${this.#baseUrl} did not respond within ${Math.round(this.#timeoutMs / 1000)}s. ` +
+            'Local inference on a large model can exceed this — try a smaller model.'
+        );
+      }
+      throw new Error(`Could not reach Ollama at ${this.#baseUrl}: ${err.message}`);
+    } finally {
+      clearTimeout(timer);
+    }
+
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => resp.statusText);
+      throw new Error(`Ollama API error ${resp.status}: ${String(text).slice(0, 400)}`);
+    }
+
+    const data = await resp.json();
+    const message = data.message ?? {};
+    const result = { message: message.content ?? '', raw: data };
+
+    if (Array.isArray(message.tool_calls) && message.tool_calls.length) {
+      result.toolCalls = message.tool_calls.map((c, i) => ({
+        // Ollama supplies no id; the loop needs one to pair result to call.
+        id: `ollama-${Date.now()}-${i}`,
+        name: c.function?.name,
+        arguments:
+          typeof c.function?.arguments === 'string'
+            ? safeParseObject(c.function.arguments)
+            : (c.function?.arguments ?? {}),
+      }));
+    }
+
+    if (data.prompt_eval_count || data.eval_count) {
+      result.usage = {
+        prompt_tokens: data.prompt_eval_count ?? 0,
+        completion_tokens: data.eval_count ?? 0,
+      };
+    }
+    return result;
+  }
+
+  /**
+   * Reachability + loaded models, for the Cortex engine health panel.
+   * Never throws — an unreachable node is a status, not an exception.
+   */
+  async health() {
+    const started = Date.now();
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 5000);
+      const resp = await fetch(`${this.#baseUrl}/api/tags`, { signal: controller.signal });
+      clearTimeout(timer);
+      if (!resp.ok) {
+        return { state: 'AGENT_ERROR', latencyMs: Date.now() - started, detail: `HTTP ${resp.status}` };
+      }
+      const data = await resp.json();
+      const models = (data.models ?? []).map((m) => m.name);
+      return {
+        state: models.length ? 'CONNECTED' : 'DEGRADED',
+        latencyMs: Date.now() - started,
+        models,
+        detail: models.length ? null : 'reachable but no models are pulled',
+      };
+    } catch (err) {
+      return {
+        state: 'UNAVAILABLE',
+        latencyMs: Date.now() - started,
+        detail: err?.name === 'AbortError' ? 'timed out' : err.message,
+      };
+    }
+  }
+}
+
+/** Parse a JSON object, returning {} rather than throwing on malformed input. */
+function safeParseObject(text) {
+  try {
+    const v = JSON.parse(text);
+    return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+  } catch {
+    return {};
+  }
+}
+
 // ── Factory ──────────────────────────────────────────────────────────────────
 
 /**
@@ -427,6 +607,26 @@ export function createLlmProvider(config = {}) {
     };
   }
 
+  // `redqueen` is an alias for ollama, naming the lab node that hosts it
+  // (nobara-pc @ 192.168.100.50). The alias describes infrastructure; the
+  // product capability is Aura Cortex either way.
+  if (providerName === 'ollama' || providerName === 'redqueen') {
+    const baseUrl = process.env.CORTEX_REDQUEEN_URL || process.env.OLLAMA_API_BASE;
+    if (!baseUrl && providerName === 'redqueen') {
+      throw new CortexProviderNotConfiguredError(
+        'CORTEX_LLM_PROVIDER=redqueen but neither CORTEX_REDQUEEN_URL nor OLLAMA_API_BASE is set. ' +
+          'Ollama on the Red Queen node is bound to localhost by design, so this must point at a ' +
+          'tunnel or private-network address that reaches it.'
+      );
+    }
+    return {
+      provider: new OllamaLlmProvider({ baseUrl }),
+      // No hardcoded default: the available models depend on what has been
+      // pulled on that node. Set CORTEX_LLM_MODEL explicitly.
+      defaultModel: process.env.CORTEX_LLM_MODEL ?? 'qwen2.5:7b',
+    };
+  }
+
   if (providerName === 'azure') return { provider: new AzureOpenAiLlmProvider(), defaultModel: 'gpt-4o' };
 
   if (providerName === 'anthropic' || providerName === 'claude') {
@@ -452,7 +652,7 @@ export function createLlmProvider(config = {}) {
   throw new CortexProviderNotConfiguredError(
     providerName
       ? `Unknown CORTEX_LLM_PROVIDER "${providerName}". Supported: groq, grok, openai, ` +
-        'anthropic, gemini, mistral, cerebras, deepseek, ollama, azure.'
+        'groq, grok, openai, anthropic, gemini, mistral, cerebras, deepseek, ollama, redqueen, azure.'
       : 'No AI provider is configured. Set CORTEX_LLM_PROVIDER (e.g. groq) and the ' +
         'matching API key, or select a model explicitly. There is no mock fallback: ' +
         'Cortex refuses to answer rather than invent an answer.'
@@ -557,10 +757,11 @@ export function createLlmProviderForModel(modelId, ollamaModelIds = []) {
   }
 
   if (providerName === 'ollama') {
-    const baseUrl = process.env.OLLAMA_API_BASE || 'http://localhost:11434/v1';
-    // Ollama doesn't require a key but OpenAiLlmProvider does; use a sentinel.
+    // Native /api/chat, NOT the OpenAI /v1 shim: measured, the shim returns no
+    // structured tool_calls, so Cortex would silently treat a tool request as a
+    // final answer. See OllamaLlmProvider.
     return {
-      provider: new OpenAiLlmProvider({ apiKey: 'ollama-local', baseUrl }),
+      provider: new OllamaLlmProvider({ baseUrl: process.env.OLLAMA_API_BASE }),
       model: modelId,
       providerName,
     };
