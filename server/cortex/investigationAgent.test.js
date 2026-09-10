@@ -1,12 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import {
+  runInvestigation,
   stripNullArgs,
   fenceUntrusted,
   looksLikeInjection,
   compactTranscript,
   auditAnswer,
 } from './investigationAgent.js';
-import { untrusted } from './diagnosticTools.js';
+import { untrusted, createDiagnosticTools } from './diagnosticTools.js';
+import { CapabilityRegistry } from './capabilityRegistry.js';
 
 describe('stripNullArgs', () => {
   it('drops nulls so JS defaults actually fire', () => {
@@ -108,5 +110,70 @@ describe('auditAnswer', () => {
   it('passes an answer backed by a real tool call', () => {
     const f = auditAnswer('Airtime is contended on radio 1.', [{ tool: 'getRfHealth', ok: true }]);
     expect(f).toEqual([]);
+  });
+});
+
+describe('the schema the agent actually sends', () => {
+  /**
+   * Regression test for a fix that did not take effect.
+   *
+   * allowNullOnOptionals() was added to toolSpecs(), and a test asserted
+   * toolSpecs() — but runInvestigation built its own list with
+   * `Object.values(tools).map((t) => t.spec)`, bypassing the transform. The
+   * helper test passed while the production path kept sending type:'string',
+   * and Groq kept rejecting the whole request:
+   *   parameters for tool getSiteOverview did not match schema:
+   *   [`/siteName`: expected string, but got null]
+   *
+   * So this asserts what the PROVIDER receives, not what a helper returns.
+   */
+  const makeTools = () =>
+    createDiagnosticTools({
+      session: { get: async () => ({ ok: true, data: [] }) },
+      capabilities: new CapabilityRegistry(),
+    });
+
+  async function captureSpecs() {
+    let captured = null;
+    const provider = {
+      generateResponse: async ({ tools }) => {
+        captured = tools;
+        return { message: 'done' };
+      },
+    };
+    await runInvestigation({
+      provider,
+      model: 'm',
+      tools: makeTools(),
+      capabilities: new CapabilityRegistry(),
+      question: 'q',
+    });
+    return captured;
+  }
+
+  it('widens optional parameters to accept null on the wire', async () => {
+    const specs = await captureSpecs();
+    const overview = specs.find((s) => s.name === 'getSiteOverview');
+    expect(overview.parameters.properties.siteName.type).toEqual(['string', 'null']);
+    expect(overview.parameters.properties.worst.type).toEqual(['integer', 'null']);
+  });
+
+  it('keeps required parameters strict on the wire', async () => {
+    const specs = await captureSpecs();
+    const diagnose = specs.find((s) => s.name === 'diagnoseClient');
+    // A null `mac` is a genuine error, not an omitted filter.
+    expect(diagnose.parameters.properties.mac.type).toBe('string');
+  });
+
+  it('never hands the provider a bare single-type optional', async () => {
+    const specs = await captureSpecs();
+    for (const spec of specs) {
+      const required = new Set(spec.parameters.required ?? []);
+      for (const [name, def] of Object.entries(spec.parameters.properties ?? {})) {
+        if (required.has(name) || !def.type) continue;
+        expect(Array.isArray(def.type), `${spec.name}.${name} must accept null`).toBe(true);
+        expect(def.type).toContain('null');
+      }
+    }
   });
 });

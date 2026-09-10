@@ -25,7 +25,7 @@
  *    "there is no evidence for that".
  */
 
-import { untrusted } from './diagnosticTools.js';
+import { untrusted, toolSpecs as buildToolSpecs } from './diagnosticTools.js';
 
 
 /**
@@ -296,7 +296,15 @@ export async function runInvestigation({
   const callCounts = new Map();
   const usage = { promptTokens: 0, completionTokens: 0, toolCalls: 0 };
 
-  const toolSpecs = Object.values(tools).map((t) => t.spec);
+  // MUST go through buildToolSpecs(), not `t.spec` directly.
+  //
+  // buildToolSpecs applies allowNullOnOptionals(), which widens optional
+  // parameters to accept null. Building the list here from raw specs bypassed
+  // that transform, so the fix was never in effect on the only path that
+  // matters and Groq kept rejecting the whole request:
+  //   parameters for tool getSiteOverview did not match schema:
+  //   [`/siteName`: expected string, but got null]
+  const toolSpecs = buildToolSpecs(tools);
   const systemPrompt = buildSystemPrompt({
     capabilities,
     scope,
