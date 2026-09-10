@@ -338,3 +338,30 @@ describe('model fallback', () => {
     expect(seen).toEqual(['a', 'b']);
   });
 });
+
+describe('auditAnswer: per-client history counts as evidence about the past', () => {
+  it('does not flag a past-tense answer supported by getClientHistory', () => {
+    // Measured on Integration: a correct answer built from getClientHistory was
+    // flagged "Makes a claim about the past" because the rule named only the
+    // device-level history tools. An audit that cries wolf stops being read.
+    const findings = auditAnswer(
+      'The client has 11 samples in the recent window but nothing for the same window yesterday, ' +
+        'so whether it was previously worse is unknown.',
+      [{ tool: 'getClientHistory', ok: true }]
+    );
+    expect(findings.filter((f) => /claim about the past/i.test(f.detail))).toEqual([]);
+  });
+
+  it('still flags a past-tense claim with no history tool at all', () => {
+    const findings = auditAnswer('It was fine yesterday.', [{ tool: 'getSiteOverview', ok: true }]);
+    expect(findings.some((f) => /claim about the past/i.test(f.detail))).toBe(true);
+  });
+
+  it('does not accept a FAILED history call as support', () => {
+    const findings = auditAnswer('It was fine yesterday.', [
+      { tool: 'getClientHistory', ok: false },
+    ]);
+    expect(findings.some((f) => /claim about the past/i.test(f.detail))).toBe(true);
+  });
+});
+

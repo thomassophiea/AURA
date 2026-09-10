@@ -645,7 +645,15 @@ export function auditAnswer(answer, ledger) {
     },
     {
       re: /\b(yesterday|last week|used to be|previously|trend)\b/i,
-      requires: ['getMetricHistory', 'getRecentChanges', 'getClientTimeline'],
+      // getClientHistory belongs here: it is the per-client history tool, and
+      // omitting it flagged a correct, history-backed answer about one client
+      // as unsupported — measured on Integration.
+      requires: [
+        'getMetricHistory',
+        'getClientHistory',
+        'getRecentChanges',
+        'getClientTimeline',
+      ],
       finding: 'Makes a claim about the past.',
     },
   ];
