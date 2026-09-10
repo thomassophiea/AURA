@@ -33,6 +33,7 @@
  */
 
 import { GatewayEvidence, signal, rtt, isScorableClientRow } from '../../cortex/gatewayEvidence.js';
+import { dedupeByMac } from '../../cortex/clientResolver.js';
 import { pseudonymize } from '../credentialCrypto.js';
 import { METRIC_FAMILIES } from '../metricRegistry.js';
 
@@ -133,14 +134,22 @@ export async function collectClients({ session, source, config, now = new Date()
 
   const samples = [];
   let skippedPlaceholder = 0;
-  let skippedNoMac = 0;
+
+  // Counted before deduping, because dedupeByMac drops MAC-less rows silently.
+  const withMac = read.rows.filter((r) => r?.MAC);
+  const skippedNoMac = read.rows.length - withMac.length;
+
+  // MuTable carries MORE THAN ONE ROW PER CLIENT — which is why the rest of the
+  // codebase reads it through dedupeByMac. Left un-deduped, two rows for the
+  // same MAC at the same timestamp on the same radio produce two samples with
+  // an identical uniqueness key, and Postgres rejects the whole batch with
+  // "ON CONFLICT DO UPDATE command cannot affect row a second time" — losing
+  // every client in that tick, not just the duplicate. Measured on Integration.
+  const rows = dedupeByMac(withMac);
+  const collapsed = withMac.length - rows.length;
 
   const eligible = [];
-  for (const row of read.rows) {
-    if (!row?.MAC) {
-      skippedNoMac += 1;
-      continue;
-    }
+  for (const row of rows) {
     // An idle/stale row carries placeholder signal values. Storing it would
     // write a phantom coverage failure into history for a client that was not
     // really associated.
@@ -223,6 +232,9 @@ export async function collectClients({ session, source, config, now = new Date()
     notes.push(`${skippedPlaceholder} idle/placeholder client row(s) skipped rather than scored`);
   }
   if (skippedNoMac) notes.push(`${skippedNoMac} row(s) had no MAC`);
+  if (collapsed) {
+    notes.push(`${collapsed} duplicate MuTable row(s) collapsed to the freshest per client`);
+  }
   if (dropped) {
     notes.push(
       `${dropped} client(s) beyond the ${MAX_CLIENTS_PER_TICK}-client cap were not stored ` +

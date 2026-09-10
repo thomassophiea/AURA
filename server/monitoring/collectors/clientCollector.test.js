@@ -200,6 +200,44 @@ describe('clientCollector', () => {
     expect(bestRss).toBeLessThan(-30);
   });
 
+  it('collapses duplicate rows for one client instead of colliding on insert', async () => {
+    // MEASURED ON INTEGRATION: two MuTable rows for the same client at the same
+    // instant produced two samples with an identical uniqueness key, and
+    // Postgres rejected the ENTIRE batch — "ON CONFLICT DO UPDATE command
+    // cannot affect row a second time" — so every client in that tick was lost,
+    // not just the duplicate.
+    const result = await collect([
+      healthyRow({ Rss: -70, LastUpdate: 1_757_000_000 }),
+      healthyRow({ Rss: -60, LastUpdate: 1_757_000_060 }), // same MAC, fresher
+    ]);
+
+    const keys = result.samples.map((s) =>
+      [
+        s.monitoredSourceId,
+        s.siteId ?? '',
+        s.deviceExternalId ?? '',
+        s.radioExternalId ?? '',
+        s.wlanExternalId ?? '',
+        s.clientExternalId,
+        s.metricFamily,
+        s.metricName,
+        s.observedAt.toISOString(),
+        JSON.stringify(s.dimensions),
+      ].join('|')
+    );
+    expect(new Set(keys).size).toBe(keys.length);
+
+    // The freshest row wins, so the stored value is the current one.
+    expect(result.samples.find((s) => s.metricName === 'rss').numericValue).toBe(-60);
+    expect(result.notes.join(' ')).toMatch(/1 duplicate MuTable row\(s\) collapsed/);
+  });
+
+  it('keeps no-MAC rows out of the count of collapsed duplicates', async () => {
+    const result = await collect([healthyRow(), { Rss: -60, SNR: 20 }]);
+    expect(result.notes.join(' ')).toMatch(/1 row\(s\) had no MAC/);
+    expect(result.notes.join(' ')).not.toMatch(/collapsed/);
+  });
+
   it('keeps only non-identifying radio facts in dimensions', async () => {
     const result = await collect([healthyRow()]);
     for (const s of result.samples) {
