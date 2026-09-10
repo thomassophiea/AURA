@@ -112,6 +112,27 @@ describe('auditAnswer', () => {
     const f = auditAnswer('Airtime is contended on radio 1.', [{ tool: 'getRfHealth', ok: true }]);
     expect(f).toEqual([]);
   });
+
+  it('accepts EVERY legitimate source for a claim, not just the first listed', () => {
+    // Regression: an airtime claim sourced from stored history was flagged
+    // because the rule named only getRfHealth. An audit that cries wolf on a
+    // correct answer stops being read.
+    const f = auditAnswer(
+      'Channel utilization was higher yesterday (median 4%) than now (3%).',
+      [{ tool: 'getMetricHistory', ok: true }]
+    );
+    expect(f).toEqual([]);
+  });
+
+  it('flags a claim about the past with no historical source', () => {
+    const f = auditAnswer('It was fine yesterday.', [{ tool: 'getSiteOverview', ok: true }]);
+    expect(f.some((x) => /claim about the past/i.test(x.detail))).toBe(true);
+  });
+
+  it('still flags an airtime claim with no supporting tool at all', () => {
+    const f = auditAnswer('Co-channel interference is high.', [{ tool: 'getWlanConfig', ok: true }]);
+    expect(f.some((x) => /airtime or channel utilization/i.test(x.detail))).toBe(true);
+  });
 });
 
 describe('the schema the agent actually sends', () => {

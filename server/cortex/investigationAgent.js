@@ -616,29 +616,52 @@ export function auditAnswer(answer, ledger) {
   const findings = [];
   const toolsUsed = new Set(ledger.filter((l) => l.ok).map((l) => l.tool));
 
+  // Each claim lists EVERY tool that can legitimately support it. Listing only
+  // one produced a false positive the moment a second tool could answer the
+  // same question — getMetricHistory reports airtime from stored history, and
+  // was flagged for "discussing channel utilization" while doing exactly that.
+  // An audit that cries wolf stops being read, so a claim passes if ANY of its
+  // supporting tools succeeded.
   const claims = [
-    { re: /\bRADIUS\b[^.]*\b(reject|rejected|denied|refus)/i, requires: null,
-      finding: 'Claims a RADIUS rejection. This Gateway exposes no per-client RADIUS decision.' },
-    { re: /\bI (checked|queried|looked at) the gateway logs?\b/i, requires: 'getRecentChanges',
-      finding: 'Claims to have read Gateway logs.' },
-    { re: /\bchannel utilization|co-?channel|airtime\b/i, requires: 'getRfHealth',
-      finding: 'Discusses airtime or channel utilization.' },
-    { re: /\bDHCP\b/i, requires: 'checkBackendServices',
-      finding: 'Discusses DHCP.' },
+    {
+      re: /\bRADIUS\b[^.]*\b(reject|rejected|denied|refus)/i,
+      requires: [],
+      finding: 'Claims a RADIUS rejection. This Gateway exposes no per-client RADIUS decision.',
+    },
+    {
+      re: /\bI (checked|queried|looked at) the gateway logs?\b/i,
+      requires: ['getRecentChanges'],
+      finding: 'Claims to have read Gateway logs.',
+    },
+    {
+      re: /\bchannel utilization|co-?channel|airtime\b/i,
+      requires: ['getRfHealth', 'diagnoseClient', 'getMetricHistory'],
+      finding: 'Discusses airtime or channel utilization.',
+    },
+    {
+      re: /\bDHCP\b/i,
+      requires: ['checkBackendServices', 'diagnoseClient'],
+      finding: 'Discusses DHCP.',
+    },
+    {
+      re: /\b(yesterday|last week|used to be|previously|trend)\b/i,
+      requires: ['getMetricHistory', 'getRecentChanges', 'getClientTimeline'],
+      finding: 'Makes a claim about the past.',
+    },
   ];
 
   for (const c of claims) {
     if (!c.re.test(answer ?? '')) continue;
-    if (c.requires === null) {
+    if (c.requires.length === 0) {
+      // Nothing can support this claim — it is unsupportable by construction.
       findings.push({ severity: 'high', detail: c.finding });
-    } else if (!toolsUsed.has(c.requires)) {
-      // diagnoseClient covers DHCP outcome and RF too, so accept it as a source.
-      if (toolsUsed.has('diagnoseClient')) continue;
-      findings.push({
-        severity: 'medium',
-        detail: `${c.finding} No successful ${c.requires} call is in the evidence ledger.`,
-      });
+      continue;
     }
+    if (c.requires.some((t) => toolsUsed.has(t))) continue;
+    findings.push({
+      severity: 'medium',
+      detail: `${c.finding} No successful ${c.requires.join(' / ')} call is in the evidence ledger.`,
+    });
   }
 
   // A quantitative claim with an empty ledger is always wrong.
