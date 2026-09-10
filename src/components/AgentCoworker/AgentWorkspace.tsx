@@ -2,11 +2,9 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import { whenAutoRefresh } from '../../lib/autoRefresh';
 import { X, Minus, Pin, Maximize2 } from 'lucide-react';
 import { cn } from '../ui/utils';
-import { useCortexModel } from '../../hooks/useCortexModel';
 import { useAppContext } from '../../contexts/AppContext';
 import { writeAgentContext } from '../../services/agentContextService';
 import { apiService } from '../../services/api';
-import { ModelSelector } from './ModelSelector';
 import { WirelessAssistantPanel } from './wireless/WirelessAssistantPanel';
 import { WORKSPACE_WIDTHS } from './agentTypes';
 import type { WorkspaceMode, WorkspaceSize } from './agentTypes';
@@ -92,7 +90,6 @@ export function AgentWorkspace({
   );
 
   const panelWidth = dragWidth ?? WORKSPACE_WIDTHS[size];
-  const { providers, models, selectedModel, setSelectedModel, loading } = useCortexModel();
 
   // Drift alerts still drive the command-bar badge — read via the read-only
   // investigation pipeline's "are there drift alerts?" path for detail.
@@ -162,13 +159,6 @@ export function AgentWorkspace({
             <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground shrink-0">
               Aura Cortex
             </span>
-            <ModelSelector
-              providers={providers}
-              models={models}
-              selectedModel={selectedModel}
-              onSelect={setSelectedModel}
-              loading={loading}
-            />
             <div className="flex items-center gap-0.5 shrink-0">
               <button
                 onClick={onMinimize}

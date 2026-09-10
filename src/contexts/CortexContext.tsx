@@ -40,10 +40,37 @@ import type { AgentMessage } from '../components/AgentCoworker/agentTypes';
 import type { CortexAvailableAction, CortexInsight, CortexPageContext } from '../types/cortex';
 import { CORTEX_SUGGESTED_PROMPTS } from '../types/cortex';
 
-/** Read the user-selected Cortex model from localStorage (set via ModelSelector). */
+/**
+ * Model ids retired from the registry. A value persisted in a browser outlives
+ * the code that created it, so `redq-shell` kept being sent long after it was
+ * removed — and it is what produced "Model 'redq-shell' is not in the allowlist
+ * for any configured provider" on every message. Discard and clear it so the
+ * server simply uses its configured default.
+ */
+const RETIRED_MODEL_IDS = new Set([
+  'redq-shell',
+  'llama-3.3-70b-versatile',
+  'llama-3.1-8b-instant',
+  'mixtral-8x7b-32768',
+  'claude-sonnet-4-6',
+  'claude-opus-4-7',
+  'mock',
+]);
+
+/**
+ * The model is chosen server-side (CORTEX_LLM_PROVIDER / CORTEX_LLM_MODEL);
+ * there is no longer a picker. This only forwards a value a previous build may
+ * have stored, and drops it if that model no longer exists.
+ */
 function getSelectedCortexModel(): string | undefined {
   try {
-    return localStorage.getItem('cortex_model') ?? undefined;
+    const stored = localStorage.getItem('cortex_model');
+    if (!stored) return undefined;
+    if (RETIRED_MODEL_IDS.has(stored)) {
+      localStorage.removeItem('cortex_model');
+      return undefined;
+    }
+    return stored;
   } catch {
     return undefined;
   }

@@ -5,25 +5,12 @@ import { AgentWorkspace } from './AgentWorkspace';
 vi.mock('./wireless/WirelessAssistantPanel', () => ({
   WirelessAssistantPanel: () => <div data-testid="wireless-assistant-panel">AURA workflow</div>,
 }));
-vi.mock('../../hooks/useCortexModel', () => ({
-  useCortexModel: () => ({
-    providers: [],
-    models: [],
-    selectedModel: null,
-    setSelectedModel: vi.fn(),
-    loading: false,
-  }),
-}));
 vi.mock('../../contexts/AppContext', () => ({
   useAppContext: () => ({ siteGroup: null, navigationScope: 'global' }),
 }));
 vi.mock('../../services/agentContextService', () => ({
   writeAgentContext: vi.fn(),
 }));
-vi.mock('./ModelSelector', () => ({
-  ModelSelector: () => <div>ModelSelector</div>,
-}));
-
 beforeEach(() => {
   vi.stubGlobal(
     'fetch',

@@ -4,7 +4,6 @@ import { useWirelessAssistant } from '@/hooks/useWirelessAssistant';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
 import { CORTEX_DIAGNOSE_EVENT } from '@/lib/cortexLauncher';
 import { ConversationStream } from '../panels/ConversationStream';
-import { ScopeBreadcrumb } from './ScopeBreadcrumb';
 import { VoiceInputControl } from './VoiceInputControl';
 import { TranscriptReview } from './TranscriptReview';
 import { ValidationReportView } from './ValidationReport';
@@ -49,6 +48,12 @@ export function WirelessAssistantPanel() {
   const [textInput, setTextInput] = useState('');
   const confirmModeRef = useRef(false);
 
+  // The UI scope (site / SSID / AP / client) is still passed to the agent for
+  // client disambiguation — it is just no longer painted as a breadcrumb.
+  // "TSOPHIEA > SouthEast > No site selected" restated AURA's own navigation
+  // state inside the panel and told an operator nothing they could act on. The
+  // scope that matters is reported in the answer ("I found one match at
+  // Aura_Lab") and in the evidence panel, where it can be checked.
   const routeInstruction = useCallback(
     async (text: string, source: 'voice' | 'text') => {
       const outcome = await assistant.submitInstruction(text, source);
@@ -104,10 +109,6 @@ export function WirelessAssistantPanel() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="shrink-0 px-3 py-2 border-b border-border/40">
-        <ScopeBreadcrumb />
-      </div>
-
       {!inWorkflow && (
         <>
           <div className="flex-1 min-h-0">

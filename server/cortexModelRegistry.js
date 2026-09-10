@@ -162,41 +162,19 @@ function freezeWithProvider() {
 export const MODEL_REGISTRY = freezeWithProvider();
 
 /**
- * Non-LLM "models" surfaced in the picker. These are not LLM endpoints; the
- * frontend renders a custom panel for them (e.g. an embedded SSH terminal).
- * They are returned by /api/cortex/models alongside the configured providers'
- * models, but are NOT accepted by /api/cortex/message (isModelAllowed below
- * stays LLM-only on purpose).
- */
-export const SHELL_MODELS = [
-  {
-    // The id stays `redq-shell` deliberately: it is persisted in each user's
-    // localStorage under `cortex_model` and referenced by the console-shell
-    // transport. Renaming the id would silently invalidate every stored
-    // selection and break the dev tooling that keys off it. Only the
-    // user-facing label is rebranded.
-    id: 'redq-shell',
-    label: 'Aura Cortex',
-    kind: 'shell',
-    contextWindow: 0,
-    notes: 'Wireless operations assistant · default',
-    provider: 'shell',
-  },
-];
-
-/**
- * Historic default for the model picker.
+ * There is no shell "model", and no picker default.
  *
- * NO LONGER USED as the picker default. It pointed at the shell entry, whose
- * panel (ConsoleShell.tsx) is imported by nothing — so the out-of-box default
- * selected an entry that rendered no UI *and* was rejected by every LLM route
- * with "Model 'redq-shell' is not in the allowlist for any configured
- * provider", which broke every message for a new user.
+ * `redq-shell` used to be listed here as a non-LLM entry AND used as the
+ * picker's default. Its panel (ConsoleShell.tsx) was imported by nothing, so
+ * the out-of-box default selected an entry that rendered no UI, leaked its raw
+ * internal id into the header, and was rejected by every LLM route with
+ * "Model 'redq-shell' is not in the allowlist for any configured provider".
  *
- * /api/cortex/models now defaults to the configured LLM. Kept exported because
- * the console-shell transport still keys off this id.
+ * The model in use is reported in Cortex's evidence panel, where an operator
+ * auditing an answer can see it. It is not product chrome. The server-side
+ * console-shell WebSocket (server/consoleShell.js) is unaffected — it never
+ * read this registry.
  */
-export const DEFAULT_PICKER_MODEL = 'redq-shell';
 
 export function getAllowedModels(providerName) {
   // An unknown provider has NO allowed models. This used to fall through to

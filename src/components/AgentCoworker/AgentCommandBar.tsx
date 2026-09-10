@@ -1,7 +1,5 @@
 import { Sparkles } from 'lucide-react';
 import { cn } from '../ui/utils';
-import { ModelSelector } from './ModelSelector';
-import { useCortexModel } from '../../hooks/useCortexModel';
 
 interface AgentCommandBarProps {
   onOpen: () => void;
@@ -14,8 +12,6 @@ interface AgentCommandBarProps {
  * No chat input, no mic, no context badge — the workspace panel owns input.
  */
 export function AgentCommandBar({ onOpen, className, driftCount = 0 }: AgentCommandBarProps) {
-  const { providers, models, selectedModel, setSelectedModel, loading } = useCortexModel();
-
   return (
     <div className={cn('fixed bottom-6 left-1/2 -translate-x-1/2 z-[99998]', className)}>
       <div
@@ -43,14 +39,6 @@ export function AgentCommandBar({ onOpen, className, driftCount = 0 }: AgentComm
         </button>
 
         <div className="w-px h-5 bg-border" />
-
-        <ModelSelector
-          providers={providers}
-          models={models}
-          selectedModel={selectedModel}
-          onSelect={setSelectedModel}
-          loading={loading}
-        />
 
         <kbd className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono text-muted-foreground bg-muted/40 border border-border">
           ⌘K
