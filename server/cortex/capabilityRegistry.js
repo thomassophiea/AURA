@@ -258,6 +258,38 @@ export const DEFAULT_CAPABILITIES = {
     note: 'BOTH params required as epoch ms, or 422. start/end and fromTime/toTime are rejected.',
   },
 
+  // ── stored history (AURA's own database, not the Gateway) ──────────────
+  'history.device_metrics': {
+    availability: 'available',
+    source: 'AURA monitoring database: metric_samples (30-day retention, 60s poll)',
+    note:
+      'Families collected: ap_report, sle, throughput, site_report — measured 70,366 samples/day. ' +
+      'This is what answers "it was fine yesterday", which the Gateway cannot: its report API ' +
+      'serves only a 3H window.',
+  },
+  'history.sle': {
+    availability: 'available',
+    source: 'metric_samples, metricFamily "sle"',
+    note:
+      'SLE metrics ARE stored historically even though the Gateway\'s own QoE widgets are ' +
+      'disabled — so an SLE trend question is answerable from history when it is not answerable live.',
+  },
+  'history.vanished_devices': {
+    availability: 'derived',
+    source: 'metric_samples/current_state vs /v1/aps/query',
+    note:
+      'A device present in recent history but absent from live inventory. The only way to catch an ' +
+      'AP that broke badly enough to be removed rather than marked unhealthy.',
+  },
+  'history.client_metrics': {
+    availability: 'unavailable',
+    source: 'metric_samples.client_external_id',
+    note:
+      'NULL on every row: MONITORING_PERSIST_CLIENT_IDENTIFIERS is off by default. Device, radio, ' +
+      'WLAN and site history are available; a specific client\'s past is not. Enabling it is a ' +
+      'privacy decision and would store pseudonymised identifiers, not raw MACs.',
+  },
+
   // ── scoring layer ──────────────────────────────────────────────────────
   'sle.qoe_scores': {
     availability: 'inert',

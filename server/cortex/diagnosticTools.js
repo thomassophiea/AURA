@@ -33,6 +33,12 @@ import { CapabilityRegistry } from './capabilityRegistry.js';
 import { resolveClient, dedupeByMac, summariseCandidate, macIdentityNote } from './clientResolver.js';
 import { buildLifecycle, describeSecurity } from './connectionLifecycle.js';
 import { scoreClient, scoreRadio, summariseFindings } from './findingsEngine.js';
+import {
+  resolveSourceIds,
+  historyWindow,
+  findVanishedDevices as findVanished,
+  CLIENT_HISTORY_UNAVAILABLE,
+} from './historyEvidence.js';
 
 /** Tool risk classes. Only `read` and `diagnostic` appear in this file. */
 export const RISK = {
@@ -67,6 +73,8 @@ export const TOOL_ACTIVITY = {
   getSiteOverview: 'Summarising site health…',
   getRecentChanges: 'Looking for recent configuration changes…',
   getCapabilities: 'Checking what this Gateway can report…',
+  getMetricHistory: 'Comparing against stored history…',
+  findVanishedDevices: 'Checking for devices that have dropped out of inventory…',
 };
 
 /**
@@ -107,6 +115,11 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
       }
       return { ok: true, rows: r.data, error: null };
     });
+
+  // History lives in AURA's own database, scoped to the monitoring source that
+  // matches this Gateway — the same rule the monitoring HTTP API applies.
+  const historySources = () =>
+    once('histsrc', () => resolveSourceIds(session.baseUrl ?? scope.controllerUrl ?? ''));
 
   const clientData = () => once('mu', () => evidence.clients());
   const radioData = () => once('ap', () => evidence.radios());
@@ -905,6 +918,177 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
               'rather than judging the raw numbers yourself.',
           },
           'flex(MuTable) + /v1/aps/query'
+        );
+      },
+    },
+
+    // ────────────────────────────────────────────────────────────────────
+    getMetricHistory: {
+      risk: RISK.READ,
+      spec: {
+        name: 'getMetricHistory',
+        description:
+          'Compare a recent window against the same window earlier, from AURA\'s stored history (30-day retention, 60s samples). This is how "it was fine yesterday" is answered — the Gateway itself only serves a 3-hour window. Covers AP/radio/WLAN/site metrics including channel utilization, SLE and throughput. Per-CLIENT history is not collected.',
+        parameters: {
+          type: 'object',
+          properties: {
+            deviceId: {
+              type: ['string', 'null'],
+              description: 'AP serial to scope to, e.g. CV012408S-C0044',
+            },
+            metricFamily: {
+              type: ['string', 'null'],
+              description: 'One of: ap_report, sle, throughput, site_report',
+            },
+            hoursAgo: {
+              type: ['integer', 'null'],
+              description: 'How far back the comparison window sits (default 24 = yesterday)',
+            },
+            windowHours: {
+              type: ['integer', 'null'],
+              description: 'Width of each window in hours (default 3, matching the live window)',
+            },
+          },
+          additionalProperties: false,
+        },
+      },
+      handler: async ({ deviceId, metricFamily, hoursAgo = 24, windowHours = 3 } = {}) => {
+        const src = await historySources();
+        if (!src.ok || !src.sourceIds.length) {
+          return {
+            basis: 'unknown',
+            unavailable: true,
+            reason:
+              `No stored history is reachable for this Gateway${src.error ? ` (${src.error})` : ''}. ` +
+              'History comes from AURA\'s monitoring database, which requires the collector to be ' +
+              'enabled and the database reachable.',
+            instruction: 'Say history is unavailable. Do NOT infer that nothing changed.',
+          };
+        }
+
+        const now = Date.now();
+        const w = Math.max(1, windowHours) * 3600_000;
+        const back = Math.max(1, hoursAgo) * 3600_000;
+
+        const [recent, earlier] = await Promise.all([
+          historyWindow({
+            sourceIds: src.sourceIds,
+            start: new Date(now - w),
+            end: new Date(now),
+            deviceExternalId: deviceId ?? null,
+            metricFamily: metricFamily ?? null,
+          }),
+          historyWindow({
+            sourceIds: src.sourceIds,
+            start: new Date(now - back - w),
+            end: new Date(now - back),
+            deviceExternalId: deviceId ?? null,
+            metricFamily: metricFamily ?? null,
+          }),
+        ]);
+
+        if (!recent.ok || !earlier.ok) {
+          return {
+            basis: 'unknown',
+            unavailable: true,
+            reason: `History query failed: ${recent.error ?? earlier.error}`,
+            instruction: 'This is a failed query, not an absence of change.',
+          };
+        }
+
+        // Only report a change where BOTH windows actually have the metric.
+        // A metric present in one window and absent from the other is a
+        // collection gap, not a trend.
+        const changes = [];
+        for (const [name, then] of Object.entries(earlier.metrics)) {
+          const nowSummary = recent.metrics[name];
+          if (!nowSummary) continue;
+          const delta = nowSummary.median - then.median;
+          changes.push({
+            metric: name,
+            medianThen: then.median,
+            medianNow: nowSummary.median,
+            delta: Number(delta.toFixed(3)),
+            samplesThen: then.count,
+            samplesNow: nowSummary.count,
+          });
+        }
+        changes.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+
+        return observed(
+          {
+            scope: { deviceId: deviceId ?? 'all devices', metricFamily: metricFamily ?? 'all families' },
+            recentWindow: { ...recent.meta, metricCount: Object.keys(recent.metrics).length },
+            earlierWindow: { ...earlier.meta, metricCount: Object.keys(earlier.metrics).length },
+            biggestChanges: changes.slice(0, 15),
+            metricsOnlyInRecent: Object.keys(recent.metrics).filter((k) => !earlier.metrics[k]),
+            metricsOnlyInEarlier: Object.keys(earlier.metrics).filter((k) => !recent.metrics[k]),
+            clientHistory: CLIENT_HISTORY_UNAVAILABLE,
+            note:
+              'delta = median now minus median then, in the metric\'s own unit. A metric listed as ' +
+              'only-in-one-window is a collection gap, not a trend. neverCollected true means ' +
+              'nothing has ever been stored, which is different from a quiet window.',
+          },
+          'AURA monitoring database (metric_samples)'
+        );
+      },
+    },
+
+    // ────────────────────────────────────────────────────────────────────
+    findVanishedDevices: {
+      risk: RISK.DIAGNOSTIC,
+      spec: {
+        name: 'findVanishedDevices',
+        description:
+          'Devices that appear in stored history but are ABSENT from the Gateway right now. Call this whenever reporting that a fleet looks healthy — an AP that breaks badly enough is removed from inventory rather than shown as unhealthy, so an all-InService list can mean the broken one stopped being counted.',
+        parameters: {
+          type: 'object',
+          properties: {
+            days: {
+              type: ['integer', 'null'],
+              description: 'How recently a device must have been seen to count (default 7)',
+            },
+          },
+          additionalProperties: false,
+        },
+      },
+      handler: async ({ days = 7 } = {}) => {
+        const [src, apsRes] = await Promise.all([historySources(), apData()]);
+        if (!apsRes.ok) return fetchFailed('the live AP inventory', apsRes);
+        if (!src.ok || !src.sourceIds.length) {
+          return {
+            basis: 'unknown',
+            unavailable: true,
+            reason:
+              `No stored history is reachable for this Gateway${src.error ? ` (${src.error})` : ''}, ` +
+              'so a device that has dropped out of inventory cannot be detected.',
+            instruction:
+              'Say this check could not run. Do NOT report the fleet as complete on the strength ' +
+              'of the live list alone.',
+          };
+        }
+
+        const liveDeviceIds = apsRes.rows.map((a) => a.serialNumber).filter(Boolean);
+        const res = await findVanished({ sourceIds: src.sourceIds, liveDeviceIds, days });
+        if (!res.ok) {
+          return { basis: 'unknown', unavailable: true, reason: res.error };
+        }
+
+        return observed(
+          {
+            liveDeviceCount: liveDeviceIds.length,
+            devicesInHistory: res.historyDeviceCount,
+            vanished: res.vanished,
+            lookbackDays: days,
+            note:
+              res.vanished.length
+                ? 'These devices were reporting recently and are no longer in the Gateway inventory. ' +
+                  'Measured precedent: an AP read "critical", then disappeared entirely — ' +
+                  '/v1/aps/{serial} answering 422 "Can not find AP" — leaving the fleet looking perfect.'
+                : 'Every device seen recently in history is still in the live inventory, so a clean ' +
+                  'fleet report is not hiding a removed device.',
+          },
+          'AURA monitoring database (current_state) vs /v1/aps/query'
         );
       },
     },
