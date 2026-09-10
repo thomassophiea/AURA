@@ -1,65 +1,70 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
-  MockLlmProvider,
+  CortexProviderNotConfiguredError,
   OpenAiLlmProvider,
   AnthropicLlmProvider,
   createLlmProvider,
   createLlmProviderForModel,
 } from './cortexLlmProvider.js';
 
-describe('MockLlmProvider', () => {
-  it('returns a response with a message string', async () => {
-    const provider = new MockLlmProvider();
-    const result = await provider.generateResponse({
-      model: 'mock',
-      messages: [{ role: 'user', content: 'Hello' }],
-    });
-    expect(typeof result.message).toBe('string');
-    expect(result.message.length).toBeGreaterThan(0);
+/**
+ * There is deliberately NO mock provider.
+ *
+ * One previously existed and was the default whenever CORTEX_LLM_PROVIDER was
+ * unset or an API key was missing. It emitted telemetry-shaped prose —
+ * "Client: N/A (mock mode)", "RF indicators: none (mock mode)" — so an
+ * unconfigured deployment answered network questions with invented structure
+ * instead of refusing. These tests exist to keep it deleted.
+ */
+describe('no mock provider exists', () => {
+  it('does not export a mock provider', async () => {
+    const mod = await import('./cortexLlmProvider.js');
+    const names = Object.keys(mod);
+    expect(names).not.toContain('MockLlmProvider');
+    expect(names.some((n) => /mock/i.test(n))).toBe(false);
   });
 
-  it('reflects page context in response when system message mentions a page', async () => {
-    const provider = new MockLlmProvider();
-    const result = await provider.generateResponse({
-      model: 'mock',
-      messages: [
-        { role: 'system', content: 'You are on the Connected Clients page.' },
-        { role: 'user', content: 'What should I look at?' },
-      ],
-    });
-    expect(typeof result.message).toBe('string');
+  it('throws instead of returning a provider when nothing is configured', () => {
+    // The critical assertion: an unconfigured Cortex must FAIL, not answer.
+    expect(() => createLlmProvider({})).toThrow(CortexProviderNotConfiguredError);
   });
 
-  it('returns no toolCalls when no tools provided', async () => {
-    const provider = new MockLlmProvider();
-    const result = await provider.generateResponse({
-      model: 'mock',
-      messages: [{ role: 'user', content: 'test' }],
-    });
-    expect(result.toolCalls).toBeUndefined();
+  it('rejects provider="mock" as unknown', () => {
+    expect(() => createLlmProvider({ provider: 'mock' })).toThrow(/Unknown CORTEX_LLM_PROVIDER "mock"/);
+  });
+
+  it('carries a 503 status and a machine-readable code', () => {
+    try {
+      createLlmProvider({});
+      throw new Error('expected createLlmProvider to throw');
+    } catch (err) {
+      expect(err.code).toBe('CORTEX_PROVIDER_NOT_CONFIGURED');
+      expect(err.status).toBe(503);
+    }
+  });
+
+  it('says plainly that there is no mock fallback', () => {
+    // The message reaches an operator, so it must name the cause and the fix.
+    expect(() => createLlmProvider({})).toThrow(/CORTEX_LLM_PROVIDER/);
+    expect(() => createLlmProvider({})).toThrow(/no mock fallback/i);
   });
 });
 
 describe('createLlmProvider', () => {
-  it('returns MockLlmProvider when provider is "mock"', () => {
-    const { provider } = createLlmProvider({ provider: 'mock' });
-    expect(provider).toBeInstanceOf(MockLlmProvider);
+  it('throws when groq is selected but no key is present', () => {
+    expect(() => createLlmProvider({ provider: 'groq' })).toThrow(
+      /neither GROQ_API_KEY nor GROK_API_KEY is set/
+    );
   });
 
-  it('returns MockLlmProvider when no config provided', () => {
-    const { provider } = createLlmProvider({});
-    expect(provider).toBeInstanceOf(MockLlmProvider);
+  it('throws when openai is selected but no key is present', () => {
+    expect(() => createLlmProvider({ provider: 'openai' })).toThrow(/OPENAI_API_KEY is not set/);
   });
 
-  it('returns defaultModel "mock" for mock provider', () => {
-    const { defaultModel } = createLlmProvider({ provider: 'mock' });
-    expect(defaultModel).toBe('mock');
-  });
-
-  it('returns defaultModel "llama-3.3-70b-versatile" for groq provider without key', () => {
-    const { provider, defaultModel } = createLlmProvider({ provider: 'groq' });
-    expect(provider).toBeInstanceOf(MockLlmProvider);
-    expect(defaultModel).toBe('mock');
+  it('throws when anthropic is selected but no key is present', () => {
+    expect(() => createLlmProvider({ provider: 'anthropic' })).toThrow(
+      /neither ANTHROPIC_API_KEY nor CLAUDE_API_KEY is set/
+    );
   });
 
   it('routes provider=grok to Groq Cloud when key has gsk_ prefix', () => {
@@ -68,7 +73,8 @@ describe('createLlmProvider', () => {
       apiKey: 'gsk_TESTKEY123',
     });
     expect(provider).toBeInstanceOf(OpenAiLlmProvider);
-    expect(defaultModel).toBe('llama-3.3-70b-versatile');
+    // Measured 2026-09-10: every llama-3.x id Groq used to serve is retired.
+    expect(defaultModel).toBe('openai/gpt-oss-120b');
   });
 
   it('routes provider=groq to xAI Grok when key has xai- prefix', () => {
@@ -81,19 +87,13 @@ describe('createLlmProvider', () => {
   });
 
   it('keeps provider=grok with non-gsk_ key (assumes xAI)', () => {
-    const { defaultModel } = createLlmProvider({
-      provider: 'grok',
-      apiKey: 'xai-TESTKEY123',
-    });
+    const { defaultModel } = createLlmProvider({ provider: 'grok', apiKey: 'xai-TESTKEY123' });
     expect(defaultModel).toBe('grok-3');
   });
 
   it('keeps provider=groq with gsk_ key', () => {
-    const { defaultModel } = createLlmProvider({
-      provider: 'groq',
-      apiKey: 'gsk_TESTKEY123',
-    });
-    expect(defaultModel).toBe('llama-3.3-70b-versatile');
+    const { defaultModel } = createLlmProvider({ provider: 'groq', apiKey: 'gsk_TESTKEY123' });
+    expect(defaultModel).toBe('openai/gpt-oss-120b');
   });
 
   it('returns AnthropicLlmProvider for provider=anthropic with sk-ant key', () => {
@@ -106,17 +106,8 @@ describe('createLlmProvider', () => {
   });
 
   it('accepts provider=claude alias', () => {
-    const { provider } = createLlmProvider({
-      provider: 'claude',
-      apiKey: 'sk-ant-FAKE',
-    });
+    const { provider } = createLlmProvider({ provider: 'claude', apiKey: 'sk-ant-FAKE' });
     expect(provider).toBeInstanceOf(AnthropicLlmProvider);
-  });
-
-  it('falls back to mock when anthropic is selected but no key is set', () => {
-    const { provider, defaultModel } = createLlmProvider({ provider: 'anthropic' });
-    expect(provider).toBeInstanceOf(MockLlmProvider);
-    expect(defaultModel).toBe('mock');
   });
 
   it('auto-routes sk-ant key to Anthropic even when provider=grok', () => {

@@ -13,7 +13,7 @@ interface ModelSelectorProps {
 
 /**
  * A plain indicator of the active model — not a picker. The multi-provider,
- * multi-model dropdown (shell "Red Queen" entry + every configured Groq
+ * multi-model dropdown (shell "Aura Cortex" entry + every configured Groq
  * model) was real clutter for what this panel is actually for right now;
  * model choice is a server/admin-level concern (CORTEX_LLM_PROVIDER /
  * CORTEX_LLM_MODEL), not something the operator needs to pick per message.

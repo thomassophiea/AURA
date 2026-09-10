@@ -122,7 +122,7 @@ export function AgentWorkspace({
         data-testid="agent-workspace"
         className="fixed top-0 right-0 z-[99997] flex flex-col items-center justify-center gap-2 w-9 h-screen bg-card hover:bg-accent/20 border-l border-border transition-colors group"
         onClick={onPin}
-        title="Expand AURA Agent"
+        title="Expand Aura Cortex"
       >
         <span className="absolute top-0 bottom-0 left-0 w-px bg-gradient-to-b from-transparent via-primary/40 to-transparent group-hover:via-primary/80 transition-colors" />
         <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_10px_rgba(137,129,229,0.7)]" />
@@ -160,7 +160,7 @@ export function AgentWorkspace({
         <div className="shrink-0 border-b border-border/60">
           <div className="flex items-center justify-between gap-3 px-3 py-2">
             <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground shrink-0">
-              AURA
+              Aura Cortex
             </span>
             <ModelSelector
               providers={providers}

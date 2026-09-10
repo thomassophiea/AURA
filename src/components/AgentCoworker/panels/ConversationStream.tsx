@@ -14,6 +14,7 @@ import { cn } from '../../ui/utils';
 import type { AgentMessage } from '../agentTypes';
 import { CortexAnswerCard } from '@/cortex/components/CortexAnswerCard';
 import { CortexProgress } from '@/cortex/components/CortexProgress';
+import { CortexEvidencePanel } from './CortexEvidencePanel';
 
 interface ConversationStreamProps {
   messages: AgentMessage[];
@@ -29,6 +30,8 @@ interface ConversationStreamProps {
   onConfirmWireless: (question: string, token: string) => void;
   wirelessStage?: 'detecting' | 'planning' | 'fetching' | 'classifying' | 'generating' | null;
   suggestedPrompts?: string[];
+  /** Live agent step label while an investigation runs. */
+  cortexActivity?: string | null;
 }
 
 const SUGGESTED = [
@@ -52,6 +55,7 @@ export function ConversationStream({
   onConfirmWireless,
   wirelessStage,
   suggestedPrompts,
+  cortexActivity,
 }: ConversationStreamProps) {
   const promptsToShow =
     suggestedPrompts && suggestedPrompts.length > 0 ? suggestedPrompts : SUGGESTED;
@@ -112,6 +116,10 @@ export function ConversationStream({
                 >
                   {msg.content}
                 </div>
+              )}
+
+              {msg.role === 'agent' && msg.cortexEvidence && (
+                <CortexEvidencePanel evidence={msg.cortexEvidence} activity={msg.cortexActivity} />
               )}
 
               {msg.role === 'agent' && msg.reasoning && (
@@ -179,7 +187,14 @@ export function ConversationStream({
         {isThinking && (
           <div className="flex gap-3">
             <span className="h-2 w-2 rounded-full bg-violet-400 shrink-0 mt-2 shadow-[0_0_8px_rgba(167,139,250,0.7)]" />
-            {wirelessStage ? (
+            {cortexActivity ? (
+              // A named step ("Looking up client…") tells the operator what is
+              // happening; three bouncing dots do not.
+              <div className="flex items-center gap-2 py-1 text-sm text-white/55">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-violet-400" />
+                {cortexActivity}
+              </div>
+            ) : wirelessStage ? (
               <CortexProgress stage={wirelessStage} />
             ) : (
               <div className="flex items-center gap-1.5 py-1">

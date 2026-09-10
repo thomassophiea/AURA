@@ -31,10 +31,10 @@ export function AgentCommandBar({ onOpen, className, driftCount = 0 }: AgentComm
         <button
           onClick={onOpen}
           className="relative flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent/20 transition-colors"
-          title="Open AURA Agent"
+          title="Open Aura Cortex"
         >
           <Sparkles className="h-3.5 w-3.5 text-primary" strokeWidth={1.75} />
-          <span className="font-medium">AURA</span>
+          <span className="font-medium">Cortex</span>
           {driftCount > 0 && (
             <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
               {driftCount > 9 ? '9+' : driftCount}

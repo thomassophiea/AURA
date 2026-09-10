@@ -50,7 +50,7 @@ describe('AgentWorkspace', () => {
 
   it('renders a minimized rail when mode is minimized', () => {
     render(<AgentWorkspace {...defaultProps} mode="minimized" />);
-    expect(screen.getByTitle('Expand AURA Agent')).toBeDefined();
+    expect(screen.getByTitle('Expand Aura Cortex')).toBeDefined();
   });
 
   it('calls onClose/onMinimize/onPin/onSetSize from header controls', () => {

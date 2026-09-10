@@ -27,6 +27,11 @@ import { parseWirelessIntent } from './server/cortex/wirelessIntentParser.js';
 import { validateWlanIntent } from './server/validationEngine/wlanConfigValidator.js';
 import { provisionWlan } from './server/cortex/wlanProvisioningEngine.js';
 import { transcribeWithGroq } from './server/cortex/groqSpeechToText.js';
+import { GatewayEvidence } from './server/cortex/gatewayEvidence.js';
+import { CapabilityRegistry } from './server/cortex/capabilityRegistry.js';
+import { createDiagnosticTools, TOOL_ACTIVITY } from './server/cortex/diagnosticTools.js';
+import { runInvestigation, auditAnswer } from './server/cortex/investigationAgent.js';
+import { sessionFromRequest } from './server/cortex/requestScopedSession.js';
 import { requireRole } from './server/identity/identityRouter.js';
 import { audit } from './server/identity/identityStore.js';
 import { sentinelEngine } from './server/sentinel/sentinelEngine.js';
@@ -335,7 +340,20 @@ app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'geolocation=(), camera=(), microphone=()');
+  // Permissions-Policy. `microphone=(self)` — NOT `microphone=()`.
+  //
+  // This was the root cause of Cortex's "microphone permission denied", which
+  // reproduced 100% of the time on every browser and was not a UI bug: an empty
+  // allowlist `()` denies the feature to EVERY origin including our own, so the
+  // browser refuses the microphone at the policy layer before the user is ever
+  // prompted. getUserMedia then throws NotAllowedError and SpeechRecognition
+  // fires `not-allowed` — indistinguishable, from the client, from a user who
+  // had actually clicked Block.
+  //
+  // `(self)` permits only this origin. Third-party frames still get nothing,
+  // and X-Frame-Options: DENY above means we are never framed anyway. Camera
+  // and geolocation stay fully denied — nothing in AURA uses them.
+  res.setHeader('Permissions-Policy', 'geolocation=(), camera=(), microphone=(self)');
   // X-XSS-Protection is deprecated in modern browsers; setting to 0 disables the legacy XSS auditor which can itself introduce vulnerabilities.
   res.setHeader('X-XSS-Protection', '0');
   next();
@@ -2273,6 +2291,24 @@ console.log('[Proxy Server] ✓ Portal configuration API mounted at /api/v1/port
 // These must appear before the /api proxy middleware so they are
 // handled server-side rather than forwarded to the controller.
 
+/**
+ * Report a Cortex failure to the operator.
+ *
+ * A missing/unconfigured AI provider is a 503 with an actionable message, not a
+ * 500 — it means an administrator has not finished setting Cortex up, and AURA
+ * itself is unaffected. There is no mock provider to fall back to, by design:
+ * Cortex refuses to answer rather than invent an answer.
+ */
+function sendCortexError(res, err, fallbackMessage) {
+  if (err?.code === 'CORTEX_PROVIDER_NOT_CONFIGURED') {
+    return res.status(503).json({
+      error: `Cortex has no AI provider configured, so it cannot answer. AURA itself is unaffected. (${err.message})`,
+      code: err.code,
+    });
+  }
+  return res.status(500).json({ error: err?.message || fallbackMessage });
+}
+
 app.post('/api/cortex/session', requireAuth, cortexRateLimit, jsonParser, (req, res) => {
   try {
     const context = req.body?.context ?? {};
@@ -2330,7 +2366,7 @@ app.post('/api/cortex/message', requireAuth, cortexRateLimit, jsonParser, async 
     res.json(reply);
   } catch (err) {
     console.error('[Cortex] processMessage error:', err.message);
-    res.status(500).json({ error: err.message || 'Failed to process message' });
+    sendCortexError(res, err, 'Failed to process message');
   }
 });
 
@@ -2421,10 +2457,149 @@ app.post(
       res.json(answer);
     } catch (err) {
       console.error('[Cortex] wireless/query error:', err.message);
-      res.status(500).json({ error: err.message || 'Failed to process wireless query' });
+      sendCortexError(res, err, 'Failed to process wireless query');
     }
   }
 );
+
+/**
+ * Aura Cortex — evidence-backed wireless investigation, streamed.
+ *
+ * Streams Server-Sent Events so the operator sees the investigation progress
+ * while it runs:
+ *   activity  {label, tool}   a human-readable step ("Looking up client…")
+ *   answer    {text}          the final narrative
+ *   evidence  {ledger, ...}   what was ACTUALLY retrieved, plus the audit
+ *   error     {message}       a failure, phrased for a person
+ *
+ * SSE rather than WebSocket: this is one-directional server->client progress on
+ * a normal authenticated POST, which is exactly what SSE is for, and it reuses
+ * the existing auth/rate-limit middleware instead of a second transport with
+ * its own authorisation story.
+ */
+app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, async (req, res) => {
+  const { question, scope = {}, history = [], model: requestedModel } = req.body ?? {};
+
+  const send = (event, data) => {
+    if (res.writableEnded) return;
+    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+
+  if (!question || typeof question !== 'string') {
+    return res.status(400).json({ error: 'question is required' });
+  }
+
+  // Cortex reads the Gateway AS THE CALLER, so the Gateway's RBAC is the
+  // ceiling. It never falls back to service credentials.
+  const sess = sessionFromRequest(req, { defaultControllerUrl: DEFAULT_CONTROLLER_URL ?? '' });
+  if (!sess.ok) {
+    return res.status(sess.status).json({ error: sess.error });
+  }
+
+  let llmProvider;
+  let model;
+  try {
+    if (requestedModel) {
+      const ollamaIds = (await discoverOllamaModels()).map((m) => m.id);
+      if (!isModelAllowed(requestedModel, ollamaIds)) {
+        return res
+          .status(400)
+          .json({ error: `Model '${requestedModel}' is not in the allowlist for any configured provider` });
+      }
+      ({ provider: llmProvider, model } = createLlmProviderForModel(requestedModel, ollamaIds));
+    } else {
+      const fallback = createLlmProvider({});
+      llmProvider = fallback.provider;
+      model = process.env.CORTEX_LLM_MODEL ?? fallback.defaultModel;
+    }
+  } catch (err) {
+    // No provider configured is a setup problem, not a network verdict.
+    return sendCortexError(res, err, 'Cortex could not select an AI provider.');
+  }
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+
+  let aborted = false;
+  req.on('close', () => {
+    aborted = true;
+  });
+
+  try {
+    const capabilities = new CapabilityRegistry();
+    const evidence = new GatewayEvidence(sess.session);
+    send('activity', { label: 'Checking what this Gateway can report…', tool: 'getCapabilities' });
+    await capabilities.probe(evidence, { session: sess.session });
+
+    const tools = createDiagnosticTools({ session: sess.session, scope, capabilities });
+
+    const result = await runInvestigation({
+      provider: llmProvider,
+      model,
+      tools,
+      capabilities,
+      history: Array.isArray(history) ? history.slice(-12) : [],
+      question,
+      scope,
+      activityLabels: TOOL_ACTIVITY,
+      onActivity: (label, meta) => {
+        if (!aborted) send('activity', { label, tool: meta.tool });
+      },
+    });
+
+    if (result.providerError) {
+      send('error', {
+        message: `Cortex could not reach the AI service. ${result.providerError}`,
+        recoverable: true,
+      });
+    } else {
+      send('answer', { text: result.answer });
+    }
+
+    send('evidence', {
+      ledger: result.ledger,
+      iterations: result.iterations,
+      toolCalls: result.usage.toolCalls,
+      stoppedBecause: result.stoppedBecause,
+      warnings: result.warnings,
+      // The hallucination audit travels with the answer so the UI can surface
+      // a claim the evidence does not support instead of hiding it.
+      audit: auditAnswer(result.answer, result.ledger),
+      capabilityGaps: capabilities.unusableKeys().length,
+      model,
+    });
+
+    audit('cortex.investigate', {
+      actor: req.auraActor,
+      source: req.auraActorSource,
+      target: scope.mac ?? scope.ssid ?? scope.siteName ?? 'gateway',
+      detail: {
+        question: question.slice(0, 200),
+        toolsUsed: result.ledger.map((l) => l.tool),
+        toolCalls: result.usage.toolCalls,
+        iterations: result.iterations,
+        stoppedBecause: result.stoppedBecause,
+        model,
+        // Record the audit verdict too: a claim the evidence did not support
+        // is worth being able to find again after the fact.
+        auditFindings: auditAnswer(result.answer, result.ledger).length,
+      },
+    });
+  } catch (err) {
+    console.error('[Cortex] investigate error:', err.message);
+    send('error', {
+      message:
+        'Cortex hit an unexpected problem during the investigation. Nothing was changed on the Gateway.',
+      recoverable: true,
+    });
+  } finally {
+    if (!res.writableEnded) res.end();
+  }
+});
 
 app.post('/api/cortex/tool-call', requireAuth, jsonParser, (_req, res) => {
   res.status(501).json({ error: 'Generic tool calling is not exposed to the LLM — see /wireless/intent' });

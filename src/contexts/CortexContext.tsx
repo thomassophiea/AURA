@@ -33,7 +33,9 @@ import {
   createCortexSession,
   sendCortexMessage,
   queryCortexWireless,
+  investigateWithCortex,
 } from '../services/cortexApiClient';
+import type { CortexEvidence } from '../services/cortexApiClient';
 import type { AgentMessage } from '../components/AgentCoworker/agentTypes';
 import type { CortexAvailableAction, CortexInsight, CortexPageContext } from '../types/cortex';
 import { CORTEX_SUGGESTED_PROMPTS } from '../types/cortex';
@@ -89,6 +91,8 @@ export interface CortexContextValue {
   sessionId: string | null;
   messages: AgentMessage[];
   suggestedPrompts: string[];
+  /** Live agent step label while an investigation runs, else null. */
+  cortexActivity: string | null;
   pageInsights: CortexInsight[];
   isThinking: boolean;
   wirelessStage: 'detecting' | 'planning' | 'fetching' | 'classifying' | 'generating' | null;
@@ -133,6 +137,15 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
   // ---- Workspace open/close ----
   const [isOpen, setIsOpen] = useState(false);
 
+  // ---- Cortex investigation ----
+  // The live activity label ("Looking up client…") so the panel can show what
+  // the agent is doing instead of a spinner.
+  const [cortexActivity, setCortexActivity] = useState<string | null>(null);
+  // A ref mirror of `messages`, because the investigation callback is stable
+  // (empty dep array) and must read the CURRENT transcript, not a closure over
+  // whatever it was when the callback was created.
+  const messagesRef = useRef<AgentMessage[]>([]);
+
   // ---- Session / conversation ----
   const [sessionId, setSessionId] = useState<string | null>(null);
   const sessionIdRef = useRef<string | null>(null);
@@ -140,6 +153,10 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
     sessionIdRef.current = sessionId;
   }, [sessionId]);
   const [messages, setMessages] = useState<AgentMessage[]>([]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
   const [isThinking, setIsThinking] = useState(false);
   const [wirelessStage, setWirelessStage] = useState<
     'detecting' | 'planning' | 'fetching' | 'classifying' | 'generating' | null
@@ -292,6 +309,100 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
     []
   );
 
+  /**
+   * Stream an investigation from /api/cortex/investigate.
+   *
+   * Returns true when Cortex produced an answer (so sendMessage stops), false
+   * when the endpoint is unavailable and the legacy paths should be tried.
+   *
+   * The distinction matters: "Cortex is disabled" or "no Gateway selected" are
+   * setup problems the operator must see, and are reported rather than silently
+   * falling back to a weaker pipeline that would answer without evidence.
+   */
+  const runCortexInvestigation = useCallback(
+    async (message: string, ctx: CortexPageContext | undefined): Promise<boolean> => {
+      const scope = {
+        siteName: ctx?.siteName,
+        ssid: ctx?.ssid,
+        apSerial: ctx?.apSerial,
+        mac: ctx?.clientMac,
+      };
+
+      // Only the last few turns: the agent re-derives evidence from tools each
+      // time, so a long transcript adds tokens without adding facts.
+      const history = messagesRef.current
+        .slice(-6)
+        .map((m) => ({ role: m.role === 'agent' ? 'assistant' : 'user', content: m.content }));
+
+      let answer: string | null = null;
+      let evidence: CortexEvidence | null = null;
+      let hardError: string | null = null;
+      const activity: string[] = [];
+
+      try {
+        await investigateWithCortex(message, {
+          scope,
+          history,
+          model: getSelectedCortexModel(),
+          onActivity: (label) => {
+            activity.push(label);
+            setWirelessStage('fetching');
+            setCortexActivity(label);
+          },
+          onAnswer: (text) => {
+            answer = text;
+          },
+          onEvidence: (e) => {
+            evidence = e;
+          },
+          onError: (msg) => {
+            hardError = msg;
+          },
+        });
+      } catch (err) {
+        console.warn('[Cortex] investigation transport failed:', err);
+        return false;
+      } finally {
+        setCortexActivity(null);
+        setWirelessStage(null);
+      }
+
+      if (answer) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `agent-${Date.now()}`,
+            role: 'agent',
+            content: answer as string,
+            timestamp: new Date(),
+            cortexEvidence: evidence ?? undefined,
+            cortexActivity: activity,
+          } as AgentMessage,
+        ]);
+        return true;
+      }
+
+      if (hardError) {
+        // Surfaced, not swallowed. An AI-service failure must never be
+        // presented as a statement about the network.
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `agent-${Date.now()}`,
+            role: 'agent',
+            content: hardError as string,
+            timestamp: new Date(),
+            cortexEvidence: evidence ?? undefined,
+          } as AgentMessage,
+        ]);
+        return true;
+      }
+
+      return false;
+    },
+    []
+  );
+
   const sendMessage = useCallback(
     async (message: string) => {
       const userMsg: AgentMessage = {
@@ -304,12 +415,22 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
       setIsThinking(true);
 
       try {
+        // ── PRIMARY PATH: the evidence-backed investigation agent.
+        //
+        // It reads the Gateway as the calling user, records every retrieval in
+        // an append-only ledger, and audits its own answer against that ledger.
+        // The two older paths below are kept as fallbacks so a Cortex outage
+        // degrades rather than breaks the panel — but they are never preferred,
+        // because neither can distinguish an observation from an inference.
+        const ctx = cortexContextRef.current;
+        const investigated = await runCortexInvestigation(message, ctx);
+        if (investigated) return;
+
         // The wireless pipeline is a scoped diagnostic path — only run it
         // when the user has a concrete client MAC or AP serial in scope
         // (i.e. we're on a client-detail or ap-detail page). For broad
         // questions, fall through to the tool-use loop which can hit any
         // controller endpoint via the read-only tool catalog.
-        const ctx = cortexContextRef.current;
         const hasScopedTarget = Boolean(ctx?.clientMac || ctx?.apSerial);
         if (hasScopedTarget) {
           const handled = await runWirelessQuery(message);
@@ -489,6 +610,7 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
       sessionId,
       messages,
       suggestedPrompts,
+      cortexActivity,
       pageInsights,
       isThinking,
       wirelessStage,
@@ -515,6 +637,8 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
       sessionId,
       messages,
       suggestedPrompts,
+    cortexActivity,
+      cortexActivity,
       pageInsights,
       isThinking,
       wirelessStage,
@@ -571,6 +695,7 @@ export function useCortex(): Pick<
     sessionId,
     messages,
     suggestedPrompts,
+    cortexActivity,
     pageInsights,
     isThinking,
     sendMessage,

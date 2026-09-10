@@ -7,53 +7,33 @@
  * @typedef {{ message: string, toolCalls?: Array<{id:string,name:string,arguments:Record<string,any>}>, raw?: any }} LlmResponse
  */
 
-// ── Mock Provider ────────────────────────────────────────────────────────────
+// ── No mock provider ────────────────────────────────────────────────────────
+//
+// There was a MockLlmProvider here and it has been deliberately deleted.
+//
+// It fabricated telemetry-shaped prose — "Client: N/A (mock mode)",
+// "RF indicators: none (mock mode)", "Likely root cause: Unable to
+// determine" — and it was the DEFAULT whenever CORTEX_LLM_PROVIDER was unset
+// or an API key was missing. On a deployment with no provider configured,
+// Cortex would therefore have answered network questions with invented
+// structure instead of refusing, which is the single failure this product
+// exists to prevent.
+//
+// A missing provider is now a hard, named error. Callers surface it to the
+// operator as "Cortex cannot reach an AI service"; AURA itself keeps working.
+// Test doubles belong in test files, not in the shipped provider factory.
 
-export class MockLlmProvider {
-  async generateResponse({ messages }) {
-    const lastUser = [...messages].reverse().find(m => m.role === 'user');
-    const question = lastUser?.content?.toLowerCase() ?? '';
-    const system = messages.find(m => m.role === 'system')?.content ?? '';
-
-    // Wireless pipeline path — return structured narrative mock
-    if (system.includes('You are Cortex') && system.includes('wireless')) {
-      return {
-        message: [
-          'Short answer:',
-          'This is a mock Cortex response — connect a real LLM provider (GROK_API_KEY or OPENAI_API_KEY) for live AI analysis.',
-          '',
-          'What I found:',
-          '- Client: N/A (mock mode)',
-          '- AP: N/A (mock mode)',
-          '- WLAN: N/A (mock mode)',
-          '- Site: N/A (mock mode)',
-          '- Time window: last 24 hours',
-          '- Key events: none (mock mode)',
-          '- RF indicators: none (mock mode)',
-          '- AP indicators: none (mock mode)',
-          '- WLAN/auth indicators: none (mock mode)',
-          '',
-          'Likely root cause:',
-          'Unable to determine — no real API data available in mock mode. Set GROK_API_KEY to enable live wireless diagnostics.',
-        ].join('\n'),
-      };
-    }
-
-    const pageMatch = system.match(/current page:\s*([^\n.]+)/i);
-    const pageName = pageMatch?.[1]?.trim() ?? 'this page';
-
-    let message;
-    if (question.includes('client') || question.includes('station')) {
-      message = `[Mock Cortex] On ${pageName}: I can see client connectivity data. In a live deployment I would query the controller for real client metrics, authentication failures, and roaming events.`;
-    } else if (question.includes('ap') || question.includes('access point')) {
-      message = `[Mock Cortex] On ${pageName}: Access point health data would be fetched from the controller. I would report uptime, client load, and any alarms.`;
-    } else if (question.includes('site')) {
-      message = `[Mock Cortex] On ${pageName}: Site-level metrics would be aggregated from all APs. I would highlight any sites with degraded service levels.`;
-    } else {
-      message = `[Mock Cortex] On ${pageName}: I received your question. In a live deployment with OPENAI_API_KEY set, I would provide a detailed, data-driven answer using the full page context.`;
-    }
-
-    return { message };
+/**
+ * No usable LLM provider is configured. Carries an actionable message because
+ * this reaches an operator, not just a log.
+ */
+export class CortexProviderNotConfiguredError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'CortexProviderNotConfiguredError';
+    this.code = 'CORTEX_PROVIDER_NOT_CONFIGURED';
+    /** Signals callers to answer 503 rather than 500 — this is configuration. */
+    this.status = 503;
   }
 }
 
@@ -128,7 +108,7 @@ export class OpenAiLlmProvider {
       resp = await doFetch();
       if (resp.status === 429) {
         const hint = isGroqLike(this.#baseUrl)
-          ? ' (Groq tier rate-limited — try llama-3.3-70b-versatile or llama-3.1-8b-instant which have larger TPM caps)'
+          ? ' (Groq tier rate-limited. Verified against Groq 2026-09-10: the llama-3.x ids this registry used to suggest are retired. Current served models are openai/gpt-oss-120b, openai/gpt-oss-20b and qwen/qwen3.8-27b; gpt-oss-20b has a smaller per-request footprint.)'
           : '';
         const finalBody = await resp.text().catch(() => resp.statusText);
         throw new Error(`OpenAI API error 429${hint}: ${finalBody}`);
@@ -147,11 +127,20 @@ export class OpenAiLlmProvider {
     const result = { message: choice.message?.content ?? '', raw: data };
 
     if (choice.message?.tool_calls?.length) {
-      result.toolCalls = choice.message.tool_calls.map(tc => ({
-        id: tc.id,
-        name: tc.function.name,
-        arguments: JSON.parse(tc.function.arguments || '{}'),
-      }));
+      result.toolCalls = choice.message.tool_calls.map(tc => {
+        // Small models emit malformed argument JSON often enough that an
+        // unguarded JSON.parse turns a recoverable tool call into a thrown
+        // request. Fall back to empty arguments and let the tool's own
+        // validation answer, rather than losing the whole investigation.
+        let args = {};
+        try {
+          args = JSON.parse(tc.function.arguments || '{}');
+          if (args === null || typeof args !== 'object' || Array.isArray(args)) args = {};
+        } catch {
+          args = {};
+        }
+        return { id: tc.id, name: tc.function.name, arguments: args };
+      });
     }
 
     return result;
@@ -306,7 +295,10 @@ export class AnthropicLlmProvider {
 
 /**
  * Create the appropriate LLM provider from environment/config.
- * Falls back to Mock if no API key is present.
+ *
+ * THROWS CortexProviderNotConfiguredError when no usable provider exists. It
+ * deliberately does not fall back to anything that can produce text without a
+ * real model behind it.
  *
  * @param {{ provider?: string, apiKey?: string, baseUrl?: string }} config
  */
@@ -314,7 +306,9 @@ export class AnthropicLlmProvider {
  * @returns {{ provider: object, defaultModel: string }}
  */
 export function createLlmProvider(config = {}) {
-  let providerName = config.provider || process.env.CORTEX_LLM_PROVIDER || 'mock';
+  // No default. An unset CORTEX_LLM_PROVIDER used to mean "mock", which made a
+  // misconfigured deployment indistinguishable from a working one.
+  let providerName = config.provider || process.env.CORTEX_LLM_PROVIDER || '';
 
   // If a sk-ant-* key is present anywhere and the provider isn't already
   // anthropic/mock, auto-route to Anthropic. Covers the case where the key
@@ -331,7 +325,6 @@ export function createLlmProvider(config = {}) {
   );
   if (
     anthropicKey &&
-    providerName !== 'mock' &&
     providerName !== 'anthropic' &&
     providerName !== 'claude'
   ) {
@@ -345,8 +338,9 @@ export function createLlmProvider(config = {}) {
   if (providerName === 'openai') {
     const apiKey = config.apiKey || process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      console.warn('[Cortex] OPENAI_API_KEY not set — falling back to MockLlmProvider');
-      return { provider: new MockLlmProvider(), defaultModel: 'mock' };
+      throw new CortexProviderNotConfiguredError(
+        'CORTEX_LLM_PROVIDER is set to "openai" but OPENAI_API_KEY is not set.'
+      );
     }
     return {
       provider: new OpenAiLlmProvider({
@@ -363,8 +357,10 @@ export function createLlmProvider(config = {}) {
       process.env.GROK_API_KEY ||
       process.env.GROQ_API_KEY;
     if (!apiKey) {
-      console.warn(`[Cortex] ${providerName.toUpperCase()}_API_KEY not set — falling back to MockLlmProvider`);
-      return { provider: new MockLlmProvider(), defaultModel: 'mock' };
+      throw new CortexProviderNotConfiguredError(
+        `CORTEX_LLM_PROVIDER is set to "${providerName}" but neither GROQ_API_KEY nor ` +
+          'GROK_API_KEY is set.'
+      );
     }
 
     // gsk_ → Groq Cloud (groq.com); xai- → xAI Grok (x.ai). Auto-correct mismatched provider.
@@ -386,7 +382,10 @@ export function createLlmProvider(config = {}) {
     }
     return {
       provider: new OpenAiLlmProvider({ apiKey, baseUrl: 'https://api.groq.com/openai/v1' }),
-      defaultModel: 'llama-3.3-70b-versatile',
+      // Measured against Groq's live model list 2026-09-10: every llama-3.x id
+      // has been retired and returns 404. gpt-oss-120b is served and supports
+      // tool calling.
+      defaultModel: 'openai/gpt-oss-120b',
     };
   }
 
@@ -398,8 +397,10 @@ export function createLlmProvider(config = {}) {
       process.env.ANTHROPIC_API_KEY ||
       process.env.CLAUDE_API_KEY;
     if (!apiKey) {
-      console.warn('[Cortex] ANTHROPIC_API_KEY not set — falling back to MockLlmProvider');
-      return { provider: new MockLlmProvider(), defaultModel: 'mock' };
+      throw new CortexProviderNotConfiguredError(
+        'CORTEX_LLM_PROVIDER is set to "anthropic" but neither ANTHROPIC_API_KEY nor ' +
+          'CLAUDE_API_KEY is set.'
+      );
     }
     return {
       provider: new AnthropicLlmProvider({ apiKey }),
@@ -407,7 +408,15 @@ export function createLlmProvider(config = {}) {
     };
   }
 
-  return { provider: new MockLlmProvider(), defaultModel: 'mock' };
+  // Unknown or unset provider. Name what is wrong and what to set.
+  throw new CortexProviderNotConfiguredError(
+    providerName
+      ? `Unknown CORTEX_LLM_PROVIDER "${providerName}". Supported: groq, grok, openai, ` +
+        'anthropic, gemini, mistral, cerebras, deepseek, ollama, azure.'
+      : 'No AI provider is configured. Set CORTEX_LLM_PROVIDER (e.g. groq) and the ' +
+        'matching API key, or select a model explicitly. There is no mock fallback: ' +
+        'Cortex refuses to answer rather than invent an answer.'
+  );
 }
 
 // ── Per-model factory (multi-provider routing) ───────────────────────────────

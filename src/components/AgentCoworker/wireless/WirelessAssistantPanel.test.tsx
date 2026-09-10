@@ -46,7 +46,7 @@ beforeEach(() => {
 describe('WirelessAssistantPanel', () => {
   it('shows the chat view initially with the onboarding hint', () => {
     render(<WirelessAssistantPanel />);
-    expect(screen.getByText(/AURA previews and validates changes/i)).toBeDefined();
+    expect(screen.getByText(/backed by evidence read from the Gateway/i)).toBeDefined();
   });
 
   it('routes a read-only question to the existing chat pipeline, not the workflow', async () => {

@@ -53,8 +53,16 @@ describe('getAllowedModels', () => {
     expect(models.length).toBeGreaterThan(0);
   });
 
-  it('falls back to mock for an unknown provider', () => {
-    expect(getAllowedModels('nonexistent')).toEqual(MODEL_REGISTRY.mock);
+  it('allows NO models for an unknown provider', () => {
+    // This used to fall back to MODEL_REGISTRY.mock, which routed a typo in
+    // CORTEX_LLM_PROVIDER into the fabricating mock path. An unknown provider
+    // now has no allowed models at all.
+    expect(getAllowedModels('nonexistent')).toEqual([]);
+  });
+
+  it('has no mock provider in the registry', () => {
+    expect(MODEL_REGISTRY.mock).toBeUndefined();
+    expect(Object.keys(MODEL_REGISTRY)).not.toContain('mock');
   });
 });
 
@@ -178,8 +186,10 @@ describe('resolveActiveProvider', () => {
     process.env = { ...savedEnv };
   });
 
-  it('returns mock when no provider env is set', () => {
-    expect(resolveActiveProvider()).toBe('mock');
+  it('returns an empty provider name when no provider env is set', () => {
+    // Empty, never 'mock': an unset provider must not resolve to something
+    // that is able to answer.
+    expect(resolveActiveProvider()).toBe('');
   });
 
   it('auto-corrects grok to groq when key has gsk_ prefix', () => {

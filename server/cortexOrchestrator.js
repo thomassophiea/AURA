@@ -77,24 +77,58 @@ export class CortexOrchestrator {
   #llmProvider;
   #model;
 
+  #injectedProvider;
+  #explicitModel;
+  #resolved = false;
+
   constructor({ llmProvider, model } = {}) {
-    const { provider, defaultModel } = llmProvider ? { provider: llmProvider, defaultModel: 'mock' } : createLlmProvider({});
-    this.#llmProvider = provider;
-    this.#model = model ?? process.env.CORTEX_LLM_MODEL ?? defaultModel;
+    // Provider resolution is DEFERRED to first use, deliberately.
+    //
+    // This class is exported as a module-level singleton, so it is constructed
+    // at import time. Now that a missing provider is a hard error rather than
+    // a silent mock, resolving eagerly here would throw during import and stop
+    // the whole AURA server from booting whenever Cortex is unconfigured —
+    // taking down monitoring, config and the portals along with it.
+    //
+    // Deferring means: AURA always starts, and the misconfiguration surfaces
+    // as a clean 503 on the first Cortex request instead.
+    this.#injectedProvider = llmProvider ?? null;
+    this.#explicitModel = model ?? null;
+  }
+
+  /** Resolve (once) and cache the provider. Throws only to the caller. */
+  #ensureProvider() {
+    if (this.#resolved) return;
+    if (this.#injectedProvider) {
+      // An injected provider (tests, or a caller that already resolved one)
+      // has no default model of its own.
+      this.#llmProvider = this.#injectedProvider;
+      this.#model = this.#explicitModel ?? process.env.CORTEX_LLM_MODEL ?? null;
+    } else {
+      const { provider, defaultModel } = createLlmProvider({});
+      this.#llmProvider = provider;
+      this.#model = this.#explicitModel ?? process.env.CORTEX_LLM_MODEL ?? defaultModel;
+    }
+    this.#resolved = true;
   }
 
   // Pick the provider for the actual model the user selected. Falls back to
   // the singleton (env-configured) provider when no model id resolves.
   async #resolveProvider(modelId) {
-    if (!modelId || modelId === this.#model) return { provider: this.#llmProvider, model: this.#model };
-    try {
-      const ollamaIds = (await discoverOllamaModels()).map((m) => m.id);
-      const { provider, model } = createLlmProviderForModel(modelId, ollamaIds);
-      return { provider, model };
-    } catch (err) {
-      console.warn(`[Cortex] per-model routing failed (${err.message}); falling back to default provider.`);
-      return { provider: this.#llmProvider, model: modelId };
+    // A per-model route can succeed even when the env-configured default is
+    // absent, so try that BEFORE demanding a default provider — selecting a
+    // model in the picker is a legitimate way to configure Cortex.
+    if (modelId) {
+      try {
+        const ollamaIds = (await discoverOllamaModels()).map((m) => m.id);
+        return createLlmProviderForModel(modelId, ollamaIds);
+      } catch (err) {
+        console.warn(`[Cortex] per-model routing failed (${err.message}); trying the default provider.`);
+      }
     }
+    this.#ensureProvider();
+    if (!modelId || modelId === this.#model) return { provider: this.#llmProvider, model: this.#model };
+    return { provider: this.#llmProvider, model: modelId };
   }
 
   createSession(context) {
@@ -111,8 +145,20 @@ export class CortexOrchestrator {
     return { sessionId };
   }
 
+  /**
+   * The default model, or null when no provider is configured.
+   *
+   * Deliberately non-throwing: /api/cortex/models reads this to render the
+   * picker, and a configuration gap should show an empty picker rather than
+   * fail the whole listing.
+   */
   get defaultModel() {
-    return this.#model;
+    try {
+      this.#ensureProvider();
+      return this.#model;
+    } catch {
+      return null;
+    }
   }
 
   hasSession(sessionId) {

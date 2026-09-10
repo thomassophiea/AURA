@@ -223,7 +223,20 @@ export type VoiceState =
   | 'listening'
   | 'transcribing'
   | 'transcript_ready'
+  /** The user (or a previous session's remembered choice) blocked the mic. */
   | 'permission_denied'
+  /**
+   * Blocked by deployment policy, not by the user — a Permissions-Policy
+   * header, an iframe without allow="microphone", or the browser's speech
+   * service being disallowed. Distinct from `permission_denied` because the
+   * operator cannot fix it in their browser settings, and telling them to try
+   * is a dead end.
+   */
+  | 'blocked_by_policy'
+  /** Page is not a secure context, so the mic API is unavailable. */
+  | 'insecure_context'
+  /** No microphone hardware / input device present. */
+  | 'no_microphone'
   | 'unsupported'
   | 'error'
   | 'cancelled';

@@ -77,11 +77,17 @@ describe('useVoiceInput — browser provider', () => {
       await result.current.start();
     });
 
-    act(() => {
+    // Classification is asynchronous: `not-allowed` is ambiguous in the spec
+    // (user refusal OR user-agent refusal), so the hook consults the
+    // Permissions API and the document policy before deciding which it was.
+    // The act() must therefore be awaited to flush that promise.
+    await act(async () => {
       recognitionInstance.onerror?.({ error: 'not-allowed' });
     });
 
     expect(result.current.state).toBe('permission_denied');
+    // And it must tell the operator what to do about it.
+    expect(result.current.error).toMatch(/blocked|padlock|refused/i);
   });
 
   it('reports a generic error for other recognition failures', async () => {
@@ -90,12 +96,43 @@ describe('useVoiceInput — browser provider', () => {
       await result.current.start();
     });
 
-    act(() => {
+    await act(async () => {
       recognitionInstance.onerror?.({ error: 'network' });
     });
 
     expect(result.current.state).toBe('error');
-    expect(result.current.error).toBe('network');
+    // The raw code ('network') is no longer surfaced verbatim — an operator
+    // cannot act on it. The message names the actual cause instead.
+    expect(result.current.error).toMatch(/network access/i);
+  });
+
+  it('distinguishes missing hardware from a denied permission', async () => {
+    const { result } = renderHook(() => useVoiceInput());
+    await act(async () => {
+      await result.current.start();
+    });
+
+    await act(async () => {
+      recognitionInstance.onerror?.({ error: 'audio-capture' });
+    });
+
+    // No microphone present is not the same problem as a blocked microphone,
+    // and sending the operator to their browser settings for it wastes time.
+    expect(result.current.state).toBe('no_microphone');
+  });
+
+  it('reports a blocked speech service as policy, not as permission', async () => {
+    const { result } = renderHook(() => useVoiceInput());
+    await act(async () => {
+      await result.current.start();
+    });
+
+    await act(async () => {
+      recognitionInstance.onerror?.({ error: 'service-not-allowed' });
+    });
+
+    expect(result.current.state).toBe('blocked_by_policy');
+    expect(result.current.error).toMatch(/not a microphone permission/i);
   });
 
   it('cancel() marks the session cancelled rather than emitting a transcript', async () => {

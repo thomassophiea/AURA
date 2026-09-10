@@ -10,6 +10,7 @@
 // wlanProvisioningEngine.js, typed in src/types/wirelessAssistant.ts.
 
 import type { CortexWirelessAnswer } from '@/cortex/types';
+import type { CortexEvidence } from '@/services/cortexApiClient';
 
 export type WorkspaceSize = 'compact' | 'standard' | 'expanded';
 // pixel widths:            480         640           860
@@ -37,6 +38,15 @@ export interface AgentMessage {
   feedback?: 'up' | 'down' | null;
   wirelessAnswer?: CortexWirelessAnswer;
   toolCalls?: AgentToolCall[];
+  /**
+   * What the investigation agent ACTUALLY retrieved to produce this answer,
+   * plus its self-audit. Carried on the message so the operator can inspect the
+   * evidence behind a diagnosis rather than taking it on trust — and so a claim
+   * the ledger does not support is visible instead of hidden.
+   */
+  cortexEvidence?: CortexEvidence;
+  /** The human-readable steps taken, in order, for the activity trail. */
+  cortexActivity?: string[];
 }
 
 export const WORKSPACE_WIDTHS: Record<WorkspaceSize, number> = {

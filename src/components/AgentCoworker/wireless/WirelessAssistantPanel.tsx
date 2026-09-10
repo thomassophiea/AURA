@@ -125,6 +125,7 @@ export function WirelessAssistantPanel() {
               onConfirmWireless={cortex.confirmWirelessAction}
               wirelessStage={cortex.wirelessStage}
               suggestedPrompts={cortex.suggestedPrompts}
+              cortexActivity={cortex.cortexActivity}
             />
           </div>
           {assistant.error && !assistant.parsedIntent && (
@@ -138,8 +139,9 @@ export function WirelessAssistantPanel() {
             </div>
           )}
           <div className="shrink-0 px-3 py-2 border-t border-border/40 text-xs text-muted-foreground">
-            Tell AURA what wireless configuration you want — AURA previews and validates changes before configuring
-            anything.
+            Ask Cortex about a client, an AP, a WLAN or a site, or tell it what you want configured. Every
+            answer is backed by evidence read from the Gateway, and changes are previewed and validated
+            before anything is applied.
           </div>
         </>
       )}

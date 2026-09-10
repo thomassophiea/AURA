@@ -139,10 +139,11 @@ const RAW_REGISTRY = {
   // no static entries here. If discovery fails the provider is silently absent.
   ollama: [],
 
-  // No "Mock" picker entry — we don't ship mock data to users. When no LLM
-  // provider is configured the picker just shows the shell agent; LLM calls
-  // surface a real "configure provider" error instead of returning fakes.
-  mock: [],
+  // There is no "mock" provider. It previously existed as an empty list here
+  // and as the default everywhere else, which meant an unconfigured deployment
+  // silently answered with fabricated text. When no LLM provider is configured
+  // the picker shows only the shell agent, and any LLM call raises
+  // CortexProviderNotConfiguredError.
 };
 
 // Attach `provider` to every entry so the frontend can group without a separate
@@ -166,11 +167,16 @@ export const MODEL_REGISTRY = freezeWithProvider();
  */
 export const SHELL_MODELS = [
   {
+    // The id stays `redq-shell` deliberately: it is persisted in each user's
+    // localStorage under `cortex_model` and referenced by the console-shell
+    // transport. Renaming the id would silently invalidate every stored
+    // selection and break the dev tooling that keys off it. Only the
+    // user-facing label is rebranded.
     id: 'redq-shell',
-    label: 'Red Queen',
+    label: 'Aura Cortex',
     kind: 'shell',
     contextWindow: 0,
-    notes: 'Network operations agent · default',
+    notes: 'Wireless operations assistant · default',
     provider: 'shell',
   },
 ];
@@ -178,7 +184,11 @@ export const SHELL_MODELS = [
 export const DEFAULT_PICKER_MODEL = 'redq-shell';
 
 export function getAllowedModels(providerName) {
-  return MODEL_REGISTRY[providerName] ?? MODEL_REGISTRY.mock;
+  // An unknown provider has NO allowed models. This used to fall through to
+  // MODEL_REGISTRY.mock, so a typo in CORTEX_LLM_PROVIDER produced an empty
+  // list that read as "this provider has no models" rather than "this provider
+  // does not exist" — and, worse, routed callers into the mock path.
+  return MODEL_REGISTRY[providerName] ?? [];
 }
 
 /**
@@ -286,7 +296,9 @@ export async function getAllModelsForConfiguredProviders() {
  * specific model. New per-model code paths should use `findProviderForModel`.
  */
 export function resolveActiveProvider() {
-  const raw = process.env.CORTEX_LLM_PROVIDER || 'mock';
+  // Empty rather than 'mock': an unset provider must not resolve to something
+  // that can answer.
+  const raw = process.env.CORTEX_LLM_PROVIDER || '';
 
   // sk-ant-* keys always route to Anthropic regardless of declared provider
   const anthropicKey =

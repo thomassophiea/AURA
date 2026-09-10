@@ -132,7 +132,7 @@ export function ConsoleShell({ className }: { className?: string }) {
       const splash = [
         '',
         `  ${P}╭────────╮${R}`,
-        `  ${P}│${R}${P2} ▄ ▄▄ ▄ ${R}${P}│${R}   ${B}Red Queen Shell${R}`,
+        `  ${P}│${R}${P2} ▄ ▄▄ ▄ ${R}${P}│${R}   ${B}Aura Cortex Shell${R}`,
         `  ${P}│${R}${P2} ███████ ${R}${P}│${R}   ${DIM}AURA · AI Console${R}`,
         `  ${P}│${R}${P2} ▀█████▀ ${R}${P}│${R}`,
         `  ${P}│${R}${P2}  ▀███▀  ${R}${P}│${R}   ${DIM}connecting…${R}`,

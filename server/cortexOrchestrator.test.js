@@ -1,6 +1,16 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CortexOrchestrator } from './cortexOrchestrator.js';
-import { MockLlmProvider } from './cortexLlmProvider.js';
+/**
+ * A local test double. The production MockLlmProvider was deleted because it
+ * shipped fabricated telemetry; a stub confined to this test file carries no
+ * such risk, and keeping it here makes the boundary explicit.
+ */
+class StubLlmProvider {
+  async generateResponse({ messages }) {
+    const last = [...messages].reverse().find((m) => m.role === 'user');
+    return { message: `stub reply to: ${last?.content ?? ''}` };
+  }
+}
 
 function makeContext(overrides = {}) {
   return {
@@ -20,7 +30,7 @@ describe('CortexOrchestrator', () => {
   let orchestrator;
 
   beforeEach(() => {
-    orchestrator = new CortexOrchestrator({ llmProvider: new MockLlmProvider() });
+    orchestrator = new CortexOrchestrator({ llmProvider: new StubLlmProvider() });
   });
 
   it('createSession returns a sessionId string', () => {
@@ -98,7 +108,7 @@ describe('CortexOrchestrator', () => {
   });
 
   it('exposes defaultModel via getter', () => {
-    const orch = new CortexOrchestrator({ llmProvider: new MockLlmProvider(), model: 'pinned' });
+    const orch = new CortexOrchestrator({ llmProvider: new StubLlmProvider(), model: 'pinned' });
     expect(orch.defaultModel).toBe('pinned');
   });
 

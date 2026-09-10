@@ -142,3 +142,139 @@ export async function queryCortexWireless(
     throw err;
   }
 }
+
+// ============================================================================
+// Aura Cortex — streamed, evidence-backed investigation
+// ============================================================================
+
+export interface CortexLedgerEntry {
+  tool: string;
+  args: Record<string, unknown>;
+  ok: boolean;
+  basis: string | null;
+  durationMs?: number;
+  untrustedFieldCount?: number;
+  suspiciousFields?: number;
+}
+
+export interface CortexEvidence {
+  ledger: CortexLedgerEntry[];
+  iterations: number;
+  toolCalls: number;
+  stoppedBecause: string;
+  warnings: string[];
+  /** Claims the answer made that the evidence ledger does not support. */
+  audit: Array<{ severity: string; detail: string }>;
+  capabilityGaps: number;
+  model: string;
+}
+
+export interface CortexInvestigationHandlers {
+  /** A human-readable step, e.g. "Looking up client…" — never a function name. */
+  onActivity?: (label: string, tool: string) => void;
+  onAnswer?: (text: string) => void;
+  onEvidence?: (evidence: CortexEvidence) => void;
+  onError?: (message: string, recoverable: boolean) => void;
+}
+
+/**
+ * Run a Cortex investigation, consuming the server's SSE stream.
+ *
+ * Uses fetch + a ReadableStream reader rather than EventSource: EventSource
+ * cannot issue a POST and cannot set the Authorization / X-Controller-URL
+ * headers this endpoint needs to read the Gateway as the calling user.
+ *
+ * `signal` lets the UI's stop button abort a running investigation.
+ */
+export async function investigateWithCortex(
+  question: string,
+  {
+    scope = {},
+    history = [],
+    model,
+    signal,
+    ...handlers
+  }: CortexInvestigationHandlers & {
+    scope?: Record<string, string | undefined>;
+    history?: Array<{ role: string; content: string }>;
+    model?: string;
+    signal?: AbortSignal;
+  } = {}
+): Promise<void> {
+  const resp = await fetch('/api/cortex/investigate', {
+    method: 'POST',
+    headers: buildHeaders(),
+    body: JSON.stringify({ question, scope, history, model }),
+    signal,
+  });
+
+  if (!resp.ok) {
+    // A non-2xx here is a setup or authorisation problem (Cortex disabled, no
+    // Gateway selected, no provider configured) and the body carries a message
+    // written for a person. Surface it verbatim rather than a status code.
+    const raw = await resp.text().catch(() => resp.statusText);
+    let message = raw;
+    try {
+      const parsed = JSON.parse(raw);
+      if (typeof parsed?.error === 'string') message = parsed.error;
+    } catch {
+      /* not JSON */
+    }
+    handlers.onError?.(message, resp.status < 500);
+    return;
+  }
+
+  if (!resp.body) {
+    handlers.onError?.('Cortex returned no response stream.', true);
+    return;
+  }
+
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  const dispatch = (rawEvent: string) => {
+    let event = 'message';
+    const dataLines: string[] = [];
+    for (const line of rawEvent.split('\n')) {
+      if (line.startsWith('event: ')) event = line.slice(7).trim();
+      else if (line.startsWith('data: ')) dataLines.push(line.slice(6));
+    }
+    if (!dataLines.length) return;
+    let payload: any;
+    try {
+      payload = JSON.parse(dataLines.join('\n'));
+    } catch {
+      return; // a partial frame; the buffer logic below prevents this normally
+    }
+    if (event === 'activity') handlers.onActivity?.(payload.label, payload.tool);
+    else if (event === 'answer') handlers.onAnswer?.(payload.text);
+    else if (event === 'evidence') handlers.onEvidence?.(payload as CortexEvidence);
+    else if (event === 'error') handlers.onError?.(payload.message, Boolean(payload.recoverable));
+  };
+
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      // SSE frames are separated by a blank line. Anything after the last
+      // separator is an incomplete frame and must stay buffered.
+      let sep = buffer.indexOf('\n\n');
+      while (sep !== -1) {
+        dispatch(buffer.slice(0, sep));
+        buffer = buffer.slice(sep + 2);
+        sep = buffer.indexOf('\n\n');
+      }
+    }
+    if (buffer.trim()) dispatch(buffer);
+  } catch (err) {
+    if ((err as Error)?.name === 'AbortError') return; // operator pressed stop
+    handlers.onError?.(
+      `The connection to Cortex was interrupted: ${(err as Error).message}`,
+      true
+    );
+  } finally {
+    reader.releaseLock?.();
+  }
+}
