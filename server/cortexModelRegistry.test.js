@@ -6,6 +6,7 @@ import {
   resolveActiveProvider,
   getConfiguredProviders,
   findProviderForModel,
+  resolveFallbackModels,
 } from './cortexModelRegistry.js';
 
 describe('MODEL_REGISTRY', () => {
@@ -236,5 +237,29 @@ describe('resolveActiveProvider', () => {
   it('accepts the claude alias on the provider env', () => {
     process.env.CORTEX_LLM_PROVIDER = 'claude';
     expect(resolveActiveProvider()).toBe('anthropic');
+  });
+});
+
+describe('resolveFallbackModels', () => {
+  it('offers the provider\'s other models, strongest-first, excluding the primary', () => {
+    const chain = resolveFallbackModels('groq', 'openai/gpt-oss-120b', {});
+    expect(chain).not.toContain('openai/gpt-oss-120b');
+    // gpt-oss-20b has a smaller per-request footprint, so it is the model most
+    // likely to fit when the primary tripped the 8,000 TPM free-tier ceiling.
+    expect(chain).toContain('openai/gpt-oss-20b');
+  });
+
+  it('returns nothing for an unknown provider rather than guessing', () => {
+    expect(resolveFallbackModels('nope', 'x', {})).toEqual([]);
+  });
+
+  it('honours CORTEX_LLM_FALLBACK_MODELS', () => {
+    const chain = resolveFallbackModels('groq', 'a', { CORTEX_LLM_FALLBACK_MODELS: 'x, y ,a' });
+    // The primary is filtered out even when listed explicitly.
+    expect(chain).toEqual(['x', 'y']);
+  });
+
+  it('an empty override disables fallback entirely', () => {
+    expect(resolveFallbackModels('groq', 'a', { CORTEX_LLM_FALLBACK_MODELS: '' })).toEqual([]);
   });
 });

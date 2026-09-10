@@ -309,3 +309,27 @@ export function resolveActiveProvider() {
   if (raw === 'groq' && apiKey.startsWith('xai-')) return 'grok';
   return raw;
 }
+
+/**
+ * Models to try if the primary fails in a way another model could fix.
+ *
+ * Ordered by the registry, which lists each provider's models strongest-first,
+ * so a fallback steps DOWN in capability rather than sideways. On Groq that
+ * matters twice over: gpt-oss-20b has a smaller per-request footprint, so it is
+ * also the model most likely to fit when the primary tripped the 8,000 TPM
+ * free-tier ceiling.
+ *
+ * `CORTEX_LLM_FALLBACK_MODELS` (comma-separated) overrides this entirely,
+ * including with an empty value to disable fallback.
+ */
+export function resolveFallbackModels(providerName, primaryModel, env = process.env) {
+  const override = env.CORTEX_LLM_FALLBACK_MODELS;
+  if (override !== undefined) {
+    return override
+      .split(',')
+      .map((m) => m.trim())
+      .filter((m) => m && m !== primaryModel);
+  }
+  const models = MODEL_REGISTRY[providerName] ?? [];
+  return models.map((m) => m.id).filter((id) => id !== primaryModel);
+}

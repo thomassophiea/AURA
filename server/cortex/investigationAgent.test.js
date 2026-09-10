@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   runInvestigation,
+  shouldTryAnotherModel,
   stripNullArgs,
   fenceUntrusted,
   looksLikeInjection,
@@ -175,5 +176,144 @@ describe('the schema the agent actually sends', () => {
         expect(def.type).toContain('null');
       }
     }
+  });
+});
+
+describe('model fallback', () => {
+  describe('shouldTryAnotherModel', () => {
+    it('falls back on a rate limit — the free Groq tier is 8,000 TPM', () => {
+      expect(shouldTryAnotherModel(new Error('OpenAI API error 429: rate_limit_exceeded'))).toBe(true);
+    });
+
+    it('falls back on a retired model — every llama-3.x id Groq served now 404s', () => {
+      expect(shouldTryAnotherModel(new Error('404 model_not_found'))).toBe(true);
+      expect(shouldTryAnotherModel(new Error('The model `llama-3.3-70b-versatile` does not exist'))).toBe(true);
+      expect(shouldTryAnotherModel(new Error('model has been decommissioned'))).toBe(true);
+    });
+
+    it('does NOT fall back on auth failures — another model shares the credential', () => {
+      expect(shouldTryAnotherModel(new Error('OpenAI API error 401: invalid_api_key'))).toBe(false);
+      expect(shouldTryAnotherModel(new Error('403 forbidden'))).toBe(false);
+    });
+
+    it('does NOT fall back on a generation fault already retried in-provider', () => {
+      expect(shouldTryAnotherModel(new Error('tool_use_failed: tool call validation failed'))).toBe(false);
+    });
+
+    it('does NOT fall back on context length — compaction is the fix, not a bigger model', () => {
+      expect(shouldTryAnotherModel(new Error('context_length_exceeded'))).toBe(false);
+    });
+
+    it('does not fall back on an unrecognised failure', () => {
+      expect(shouldTryAnotherModel(new Error('ECONNRESET'))).toBe(false);
+    });
+  });
+
+  const tools = {};
+  const caps = new CapabilityRegistry();
+
+  it('answers on the fallback model when the primary is rate-limited', async () => {
+    const seen = [];
+    const provider = {
+      generateResponse: async ({ model }) => {
+        seen.push(model);
+        if (model === 'primary') throw new Error('OpenAI API error 429: rate limit reached');
+        return { message: 'answered on the fallback' };
+      },
+    };
+    const r = await runInvestigation({
+      provider, model: 'primary', fallbackModels: ['second', 'third'],
+      tools, capabilities: caps, question: 'q',
+    });
+    expect(r.answer).toBe('answered on the fallback');
+    expect(seen).toEqual(['primary', 'second']);
+    // The model that answered must be reported, not the one requested.
+    expect(r.model).toBe('second');
+  });
+
+  it('records and surfaces the switch rather than degrading silently', async () => {
+    // Falling back to a weaker model changes answer quality; hiding that would
+    // make the change invisible to whoever reads the answer.
+    const provider = {
+      generateResponse: async ({ model }) => {
+        if (model === 'primary') throw new Error('429 rate_limit_exceeded');
+        return { message: 'ok' };
+      },
+    };
+    const r = await runInvestigation({
+      provider, model: 'primary', fallbackModels: ['second'],
+      tools, capabilities: caps, question: 'q',
+    });
+    expect(r.modelFallbacks).toEqual([
+      expect.objectContaining({ from: 'primary', to: 'second' }),
+    ]);
+    expect(r.warnings.some((w) => /primary was unavailable, so second answered/i.test(w))).toBe(true);
+  });
+
+  it('emits an activity step so the operator sees the switch happen', async () => {
+    const labels = [];
+    const provider = {
+      generateResponse: async ({ model }) => {
+        if (model === 'primary') throw new Error('429');
+        return { message: 'ok' };
+      },
+    };
+    await runInvestigation({
+      provider, model: 'primary', fallbackModels: ['second'],
+      tools, capabilities: caps, question: 'q',
+      onActivity: (label) => labels.push(label),
+    });
+    expect(labels).toContain('Switching to second…');
+  });
+
+  it('walks the whole chain before giving up', async () => {
+    const seen = [];
+    const provider = {
+      generateResponse: async ({ model }) => {
+        seen.push(model);
+        throw new Error('429 rate limit');
+      },
+    };
+    const r = await runInvestigation({
+      provider, model: 'a', fallbackModels: ['b', 'c'],
+      tools, capabilities: caps, question: 'q',
+    });
+    expect(seen).toEqual(['a', 'b', 'c']);
+    expect(r.stoppedBecause).toBe('provider_error');
+    // Still a provider failure, never a statement about the network.
+    expect(r.providerError).toMatch(/429/);
+    expect(r.answer).toBe('');
+  });
+
+  it('does not burn the chain on a failure a different model cannot fix', async () => {
+    const seen = [];
+    const provider = {
+      generateResponse: async ({ model }) => {
+        seen.push(model);
+        throw new Error('OpenAI API error 401: invalid_api_key');
+      },
+    };
+    const r = await runInvestigation({
+      provider, model: 'a', fallbackModels: ['b', 'c'],
+      tools, capabilities: caps, question: 'q',
+    });
+    expect(seen).toEqual(['a']);
+    expect(r.stoppedBecause).toBe('provider_error');
+  });
+
+  it('never falls back to the primary model itself', async () => {
+    const seen = [];
+    const provider = {
+      generateResponse: async ({ model }) => {
+        seen.push(model);
+        if (seen.length < 2) throw new Error('429');
+        return { message: 'ok' };
+      },
+    };
+    await runInvestigation({
+      provider, model: 'a', fallbackModels: ['a', 'b'],
+      tools, capabilities: caps, question: 'q',
+    });
+    expect(seen).toEqual(['a', 'b']);
   });
 });

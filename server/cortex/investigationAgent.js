@@ -45,6 +45,36 @@ export function stripNullArgs(args) {
   return out;
 }
 
+
+/**
+ * Is this provider failure worth retrying on a DIFFERENT model?
+ *
+ * Only failures a different model can actually fix:
+ *   429            the model's per-minute budget is exhausted (the free Groq
+ *                  tier is 8,000 TPM and this fires in real use)
+ *   404 / not found a configured model has been retired upstream — measured:
+ *                  every llama-3.x id Groq once served now 404s
+ *   model errors    "model_not_found", "does not exist", decommissioned
+ *
+ * Deliberately NOT retried on another model:
+ *   401 / 403       an auth or entitlement problem; a different model has the
+ *                   same credential and will fail identically
+ *   tool_use_failed already retried in-provider; it is a generation fault, and
+ *                   switching model mid-turn would discard a valid transcript
+ *   context length  a bigger model is usually not smaller-context; the fix is
+ *                   compaction, which already runs
+ */
+export function shouldTryAnotherModel(err) {
+  const msg = String(err?.message ?? err ?? '');
+  if (/\b(401|403)\b|unauthorized|forbidden|invalid_api_key/i.test(msg)) return false;
+  if (/tool_use_failed|tool call validation failed/i.test(msg)) return false;
+  if (/context[_ ]length|too many tokens|reduce the length/i.test(msg)) return false;
+  return (
+    /\b429\b|rate[_ ]?limit/i.test(msg) ||
+    /\b404\b|model_not_found|does not exist|decommissioned|not supported/i.test(msg)
+  );
+}
+
 export const DEFAULT_LIMITS = {
   /** Model turns that may contain tool calls. */
   maxIterations: 8,
@@ -286,6 +316,12 @@ export async function runInvestigation({
   limits = {},
   onActivity = () => {},
   activityLabels = {},
+  /**
+   * Models to try, in order, if the primary fails in a way another model could
+   * fix. The transcript is provider-neutral, so a switch mid-investigation
+   * costs nothing already gathered.
+   */
+  fallbackModels = [],
 }) {
   const lim = { ...DEFAULT_LIMITS, ...limits };
   const startedAt = Date.now();
@@ -327,6 +363,12 @@ export async function runInvestigation({
   let iterations = 0;
   let answer = '';
 
+  // The model actually answering, which may not be the one asked for.
+  let activeModel = model;
+  const remainingFallbacks = [...fallbackModels].filter((m) => m && m !== model);
+  /** @type {Array<{from: string, to: string, reason: string}>} */
+  const modelFallbacks = [];
+
   while (iterations < lim.maxIterations) {
     if (Date.now() - startedAt > lim.maxWallClockMs) {
       stoppedBecause = 'wall_clock_exceeded';
@@ -336,8 +378,47 @@ export async function runInvestigation({
 
     let response;
     try {
-      response = await provider.generateResponse({
-        model,
+      response = await callWithFallback();
+    } catch (err) {
+      // A provider failure must never read as a statement about the network.
+      return {
+        answer: '',
+        providerError: err?.message ?? String(err),
+        model: activeModel,
+        modelFallbacks,
+        ledger,
+        iterations,
+        stoppedBecause: 'provider_error',
+        warnings,
+        usage,
+      };
+    }
+
+    /**
+     * One provider turn, retrying on the next model when the failure is one a
+     * different model can fix. Each fallback is recorded and surfaced — falling
+     * back to a weaker model silently would change the quality of an answer
+     * without telling anyone.
+     */
+    async function callWithFallback() {
+      for (;;) {
+        try {
+          return await providerTurn(activeModel);
+        } catch (err) {
+          if (!remainingFallbacks.length || !shouldTryAnotherModel(err)) throw err;
+          const next = remainingFallbacks.shift();
+          const reason = String(err?.message ?? err).slice(0, 160);
+          modelFallbacks.push({ from: activeModel, to: next, reason });
+          warnings.push(`${activeModel} was unavailable, so ${next} answered instead. (${reason})`);
+          onActivity(`Switching to ${next}…`, { tool: 'model-fallback' });
+          activeModel = next;
+        }
+      }
+    }
+
+    async function providerTurn(useModel) {
+      return provider.generateResponse({
+        model: useModel,
         // Compacted, not truncated: verdicts from older tool calls survive,
         // their raw payloads do not. Keeps a multi-step investigation inside a
         // small provider's per-minute token budget.
@@ -346,17 +427,6 @@ export async function runInvestigation({
         temperature: 0.2,
         maxTokens: 1400,
       });
-    } catch (err) {
-      // A provider failure must not read as a network verdict.
-      return {
-        answer: '',
-        providerError: err?.message ?? String(err),
-        ledger,
-        iterations,
-        stoppedBecause: 'provider_error',
-        warnings,
-        usage,
-      };
     }
 
     usage.promptTokens += response?.usage?.prompt_tokens ?? 0;
@@ -504,7 +574,17 @@ export async function runInvestigation({
     }
   }
 
-  return { answer, ledger, iterations, stoppedBecause, warnings, usage };
+  return {
+    answer,
+    // The model that actually answered — not necessarily the one requested.
+    model: activeModel,
+    modelFallbacks,
+    ledger,
+    iterations,
+    stoppedBecause,
+    warnings,
+    usage,
+  };
 }
 
 function pushToolResult(messages, call, payload) {

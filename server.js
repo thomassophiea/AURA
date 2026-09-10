@@ -15,6 +15,8 @@ import {
   isModelAllowed,
   getConfiguredProviders,
   getAllModelsForConfiguredProviders,
+  resolveFallbackModels,
+  resolveActiveProvider,
   discoverOllamaModels,
 } from './server/cortexModelRegistry.js';
 import { attachConsoleShell } from './server/consoleShell.js';
@@ -2567,9 +2569,16 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
 
     const tools = createDiagnosticTools({ session: sess.session, scope, capabilities });
 
+    // A single rate-limited or retired model must not end the investigation.
+    // The free Groq tier is 8,000 TPM and has already exhausted mid-run, and
+    // every llama-3.x id Groq once served now 404s — both are failures a
+    // different model fixes.
+    const fallbackModels = resolveFallbackModels(resolveActiveProvider(), model);
+
     const result = await runInvestigation({
       provider: llmProvider,
       model,
+      fallbackModels,
       tools,
       capabilities,
       history: Array.isArray(history) ? history.slice(-12) : [],
@@ -2600,7 +2609,9 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
       // a claim the evidence does not support instead of hiding it.
       audit: auditAnswer(result.answer, result.ledger),
       capabilityGaps: capabilities.unusableKeys().length,
-      model,
+      // The model that actually answered, which may not be the one requested.
+      model: result.model ?? model,
+      modelFallbacks: result.modelFallbacks ?? [],
     });
 
     audit('cortex.investigate', {
