@@ -102,7 +102,7 @@ describe('createLlmProvider', () => {
       apiKey: 'sk-ant-FAKE',
     });
     expect(provider).toBeInstanceOf(AnthropicLlmProvider);
-    expect(defaultModel).toBe('claude-sonnet-4-6');
+    expect(defaultModel).toBe('claude-opus-5');
   });
 
   it('accepts provider=claude alias', () => {
@@ -116,7 +116,7 @@ describe('createLlmProvider', () => {
       apiKey: 'sk-ant-FAKE',
     });
     expect(provider).toBeInstanceOf(AnthropicLlmProvider);
-    expect(defaultModel).toBe('claude-sonnet-4-6');
+    expect(defaultModel).toBe('claude-opus-5');
   });
 });
 
@@ -141,9 +141,9 @@ describe('createLlmProviderForModel', () => {
 
   it('instantiates an Anthropic provider for a Claude model id', () => {
     process.env.ANTHROPIC_API_KEY = 'sk-ant-FAKE';
-    const { provider, model, providerName } = createLlmProviderForModel('claude-sonnet-4-6');
+    const { provider, model, providerName } = createLlmProviderForModel('claude-opus-5');
     expect(provider).toBeInstanceOf(AnthropicLlmProvider);
-    expect(model).toBe('claude-sonnet-4-6');
+    expect(model).toBe('claude-opus-5');
     expect(providerName).toBe('anthropic');
   });
 
@@ -194,7 +194,7 @@ describe('AnthropicLlmProvider message translation', () => {
           id: 'msg_test',
           type: 'message',
           role: 'assistant',
-          model: 'claude-sonnet-4-6',
+          model: 'claude-opus-5',
           content: [{ type: 'text', text: 'ok' }],
           stop_reason: 'end_turn',
           usage: { input_tokens: 1, output_tokens: 1 },
@@ -211,7 +211,7 @@ describe('AnthropicLlmProvider message translation', () => {
   it('extracts the system prompt as a top-level cached system field', async () => {
     const p = new AnthropicLlmProvider({ apiKey: 'sk-ant-FAKE' });
     await p.generateResponse({
-      model: 'claude-sonnet-4-6',
+      model: 'claude-opus-5',
       messages: [
         { role: 'system', content: 'You are Cortex.' },
         { role: 'user', content: 'hi' },
@@ -223,17 +223,56 @@ describe('AnthropicLlmProvider message translation', () => {
     expect(lastBody.messages).toEqual([{ role: 'user', content: 'hi' }]);
   });
 
-  it('omits temperature on Opus 4.7 (sampling params removed)', async () => {
+  it.each(['claude-opus-5', 'claude-sonnet-5', 'claude-opus-4-8', 'claude-opus-4-7'])(
+    'omits temperature on %s (sampling params removed — 400 if sent)',
+    async (model) => {
+      // This was a denylist that only excluded claude-opus-4-7, so every newer
+      // model — including claude-opus-5 — got temperature and 400'd.
+      const p = new AnthropicLlmProvider({ apiKey: 'sk-ant-FAKE' });
+      await p.generateResponse({
+        model,
+        messages: [{ role: 'user', content: 'hi' }],
+        temperature: 0.5,
+      });
+      expect(lastBody.temperature).toBeUndefined();
+    }
+  );
+
+  it('omits temperature for an unrecognised model, failing safe', async () => {
     const p = new AnthropicLlmProvider({ apiKey: 'sk-ant-FAKE' });
     await p.generateResponse({
-      model: 'claude-opus-4-7',
+      model: 'claude-something-future-9',
       messages: [{ role: 'user', content: 'hi' }],
       temperature: 0.5,
     });
     expect(lastBody.temperature).toBeUndefined();
   });
 
-  it('keeps temperature on Sonnet 4.6', async () => {
+  it('still sends temperature on a model that accepts it', async () => {
+    const p = new AnthropicLlmProvider({ apiKey: 'sk-ant-FAKE' });
+    await p.generateResponse({
+      model: 'claude-haiku-4-5',
+      messages: [{ role: 'user', content: 'hi' }],
+      temperature: 0.5,
+    });
+    expect(lastBody.temperature).toBe(0.5);
+  });
+
+  it('never sends budget_tokens, which 400s on the current generation', async () => {
+    const p = new AnthropicLlmProvider({ apiKey: 'sk-ant-FAKE' });
+    await p.generateResponse({
+      model: 'claude-opus-5',
+      messages: [{ role: 'user', content: 'hi' }],
+    });
+    // Omitting `thinking` entirely runs adaptive thinking on Opus 5, which is
+    // what we want; budget_tokens is rejected outright.
+    expect(lastBody.thinking).toBeUndefined();
+  });
+
+  it('keeps temperature on Sonnet 4.6, which still accepts it', async () => {
+    // Sonnet 4.6 is one of the models on the ACCEPTS_SAMPLING allowlist, so
+    // this case must keep its original model id — it is the counterexample
+    // that proves the allowlist is not simply dropping temperature always.
     const p = new AnthropicLlmProvider({ apiKey: 'sk-ant-FAKE' });
     await p.generateResponse({
       model: 'claude-sonnet-4-6',
@@ -246,7 +285,7 @@ describe('AnthropicLlmProvider message translation', () => {
   it('translates assistant tool_calls and tool messages into tool_use / tool_result blocks', async () => {
     const p = new AnthropicLlmProvider({ apiKey: 'sk-ant-FAKE' });
     await p.generateResponse({
-      model: 'claude-sonnet-4-6',
+      model: 'claude-opus-5',
       messages: [
         { role: 'user', content: 'which sites are unhealthy?' },
         {
@@ -275,7 +314,7 @@ describe('AnthropicLlmProvider message translation', () => {
   it('converts tools[*].parameters → tools[*].input_schema', async () => {
     const p = new AnthropicLlmProvider({ apiKey: 'sk-ant-FAKE' });
     await p.generateResponse({
-      model: 'claude-sonnet-4-6',
+      model: 'claude-opus-5',
       messages: [{ role: 'user', content: 'hi' }],
       tools: [
         {

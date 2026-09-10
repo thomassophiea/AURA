@@ -19,9 +19,12 @@ describe('MODEL_REGISTRY', () => {
 
   it('exposes the current Anthropic models', () => {
     const ids = MODEL_REGISTRY.anthropic.map((m) => m.id);
-    expect(ids).toContain('claude-opus-4-7');
-    expect(ids).toContain('claude-sonnet-4-6');
+    expect(ids).toContain('claude-opus-5');
+    expect(ids).toContain('claude-sonnet-5');
     expect(ids).toContain('claude-haiku-4-5');
+    // Previous generation must not linger in the picker.
+    expect(ids).not.toContain('claude-sonnet-4-6');
+    expect(ids).not.toContain('claude-opus-4-7');
   });
 
   it('every model entry has the required shape', () => {
@@ -159,7 +162,7 @@ describe('getConfiguredProviders', () => {
 
 describe('findProviderForModel', () => {
   it('finds the static provider for a known id', () => {
-    expect(findProviderForModel('claude-sonnet-4-6')).toBe('anthropic');
+    expect(findProviderForModel('claude-opus-5')).toBe('anthropic');
     expect(findProviderForModel('gemini-1.5-pro')).toBe('gemini');
     expect(findProviderForModel('deepseek-chat')).toBe('deepseek');
   });

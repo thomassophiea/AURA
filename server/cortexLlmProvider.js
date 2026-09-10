@@ -263,9 +263,26 @@ export class AnthropicLlmProvider {
     if (system) params.system = system;
     if (claudeTools) params.tools = claudeTools;
 
-    // Opus 4.7 removed temperature/top_p/top_k (400 if sent). Other Claude
-    // models still accept temperature.
-    if (!model.startsWith('claude-opus-4-7')) {
+    // Sampling parameters (temperature/top_p/top_k) were REMOVED from the
+    // current Claude generation and return 400 if sent: Opus 5, Opus 4.8,
+    // Opus 4.7, Sonnet 5 and the Fable/Mythos 5 family all reject them.
+    //
+    // This was previously a denylist (`!model.startsWith('claude-opus-4-7')`),
+    // which meant every newer model — including claude-opus-5 — silently got
+    // temperature and 400'd on the first call. An allowlist fails safe: an
+    // unrecognised or future model omits temperature rather than breaking.
+    //
+    // Thinking is deliberately not configured: on Opus 5 and Sonnet 5, omitting
+    // `thinking` runs adaptive thinking, which is what we want. `budget_tokens`
+    // would 400 on those models.
+    const ACCEPTS_SAMPLING = [
+      'claude-opus-4-6',
+      'claude-sonnet-4-6',
+      'claude-haiku-4-5',
+      'claude-sonnet-4-5',
+      'claude-3',
+    ];
+    if (ACCEPTS_SAMPLING.some((prefix) => model.startsWith(prefix))) {
       params.temperature = temperature;
     }
 
@@ -404,7 +421,9 @@ export function createLlmProvider(config = {}) {
     }
     return {
       provider: new AnthropicLlmProvider({ apiKey }),
-      defaultModel: 'claude-sonnet-4-6',
+      // Current generation. Sonnet 4.6 was the previous default and is a
+      // generation behind on tool-use quality.
+      defaultModel: 'claude-opus-5',
     };
   }
 

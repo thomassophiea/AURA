@@ -46,24 +46,28 @@ const RAW_REGISTRY = {
     { id: 'gpt-4o-mini', label: 'GPT-4o Mini', contextWindow: 128000, notes: 'Default' },
     { id: 'gpt-4o', label: 'GPT-4o', contextWindow: 128000, notes: 'Higher quality' },
   ],
+  // Current generation. The previous entries (claude-sonnet-4-6,
+  // claude-opus-4-7) are a generation behind; note that sampling parameters
+  // are rejected on every model listed here except Haiku — see
+  // ACCEPTS_SAMPLING in cortexLlmProvider.js.
   anthropic: [
     {
-      id: 'claude-sonnet-4-6',
-      label: 'Claude Sonnet 4.6',
+      id: 'claude-opus-5',
+      label: 'Claude Opus 5',
       contextWindow: 1_000_000,
-      notes: 'Default · agentic tool-use',
+      notes: 'Default · strongest tool-use reasoning',
     },
     {
-      id: 'claude-opus-4-7',
-      label: 'Claude Opus 4.7',
+      id: 'claude-sonnet-5',
+      label: 'Claude Sonnet 5',
       contextWindow: 1_000_000,
-      notes: 'Most capable · long-horizon work',
+      notes: 'Balanced · ~2.5x cheaper than Opus',
     },
     {
       id: 'claude-haiku-4-5',
       label: 'Claude Haiku 4.5',
       contextWindow: 200_000,
-      notes: 'Fastest tier',
+      notes: 'Fastest · cheapest tier',
     },
   ],
   gemini: [
