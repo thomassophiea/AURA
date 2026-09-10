@@ -9,12 +9,15 @@ import {
 } from './cortexModelRegistry.js';
 
 describe('MODEL_REGISTRY', () => {
-  it('exposes groq models including the documented defaults', () => {
-    const ids = MODEL_REGISTRY.groq.map(m => m.id);
-    expect(ids).toContain('llama-3.3-70b-versatile');
-    expect(ids).toContain('llama-3.1-8b-instant');
-    expect(ids).toContain('mixtral-8x7b-32768');
+  it('exposes only groq models that Groq still serves', () => {
+    const ids = MODEL_REGISTRY.groq.map((m) => m.id);
     expect(ids).toContain('openai/gpt-oss-120b');
+    expect(ids).toContain('openai/gpt-oss-20b');
+    // Verified retired against Groq's live /v1/models on 2026-09-10 — offering
+    // these meant the picker listed models that answer 404.
+    expect(ids).not.toContain('llama-3.3-70b-versatile');
+    expect(ids).not.toContain('llama-3.1-8b-instant');
+    expect(ids).not.toContain('mixtral-8x7b-32768');
   });
 
   it('exposes the current Anthropic models', () => {
@@ -71,7 +74,7 @@ describe('getAllowedModels', () => {
 
 describe('isModelAllowed', () => {
   it('returns true for a registered groq model', () => {
-    expect(isModelAllowed('groq', 'llama-3.1-8b-instant')).toBe(true);
+    expect(isModelAllowed('groq', 'openai/gpt-oss-120b')).toBe(true);
   });
 
   it('returns false for a model not in the registry', () => {

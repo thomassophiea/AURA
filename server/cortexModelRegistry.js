@@ -12,30 +12,29 @@
  */
 
 const RAW_REGISTRY = {
+  // Verified against Groq's live /v1/models on 2026-09-10. Every llama-3.x and
+  // mixtral id previously listed here has been RETIRED and returns 404 — the
+  // picker was offering models that could not answer. Classifier and ASR models
+  // (gpt-oss-safeguard, llama-prompt-guard, whisper) are deliberately excluded:
+  // they are not agents.
   groq: [
-    {
-      id: 'llama-3.3-70b-versatile',
-      label: 'Llama 3.3 70B',
-      contextWindow: 128000,
-      notes: 'Default · balanced reasoning',
-    },
-    {
-      id: 'llama-3.1-8b-instant',
-      label: 'Llama 3.1 8B',
-      contextWindow: 128000,
-      notes: 'Fastest · low-latency lookups',
-    },
-    {
-      id: 'mixtral-8x7b-32768',
-      label: 'Mixtral 8×7B',
-      contextWindow: 32768,
-      notes: 'Wide-context analysis',
-    },
     {
       id: 'openai/gpt-oss-120b',
       label: 'GPT-OSS 120B',
-      contextWindow: 131072,
-      notes: 'Deep reasoning · rate-limited tier',
+      contextWindow: 131_072,
+      notes: 'Default · strongest tool-use on Groq',
+    },
+    {
+      id: 'openai/gpt-oss-20b',
+      label: 'GPT-OSS 20B',
+      contextWindow: 131_072,
+      notes: 'Smaller footprint · fits a tighter token budget',
+    },
+    {
+      id: 'qwen/qwen3.8-27b',
+      label: 'Qwen3.8 27B',
+      contextWindow: 131_042,
+      notes: 'Alternative reasoning model',
     },
   ],
   grok: [
@@ -185,6 +184,18 @@ export const SHELL_MODELS = [
   },
 ];
 
+/**
+ * Historic default for the model picker.
+ *
+ * NO LONGER USED as the picker default. It pointed at the shell entry, whose
+ * panel (ConsoleShell.tsx) is imported by nothing — so the out-of-box default
+ * selected an entry that rendered no UI *and* was rejected by every LLM route
+ * with "Model 'redq-shell' is not in the allowlist for any configured
+ * provider", which broke every message for a new user.
+ *
+ * /api/cortex/models now defaults to the configured LLM. Kept exported because
+ * the console-shell transport still keys off this id.
+ */
 export const DEFAULT_PICKER_MODEL = 'redq-shell';
 
 export function getAllowedModels(providerName) {

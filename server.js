@@ -16,8 +16,6 @@ import {
   getConfiguredProviders,
   getAllModelsForConfiguredProviders,
   discoverOllamaModels,
-  SHELL_MODELS,
-  DEFAULT_PICKER_MODEL,
 } from './server/cortexModelRegistry.js';
 import { attachConsoleShell } from './server/consoleShell.js';
 import { createValidationRouter } from './server/validationEngine/validationRouter.js';
@@ -2326,9 +2324,17 @@ app.get('/api/cortex/models', requireAuth, async (_req, res) => {
     const llmModels = await getAllModelsForConfiguredProviders();
     res.json({
       providers,
-      defaultModel: DEFAULT_PICKER_MODEL,
+      // The shell entry (redq-shell) is deliberately NOT advertised: its panel
+      // (ConsoleShell.tsx) is imported by nothing, so selecting it produced no
+      // UI while also being rejected by every LLM route. Its id and server-side
+      // WebSocket transport are retained for the console itself; it just is not
+      // offered as a model until that panel is wired up again.
+      //
+      // Omitting it also self-heals stale localStorage: useCortexModel resets
+      // any stored `cortex_model` that is absent from this list.
+      defaultModel: cortexOrchestrator.defaultModel ?? llmModels[0]?.id ?? null,
       llmDefaultModel: cortexOrchestrator.defaultModel,
-      models: [...SHELL_MODELS, ...llmModels],
+      models: llmModels,
     });
   } catch (err) {
     console.error('[Cortex] /models error:', err.message);
@@ -2416,17 +2422,26 @@ app.post(
 
       let llmProvider;
       let model;
+      // A model id arriving here came from the picker (localStorage), not from
+      // something the operator typed. If it is not a usable LLM — a shell
+      // entry, or a stale id from another machine — fall back to the server
+      // default and answer the question. Hard-failing leaves the operator
+      // looking at an error about a model they never chose.
+      let usableModel = null;
       if (requestedModel) {
         const ollamaIds = (await discoverOllamaModels()).map((m) => m.id);
-        if (!isModelAllowed(requestedModel, ollamaIds)) {
-          return res
-            .status(400)
-            .json({
-              error: `Model '${requestedModel}' is not in the allowlist for any configured provider`,
-            });
+        if (isModelAllowed(requestedModel, ollamaIds)) {
+          usableModel = requestedModel;
+        } else {
+          console.warn(
+            `[Cortex] requested model '${requestedModel}' is not a usable LLM — using the server default.`
+          );
         }
-        ({ provider: llmProvider, model } = createLlmProviderForModel(requestedModel, ollamaIds));
-      } else {
+        if (usableModel) {
+          ({ provider: llmProvider, model } = createLlmProviderForModel(usableModel, ollamaIds));
+        }
+      }
+      if (!usableModel) {
         const fallback = createLlmProvider({});
         llmProvider = fallback.provider;
         model = process.env.CORTEX_LLM_MODEL ?? fallback.defaultModel;
@@ -2499,15 +2514,20 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
   let llmProvider;
   let model;
   try {
+    // Same rule as /investigate: a picker preference must not fail the request.
+    let usableModel = null;
     if (requestedModel) {
       const ollamaIds = (await discoverOllamaModels()).map((m) => m.id);
-      if (!isModelAllowed(requestedModel, ollamaIds)) {
-        return res
-          .status(400)
-          .json({ error: `Model '${requestedModel}' is not in the allowlist for any configured provider` });
+      if (isModelAllowed(requestedModel, ollamaIds)) {
+        usableModel = requestedModel;
+        ({ provider: llmProvider, model } = createLlmProviderForModel(usableModel, ollamaIds));
+      } else {
+        console.warn(
+          `[Cortex] requested model '${requestedModel}' is not a usable LLM — using the server default.`
+        );
       }
-      ({ provider: llmProvider, model } = createLlmProviderForModel(requestedModel, ollamaIds));
-    } else {
+    }
+    if (!usableModel) {
       const fallback = createLlmProvider({});
       llmProvider = fallback.provider;
       model = process.env.CORTEX_LLM_MODEL ?? fallback.defaultModel;

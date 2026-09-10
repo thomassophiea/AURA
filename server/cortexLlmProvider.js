@@ -115,6 +115,27 @@ export class OpenAiLlmProvider {
       }
     }
 
+    // `tool_use_failed` is a GENERATION failure, not a logic error: the model
+    // emitted arguments its own provider then rejected, e.g.
+    //   Tool call validation failed: parameters for tool getSiteOverview did
+    //   not match schema: [`/siteName`: expected string, but got null]
+    // Groq validates before we ever see the call, so a dispatcher-side guard
+    // cannot help — but the next sample is usually valid. Measured: this fires
+    // intermittently on identical input, so one retry recovers the turn instead
+    // of aborting the whole investigation.
+    if (resp.status === 400) {
+      const body400 = await resp.text().catch(() => '');
+      if (/tool_use_failed|[Tt]ool call validation failed/.test(body400)) {
+        resp = await doFetch();
+        if (!resp.ok) {
+          const err = await resp.text().catch(() => resp.statusText);
+          throw new Error(`OpenAI API error ${resp.status} (after tool-call retry): ${err}`);
+        }
+      } else {
+        throw new Error(`OpenAI API error 400: ${body400}`);
+      }
+    }
+
     if (!resp.ok) {
       const err = await resp.text().catch(() => resp.statusText);
       throw new Error(`OpenAI API error ${resp.status}: ${err}`);
