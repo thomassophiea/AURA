@@ -11,6 +11,17 @@ vi.mock('../../contexts/AppContext', () => ({
 vi.mock('../../services/agentContextService', () => ({
   writeAgentContext: vi.fn(),
 }));
+// The header now renders history controls, which read the Cortex context.
+vi.mock('../../contexts/CortexContext', () => ({
+  useCortexContext: () => ({
+    messages: [],
+    conversations: [],
+    clearConversation: vi.fn(),
+    restoreConversation: vi.fn(),
+    deleteConversation: vi.fn(),
+    clearHistory: vi.fn(),
+  }),
+}));
 beforeEach(() => {
   vi.stubGlobal(
     'fetch',

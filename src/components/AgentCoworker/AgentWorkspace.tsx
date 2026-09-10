@@ -1,8 +1,10 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { whenAutoRefresh } from '../../lib/autoRefresh';
-import { X, Minus, Pin, Maximize2 } from 'lucide-react';
+import { X, Minus, Pin, Maximize2, MessageSquarePlus } from 'lucide-react';
 import { cn } from '../ui/utils';
 import { useAppContext } from '../../contexts/AppContext';
+import { useCortexContext } from '../../contexts/CortexContext';
+import { CortexHistoryMenu } from './panels/CortexHistoryMenu';
 import { writeAgentContext } from '../../services/agentContextService';
 import { apiService } from '../../services/api';
 import { WirelessAssistantPanel } from './wireless/WirelessAssistantPanel';
@@ -42,6 +44,14 @@ export function AgentWorkspace({
   const isPinned = mode === 'pinned';
 
   const { siteGroup, navigationScope } = useAppContext();
+  const {
+    messages,
+    conversations,
+    clearConversation,
+    restoreConversation,
+    deleteConversation,
+    clearHistory,
+  } = useCortexContext();
 
   useEffect(() => {
     if (!isVisible) return;
@@ -160,6 +170,22 @@ export function AgentWorkspace({
               Aura Cortex
             </span>
             <div className="flex items-center gap-0.5 shrink-0">
+              <CortexHistoryMenu
+                conversations={conversations}
+                onRestore={restoreConversation}
+                onDelete={deleteConversation}
+                onClearAll={clearHistory}
+              />
+              <button
+                onClick={clearConversation}
+                disabled={messages.length === 0}
+                title="New conversation (the current one is kept in history)"
+                aria-label="Start a new conversation"
+                className="p-1 rounded hover:bg-accent/30 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
+              >
+                <MessageSquarePlus className="h-3.5 w-3.5" />
+              </button>
+              <span className="mx-1 h-4 w-px bg-border" />
               <button
                 onClick={onMinimize}
                 title="Minimize"

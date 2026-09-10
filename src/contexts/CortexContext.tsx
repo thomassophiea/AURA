@@ -37,6 +37,7 @@ import {
 } from '../services/cortexApiClient';
 import type { CortexEvidence } from '../services/cortexApiClient';
 import type { AgentMessage } from '../components/AgentCoworker/agentTypes';
+import { useCortexHistory, type CortexConversation } from '../hooks/useCortexHistory';
 import type { CortexAvailableAction, CortexInsight, CortexPageContext } from '../types/cortex';
 import { CORTEX_SUGGESTED_PROMPTS } from '../types/cortex';
 
@@ -128,7 +129,19 @@ export interface CortexContextValue {
   sendMessage: (message: string) => Promise<void>;
   confirmWirelessAction: (question: string, confirmationToken: string) => Promise<void>;
   refreshPageAnalysis: () => Promise<void>;
+  /**
+   * Archive the current conversation to history and start a fresh one.
+   * Deliberately non-destructive — clearing is safe precisely because history
+   * keeps what was cleared. Genuine deletion is `deleteConversation` /
+   * `clearHistory`.
+   */
   clearConversation: () => void;
+  /** Past conversations, newest first, from this browser. */
+  conversations: CortexConversation[];
+  /** Reopen a past conversation in place of the current one. */
+  restoreConversation: (id: string) => void;
+  deleteConversation: (id: string) => void;
+  clearHistory: () => void;
   addFeedback: (msgId: string, feedback: 'up' | 'down') => void;
   toggleReasoning: (msgId: string) => void;
 }
@@ -180,10 +193,22 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
     sessionIdRef.current = sessionId;
   }, [sessionId]);
   const [messages, setMessages] = useState<AgentMessage[]>([]);
+  // Identity of the live conversation, so autosave upserts rather than
+  // appending a new history entry on every message.
+  const [conversationId, setConversationId] = useState<string>(() => `conv-${Date.now()}`);
+  const history = useCortexHistory();
 
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
+
+  // Autosave the live conversation so a reload or an accidental close does not
+  // lose the transcript. save() ignores a conversation with no answer yet.
+  useEffect(() => {
+    history.save(conversationId, messages);
+    // history.save is referentially stable; conversationId identifies the row.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, conversationId]);
   const [isThinking, setIsThinking] = useState(false);
   const [wirelessStage, setWirelessStage] = useState<
     'detecting' | 'planning' | 'fetching' | 'classifying' | 'generating' | null
@@ -541,9 +566,49 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
   // ============================================
 
   const clearConversation = useCallback(() => {
+    // Archive before clearing. The autosave effect has already written the
+    // current transcript, so this only needs to start a new one — which means
+    // "Clear" can never lose an answer the operator might still want.
+    history.save(conversationId, messagesRef.current);
     setMessages([]);
     setSessionId(null);
     sessionIdRef.current = null;
+    setConversationId(`conv-${Date.now()}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId]);
+
+  const restoreConversation = useCallback(
+    (id: string) => {
+      const restored = history.load(id);
+      if (!restored) return;
+      // Archive whatever is on screen first, so switching away is not a loss.
+      history.save(conversationId, messagesRef.current);
+      setMessages(restored);
+      setConversationId(id);
+      // The server session does not survive; a follow-up question re-derives
+      // its evidence from tools rather than relying on server-side state.
+      setSessionId(null);
+      sessionIdRef.current = null;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [conversationId]
+  );
+
+  const deleteConversation = useCallback(
+    (id: string) => {
+      history.remove(id);
+      if (id === conversationId) {
+        setMessages([]);
+        setConversationId(`conv-${Date.now()}`);
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [conversationId]
+  );
+
+  const clearHistory = useCallback(() => {
+    history.clearAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const addFeedback = useCallback((msgId: string, feedback: 'up' | 'down') => {
@@ -645,6 +710,10 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
       confirmWirelessAction,
       refreshPageAnalysis,
       clearConversation,
+      conversations: history.conversations,
+      restoreConversation,
+      deleteConversation,
+      clearHistory,
       addFeedback,
       toggleReasoning,
     }),
@@ -664,7 +733,6 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
       sessionId,
       messages,
       suggestedPrompts,
-    cortexActivity,
       cortexActivity,
       pageInsights,
       isThinking,
@@ -673,6 +741,10 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
       confirmWirelessAction,
       refreshPageAnalysis,
       clearConversation,
+      history.conversations,
+      restoreConversation,
+      deleteConversation,
+      clearHistory,
       addFeedback,
       toggleReasoning,
     ]
