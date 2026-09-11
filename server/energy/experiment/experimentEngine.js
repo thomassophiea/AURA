@@ -624,17 +624,24 @@ export async function restoreNorth({ source, session, experimentId, reason = 'op
   });
 
   if (outstanding.length === 0) {
+    // Nothing was ever applied, or everything is already back. Either way this
+    // run is finished — including one abandoned during baseline collection.
+    // Without this, an experiment that never reached treatment stays in flight
+    // forever and the partial unique index blocks every subsequent run.
+    const reachedTreatment = Boolean(experiment.treatment_start);
     const updated = await repo.updateExperiment(experimentId, {
-      state: experiment.state === 'recovering' || experiment.state === 'optimization_active' ? 'complete' : experiment.state,
-      recovery_start: experiment.recovery_start ?? now.toISOString(),
-      treatment_end: experiment.treatment_end ?? now.toISOString(),
+      state: 'complete',
+      recovery_start: experiment.recovery_start ?? (reachedTreatment ? now.toISOString() : null),
+      treatment_end: reachedTreatment ? experiment.treatment_end ?? now.toISOString() : null,
       ended_at: now.toISOString(),
     });
     await event({
       experimentId, sourceId: source.id, kind: 'restoration_verified', side: 'north',
-      message: 'No outstanding configuration changes; North is already at baseline.',
+      message: reachedTreatment
+        ? 'No outstanding configuration changes; North is already at baseline.'
+        : 'Experiment closed before any configuration was changed. Nothing to restore.',
     });
-    return { ok: true, restored: [], unverified: [], experiment: updated };
+    return { ok: true, restored: [], unverified: [], unhealthy: [], experiment: updated };
   }
 
   const inventory = await session.get('/v1/aps/query');

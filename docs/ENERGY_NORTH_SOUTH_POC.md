@@ -327,6 +327,10 @@ read AP  →  capture rollback (persisted BEFORE the write)  →  PUT
   know what state the lab is in."
 - Readiness **fails** while any AP is unrestored, so the next experiment cannot
   start on top of the last one.
+- Restore is also the **cancel** path. An experiment abandoned during baseline
+  collection has nothing to roll back, and restoring it closes the run as
+  `complete` — otherwise it would stay in flight forever and the partial unique
+  index would block every subsequent experiment.
 
 ---
 
