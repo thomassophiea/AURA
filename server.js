@@ -26,6 +26,8 @@ import { registerResolver } from './server/cortex/toolDispatcher.js';
 import { parseWirelessIntent } from './server/cortex/wirelessIntentParser.js';
 import { validateWlanIntent } from './server/validationEngine/wlanConfigValidator.js';
 import { provisionWlan } from './server/cortex/wlanProvisioningEngine.js';
+import { validateTopologyIntent } from './server/validationEngine/topologyConfigValidator.js';
+import { provisionTopology, rollbackTopology } from './server/cortex/topologyProvisioningEngine.js';
 import { transcribeWithGroq } from './server/cortex/groqSpeechToText.js';
 import { GatewayEvidence } from './server/cortex/gatewayEvidence.js';
 import { CapabilityRegistry, getCapabilitiesFor } from './server/cortex/capabilityRegistry.js';
@@ -2729,7 +2731,14 @@ app.post('/api/cortex/wireless/validate', requireAuth, cortexRateLimit, jsonPars
   try {
     const controllerUrl = req.headers['x-controller-url'] ?? DEFAULT_CONTROLLER_URL ?? '';
     const authToken = req.headers['x-controller-auth'] ?? req.headers['authorization'] ?? '';
-    const report = await validateWlanIntent(intent, { authToken, controllerUrl, ephemeralPassword });
+    // One validate/provision entry point for every domain the parser can
+    // produce a mutating intent for — dispatch on intent.action rather than
+    // giving each domain its own competing route (see AURA Network
+    // Intelligence rebuild notes: "one validation path").
+    const report =
+      intent.action === 'create_vlan'
+        ? await validateTopologyIntent(intent, { authToken, controllerUrl })
+        : await validateWlanIntent(intent, { authToken, controllerUrl, ephemeralPassword });
     res.json(report);
   } catch (err) {
     console.error('[Cortex] wireless/validate error:', err.message);
@@ -2752,24 +2761,28 @@ app.post(
     const correlationId = crypto.randomUUID();
     const controllerUrl = req.headers['x-controller-url'] ?? DEFAULT_CONTROLLER_URL ?? '';
     const authToken = req.headers['x-controller-auth'] ?? req.headers['authorization'] ?? '';
+    const target = intent.wlanName ?? intent.ssid ?? intent.topologyName ?? 'unknown-target';
 
     try {
-      const result = await provisionWlan({
-        intent,
-        planHash,
-        validationToken,
-        ephemeralPassword,
-        // Omit entirely (not []) when the caller didn't supply an explicit
-        // list — [] would mean "bind to zero profiles", not "auto-resolve".
-        ...(profileIds ? { profileIds } : {}),
-        authToken,
-        controllerUrl,
-      });
+      const result =
+        intent.action === 'create_vlan'
+          ? await provisionTopology({ intent, planHash, validationToken, authToken, controllerUrl })
+          : await provisionWlan({
+              intent,
+              planHash,
+              validationToken,
+              ephemeralPassword,
+              // Omit entirely (not []) when the caller didn't supply an explicit
+              // list — [] would mean "bind to zero profiles", not "auto-resolve".
+              ...(profileIds ? { profileIds } : {}),
+              authToken,
+              controllerUrl,
+            });
 
       audit('cortex.wireless.provision', {
         actor: req.auraActor,
         source: req.auraActorSource,
-        target: intent.wlanName ?? intent.ssid ?? 'unknown-wlan',
+        target,
         detail: {
           correlationId,
           action: intent.action,
@@ -2786,10 +2799,37 @@ app.post(
       audit('cortex.wireless.provision', {
         actor: req.auraActor,
         source: req.auraActorSource,
-        target: intent.wlanName ?? intent.ssid ?? 'unknown-wlan',
+        target,
         detail: { correlationId, status: 'failed', error: err.message },
       });
       res.status(500).json({ error: 'Provisioning failed', correlationId });
+    }
+  }
+);
+
+app.post(
+  '/api/cortex/wireless/topology/rollback',
+  cortexOperator,
+  cortexRateLimit,
+  jsonParser,
+  async (req, res) => {
+    const { topologyId, force, approvedBy } = req.body ?? {};
+    if (!topologyId) return res.status(400).json({ error: 'topologyId is required' });
+    const correlationId = crypto.randomUUID();
+    const controllerUrl = req.headers['x-controller-url'] ?? DEFAULT_CONTROLLER_URL ?? '';
+    const authToken = req.headers['x-controller-auth'] ?? req.headers['authorization'] ?? '';
+    try {
+      const result = await rollbackTopology({ topologyId, force: Boolean(force), authToken, controllerUrl });
+      audit('cortex.wireless.topology.rollback', {
+        actor: req.auraActor,
+        source: req.auraActorSource,
+        target: topologyId,
+        detail: { correlationId, status: result.status, approvedBy: approvedBy ?? req.auraActor },
+      });
+      res.status(result.status === 'failed' ? 502 : result.status === 'blocked' ? 409 : 200).json({ ...result, correlationId });
+    } catch (err) {
+      console.error('[Cortex] wireless/topology/rollback error:', err.message);
+      res.status(500).json({ error: 'Rollback failed', correlationId });
     }
   }
 );

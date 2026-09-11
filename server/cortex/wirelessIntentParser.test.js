@@ -78,10 +78,20 @@ describe('parseWirelessIntent — non-WLAN configuration domains (Ascend IQC Ski
     expect(r.ambiguities.some((a) => a.includes('/v3/roles'))).toBe(true);
   });
 
-  it('recognizes a VLAN-domain create request distinctly from a WLAN create request', () => {
+  it('routes a VLAN-domain create request to the implemented create_vlan action, distinct from a WLAN create request', () => {
+    // VLAN/Topology creation moved from "recognized, not implemented" to
+    // "built" — see docs/AURA_NETWORK_INTELLIGENCE_CONFIGURATION_ROADMAP.md §4.
     const r = parseWirelessIntent('create a new VLAN 40 for IoT');
+    expect(r.classification).toBe('mutating');
+    expect(r.intent.action).toBe('create_vlan');
+    expect(r.intent.vlanId).toBe(40);
+    expect(r.domain).toBeUndefined();
+  });
+
+  it('still recognizes an un-built non-WLAN domain (e.g. RRM) as unimplemented', () => {
+    const r = parseWirelessIntent('configure smart rf for this profile');
     expect(r.classification).toBe('unimplemented');
-    expect(r.domain).toBe('vlan');
+    expect(r.domain).toBe('rrm');
   });
 
   it('still classifies a real WLAN creation request as mutating, unaffected by the domain catalog', () => {
@@ -100,5 +110,42 @@ describe('parseWirelessIntent — non-WLAN configuration domains (Ascend IQC Ski
     const r = parseWirelessIntent('the weather today');
     expect(r.classification).toBe('read_only');
     expect(r.domain).toBeUndefined();
+  });
+});
+
+describe('parseWirelessIntent — create_vlan slot fill', () => {
+  it('extracts VLAN ID, a quoted name, and tagged/mode hints', () => {
+    const r = parseWirelessIntent('Create a VLAN "Voice" for VLAN 40, tagged, bridged at ap');
+    expect(r.intent.action).toBe('create_vlan');
+    expect(r.intent.vlanId).toBe(40);
+    expect(r.intent.topologyName).toBe('Voice');
+    expect(r.intent.tagged).toBe(true);
+    expect(r.intent.mode).toBe('BridgedAtAp');
+    expect(r.missingFields).toEqual([]);
+    expect(r.riskLevel).toBe('low');
+  });
+
+  it('defaults the topology name from the VLAN id when none is given', () => {
+    const r = parseWirelessIntent('add vlan 40');
+    expect(r.intent.action).toBe('create_vlan');
+    expect(r.intent.topologyName).toBe('VLAN-40');
+  });
+
+  it('flags a missing VLAN id rather than guessing one', () => {
+    const r = parseWirelessIntent('stand up a new topology for guest traffic');
+    expect(r.intent.action).toBe('create_vlan');
+    expect(r.missingFields).toContain('vlanId');
+    expect(r.riskLevel).toBe('medium');
+  });
+
+  it('recognizes "untagged"/"native" as tagged: false', () => {
+    const r = parseWirelessIntent('create vlan 1 untagged');
+    expect(r.intent.tagged).toBe(false);
+  });
+
+  it('never confuses "create a network on VLAN 40" (a WLAN request) with a VLAN-creation request', () => {
+    const r = parseWirelessIntent('create a network on VLAN 40 at Boston Office WPA2 password guestwifi1');
+    expect(r.intent.action).toBe('create_wlan');
+    expect(r.intent.vlanId).toBe(40);
   });
 });

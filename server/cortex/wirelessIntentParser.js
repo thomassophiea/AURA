@@ -8,10 +8,11 @@
  * which an LLM free-text parse cannot guarantee. The LLM layer (cortexOrchestrator)
  * is used only to narrate the result back to the operator, never to invent intent.
  *
- * Supported action today: `create_wlan`. Other actions in the
- * WirelessConfigurationIntent union are recognized (so the operator gets an
- * honest "not yet supported" message) but do not produce a mutating plan —
- * see the migration matrix's deferred scope.
+ * Supported actions today: `create_wlan` and `create_vlan`. Other actions in
+ * the WirelessConfigurationIntent union are recognized (so the operator gets
+ * an honest "not yet supported" message) but do not produce a mutating plan —
+ * see the migration matrix's deferred scope and
+ * docs/AURA_NETWORK_INTELLIGENCE_CONFIGURATION_ROADMAP.md for build order.
  */
 
 import { detectConfigurationDomain } from './configurationDomainCatalog.js';
@@ -23,6 +24,14 @@ const UPDATE_VERBS =
   /\b(disable|hide|enable|unhide|show|update|change|rename|rotate)\b.*\b(wlan|ssid|network|password|psk)\b/i;
 const ASSIGN_VERBS = /\bdeploy\b.*\bto\b|\bassign\b.*\b(profile|ap)\b/i;
 const SCHEDULE_VERBS = /\bschedule\b.*\b(wlan|ssid|network)\b/i;
+
+// Same trigger CONFIGURATION_DOMAINS uses for the 'vlan' domain (id 9 in the
+// Ascend IQC catalog) — single source of truth, so a phrase this parser now
+// implements can never also come back "unimplemented" from the fallback path
+// below. Deliberately excludes "wlan/ssid/wifi/network" as the create object,
+// so "create a network on VLAN 40" (a WLAN request) is never mis-caught here.
+const CREATE_VLAN_VERBS =
+  /\b(create|add|new|define|configure|stand up|set up)\b(?![^.]*\b(wlan|ssid|wifi|wi-fi|network)\b)[^.]*\b(vlan|topology|topologies)\b/i;
 
 const READ_ONLY_LEAD =
   /^\s*(what|which|is|are|how many|who|where|show|list|does|do|can|explain|why)\b/i;
@@ -47,10 +56,11 @@ const SUPPORTED_ACTIONS = new Set([
   'delete_wlan',
   'assign_wlan',
   'schedule_wlan',
+  'create_vlan',
   'validate_only',
 ]);
 
-const IMPLEMENTED_ACTIONS = new Set(['create_wlan', 'validate_only']);
+const IMPLEMENTED_ACTIONS = new Set(['create_wlan', 'create_vlan', 'validate_only']);
 
 // The 30 non-WLAN configuration domains from the Ascend IQC Skills Catalog
 // audit — recognized honestly (name + real Local API it would use), never
@@ -99,6 +109,32 @@ function extractSecurity(input) {
   return null;
 }
 
+function extractTopologyName(input) {
+  const quoted = extractQuoted(input);
+  if (quoted[0]) return quoted[0];
+  const m = input.match(/\b(?:vlan|topology)\s+(?:called|named)\s+["“]?([A-Za-z0-9][A-Za-z0-9 _-]{0,31})["”]?/i);
+  return m ? m[1].trim() : null;
+}
+
+const MODE_PATTERNS = [
+  { re: /bridg(?:ed|e)\s*(?:traffic\s*)?(?:locally\s*)?at\s*(?:the\s*)?ac\b|centrali[sz]ed/i, mode: 'BridgedAtAc' },
+  { re: /rout(?:ed|e)\s*at\s*(?:the\s*)?(?:ac|hwc)\b/i, mode: 'RoutedAtAc' },
+  { re: /bridg(?:ed|e)\s*(?:traffic\s*)?(?:locally\s*)?at\s*(?:the\s*)?ap\b|local(?:ly)?\s*(?:bridged|switched)/i, mode: 'BridgedAtAp' },
+];
+
+function extractTopologyMode(input) {
+  for (const { re, mode } of MODE_PATTERNS) {
+    if (re.test(input)) return mode;
+  }
+  return null; // let the provisioning engine default to BridgedAtAp / mirror the template
+}
+
+function extractTagged(input) {
+  if (/\buntagged\b|\bnative\b/i.test(input)) return false;
+  if (/\btagged\b/i.test(input)) return true;
+  return null; // default applied downstream (true) — not a missing field, just unspecified
+}
+
 // Single source of truth for "which mutating action is this" — classify()
 // delegates here rather than keeping a separate, easy-to-desync verb check.
 function detectAction(input) {
@@ -106,6 +142,7 @@ function detectAction(input) {
   if (UPDATE_VERBS.test(input)) return 'update_wlan';
   if (ASSIGN_VERBS.test(input)) return 'assign_wlan';
   if (SCHEDULE_VERBS.test(input)) return 'schedule_wlan';
+  if (CREATE_VLAN_VERBS.test(input)) return 'create_vlan';
   if (CREATE_VERBS.test(input)) return 'create_wlan';
   return 'validate_only';
 }
@@ -193,6 +230,39 @@ export function parseWirelessIntent(input, meta = {}) {
       ambiguities: [`"${action}" is recognized but not yet implemented — only creating a new WLAN is supported today.`],
       riskLevel: 'medium',
       humanReadable: `Detected a "${action}" request, which AURA cannot provision yet.`,
+      classification: 'mutating',
+    };
+  }
+
+  // --- create_vlan slot fill ---
+  if (action === 'create_vlan') {
+    const vlanId = extractVlan(trimmed);
+    const topologyName = extractTopologyName(trimmed);
+    const mode = extractTopologyMode(trimmed);
+    const tagged = extractTagged(trimmed);
+
+    if (vlanId == null) missingFields.push('vlanId');
+
+    const resolvedName = topologyName ?? (vlanId != null ? `VLAN-${vlanId}` : undefined);
+    const humanReadableVlan = vlanId != null
+      ? `Create a topology "${resolvedName}" for VLAN ${vlanId}${mode ? ` (${mode})` : ''}${tagged === false ? ', untagged' : ''}.`
+      : 'Create a new VLAN topology (VLAN ID not specified).';
+
+    return {
+      intent: {
+        action: 'create_vlan',
+        vlanId: vlanId ?? undefined,
+        topologyName: resolvedName,
+        mode: mode ?? undefined,
+        tagged: tagged ?? undefined,
+        requestedBy: meta.requestedBy ?? 'unknown',
+        source: meta.source === 'voice' ? 'voice' : 'text',
+        rawInstruction: trimmed,
+      },
+      missingFields,
+      ambiguities,
+      riskLevel: missingFields.length > 0 ? 'medium' : 'low',
+      humanReadable: humanReadableVlan,
       classification: 'mutating',
     };
   }

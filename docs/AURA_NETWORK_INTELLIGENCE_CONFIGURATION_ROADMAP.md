@@ -15,6 +15,39 @@ one isn't yet configurable through natural language, instead of silently
 mis-routing it to generic chat or ignoring it. See
 `server/cortex/configurationDomainCatalog.js`.
 
+> **Update, 2026-09-11 — row 9 (VLAN/Topology) built, per this doc's own §4
+> build order.** `create_vlan` now ships as a full parse → validate → approve
+> → provision → verify vertical slice, the same shape as `create_wlan`:
+> `wirelessIntentParser.js` (slot-fill) → `topologyConfigValidator.js`
+> (plan-hash + signed token, `vlan_conflict` + `vlan_id_range` checks) →
+> `topologyProvisioningEngine.js` (mirror-then-deviate, read-back). Routed
+> through the *existing* `/api/cortex/wireless/validate` and
+> `/api/cortex/wireless/provision` endpoints (dispatch on `intent.action`),
+> not new competing routes. Also shipped as skill primitives:
+> `~/.claude/skills/ai-first-configuration/scripts/topology_create.py` /
+> `topology_delete.py`.
+>
+> Two silent-failure modes were found live against the lab Gateway
+> (10.20.01.0024) that this doc's row 9 did not previously know about:
+> **(1)** `POST /v1/topologies` ignores the client-supplied `id` and mints
+> its own — the opposite of `/v1/services`, which honors a client UUID. Any
+> code that assumed the WLAN convention here would silently orphan every
+> topology it created. **(2)** the Gateway does **not** reject a duplicate
+> `vlanid` — two topologies with the same VLAN ID are both accepted with
+> `201`. `topologyConfigValidator.js` enforces this uniqueness client-side;
+> the API does not. Both are now documented in
+> `ai-first-configuration/references/gotchas.md`.
+>
+> 37 new/updated tests (`wirelessIntentParser.test.js`,
+> `topologyConfigValidator.test.js`, `topologyProvisioningEngine.test.js`),
+> full existing suite (4138 tests) still green — no regressions.
+>
+> Row 9's status line below is now stale by this update; treat "manual CRUD
+> exists" as superseded by "built — see above" for VLAN/Topology creation
+> specifically. Update/change/delete of an existing topology remain
+> manual-CRUD-only (`topologiesService.ts`) — this pass covered create only,
+> per the build order's own scoping.
+
 ## 1. The 7 WLAN/Service-domain skills — already the assistant's home turf
 
 These operate on the same object (`Service`) the assistant already creates,
