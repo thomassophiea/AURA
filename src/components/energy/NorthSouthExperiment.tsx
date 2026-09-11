@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Leaf, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -51,7 +51,7 @@ function money(symbol: string, value: number | null | undefined): string {
 
 /** The one sentence an executive reads. Nothing is claimed that is not supported. */
 function headline(savings: ExperimentSavings | null | undefined, northName: string): string {
-  if (!savings) return 'No treatment period yet.';
+  if (!savings) return `Baseline collecting. ${northName} has not been optimized yet.`;
   if (!savings.claimSupported) {
     return 'Collecting — not enough measured data yet to state a difference.';
   }
@@ -89,6 +89,24 @@ export function NorthSouthExperiment({ showControls = false }: Props) {
   const symbol = savings?.currency.symbol ?? '$';
 
   const simulatedResult = savings?.provenance === 'simulated';
+
+  /**
+   * Latest measured watts per AP for each side, straight off the series.
+   *
+   * "Current" should mean current, not "current during a treatment window" —
+   * before an experiment reaches treatment the tiles would otherwise read as a
+   * dash while the chart right below them is drawing live data.
+   */
+  const latest = useMemo(() => {
+    const out: { north: number | null; south: number | null } = { north: null, south: null };
+    if (!series) return out;
+    for (const point of series.points) {
+      if (point.wattsPerAp == null) continue;
+      if (point.siteId === series.north.siteId) out.north = point.wattsPerAp;
+      else if (point.siteId === series.south.siteId) out.south = point.wattsPerAp;
+    }
+    return out;
+  }, [series]);
 
   return (
     <div className="space-y-4">
@@ -166,7 +184,9 @@ export function NorthSouthExperiment({ showControls = false }: Props) {
             <dl className="grid grid-cols-3 gap-2 text-sm">
               <div>
                 <dt className="text-xs text-muted-foreground">Current / AP</dt>
-                <dd className="font-mono tabular-nums">{w(treatment?.north.wattsPerAp)}</dd>
+                <dd className="font-mono tabular-nums">
+                  {w(treatment?.north.wattsPerAp ?? latest.north)}
+                </dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">Baseline / AP</dt>
@@ -190,7 +210,9 @@ export function NorthSouthExperiment({ showControls = false }: Props) {
             <dl className="grid grid-cols-3 gap-2 text-sm">
               <div>
                 <dt className="text-xs text-muted-foreground">Current / AP</dt>
-                <dd className="font-mono tabular-nums">{w(treatment?.south.wattsPerAp)}</dd>
+                <dd className="font-mono tabular-nums">
+                  {w(treatment?.south.wattsPerAp ?? latest.south)}
+                </dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">Baseline / AP</dt>
