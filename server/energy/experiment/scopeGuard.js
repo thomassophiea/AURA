@@ -12,6 +12,8 @@
  * evidence — the live AP record is.
  */
 
+import { supportsVerifiedRadioDisable } from '../apCapabilities.js';
+
 /** Why a target was refused. Stable strings; the UI and the audit trail use them. */
 export const REFUSAL = Object.freeze({
   NO_EXPERIMENT: 'no_experiment',
@@ -24,6 +26,7 @@ export const REFUSAL = Object.freeze({
   SITE_NAME_MISMATCH: 'site_name_mismatch',
   AP_OFFLINE: 'ap_offline',
   ACTION_NOT_PERMITTED: 'action_not_permitted',
+  MODEL_NOT_VERIFIED: 'model_not_verified_for_action',
 });
 
 /** States in which a controller write is legitimate. */
@@ -121,6 +124,18 @@ export function assertTargetAllowed({
     return deny(
       REFUSAL.SITE_MOVED,
       `${serial} is in '${liveSiteName}', which is not the experiment's North site '${experiment.north_site_name}'.`
+    );
+  }
+
+  // A model whose behaviour under this action has not been observed is refused.
+  // The AP4020X is why: it reported the radio disabled while still transmitting,
+  // then went critical and left the network. An energy saving is never worth an
+  // AP, and "we have not tested this model" is not a reason to try it live.
+  if (intent === 'apply' && !supportsVerifiedRadioDisable(liveAp.hardwareType ?? liveAp.platformName ?? device.model)) {
+    return deny(
+      REFUSAL.MODEL_NOT_VERIFIED,
+      `${serial} is a ${liveAp.platformName ?? liveAp.hardwareType ?? device.model ?? 'unknown model'}; ` +
+        'radio disable has not been verified safe on this model.'
     );
   }
 

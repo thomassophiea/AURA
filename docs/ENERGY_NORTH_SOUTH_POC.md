@@ -22,6 +22,7 @@ on live AP5020 / AP4020X units. None of it is assumed.
 | Does disabling a radio actually save power? | Yes — AP5020 6 GHz off: **14.112 W → 11.868 W (−15.9%)** | Control AP `-C0044` stayed 14.30–14.47 W over the same 2 minutes |
 | Does the AP5020 have an ambient-light sensor? | Yes — **JSA-1141 at I2C `0x38`**, same register map as the AP4020X | Read on three AP5020s: 7, 15, 50 raw counts in differently lit rooms |
 | Is the sensor value lux? | **No.** It is an uncalibrated 16-bit count | Dark radome ≈ 2, lit lab 6–52. Thresholds are expressed in raw counts |
+| Is the action safe on every model? | **No.** AP5020 and AP5022 only | See §6.1 — the AP4020X did not survive it |
 
 **`powerModel.js` assigns the 6 GHz band `BAND_SHARE = 0.25`. The measurement
 came out at 0.159.** The model is not wrong to exist — it lets the What-if tool
@@ -143,8 +144,17 @@ the retention sweep (`server/monitoring/retention.js` deletes only from
 
 ## 4. Collector
 
-`server/monitoring/collectors/energyApStateCollector.js`, registered in
-`collectorRunner.js` ahead of the heavier report collectors.
+`server/monitoring/collectors/energyApStateCollector.js`, driven by its own loop
+in `server/monitoring/energyApStateRunner.js`.
+
+**It deliberately does not ride the main collection tick.** `startCollector`
+skips a tick while the previous one is still running, and the per-AP report
+collector routinely outlasts the poll interval — measured on Integration with 8
+APs and a 60 s setting, energy samples actually landed every 180–240 s. A
+four-minute treatment window then contained one sample per AP, one LEAD gap of
+zero, and therefore no measurable result at all. The dedicated loop is
+advisory-locked per source exactly like the main runner, so replicas cannot
+double-ingest.
 
 - Two controller calls per tick (`/v1/aps/query`, `/v3/sites`) for the **whole
   fleet**, regardless of fleet size.
@@ -218,6 +228,34 @@ clients. Chosen because it:
 3. is verifiable by read-back **and** by the power telemetry,
 4. never touches the management path (eth0),
 5. with `requireZeroClients`, cannot drop a user's session.
+
+### 6.1 Model allow-list — why it exists
+
+`apCapabilities.supportsVerifiedRadioDisable()` is an **allow-list**
+(`AP5020`, `AP5022`), not a deny-list. An untested model is refused.
+
+It exists because of what an **AP4020X** did during the first live run:
+
+1. It accepted `adminState=false` + `adminStateOvr=true`, persisted it, and
+   returned it on read-back — while the same object reported `txPower: 17` on
+   that radio, still on 5955 MHz, with its power draw unchanged. The three
+   AP5020s in the same site went to 0 dBm and dropped 2.2 W each.
+2. Minutes later it went `status: critical`, `pwrUsage: 0.0`, and left the
+   network. SSH to it timed out.
+3. Restoring the configuration **was verified by read-back** and did **not**
+   bring the AP back into service.
+
+Three mitigations came out of it, all in code:
+
+- `checkRadiosOffAir()` — the device's own transmit-power report is required as
+  second evidence, so "config landed" can never be reported as "radio off".
+- The model allow-list — an unverified model is refused at the scope guard, with
+  reason `model_not_verified_for_action`.
+- `ap_unhealthy_after_restore` — a `critical` event when an AP's configuration is
+  confirmed restored but the AP is not back in service.
+
+This is a device/firmware issue worth raising with PLM. Do not re-add the
+AP4020X to the allow-list without a firmware fix and a repeated test.
 
 `scopeGuard.assertActionPermitted` rejects anything else — specifically
 `reduceTxPower`, because this controller accepts that write with a 200 and does
@@ -388,15 +426,18 @@ each AP's readings actually arrive.
 3. **`radio.admin_enabled` is derived**, not read. `/v1/aps/query` does not carry
    `adminState`; `/v1/aps/{serial}` does, and that is what the write path
    verifies against. The collector series is a convenience for the UI.
-4. **The controller intermittently returns HTTP 500** on
+4. **The AP4020X is excluded from the treatment group** by the model allow-list
+   (§6.1) until its firmware behaviour is fixed. On this lab controller that
+   reduces a 4-AP North group to 3.
+5. **The controller intermittently returns HTTP 500** on
    `/management/v1/aps/query`. Observed once in the first hour. The collector
    records a failed run and writes nothing, so the result is a one-minute gap
    rather than bad data.
-5. **No statistical significance test.** With this fleet size there is no honest
+6. **No statistical significance test.** With this fleet size there is no honest
    one. Comparability is reported as a ratio and a verdict.
-6. **Tx power reduction is not available** as an action on this controller
+7. **Tx power reduction is not available** as an action on this controller
    version, so the only verified lever is radio enable/disable.
-7. **One experiment at a time per controller**, enforced by a partial unique
+8. **One experiment at a time per controller**, enforced by a partial unique
    index.
 
 ---
@@ -518,7 +559,8 @@ Every write route is audited through `identityStore.audit`.
 | Variable | Default | Effect |
 |---|---|---|
 | `ENERGY_AP_STATE_ENABLED` | `true` | The measured-power collector |
-| `MONITORING_POLL_INTERVAL_SECONDS` | `300` (60 on Integration) | Sample cadence |
+| `ENERGY_AP_STATE_INTERVAL_SECONDS` | `60` | Measured-power cadence, independent of the report collector |
+| `MONITORING_POLL_INTERVAL_SECONDS` | `300` (60 on Integration) | Report/SLE collector cadence |
 | `MONITORING_RETENTION_DAYS` | `7` (30 on Integration) | How far back comparisons can reach |
 | `LIGHT_SENSOR_TOKEN` | unset | If set, `X-Light-Token` is required on sensor reports |
 

@@ -11,7 +11,27 @@
  * Add new families here — the only edit needed to support them.
  */
 
-const SENSOR_MODELS = ['AP4020', 'AP4060', 'AP5020'];
+const SENSOR_MODELS = ['AP4020', 'AP4060', 'AP5020', 'AP5022'];
+
+/**
+ * Models on which disabling a radio has been OBSERVED to work safely: the
+ * radio actually leaves the air, and the AP stays in service.
+ *
+ * This is an allow-list, not a deny-list, and it is empty until a model has
+ * been tested. An untested model is not assumed safe.
+ *
+ * Verified 2026-09-11 on XCC 10.20.1.0-020R:
+ *   AP5020  — 6 GHz disable: txPower → 0, AP stays InService, draw −2.2 W.
+ *   AP5022  — same radio layout and firmware; observed InService throughout.
+ *
+ * Deliberately NOT listed:
+ *   AP4020X — accepted the disable, reported adminState=false while STILL
+ *             transmitting at 17 dBm, then went `critical`, dropped to 0 W and
+ *             left the network entirely. Restoring the configuration was
+ *             verified but did not bring the AP back. Do not re-add without a
+ *             firmware fix and a repeated test.
+ */
+const RADIO_DISABLE_VERIFIED_MODELS = ['AP5020', 'AP5022'];
 
 const CAPABLE_DEFAULTS = {
   ambientLightSensor: false,
@@ -29,6 +49,19 @@ function normalize(model) {
 export function supportsLightSensor(model) {
   const m = normalize(model);
   return SENSOR_MODELS.some((s) => m.includes(s));
+}
+
+/**
+ * May this model's radios be administratively disabled as an energy action?
+ * Unknown models answer `false`: an untested AP is not a safe AP.
+ */
+export function supportsVerifiedRadioDisable(model) {
+  const m = normalize(model);
+  if (!m) return false;
+  // Substring matching would let 'AP4020X' match nothing here, which is the
+  // intent — but it would also let a future 'AP5020-LITE' inherit the
+  // verification. Prefix matching on the family is the closest honest rule.
+  return RADIO_DISABLE_VERIFIED_MODELS.some((verified) => m.startsWith(verified));
 }
 
 export function capabilitiesForModel(model) {

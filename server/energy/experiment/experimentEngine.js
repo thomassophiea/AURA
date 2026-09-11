@@ -627,6 +627,23 @@ export async function restoreNorth({ source, session, experimentId, reason = 'op
     }
   }
 
+  // A verified configuration restore is not the same as a healthy AP. The
+  // AP4020X came back with its config confirmed and its status still `critical`
+  // at 0 W — reporting only "restored" there would hide a downed access point.
+  const unhealthy = [];
+  for (const serial of restored) {
+    const live = bySerial.get(serial);
+    if (live?.status && live.status !== 'InService') {
+      unhealthy.push({ serial, status: live.status });
+      await event({
+        experimentId, sourceId: source.id, kind: 'ap_unhealthy_after_restore',
+        severity: 'critical', side: 'north', apSerial: serial,
+        message: `${serial}: configuration restored and confirmed, but the AP reports '${live.status}'. It has not returned to service.`,
+        detail: { status: live.status, pwrUsage: live.pwrUsage ?? null },
+      });
+    }
+  }
+
   const allBack = unverified.length === 0;
   const updated = await repo.updateExperiment(experimentId, {
     state: allBack ? 'complete' : 'error',
@@ -642,12 +659,15 @@ export async function restoreNorth({ source, session, experimentId, reason = 'op
     severity: allBack ? 'info' : 'critical',
     side: 'north',
     message: allBack
-      ? `North restored: ${restored.length} AP(s) confirmed back at baseline.`
+      ? `North restored: ${restored.length} AP(s) confirmed back at baseline.` +
+        (unhealthy.length > 0
+          ? ` ${unhealthy.length} AP(s) are NOT back in service and need attention.`
+          : '')
       : `North restoration INCOMPLETE: ${unverified.length} AP(s) unconfirmed. Manual intervention required.`,
-    detail: { restored, unverified },
+    detail: { restored, unverified, unhealthy },
   });
 
-  return { ok: allBack, restored, unverified, experiment: updated };
+  return { ok: allBack, restored, unverified, unhealthy, experiment: updated };
 }
 
 /** Light returned: restore, then finish. */

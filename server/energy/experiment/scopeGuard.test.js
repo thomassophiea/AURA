@@ -29,6 +29,8 @@ const liveAp = (overrides = {}) => ({
   serialNumber: 'N1',
   hostSite: 'EAL-PT-N',
   status: 'InService',
+  platformName: 'AP5020',
+  hardwareType: 'AP5020-WW',
   ...overrides,
 });
 
@@ -90,6 +92,43 @@ describe('assertTargetAllowed', () => {
       sourceId: SOURCE,
     });
     expect(verdict.reason).toBe(REFUSAL.AP_UNKNOWN_TO_CONTROLLER);
+  });
+
+  it('refuses a model whose behaviour under this action has not been verified', () => {
+    // The AP4020X reported the radio disabled while still transmitting, then
+    // went critical and left the network.
+    const verdict = assertTargetAllowed({
+      experiment: experiment(),
+      allowlist: ALLOWLIST,
+      serial: 'N1',
+      liveAp: liveAp({ platformName: 'AP4020X', hardwareType: 'AP4020X-WW' }),
+      sourceId: SOURCE,
+    });
+    expect(verdict.allowed).toBe(false);
+    expect(verdict.reason).toBe(REFUSAL.MODEL_NOT_VERIFIED);
+  });
+
+  it('refuses an unknown model rather than assuming it is safe', () => {
+    const verdict = assertTargetAllowed({
+      experiment: experiment(),
+      allowlist: ALLOWLIST,
+      serial: 'N1',
+      liveAp: liveAp({ platformName: 'AP9999', hardwareType: 'AP9999-WW' }),
+      sourceId: SOURCE,
+    });
+    expect(verdict.reason).toBe(REFUSAL.MODEL_NOT_VERIFIED);
+  });
+
+  it('still permits a RESTORE on an unverified model — it may already be changed', () => {
+    const verdict = assertTargetAllowed({
+      experiment: experiment({ state: 'error' }),
+      allowlist: ALLOWLIST,
+      serial: 'N1',
+      liveAp: liveAp({ platformName: 'AP4020X', status: 'critical' }),
+      sourceId: SOURCE,
+      intent: 'restore',
+    });
+    expect(verdict.allowed).toBe(true);
   });
 
   it('refuses a write to an offline AP because it could not be verified', () => {
