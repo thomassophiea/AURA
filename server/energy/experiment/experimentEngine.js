@@ -26,6 +26,7 @@ import { discover } from './siteDiscovery.js';
 import { assertTargetAllowed, assertActionPermitted, partitionTargets } from './scopeGuard.js';
 import { applyRadioChange, restoreRadioState, readAp, checkRadiosOffAir } from './radioActuator.js';
 import { fetchRecentLightSamples, evaluateSide } from './lightSignal.js';
+import { evaluationSampleSource } from './demoOverrideRegistry.js';
 import {
   selectBaselineWindow,
   matchedTimeWindows,
@@ -281,7 +282,12 @@ export async function evaluateTrigger({ source, session, now = new Date() }) {
   const config = await repo.getConfig(source.id);
   const devices = await repo.listDevices(experiment.id);
   const northSerials = devices.filter((d) => d.side === 'north').map((d) => d.apSerial);
-  const samples = await fetchRecentLightSamples({ sourceId: source.id, serials: northSerials, sinceSeconds: 1800 });
+  const samples = await fetchRecentLightSamples({
+    sourceId: source.id,
+    serials: northSerials,
+    sinceSeconds: 1800,
+    sampleSource: evaluationSampleSource(source.id),
+  });
 
   const darkness = evaluateSide({
     samplesByAp: samples,

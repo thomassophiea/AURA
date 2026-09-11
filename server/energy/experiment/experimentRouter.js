@@ -23,11 +23,13 @@ import { fetchRecentLightSamples, evaluateSide } from './lightSignal.js';
 import { extrapolateObserved } from '../scenarioEngine.js';
 import { getRatePreferences } from '../energyRepository.js';
 
-/** In-memory demo override. Deliberately NOT persisted as a global switch: a
- *  forgotten override is the one way this feature could quietly poison real
- *  history, so it dies with the process. Every sample it writes IS persisted,
- *  and permanently marked `simulated`. */
-const demoOverride = new Map(); // sourceId -> { mode, startedAt, startedBy, timer }
+import {
+  clearOverride,
+  describeOverride,
+  evaluationSampleSource,
+  setOverride,
+  __resetOverrides,
+} from './demoOverrideRegistry.js';
 
 export function createExperimentRouter(options = {}) {
   const {
@@ -438,27 +440,6 @@ export function createExperimentRouter(options = {}) {
 
   /* --------------------------------------------------------- demo override */
 
-  function describeOverride(sourceId) {
-    const o = demoOverride.get(sourceId);
-    if (!o) return { active: false, mode: 'live_sensor' };
-    return {
-      active: true,
-      mode: o.mode,
-      startedAt: o.startedAt,
-      startedBy: o.startedBy,
-      note:
-        o.mode === 'sensor_failure'
-          ? 'Simulated sensor failure: no sensor samples are being written, so no trigger can fire.'
-          : 'Simulated sensor samples are being written. They are permanently marked simulated; the controller action and all power telemetry remain real.',
-    };
-  }
-
-  function stopOverride(sourceId) {
-    const o = demoOverride.get(sourceId);
-    if (o?.timer) clearInterval(o.timer);
-    demoOverride.delete(sourceId);
-  }
-
   /**
    * Drive the sensor INPUT, not the output.
    *
@@ -475,7 +456,7 @@ export function createExperimentRouter(options = {}) {
         return fail(res, 400, `mode must be one of ${valid.join(', ')}.`, { errorClass: 'validation' });
       }
 
-      stopOverride(source.id);
+      clearOverride(source.id);
       record(req, 'energy.experiment.demo_override', { mode });
 
       if (mode === 'reset') {
@@ -496,7 +477,7 @@ export function createExperimentRouter(options = {}) {
       const northSerials = devices.filter((d) => d.side === 'north').map((d) => d.apSerial);
 
       if (mode === 'sensor_failure') {
-        demoOverride.set(source.id, {
+        setOverride(source.id, {
           mode, startedAt: nowFn().toISOString(), startedBy: req.user?.userId ?? null, timer: null,
         });
         await repo.insertEvent({
@@ -535,7 +516,7 @@ export function createExperimentRouter(options = {}) {
       }, 15_000);
       if (typeof timer.unref === 'function') timer.unref();
 
-      demoOverride.set(source.id, {
+      setOverride(source.id, {
         mode, startedAt: nowFn().toISOString(), startedBy: req.user?.userId ?? null, timer,
       });
 
@@ -636,6 +617,7 @@ export function createExperimentRouter(options = {}) {
       const northSerials = devices.filter((d) => d.side === 'north').map((d) => d.apSerial);
       const samples = await fetchRecentLightSamples({
         sourceId: source.id, serials: northSerials, sinceSeconds: 1800,
+        sampleSource: evaluationSampleSource(source.id),
       });
       const now = nowFn();
       res.json({
@@ -659,7 +641,4 @@ export function createExperimentRouter(options = {}) {
   return router;
 }
 
-export function __resetDemoOverridesForTests() {
-  for (const [, o] of demoOverride) if (o.timer) clearInterval(o.timer);
-  demoOverride.clear();
-}
+export const __resetDemoOverridesForTests = __resetOverrides;

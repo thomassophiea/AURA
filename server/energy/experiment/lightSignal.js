@@ -22,7 +22,16 @@ import { query } from '../../db/pool.js';
  * Recent light samples for a set of APs.
  * @returns {Promise<Map<string, Array<{raw:number|null, state:string, observedAt:Date}>>>}
  */
-export async function fetchRecentLightSamples({ sourceId, serials, sinceSeconds = 900 }) {
+export async function fetchRecentLightSamples({
+  sourceId,
+  serials,
+  sinceSeconds = 900,
+  // Which channel the trigger is listening to. While a demo override is active
+  // this is 'simulated', because the real agents keep reporting and a live
+  // "light" row landing between two simulated "dark" rows resets the dark run —
+  // observed on the first fallback run, where persistence could never be met.
+  sampleSource = 'live',
+}) {
   if (!serials || serials.length === 0) return new Map();
   const { rows } = await query(
     `SELECT ap_serial, lux AS raw, normalized_state, reported_state, observed_at
@@ -30,8 +39,9 @@ export async function fetchRecentLightSamples({ sourceId, serials, sinceSeconds 
      WHERE monitored_source_id = $1
        AND ap_serial = ANY($2::text[])
        AND observed_at >= now() - ($3 * interval '1 second')
+       AND sample_source = $4
      ORDER BY ap_serial, observed_at DESC`,
-    [sourceId, serials, sinceSeconds]
+    [sourceId, serials, sinceSeconds, sampleSource]
   );
   const byAp = new Map();
   for (const r of rows) {
