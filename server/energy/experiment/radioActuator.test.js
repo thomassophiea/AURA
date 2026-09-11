@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
+  checkRadiosOffAir,
   planRadioChange,
   verifyRadioChange,
   captureRadioState,
@@ -81,6 +82,33 @@ describe('captureRadioState', () => {
   });
 });
 
+describe('checkRadiosOffAir', () => {
+  it('accepts a radio that reports zero transmit power', () => {
+    const r = checkRadiosOffAir(ap([{ radioIndex: 3, adminState: false, txPower: 0 }]), [3]);
+    expect(r.effective).toBe(true);
+    expect(r.stillOnAir).toEqual([]);
+  });
+
+  it('catches a radio that is configured off but still transmitting', () => {
+    // The AP4020X failure observed on hardware: adminState false, txPower 17.
+    const r = checkRadiosOffAir(
+      ap([{ radioIndex: 3, adminState: false, adminStateOvr: true, txPower: 17 }]),
+      [3]
+    );
+    expect(r.effective).toBe(false);
+    expect(r.stillOnAir).toEqual([{ radioIndex: 3, txPower: 17 }]);
+  });
+
+  it('ignores radios outside the action', () => {
+    const r = checkRadiosOffAir(ap(RADIOS), [3]);
+    expect(r.stillOnAir.map((x) => x.radioIndex)).toEqual([3]);
+  });
+
+  it('treats a missing transmit-power reading as not-on-air rather than guessing', () => {
+    expect(checkRadiosOffAir(ap([{ radioIndex: 3, txPower: null }]), [3]).effective).toBe(true);
+  });
+});
+
 /** Session double: sequential GET responses, capturing writes. */
 function fakeSession(readSequence, { writeOk = true } = {}) {
   const reads = [...readSequence];
@@ -133,13 +161,43 @@ describe('applyRadioChange', () => {
   it('reports verified only when the read-back agrees', async () => {
     const session = fakeSession([
       okRead(RADIOS),
-      okRead([{ radioIndex: 3, adminState: false, adminStateOvr: true }]),
+      okRead([{ radioIndex: 3, adminState: false, adminStateOvr: true, txPower: 0 }]),
     ]);
     const result = await applyRadioChange({
       session, serial: 'N1', radioIndexes: [3], adminState: false, sleep,
     });
     expect(result.ok).toBe(true);
     expect(result.verified).toBe(true);
+    expect(result.effective).toBe(true);
+  });
+
+  it('separates "config landed" from "radio actually stopped"', async () => {
+    // Exactly what an AP4020X did on hardware.
+    const session = fakeSession([
+      okRead(RADIOS),
+      okRead([{ radioIndex: 3, adminState: false, adminStateOvr: true, txPower: 17 }]),
+    ]);
+    const result = await applyRadioChange({
+      session, serial: 'N1', radioIndexes: [3], adminState: false, sleep,
+    });
+    expect(result.configVerified).toBe(true);
+    expect(result.effective).toBe(false);
+    expect(result.stage).toBe('on_air');
+    expect(result.error).toMatch(/still reports transmit power/i);
+  });
+
+  it('does not apply the on-air check when re-enabling a radio', async () => {
+    // A freshly re-enabled radio legitimately reports 0 dBm until SmartRF acts.
+    const disabled = [{ radioIndex: 3, adminState: false, adminStateOvr: true, txPower: 0 }];
+    const session = fakeSession([
+      okRead(disabled),
+      okRead([{ radioIndex: 3, adminState: true, adminStateOvr: false, txPower: 0 }]),
+    ]);
+    const result = await applyRadioChange({
+      session, serial: 'N1', radioIndexes: [3], adminState: true, sleep,
+    });
+    expect(result.verified).toBe(true);
+    expect(result.effective).toBe(true);
   });
 
   it('fails when the controller accepts the write but nothing changed', async () => {

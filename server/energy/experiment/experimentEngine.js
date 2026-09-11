@@ -24,7 +24,7 @@ import { getRatePreferences } from '../energyRepository.js';
 import * as repo from './experimentRepository.js';
 import { discover } from './siteDiscovery.js';
 import { assertTargetAllowed, assertActionPermitted, partitionTargets } from './scopeGuard.js';
-import { applyRadioChange, restoreRadioState, readAp } from './radioActuator.js';
+import { applyRadioChange, restoreRadioState, readAp, checkRadiosOffAir } from './radioActuator.js';
 import { fetchRecentLightSamples, evaluateSide } from './lightSignal.js';
 import {
   selectBaselineWindow,
@@ -307,6 +307,14 @@ export async function evaluateTrigger({ source, session, now = new Date() }) {
     });
   }
 
+  // While the treatment is live, keep checking that the radios we disabled are
+  // actually still off the air. A configuration read-back proved the controller
+  // stored the intent; only the device's own transmit-power report proves it
+  // complied, and an AP can comply late — or never.
+  if (experiment.state === 'optimization_active') {
+    await verifyEffectiveness({ source, session, experimentId: experiment.id }).catch(() => undefined);
+  }
+
   if (experiment.state === 'optimization_active' && light.triggered) {
     return recover({
       source, session, experimentId: experiment.id, reason: 'light_restored',
@@ -315,6 +323,61 @@ export async function evaluateTrigger({ source, session, now = new Date() }) {
   }
 
   return { ok: true, action: 'none', darkness, light, state: experiment.state };
+}
+
+/**
+ * Re-check that every AP we disabled is still off the air, and record any that
+ * are not.
+ *
+ * Emits an event only on a CHANGE of verdict, so a persistently non-compliant
+ * AP produces one warning rather than one every thirty seconds.
+ *
+ * @returns {Promise<{checked:number, notEffective:string[]}>}
+ */
+export async function verifyEffectiveness({ source, session, experimentId }) {
+  const experiment = await repo.getExperiment(experimentId);
+  if (!experiment) return { checked: 0, notEffective: [] };
+  const action = experiment.action?.radioIndexes ? experiment.action : DEFAULT_ACTION;
+
+  const rollback = await repo.listRollback(experimentId);
+  const applied = rollback.filter((r) => r.appliedAt && !r.restoreVerified);
+  if (applied.length === 0) return { checked: 0, notEffective: [] };
+
+  const inventory = await session.get('/v1/aps/query');
+  if (!inventory.ok) return { checked: 0, notEffective: [] };
+  const rows = Array.isArray(inventory.data) ? inventory.data : inventory.data?.aps ?? [];
+  const bySerial = new Map(rows.map((a) => [a.serialNumber, a]));
+
+  const notEffective = [];
+  for (const row of applied) {
+    const live = bySerial.get(row.apSerial);
+    if (!live) continue;
+    const { effective, stillOnAir } = checkRadiosOffAir(live, action.radioIndexes);
+    const message = effective
+      ? null
+      : `Radio ${stillOnAir.map((r) => r.radioIndex).join(',')} still reports transmit power ` +
+        `(${stillOnAir.map((r) => `${r.txPower} dBm`).join(', ')}) despite a confirmed disable.`;
+
+    // Only write when the verdict actually changed.
+    if ((row.applyError ?? null) !== message) {
+      await repo.recordApplyResult({
+        experimentId, serial: row.apSerial, verified: true, error: message,
+      });
+      await event({
+        experimentId, sourceId: source.id,
+        kind: effective ? 'configuration_effective' : 'configuration_not_effective',
+        severity: effective ? 'info' : 'warning',
+        side: 'north', apSerial: row.apSerial,
+        message: effective
+          ? `${row.apSerial}: radio ${action.radioIndexes.join(',')} confirmed off the air.`
+          : `${row.apSerial}: ${message} Not counted as optimized.`,
+        detail: { stillOnAir },
+      });
+    }
+    if (!effective) notEffective.push(row.apSerial);
+  }
+
+  return { checked: applied.length, notEffective };
 }
 
 /**
@@ -419,17 +482,38 @@ export async function activateOptimization({
         });
       }
 
+      const kind = !outcome.verified
+        ? 'configuration_failed'
+        : outcome.effective === false
+          ? 'configuration_not_effective'
+          : 'configuration_verified';
       await event({
         experimentId, sourceId: source.id,
-        kind: outcome.verified ? 'configuration_verified' : 'configuration_failed',
-        severity: outcome.verified ? 'info' : 'critical',
+        kind,
+        severity: kind === 'configuration_verified' ? 'info' : kind === 'configuration_failed' ? 'critical' : 'warning',
         side: 'north', apSerial: target.serial,
-        message: outcome.verified
-          ? `${target.serial}: radio ${action.radioIndexes.join(',')} disabled and confirmed by read-back.`
-          : `${target.serial}: ${outcome.error ?? 'change could not be verified.'}`,
-        detail: { intended: outcome.intended, mismatches: outcome.mismatches, stage: outcome.stage },
+        message:
+          kind === 'configuration_verified'
+            ? `${target.serial}: radio ${action.radioIndexes.join(',')} disabled, confirmed by read-back and off the air.`
+            : kind === 'configuration_not_effective'
+              ? `${target.serial}: configuration stored and confirmed, but radio ${(outcome.stillOnAir ?? [])
+                  .map((r) => r.radioIndex)
+                  .join(',')} still reports transmit power. Not counted as optimized.`
+              : `${target.serial}: ${outcome.error ?? 'change could not be verified.'}`,
+        detail: {
+          intended: outcome.intended,
+          mismatches: outcome.mismatches,
+          stillOnAir: outcome.stillOnAir,
+          stage: outcome.stage,
+        },
       });
-      results.push({ serial: target.serial, ok: outcome.verified, error: outcome.error });
+      results.push({
+        serial: target.serial,
+        ok: outcome.verified && outcome.effective !== false,
+        configVerified: outcome.verified,
+        effective: outcome.effective,
+        error: outcome.error,
+      });
     }
   } else {
     await event({

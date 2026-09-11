@@ -215,7 +215,10 @@ export interface ExperimentApRow extends ExperimentDevice {
   observedAt: string | null;
   clients: number | null;
   radios: Array<{ radioIndex: string; band: string | null; txPower?: number | null; enabled?: boolean; clients?: number | null }>;
-  energyState: 'control' | 'optimized' | 'normal';
+  /** `changed_not_effective`: the write landed and verified, but the radio is
+   *  still reporting transmit power — changed, still needs restoring, saving
+   *  nothing. */
+  energyState: 'control' | 'optimized' | 'changed_not_effective' | 'normal';
   telemetrySource: 'measured' | 'none';
   rollback: {
     capturedAt: string;

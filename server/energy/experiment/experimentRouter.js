@@ -20,6 +20,8 @@ import * as engine from './experimentEngine.js';
 import { discover } from './siteDiscovery.js';
 import { assessReadiness } from './readiness.js';
 import { fetchRecentLightSamples, evaluateSide } from './lightSignal.js';
+import { extrapolateObserved } from '../scenarioEngine.js';
+import { getRatePreferences } from '../energyRepository.js';
 
 /** In-memory demo override. Deliberately NOT persisted as a global switch: a
  *  forgotten override is the one way this feature could quietly poison real
@@ -311,7 +313,13 @@ export function createExperimentRouter(options = {}) {
               d.side === 'south'
                 ? 'control'
                 : rb?.appliedAt && !rb?.restoreVerified
-                  ? 'optimized'
+                  // applyError is set by the effectiveness sweep when the config
+                  // landed but the radio is still transmitting. Such an AP is
+                  // changed — it still needs restoring — but it is NOT saving
+                  // anything, so it must not be counted as optimized.
+                  ? rb.applyError
+                    ? 'changed_not_effective'
+                    : 'optimized'
                   : 'normal',
             telemetrySource: live.watts != null ? 'measured' : 'none',
             rollback: rb
@@ -547,6 +555,73 @@ export function createExperimentRouter(options = {}) {
           mode === 'lights_off'
             ? config?.darkness_persistence_seconds ?? 120
             : config?.recovery_persistence_seconds ?? 60,
+      });
+    })
+  );
+
+  /**
+   * Extrapolate the OBSERVED result to a larger deployment.
+   *
+   * Feeds the existing Energy scenario engine rather than adding a second one,
+   * and prefers the measured per-AP watt saving over the band-share model —
+   * which, on the first controlled measurement, was 57% optimistic.
+   */
+  router.get(`${BASE}/scenario`, (req, res) =>
+    withSource(req, res, async (source) => {
+      const experiment = req.query.experimentId
+        ? await repo.getExperiment(req.query.experimentId)
+        : (await repo.getActiveExperiment(source.id)) ?? (await repo.listExperiments(source.id, 1))[0];
+      if (!experiment) return fail(res, 404, 'No experiment to extrapolate from.');
+
+      const summary = await engine.summarize({ source, experiment, now: nowFn() });
+      const prefs = (await getRatePreferences(source.id)) ?? { ratePerKwh: 0.14, currencySymbol: '$', currencyCode: 'USD' };
+
+      const apCounts = String(req.query.apCounts ?? '10,100,1000,10000')
+        .split(',')
+        .map((n) => Number(n.trim()))
+        .filter((n) => Number.isFinite(n) && n > 0 && n <= 1_000_000)
+        .slice(0, 12);
+      const hours = String(req.query.hoursPerDay ?? '1,4,8,12')
+        .split(',')
+        .map((n) => Number(n.trim()))
+        .filter((n) => Number.isFinite(n) && n > 0 && n <= 24)
+        .slice(0, 8);
+
+      const observedWattsPerAp = summary.savings?.attributed?.deltaWattsPerAp ?? null;
+      const baselineWattsPerAp = summary.baseline?.north?.wattsPerAp ?? null;
+
+      const projections = [];
+      for (const apCount of apCounts) {
+        for (const hoursPerDay of hours) {
+          projections.push(
+            extrapolateObserved({
+              observedWattsPerAp,
+              apCount,
+              hoursPerDay,
+              ratePerKwh: prefs.ratePerKwh,
+              emissionsFactorKgPerKwh:
+                prefs.emissionsFactorKgPerKwh ?? summary.savings?.emissionsFactorKgPerKwh ?? null,
+              observedBaselineWattsPerAp: baselineWattsPerAp,
+            })
+          );
+        }
+      }
+
+      res.json({
+        observed: {
+          wattsPerAp: observedWattsPerAp,
+          baselineWattsPerAp,
+          percent: summary.savings?.attributed?.percent ?? null,
+          apCount: summary.treatment?.north?.apCount ?? 0,
+          method: summary.savings?.attributed?.method ?? null,
+          provenance: summary.savings?.provenance ?? null,
+          claimSupported: summary.savings?.claimSupported ?? false,
+        },
+        currency: { code: prefs.currencyCode, symbol: prefs.currencySymbol, ratePerKwh: prefs.ratePerKwh },
+        projections,
+        // Said plainly so nobody reads a projection as a measurement.
+        note:
+          'Projections scale a measured per-AP watt reduction. They assume the same action, the same AP class, and the stated hours per day.',
       });
     })
   );

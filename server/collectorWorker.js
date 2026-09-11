@@ -13,6 +13,7 @@
 
 import { loadMonitoringConfig, assertPersistenceReady, describeMonitoringConfig } from './monitoring/config.js';
 import { startCollector } from './monitoring/collectorRunner.js';
+import { startEnergyApStateCollector } from './monitoring/energyApStateRunner.js';
 import { seedDefaultSource } from './monitoring/bootstrap.js';
 import { checkDatabaseHealth, closePool } from './db/pool.js';
 import { runMigrations } from './db/migrate.js';
@@ -70,12 +71,21 @@ async function main() {
   const collector = startCollector({ config });
   log('info', 'collector.started', { pollIntervalSeconds: config.pollIntervalSeconds });
 
+  let energyCollector = null;
+  if (config.energyApStateEnabled) {
+    energyCollector = startEnergyApStateCollector({ config });
+    log('info', 'collector.energy_ap_state_started', {
+      intervalSeconds: config.energyApStateIntervalSeconds,
+    });
+  }
+
   let shuttingDown = false;
   const shutdown = async (signal) => {
     if (shuttingDown) return;
     shuttingDown = true;
     log('info', 'collector.shutting_down', { signal });
     await collector.stop();
+    if (energyCollector) await energyCollector.stop();
     await closePool();
     process.exit(0);
   };

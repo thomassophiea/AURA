@@ -8,6 +8,7 @@ interface Props {
 
 const ENERGY_STATE_LABEL: Record<ExperimentApRow['energyState'], string> = {
   optimized: 'Energy optimized',
+  changed_not_effective: 'Changed, still on air',
   control: 'Control',
   normal: 'Normal',
 };
@@ -70,15 +71,22 @@ export function ExperimentApTable({ aps }: Props) {
                     status={
                       ap.energyState === 'optimized'
                         ? 'active'
-                        : ap.energyState === 'control'
-                          ? 'info'
-                          : 'online'
+                        : ap.energyState === 'changed_not_effective'
+                          ? 'warning'
+                          : ap.energyState === 'control'
+                            ? 'info'
+                            : 'online'
                     }
                     label={ENERGY_STATE_LABEL[ap.energyState]}
                   />
                   {ap.rollback?.restoreError ? (
                     <div className="mt-0.5 text-xs text-[color:var(--status-error)]">
                       Restore unconfirmed
+                    </div>
+                  ) : null}
+                  {ap.energyState === 'changed_not_effective' ? (
+                    <div className="mt-0.5 text-xs text-[color:var(--status-warning)]">
+                      Config confirmed; radio still transmitting
                     </div>
                   ) : null}
                 </td>

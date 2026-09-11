@@ -33,7 +33,13 @@ SSH_OPTS=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null
           -o PubkeyAuthentication=no -o PreferredAuthentications=password,keyboard-interactive
           -o ConnectTimeout=12 -o LogLevel=ERROR)
 
-ap() { sshpass -p "$AP_PASSWORD" ssh "${SSH_OPTS[@]}" -n "$AP_USER@$1" "$2"; }
+# APs rate-limit repeated logins: several in quick succession start returning
+# "Permission denied" even with the correct password. Pace every call.
+AP_SSH_PACE_SECONDS="${AP_SSH_PACE_SECONDS:-3}"
+ap() {
+  sleep "$AP_SSH_PACE_SECONDS"
+  sshpass -p "$AP_PASSWORD" ssh "${SSH_OPTS[@]}" -n "$AP_USER@$1" "$2"
+}
 
 fail=0
 serials=()
@@ -66,6 +72,7 @@ for IP in "$@"; do
   echo "  $model  $serial"
   serials+=("$serial")
 
+  sleep "$AP_SSH_PACE_SECONDS"
   sshpass -p "$AP_PASSWORD" ssh "${SSH_OPTS[@]}" "$AP_USER@$IP" 'cat > /tmp/lightguard.sh && chmod +x /tmp/lightguard.sh' < "$AGENT"
 
   ap "$IP" "kill \$(cat /tmp/lightguard.pid 2>/dev/null) 2>/dev/null; \

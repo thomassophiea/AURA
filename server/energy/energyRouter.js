@@ -31,6 +31,7 @@ import {
 import { replayScenario } from './scenarioEngine.js';
 import { buildRecommendations } from './recommendationEngine.js';
 import { buildEnvironmentalReport } from './environmentalReport.js';
+import { loadExperimentEvidence } from './experiment/reportEvidence.js';
 import { supportsLightSensor } from './apCapabilities.js';
 import {
   projectDaily,
@@ -511,6 +512,13 @@ export function createEnergyRouter(options = {}) {
         lightObserved: summarizeLightAwareEvidence(lightRows, days),
       });
       const actor = generatedBy(req);
+      // The strongest evidence this report can carry, when a controlled
+      // experiment has actually run on this controller. Best-effort: the
+      // report must still generate when no experiment exists.
+      const experimentEvidence = await loadExperimentEvidence({
+        sourceId: sourceIds[0],
+        siteId,
+      }).catch(() => null);
       const report = buildEnvironmentalReport({
         aggregate,
         coverage,
@@ -524,6 +532,7 @@ export function createEnergyRouter(options = {}) {
         includeFinancials: includeFinancials !== false,
         includeCarbon: includeCarbon === true,
         recommendationTypes,
+        experimentEvidence,
         generatedAt: nowFn().toISOString(),
         generatedBy: actor,
         auraVersion:

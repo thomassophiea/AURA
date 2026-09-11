@@ -87,6 +87,36 @@ export function verifyRadioChange(readBackAp, intended) {
 }
 
 /**
+ * Is a radio that was told to be off actually off the air?
+ *
+ * MEASURED ON HARDWARE (2026-09-11): an AP4020X accepted `adminState=false` +
+ * `adminStateOvr=true`, persisted it, and returned it on read-back — while the
+ * same object reported `txPower: 17` on that radio, still on 5955 MHz, with its
+ * power draw unchanged. The three AP5020s in the same site went to `txPower: 0`.
+ *
+ * So a configuration read-back proves the controller stored the intent. It does
+ * NOT prove the radio stopped transmitting. `txPower` is the device's own
+ * operational report and is the second, independent piece of evidence.
+ *
+ * Only the disable direction is checked. After re-enabling, a radio legitimately
+ * reports 0 dBm for a while until SmartRF reassigns it, so requiring a non-zero
+ * value there would produce false alarms.
+ *
+ * @returns {{effective: boolean, stillOnAir: Array<{radioIndex:number, txPower:number}>}}
+ */
+export function checkRadiosOffAir(ap, radioIndexes) {
+  const stillOnAir = [];
+  for (const radio of ap?.radios ?? []) {
+    if (!radioIndexes.includes(radio.radioIndex)) continue;
+    const tx = Number(radio.txPower);
+    if (Number.isFinite(tx) && tx > 0) {
+      stillOnAir.push({ radioIndex: radio.radioIndex, txPower: tx });
+    }
+  }
+  return { effective: stillOnAir.length === 0, stillOnAir };
+}
+
+/**
  * Read one AP's full record.
  * @returns {Promise<{ok:boolean, ap?:object, error?:string, status?:number}>}
  */
@@ -188,18 +218,37 @@ export async function applyRadioChange({
   }
 
   const { verified, mismatches } = verifyRadioChange(back.ap, intended);
+
+  // Second, independent evidence: did the radio actually leave the air? Checked
+  // only when disabling, and only reported — an AP that is slow to comply is not
+  // the same failure as one that never complies, and the effectiveness sweep
+  // re-checks it later.
+  const onAir =
+    verified && adminState === false
+      ? checkRadiosOffAir(back.ap, radioIndexes)
+      : { effective: true, stillOnAir: [] };
+
   return {
     ok: verified,
     serial,
     verified,
+    // The controller stored the intent.
+    configVerified: verified,
+    // The device stopped transmitting. Can be false while configVerified is true.
+    effective: onAir.effective,
+    stillOnAir: onAir.stillOnAir,
     intended,
     original,
     mismatches,
     readBack: captureRadioState(back.ap),
     error: verified
-      ? undefined
+      ? onAir.effective
+        ? undefined
+        : `Configuration was stored and confirmed, but radio ${onAir.stillOnAir
+            .map((r) => r.radioIndex)
+            .join(', ')} still reports transmit power.`
       : 'Controller accepted the write but the AP did not reach the intended state.',
-    stage: verified ? undefined : 'verify',
+    stage: verified ? (onAir.effective ? undefined : 'on_air') : 'verify',
   };
 }
 

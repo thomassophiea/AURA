@@ -125,3 +125,74 @@ export function replayScenario({ samples, policy, maxGapSeconds }) {
     apWithDataCount: apsWithData.size,
   };
 }
+
+/**
+ * Extrapolate a MEASURED experiment result to a larger deployment.
+ *
+ * This is the preferred basis for a "what if we did this everywhere" question,
+ * because it starts from a watt figure that was actually observed on hardware
+ * with a control group — not from BAND_SHARE, which is a model. The two can
+ * disagree substantially: the shipped 6 GHz share is 0.25, and the first
+ * controlled measurement on an AP5020 came out at 0.159.
+ *
+ * Nothing here invents a number. If the observed saving is missing or
+ * non-positive, every projection is null.
+ *
+ * @param {object} args
+ * @param {number} args.observedWattsPerAp   measured watts saved per optimized AP
+ * @param {number} args.apCount              APs in the hypothetical deployment
+ * @param {number} args.hoursPerDay          hours per day the action is in force
+ * @param {number} args.ratePerKwh
+ * @param {number|null} args.emissionsFactorKgPerKwh
+ * @param {number|null} args.observedBaselineWattsPerAp  for a percent figure
+ */
+export function extrapolateObserved({
+  observedWattsPerAp,
+  apCount,
+  hoursPerDay,
+  ratePerKwh,
+  emissionsFactorKgPerKwh = null,
+  observedBaselineWattsPerAp = null,
+}) {
+  const empty = {
+    apCount: Number(apCount) || 0,
+    hoursPerDay: Number(hoursPerDay) || 0,
+    dailyKwh: null,
+    monthlyKwh: null,
+    annualKwh: null,
+    annualCost: null,
+    annualCo2eKg: null,
+    reductionPercent: null,
+    basis: 'observed',
+    usable: false,
+  };
+
+  if (!Number.isFinite(observedWattsPerAp) || observedWattsPerAp <= 0) return empty;
+  if (!Number.isFinite(apCount) || apCount <= 0) return empty;
+  if (!Number.isFinite(hoursPerDay) || hoursPerDay <= 0 || hoursPerDay > 24) return empty;
+
+  const dailyKwh = kwhFromWattSeconds(observedWattsPerAp * apCount, hoursPerDay * 3600);
+  if (dailyKwh == null) return empty;
+
+  const annualKwh = dailyKwh * 365;
+  return {
+    apCount,
+    hoursPerDay,
+    dailyKwh,
+    monthlyKwh: dailyKwh * 30,
+    annualKwh,
+    annualCost: Number.isFinite(ratePerKwh) && ratePerKwh > 0 ? annualKwh * ratePerKwh : null,
+    annualCo2eKg: Number.isFinite(emissionsFactorKgPerKwh)
+      ? annualKwh * emissionsFactorKgPerKwh
+      : null,
+    // Percent of the optimized APs' own draw, only while the action is applied —
+    // not a percent of the whole day, which would read as a larger claim than
+    // the measurement supports.
+    reductionPercent:
+      Number.isFinite(observedBaselineWattsPerAp) && observedBaselineWattsPerAp > 0
+        ? (observedWattsPerAp / observedBaselineWattsPerAp) * 100
+        : null,
+    basis: 'observed',
+    usable: true,
+  };
+}

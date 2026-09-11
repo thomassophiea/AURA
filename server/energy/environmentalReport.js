@@ -25,6 +25,80 @@ function percent(part, whole) {
   return (part / whole) * 100;
 }
 
+/**
+ * Turn a completed experiment into report evidence.
+ *
+ * Only a run whose controller writes actually landed qualifies as measured. A
+ * simulated run is deliberately excluded rather than downgraded: an
+ * environmental report is exactly the artifact where a synthetic figure must
+ * never appear wearing a measured label.
+ */
+export function buildControlledExperimentEvidence({
+  experimentEvidence,
+  preferences,
+  includeFinancials,
+}) {
+  if (!experimentEvidence) return null;
+  const { experiment, savings } = experimentEvidence;
+  if (!experiment || !savings) return null;
+  if (!experiment.controllerWritesApplied) return null;
+  if (!savings.claimSupported) return null;
+
+  const annualKwh = finiteOrNull(savings.projected?.annualKwh);
+  if (annualKwh == null || annualKwh <= 0) return null;
+
+  const summary = {
+    experimentId: experiment.id,
+    name: experiment.name,
+    treatmentSite: experiment.north?.siteName ?? experiment.north?.siteId ?? null,
+    controlSite: experiment.south?.siteName ?? experiment.south?.siteId ?? null,
+    treatmentStart: experiment.treatmentStart ?? null,
+    treatmentEnd: experiment.treatmentEnd ?? null,
+    triggerSource: experiment.triggerSource,
+    observedReductionPercent: finiteOrNull(savings.attributed?.percent),
+    observedWattsPerAp: finiteOrNull(savings.attributed?.deltaWattsPerAp),
+    observedSiteWatts: finiteOrNull(savings.attributed?.siteWatts),
+    attributionMethod: savings.attributed?.method ?? null,
+    controlComparability: savings.comparability?.verdict ?? null,
+    measurementProvenance: savings.provenance,
+    telemetryQuality: experimentEvidence.quality?.rating ?? null,
+  };
+
+  return {
+    summary,
+    opportunity: {
+      id: `controlled-experiment-${experiment.id}`,
+      type: 'controlled_experiment',
+      recommendation: `Apply the verified energy action demonstrated at ${summary.treatmentSite ?? 'the treatment site'}.`,
+      technicalAction:
+        'Disable the configured AP radios during qualifying environmental conditions, reverting on recovery.',
+      scope: summary.treatmentSite ? `Site ${summary.treatmentSite}` : 'Treatment site',
+      affectedApCount: experimentEvidence.northApCount ?? 0,
+      baselinePeriodKwh: finiteOrNull(experimentEvidence.baselineKwh),
+      projectedAnnualSavingsKwh: annualKwh,
+      projectedReductionPercent: finiteOrNull(savings.attributed?.percent),
+      projectedAnnualCostSavings: includeFinancials
+        ? estimateCost(annualKwh, preferences.ratePerKwh)
+        : null,
+      // The distinguishing claim of this whole feature.
+      evidenceStatus: 'measured',
+      confidence:
+        savings.comparability?.verdict === 'comparable'
+          ? 'high'
+          : savings.comparability?.verdict === 'similar'
+            ? 'medium'
+            : 'low',
+      assumptions: {
+        method: savings.attributed?.method ?? null,
+        controlSite: summary.controlSite,
+        elapsedSeconds: savings.elapsedSeconds ?? null,
+        note:
+          'Projected from an observed watt reduction held for the stated hours; it does not assume the action runs continuously.',
+      },
+    },
+  };
+}
+
 export function buildEnvironmentalReport({
   aggregate,
   coverage,
@@ -41,6 +115,11 @@ export function buildEnvironmentalReport({
   generatedAt,
   generatedBy,
   auraVersion,
+  // Optional: a completed North-vs-South experiment. When present it is the
+  // strongest evidence the report can carry — a controlled, measured result
+  // with a concurrent control group — so it is listed ahead of the modeled
+  // opportunities and it raises the report's evidence status.
+  experimentEvidence = null,
 }) {
   const days = windowDays(windowStart, windowEnd);
   const seconds = (new Date(windowEnd) - new Date(windowStart)) / 1000;
@@ -92,6 +171,15 @@ export function buildEnvironmentalReport({
     };
   });
 
+  const controlledExperiment = buildControlledExperimentEvidence({
+    experimentEvidence,
+    preferences,
+    includeFinancials,
+  });
+  if (controlledExperiment?.opportunity) {
+    opportunities.unshift(controlledExperiment.opportunity);
+  }
+
   // Opportunities may overlap. Until the scenario engine supports combined
   // replay, use the largest independent opportunity instead of adding them and
   // overstating savings.
@@ -127,9 +215,12 @@ export function buildEnvironmentalReport({
   const evidenceStatus =
     reportingApCount === 0
       ? 'modeled'
-      : opportunities.length > 0
-        ? 'partially-measured'
-        : 'measured';
+      : controlledExperiment && opportunities.length === 1
+        // The only opportunity is the measured experiment itself.
+        ? 'measured'
+        : opportunities.length > 0
+          ? 'partially-measured'
+          : 'measured';
 
   return {
     reportId: randomUUID(),
@@ -184,6 +275,7 @@ export function buildEnvironmentalReport({
       opportunities,
     },
     carbon,
+    controlledExperiment: controlledExperiment?.summary ?? null,
     financials: includeFinancials
       ? {
           electricityRate: preferences.ratePerKwh,
@@ -205,6 +297,10 @@ export function buildEnvironmentalReport({
       excludedDeviceCount: Math.max(0, totalApCount - reportingApCount),
       temporalCoveragePercent,
       dataQuality: dataQualityForDays(days),
+      controlledExperimentMethodology: controlledExperiment
+        ? 'Difference-in-differences against a concurrent control site over matched hours; ' +
+          'per-AP normalized. Configuration changes were confirmed by reading device state back.'
+        : null,
       scenarioModelVersion: 'energy-environmental-report-v1',
       reportGeneratedAt: generatedAt,
     },

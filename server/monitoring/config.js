@@ -107,6 +107,13 @@ export function loadMonitoringConfig(env = process.env) {
     // tick for the whole fleet regardless of size, so it is on by default: it
     // is what makes energy history exist without anyone opening a browser.
     energyApStateEnabled: readBool(env, 'ENERGY_AP_STATE_ENABLED', true),
+    // Deliberately independent of MONITORING_POLL_INTERVAL_SECONDS: this series
+    // is the measurement instrument for the energy experiment, and its
+    // resolution must not change because the report collector was tuned.
+    energyApStateIntervalSeconds: readInt(env, 'ENERGY_AP_STATE_INTERVAL_SECONDS', 60, {
+      min: 15,
+      max: 3600,
+    }),
     persistClientIdentifiers: readBool(env, 'MONITORING_PERSIST_CLIENT_IDENTIFIERS', false),
 
     credentialKey: readString(env, 'MONITORING_CREDENTIAL_KEY'),
