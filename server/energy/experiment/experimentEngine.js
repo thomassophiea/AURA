@@ -43,6 +43,9 @@ const DEFAULT_ACTION = Object.freeze({
   requireZeroClients: true,
 });
 
+/** How long to wait after the write before the first on-air verdict. */
+const APPLY_SETTLE_MS = 15_000;
+
 const DEFAULT_EMISSIONS_FACTOR_KG_PER_KWH = 0.371; // US eGRID national average, 2022.
 
 /**
@@ -307,9 +310,18 @@ export async function evaluateTrigger({ source, session, now = new Date() }) {
   });
 
   if (experiment.state === 'baseline_established' && darkness.triggered) {
+    // The channel the verdict came from IS the provenance. Recording a
+    // demo-driven trigger as `live_sensor` would put a synthetic cause behind a
+    // real result, which is the one thing this feature must never do.
+    const simulated = evaluationSampleSource(source.id) === 'simulated';
     return activateOptimization({
-      source, session, experimentId: experiment.id, triggerSource: 'live_sensor',
-      provenance: 'live', detail: darkness, now,
+      source,
+      session,
+      experimentId: experiment.id,
+      triggerSource: simulated ? 'simulated' : 'live_sensor',
+      provenance: simulated ? 'simulated' : 'live',
+      detail: darkness,
+      now,
     });
   }
 
@@ -323,8 +335,13 @@ export async function evaluateTrigger({ source, session, now = new Date() }) {
 
   if (experiment.state === 'optimization_active' && light.triggered) {
     return recover({
-      source, session, experimentId: experiment.id, reason: 'light_restored',
-      provenance: 'live', detail: light, now,
+      source,
+      session,
+      experimentId: experiment.id,
+      reason: 'light_restored',
+      provenance: evaluationSampleSource(source.id) === 'simulated' ? 'simulated' : 'live',
+      detail: light,
+      now,
     });
   }
 
@@ -381,6 +398,12 @@ export async function verifyEffectiveness({ source, session, experimentId }) {
       });
     }
     if (!effective) notEffective.push(row.apSerial);
+  }
+
+  // An AP that was slow to comply still complied. Once any radio is confirmed
+  // off the air, the run is unambiguously a real controller action.
+  if (notEffective.length < applied.length && !experiment.controller_writes_applied) {
+    await repo.updateExperiment(experimentId, { controller_writes_applied: true });
   }
 
   return { checked: applied.length, notEffective };
@@ -480,6 +503,12 @@ export async function activateOptimization({
         adminState: false,
         persistRollback: ({ serial, original, intended }) =>
           repo.captureRollback({ experimentId, serial, original, intended }),
+        // Measured: an AP5020 needs roughly 10-30s to actually drop off the air
+        // after the controller accepts the disable. At 5s the first on-air
+        // verdict was "still transmitting" for every AP, and the effectiveness
+        // sweep then corrected all of them. 15s makes the immediate verdict
+        // usually right; the sweep remains the authority either way.
+        settleMs: APPLY_SETTLE_MS,
       });
 
       if (!outcome.noop) {
@@ -529,16 +558,23 @@ export async function activateOptimization({
     });
   }
 
-  const verifiedCount = results.filter((r) => r.ok).length;
+  const effectiveCount = results.filter((r) => r.ok).length;
+  const configuredCount = results.filter((r) => r.configVerified).length;
   const updated = await repo.updateExperiment(experimentId, {
     state: 'optimization_active',
     treatment_start: now.toISOString(),
-    controller_writes_applied: applyWrites && verifiedCount > 0,
+    // A write whose configuration landed IS a controller write, even if the
+    // radio has not finished leaving the air. Effectiveness is tracked
+    // separately and the savings arithmetic is driven by measured power, so
+    // this flag can safely mean "we changed real hardware".
+    controller_writes_applied: applyWrites && configuredCount > 0,
   });
 
   await event({
     experimentId, sourceId: source.id, kind: 'optimization_activated', side: 'north',
-    message: `Energy Optimization active on ${verifiedCount}/${northSerials.length} North AP(s).`,
+    message:
+      `Energy Optimization applied to ${configuredCount}/${northSerials.length} North AP(s); ` +
+      `${effectiveCount} confirmed off the air so far.`,
     detail: { results, refused, action },
     provenance: triggerSource === 'simulated' ? 'simulated' : 'live',
   });
