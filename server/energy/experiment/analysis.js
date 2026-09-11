@@ -108,6 +108,65 @@ export function matchedTimeWindows({ treatmentStart, treatmentEnd, days, now = n
 }
 
 /**
+ * Remove excluded intervals from a set of ranges.
+ *
+ * A baseline is supposed to describe NORMAL operation. If the window overlaps a
+ * period when a previous experiment had radios disabled, the "baseline" is
+ * partly the treated state, and the measured effect collapses — observed live:
+ * a North baseline of 12.658 W/AP against a true normal of ~13.7 turned a real
+ * ~10% reduction into a reported 1.3%.
+ *
+ * Both inputs are ISO ranges. Output is sorted, non-overlapping, and may be
+ * empty — which is a valid answer meaning "no clean baseline time exists".
+ *
+ * @param {Array<{start:string,end:string,daysBack?:number}>} ranges
+ * @param {Array<{start:string,end:string}>} excluded
+ */
+export function subtractWindows(ranges, excluded = []) {
+  const cuts = (excluded ?? [])
+    .map((e) => ({ start: new Date(e.start).getTime(), end: new Date(e.end).getTime() }))
+    .filter((e) => Number.isFinite(e.start) && Number.isFinite(e.end) && e.end > e.start)
+    .sort((a, b) => a.start - b.start);
+
+  const out = [];
+  for (const range of ranges ?? []) {
+    let segments = [
+      { start: new Date(range.start).getTime(), end: new Date(range.end).getTime() },
+    ].filter((seg) => Number.isFinite(seg.start) && Number.isFinite(seg.end) && seg.end > seg.start);
+
+    for (const cut of cuts) {
+      const next = [];
+      for (const seg of segments) {
+        if (cut.end <= seg.start || cut.start >= seg.end) {
+          next.push(seg);
+          continue;
+        }
+        if (cut.start > seg.start) next.push({ start: seg.start, end: cut.start });
+        if (cut.end < seg.end) next.push({ start: cut.end, end: seg.end });
+      }
+      segments = next;
+    }
+
+    for (const seg of segments) {
+      out.push({
+        start: new Date(seg.start).toISOString(),
+        end: new Date(seg.end).toISOString(),
+        daysBack: range.daysBack,
+      });
+    }
+  }
+  return out;
+}
+
+/** Total seconds covered by a set of ranges. */
+export function rangeSeconds(ranges) {
+  return (ranges ?? []).reduce(
+    (sum, r) => sum + Math.max(0, (new Date(r.end) - new Date(r.start)) / 1000),
+    0
+  );
+}
+
+/**
  * Collapse per-AP rows into a side summary.
  *
  * Per-AP normalization is not optional: North and South rarely have the same

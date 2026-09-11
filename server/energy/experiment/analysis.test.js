@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import * as calc from '../energyCalculator.js';
 import {
+  subtractWindows,
+  rangeSeconds,
   selectBaselineWindow,
   matchedTimeWindows,
   summarizeSide,
@@ -70,6 +72,79 @@ describe('matchedTimeWindows', () => {
     expect(
       matchedTimeWindows({ treatmentStart: '2026-09-11T22:00:00Z', treatmentEnd: '2026-09-11T20:00:00Z', days: 3 })
     ).toEqual([]);
+  });
+});
+
+describe('subtractWindows', () => {
+  const R = (start, end) => ({ start, end });
+
+  it('leaves a range untouched when nothing overlaps', () => {
+    const out = subtractWindows([R('2026-09-10T20:00:00Z', '2026-09-10T22:00:00Z')], [
+      R('2026-09-09T20:00:00Z', '2026-09-09T21:00:00Z'),
+    ]);
+    expect(out).toHaveLength(1);
+    expect(rangeSeconds(out)).toBe(7200);
+  });
+
+  it('splits a range around an excluded period in the middle', () => {
+    // The real case: a previous experiment ran for an hour inside the window
+    // that would otherwise be treated as normal operation.
+    const out = subtractWindows([R('2026-09-10T20:00:00Z', '2026-09-10T23:00:00Z')], [
+      R('2026-09-10T21:00:00Z', '2026-09-10T22:00:00Z'),
+    ]);
+    expect(out).toHaveLength(2);
+    expect(out[0].end).toBe('2026-09-10T21:00:00.000Z');
+    expect(out[1].start).toBe('2026-09-10T22:00:00.000Z');
+    expect(rangeSeconds(out)).toBe(7200);
+  });
+
+  it('trims a range whose start or end is covered', () => {
+    expect(
+      subtractWindows([R('2026-09-10T20:00:00Z', '2026-09-10T22:00:00Z')], [
+        R('2026-09-10T19:00:00Z', '2026-09-10T21:00:00Z'),
+      ])[0].start
+    ).toBe('2026-09-10T21:00:00.000Z');
+    expect(
+      subtractWindows([R('2026-09-10T20:00:00Z', '2026-09-10T22:00:00Z')], [
+        R('2026-09-10T21:00:00Z', '2026-09-10T23:00:00Z'),
+      ])[0].end
+    ).toBe('2026-09-10T21:00:00.000Z');
+  });
+
+  it('returns nothing when the whole range was a treatment period', () => {
+    // A valid answer: there is no clean baseline time. Better than silently
+    // measuring the treated state and calling it normal.
+    const out = subtractWindows([R('2026-09-10T20:00:00Z', '2026-09-10T22:00:00Z')], [
+      R('2026-09-10T19:00:00Z', '2026-09-10T23:00:00Z'),
+    ]);
+    expect(out).toEqual([]);
+    expect(rangeSeconds(out)).toBe(0);
+  });
+
+  it('applies several exclusions to the same range', () => {
+    const out = subtractWindows([R('2026-09-10T20:00:00Z', '2026-09-11T00:00:00Z')], [
+      R('2026-09-10T20:30:00Z', '2026-09-10T21:00:00Z'),
+      R('2026-09-10T22:00:00Z', '2026-09-10T22:30:00Z'),
+    ]);
+    expect(out).toHaveLength(3);
+    expect(rangeSeconds(out)).toBe(4 * 3600 - 2 * 1800);
+  });
+
+  it('ignores malformed or inverted exclusions instead of dropping data', () => {
+    const range = [R('2026-09-10T20:00:00Z', '2026-09-10T22:00:00Z')];
+    expect(rangeSeconds(subtractWindows(range, [R('bad', 'worse')]))).toBe(7200);
+    expect(
+      rangeSeconds(subtractWindows(range, [R('2026-09-10T22:00:00Z', '2026-09-10T20:00:00Z')]))
+    ).toBe(7200);
+    expect(rangeSeconds(subtractWindows(range, null))).toBe(7200);
+  });
+
+  it('preserves which day back each surviving segment came from', () => {
+    const out = subtractWindows(
+      [{ start: '2026-09-10T20:00:00Z', end: '2026-09-10T23:00:00Z', daysBack: 2 }],
+      [R('2026-09-10T21:00:00Z', '2026-09-10T22:00:00Z')]
+    );
+    expect(out.every((r) => r.daysBack === 2)).toBe(true);
   });
 });
 

@@ -179,7 +179,14 @@ double-ingest.
 3. With a day or more available, `matchedTimeWindows` compares the **same clock
    hours** on each preceding day. Wireless draw is diurnal; an 8 pm treatment
    measured against a 24-hour mean would be credited with the evening lull.
-4. Per-AP rows are merged across matched windows weighted by observed seconds,
+4. **Every previous treatment period is cut out of the baseline window**
+   (`subtractWindows`). Without this, two experiments an hour apart make the
+   second one's baseline the first one's *result*. Observed live: a North
+   baseline of 12.658 W/AP against a true normal of ~13.7 turned a real ~10%
+   reduction into a reported 1.3%. The baseline payload reports
+   `excludedTreatmentSeconds` and `cleanBaselineSeconds` so a short baseline
+   explains itself.
+5. Per-AP rows are merged across surviving windows weighted by observed seconds,
    so an AP that reported for two minutes cannot move the mean like one that
    reported for two hours.
 

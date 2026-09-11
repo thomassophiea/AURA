@@ -168,6 +168,31 @@ export async function updateExperiment(id, patch) {
   return rows[0] ?? null;
 }
 
+/**
+ * Every period in which this controller had an energy action applied.
+ *
+ * Used to keep those periods OUT of a baseline: a baseline that overlaps a
+ * previous treatment describes the treated state, not normal operation.
+ * `recovery_start` is preferred as the end bound because the radios were still
+ * down until the restore actually ran.
+ */
+export async function listTreatmentWindows(sourceId, { excludeExperimentId = null } = {}) {
+  const { rows } = await query(
+    `SELECT treatment_start AS start,
+            COALESCE(treatment_end, ended_at, now()) AS "end"
+     FROM energy_experiments
+     WHERE monitored_source_id = $1
+       AND treatment_start IS NOT NULL
+       AND ($2::uuid IS NULL OR id <> $2::uuid)
+     ORDER BY treatment_start`,
+    [sourceId, excludeExperimentId]
+  );
+  return rows.map((r) => ({
+    start: r.start.toISOString(),
+    end: r.end instanceof Date ? r.end.toISOString() : new Date(r.end).toISOString(),
+  }));
+}
+
 export async function listDevices(experimentId) {
   const { rows } = await query(
     `SELECT side, ap_serial AS "apSerial", ap_name AS "apName", model,

@@ -34,6 +34,8 @@ import {
   attribute,
   projectSavings,
   assessQuality,
+  subtractWindows,
+  rangeSeconds,
   BASELINE_WINDOWS,
 } from './analysis.js';
 
@@ -223,9 +225,18 @@ export async function computeBaseline({ source, experiment, anchor = new Date() 
     ? matchedTimeWindows({ treatmentStart, treatmentEnd: anchor.toISOString(), days, now: anchor })
     : [];
 
-  const ranges = matched.length > 0
+  const candidateRanges = matched.length > 0
     ? matched
     : [{ start: window.start ?? new Date(anchor.getTime() - 3_600_000).toISOString(), end: anchor.toISOString(), daysBack: 0 }];
+
+  // Never let a previous treatment period into the baseline. Without this, two
+  // experiments an hour apart make the second one's baseline the first one's
+  // result, and a real reduction reads as almost nothing.
+  const priorTreatments = await repo.listTreatmentWindows(source.id, {
+    excludeExperimentId: experiment.id,
+  });
+  const ranges = subtractWindows(candidateRanges, priorTreatments);
+  const excludedSeconds = rangeSeconds(candidateRanges) - rangeSeconds(ranges);
 
   const northRows = [];
   const southRows = [];
@@ -241,7 +252,16 @@ export async function computeBaseline({ source, experiment, anchor = new Date() 
   const south = summarizeSide(mergeApRows(southRows));
 
   return {
-    window: { ...window, matchedRanges: ranges.length, matchedTimeOfDay: matched.length > 0 },
+    window: {
+      ...window,
+      matchedRanges: ranges.length,
+      matchedTimeOfDay: matched.length > 0,
+      // Surfaced so an operator can see WHY a baseline is short, rather than
+      // wondering why the numbers moved.
+      excludedTreatmentSeconds: excludedSeconds,
+      excludedTreatmentWindows: priorTreatments.length,
+      cleanBaselineSeconds: rangeSeconds(ranges),
+    },
     north,
     south,
     coverage,
