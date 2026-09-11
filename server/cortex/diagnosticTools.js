@@ -28,7 +28,10 @@
  *    assembler can fence them as data, never instructions.
  */
 
-import { GatewayEvidence, signal, rtt, airtimeSplit, percentile, isScorableClientRow } from './gatewayEvidence.js';
+import {
+  GatewayEvidence, signal, rtt, airtimeSplit, percentile, isScorableClientRow,
+  appDemand, mtuMismatchReason,
+} from './gatewayEvidence.js';
 import { CapabilityRegistry } from './capabilityRegistry.js';
 import { resolveClient, dedupeByMac, summariseCandidate, macIdentityNote } from './clientResolver.js';
 import { buildLifecycle, describeSecurity } from './connectionLifecycle.js';
@@ -41,6 +44,9 @@ import {
   findVanishedDevices as findVanished,
   CLIENT_HISTORY_UNAVAILABLE,
 } from './historyEvidence.js';
+
+/** Per-AP state reads in one backend check. A fleet sweep is not free. */
+const MAX_AP_STATE_READS = 40;
 
 /** Tool risk classes. Only `read` and `diagnostic` appear in this file. */
 export const RISK = {
@@ -135,6 +141,7 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
   const serviceData = () => fetchList('svc', '/v1/services');
   const topologyData = () => fetchList('topo', '/v1/topologies');
   const apData = () => fetchList('aps', '/v1/aps/query');
+  const profileData = () => fetchList('prof', '/v3/profiles');
 
   /** Rows-only accessors for the paths where a partial answer is acceptable. */
   const clientRows = async () => (await clientData()).rows;
@@ -142,6 +149,90 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
   const services = async () => (await serviceData()).rows;
   const topologies = async () => (await topologyData()).rows;
   const apInventory = async () => (await apData()).rows;
+
+  /**
+   * Per-AP backend checks: does each AP hold the VLANs its own profile's
+   * services need, and does its tunnel MTU agree with the Gateway?
+   *
+   * Scoping matters. An AP is only judged against the services its OWN profile
+   * binds -- comparing every AP against every service on the box reports an AP
+   * as broken for an SSID it was never meant to carry (that unscoped version
+   * flagged 4 of 8 lab APs before it was corrected).
+   */
+  const perApBackendChecks = async (svcs, topos) => {
+    const apRes = await apData();
+    if (!apRes.ok) {
+      return { measured: false, note: 'AP inventory read failed — no per-AP verdict' };
+    }
+    const profRes = await profileData();
+    if (!profRes.ok) {
+      return {
+        measured: false,
+        note:
+          'Profile list read failed. Without it an AP cannot be scoped to the services ' +
+          'it actually carries, and an unscoped comparison produces false positives — ' +
+          'so no verdict is given.',
+      };
+    }
+    const topoIds = new Set((topos ?? []).map((x) => x.id));
+    const svcById = new Map((svcs ?? []).map((s) => [s.id, s]));
+    // profile name -> Map(topologyId -> ssid) that the profile's bindings need
+    const needByProfile = new Map();
+    for (const pr of profRes.rows ?? []) {
+      const name = pr.profileName ?? pr.name;
+      if (!name) continue;
+      const want = new Map();
+      for (const ent of pr.radioIfList ?? []) {
+        const svc = svcById.get(ent?.serviceId);
+        if (svc?.defaultTopology && topoIds.has(svc.defaultTopology)) {
+          want.set(svc.defaultTopology, svc.ssid ?? svc.serviceName);
+        }
+      }
+      needByProfile.set(name, want);
+    }
+
+    const vlanGaps = [];
+    const mtuIssues = [];
+    let checked = 0;
+    for (const ap of (apRes.rows ?? []).slice(0, MAX_AP_STATE_READS)) {
+      const serial = ap.serialNumber;
+      if (!serial) continue;
+      const st = await session.get(`/v1/state/aps/${encodeURIComponent(serial)}`);
+      if (!st.ok) continue;
+      checked += 1;
+      const s = st.data ?? {};
+      const have = new Set(
+        (s.apVlanStatus ?? []).map((v) => v?.id).filter(Boolean)
+      );
+      const need = needByProfile.get(ap.profileName);
+      if (need && need.size) {
+        const missing = [...need.entries()]
+          .filter(([tid]) => !have.has(tid))
+          .map(([, ssid]) => untrusted(ssid));
+        if (missing.length) {
+          vlanGaps.push({ ap: untrusted(ap.apName ?? serial), missingForWlans: missing });
+        }
+      }
+      for (const tun of s.controllerApTunnelStatus ?? []) {
+        const why = mtuMismatchReason(tun);
+        if (why) {
+          mtuIssues.push({ ap: untrusted(ap.apName ?? serial), gateway: tun.addr, reason: why });
+        }
+      }
+    }
+
+    return {
+      measured: true,
+      apsChecked: checked,
+      vlanGaps,
+      mtuIssues,
+      note:
+        'Both of these read as a client fault from the outside: the SSID broadcasts ' +
+        'correctly and the radio is perfect. VLAN gaps are scoped to each AP\'s own ' +
+        'profile bindings. MTU mismatch shows as association fine, small packets fine, ' +
+        'TLS and large transfers failing.',
+    };
+  };
 
   /** Standard shape for "the read failed", so the model never guesses. */
   const fetchFailed = (what, res) => ({
@@ -386,6 +477,27 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
             rxRate: Number(row.RxRate) || null,
             txRate: Number(row.TxRate) || null,
           },
+          // Demand is not impairment. Healthy RF plus a large, dominated app
+          // mix is the network working — read this before accepting any
+          // capacity finding as a design fault. Policy categories are listed
+          // separately and are never evidence of a fault.
+          demand: (() => {
+            const d = appDemand(row);
+            if (!d) return { measured: false, note: 'no application counters on this row' };
+            return {
+              measured: true,
+              totalBytes: d.totalBytes,
+              top: d.top.map((a) => ({
+                category: a.label,
+                bytes: a.bytes,
+                share: Number(a.share.toFixed(3)),
+              })),
+              policyCategories: d.policy.map((a) => ({ category: a.label, bytes: a.bytes })),
+              note:
+                'Consumption, not impairment. A dominated mix on healthy RF explains ' +
+                '"slow" without any fault being present.',
+            };
+          })(),
           loss: lossFor(row),
           baselines: Object.fromEntries(
             Object.entries(baselines.baselines ?? {}).map(([k, v]) => [
@@ -617,6 +729,14 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
               gateway: t.addr,
               status: t.status,
               tunnel: t.tunnel,
+              // MTU is the one backend cause with no symptom anywhere else:
+              // association and small packets succeed while TLS and large
+              // transfers fail, on perfect RF.
+              configMtu: t.configMtu ?? null,
+              apLearnedMtu: t.apLearnedMtu ?? null,
+              mtuStatus: t.configMtuTunnelStatus ?? null,
+              managementTunnelStatus: t.internalManagementTunnelStatus ?? null,
+              mtuMismatch: mtuMismatchReason(t),
             })),
             radios: (d.radios ?? []).map((r) => ({
               radioIndex: r.radioIndex,
@@ -825,6 +945,10 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
               })),
               note: 'A dangling topology reference stays configured and silently passes no traffic.',
             },
+            // Per-AP VLAN presence and tunnel MTU. Both look like a client
+            // fault from the outside: the SSID broadcasts correctly and the
+            // radio reads perfect.
+            perAp: await perApBackendChecks(svcs, topos),
             ntp: capabilities.isUsable('backend.ntp')
               ? {
                   basis: 'inferred',

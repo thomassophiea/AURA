@@ -18,6 +18,11 @@ import {
   airtimeSplit,
   GatewayEvidence,
   REPORT_DURATION,
+  appDemand,
+  appLabel,
+  mtuMismatchReason,
+  APP_COLUMNS,
+  POLICY_APP_COLUMNS,
 } from './gatewayEvidence.js';
 
 /**
@@ -328,5 +333,93 @@ describe('GatewayEvidence', () => {
     const res = await ev.clientTimeline('AA:BB:CC:DD:EE:FF');
     expect(res.ok).toBe(true);
     expect(res.events[0].type).toBe('Association');
+  });
+});
+
+describe('application demand (demand vs impairment)', () => {
+  it('knows all 32 application counters and marks the policy ones', () => {
+    // 33 App* columns exist on the wire; AppLastUpdate is a timestamp, not a
+    // counter, and is deliberately excluded.
+    expect(APP_COLUMNS).toHaveLength(32);
+    expect(APP_COLUMNS).not.toContain('AppLastUpdate');
+    expect(APP_COLUMNS).toContain('AppStreaming');
+    expect(APP_COLUMNS).toContain('AppRealTimeandCloudCommunications');
+    expect([...POLICY_APP_COLUMNS].sort()).toEqual(
+      ['AppGames', 'AppPeertoPeer', 'AppRestrictedContent']
+    );
+  });
+
+  it('returns null when a row carries no counters, rather than a zero mix', () => {
+    expect(appDemand({ Rss: -60, SNR: 30 })).toBeNull();
+    expect(appDemand(null)).toBeNull();
+    expect(appDemand({ AppStreaming: 0, AppMail: 0 })).toBeNull();
+  });
+
+  it('ranks categories by share and computes the total', () => {
+    const d = appDemand({ AppStreaming: 900, AppMail: 60, AppSoftwareUpdates: 40 });
+    expect(d.totalBytes).toBe(1000);
+    expect(d.top[0].app).toBe('AppStreaming');
+    expect(d.top[0].share).toBeCloseTo(0.9, 5);
+    expect(d.top.map((a) => a.app)).toEqual(
+      ['AppStreaming', 'AppMail', 'AppSoftwareUpdates']
+    );
+  });
+
+  it('separates policy categories from performance ones', () => {
+    const d = appDemand({ AppPeertoPeer: 500, AppStreaming: 500 });
+    expect(d.policy.map((a) => a.app)).toEqual(['AppPeertoPeer']);
+    // and a mix with no policy traffic reports an empty list, not null
+    expect(appDemand({ AppMail: 10 }).policy).toEqual([]);
+  });
+
+  it('ignores non-numeric counter values instead of coercing them', () => {
+    const d = appDemand({ AppStreaming: 'n/a', AppMail: 100 });
+    expect(d.totalBytes).toBe(100);
+    expect(d.top).toHaveLength(1);
+  });
+
+  it('labels a run-together category readably', () => {
+    expect(appLabel('AppSocialNetworking')).toBe('Social Networking');
+    expect(appLabel('AppRealTimeandCloudCommunications'))
+      .toBe('Real Time and Cloud Communications');
+  });
+});
+
+describe('tunnel MTU mismatch', () => {
+  it('is silent when the AP learned the configured MTU', () => {
+    expect(mtuMismatchReason({
+      configMtu: 1500, apLearnedMtu: 1500,
+      configMtuTunnelStatus: 'Normal', internalManagementTunnelStatus: 'Normal',
+    })).toBeNull();
+  });
+
+  it('is silent when the AP has not reported a learned MTU yet', () => {
+    // apLearnedMtu is null on a freshly adopted AP -- that is unknown, not a
+    // mismatch, and must not produce a finding.
+    expect(mtuMismatchReason({
+      configMtu: 1500, apLearnedMtu: null, configMtuTunnelStatus: 'Normal',
+    })).toBeNull();
+  });
+
+  it('reports a learned MTU below the configured one', () => {
+    expect(mtuMismatchReason({ configMtu: 1500, apLearnedMtu: 1400 }))
+      .toBe('configMtu 1500 but the AP learned 1400');
+  });
+
+  it('reports a non-Normal MTU tunnel status', () => {
+    expect(mtuMismatchReason({ configMtuTunnelStatus: 'Degraded' }))
+      .toBe('configMtuTunnelStatus=Degraded');
+  });
+
+  it('reports a non-Normal management tunnel status', () => {
+    expect(mtuMismatchReason({ internalManagementTunnelStatus: 'Down' }))
+      .toBe('internalManagementTunnelStatus=Down');
+  });
+
+  it('never reports on a missing or malformed tunnel row', () => {
+    expect(mtuMismatchReason(null)).toBeNull();
+    expect(mtuMismatchReason(undefined)).toBeNull();
+    expect(mtuMismatchReason('nope')).toBeNull();
+    expect(mtuMismatchReason({})).toBeNull();
   });
 });

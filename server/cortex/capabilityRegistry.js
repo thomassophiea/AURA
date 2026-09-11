@@ -55,6 +55,15 @@ export const DEFAULT_CAPABILITIES = {
     source: 'MuTable.ThroughputBps / Rx / Tx',
     taxonomy: 'Throughput',
   },
+  'client.app_demand': {
+    availability: 'available',
+    source: 'MuTable App* byte counters (32 categories) + TotalBytes/RxBytes/TxBytes',
+    note:
+      'Separates demand from impairment. Healthy RF plus a large dominated app mix is ' +
+      'the network working, not failing. Policy categories (PeertoPeer, RestrictedContent, ' +
+      'Games) are reported separately and never as a fault.',
+    taxonomy: 'Throughput / Application demand',
+  },
   'client.downlink_loss': {
     availability: 'available',
     source: 'MuTable.DLLostPkts vs RxPkts',
@@ -178,6 +187,9 @@ export const DEFAULT_CAPABILITIES = {
   'backend.vlan_resolution': {
     availability: 'derived',
     source: "service.defaultTopology resolved against /v1/topologies; apVlanStatus per AP",
+    note:
+      'An AP is only judged against the services its own profile binds — comparing every ' +
+      'AP against every service reports an AP broken for an SSID it never carried.',
     note: 'A dangling topology reference passes no traffic and warns nowhere',
     taxonomy: 'Network access / VLAN',
   },
@@ -230,6 +242,17 @@ export const DEFAULT_CAPABILITIES = {
   'ap.tunnel_state': {
     availability: 'available',
     source: '/v1/state/aps/{serial} controllerApTunnelStatus[]',
+  },
+  'ap.tunnel_mtu': {
+    availability: 'available',
+    source:
+      'controllerApTunnelStatus[]: configMtu vs apLearnedMtu, configMtuTunnelStatus, ' +
+      'internalManagementTunnelStatus',
+    note:
+      'Presents as association fine and small packets fine while TLS and large transfers ' +
+      'fail — with perfect RF and an otherwise clean backend check, which is why it is ' +
+      'diagnosed last.',
+    taxonomy: 'AP Health / MTU mismatch',
   },
   'ap.radio_state': {
     availability: 'available',

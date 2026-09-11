@@ -283,6 +283,98 @@ export function percentile(values, p) {
  * `Adjusted`    the co-channel share (other Wi-Fi on this channel)
  * `interference` the non-Wi-Fi share
  */
+/**
+ * The 32 per-application byte counters MuTable carries (verified 2026-09-11;
+ * 33 App* columns in all, of which AppLastUpdate is a timestamp, not a counter.
+ * 85 MuTable columns total). Nothing read them before, which left no way to separate
+ * "the network is broken" from "the network is busy" -- the most common
+ * misdiagnosis once the backend is ruled out.
+ */
+export const APP_COLUMNS = [
+  'AppAdvertising', 'AppBusinessApplications', 'AppCertificateValidation',
+  'AppCloudComputing', 'AppCloudStorage', 'AppCorporateWebsite', 'AppDatabases',
+  'AppE-commerce', 'AppEducation', 'AppFinance', 'AppGames', 'AppHealth',
+  'AppLocationServices', 'AppMail', 'AppNewsandInformation', 'AppPeertoPeer',
+  'AppProtocols', 'AppRealTimeandCloudCommunications', 'AppRestrictedContent',
+  'AppSearchEngines', 'AppSocialNetworking', 'AppSoftwareUpdates', 'AppSports',
+  'AppStorage', 'AppStreaming', 'AppTravel', 'AppUnknownApps',
+  'AppVPNandSecurity', 'AppWebApplications', 'AppWebCollaboration',
+  'AppWebContentServices', 'AppWebFileSharing',
+];
+
+/** Categories that are a policy observation rather than a performance one. */
+export const POLICY_APP_COLUMNS = new Set([
+  'AppPeertoPeer', 'AppRestrictedContent', 'AppGames',
+]);
+
+/** 'AppRealTimeandCloudCommunications' -> 'RealTime and Cloud Communications' */
+export function appLabel(column) {
+  return String(column)
+    .replace(/^App/, '')
+    // Split camel boundaries, then rescue the run-together conjunction in
+    // names like RealTimeandCloudCommunications -> "RealTime and Cloud ...".
+    .replace(/and(?=[A-Z])/g, ' and ')
+    .replace(/(?<=[a-z])(?=[A-Z])/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Per-application byte breakdown for one MuTable row.
+ *
+ * Demand is not impairment: a client with healthy RF moving 4 GB of
+ * AppStreaming is the network working. Returns null when the row carries no
+ * counters at all, rather than a fabricated zero mix.
+ *
+ * @returns {{totalBytes: number, top: Array<{app: string, label: string,
+ *   bytes: number, share: number}>, policy: Array<{app: string, bytes: number}>}|null}
+ */
+export function appDemand(row) {
+  if (!row || typeof row !== 'object') return null;
+  const vals = [];
+  for (const col of APP_COLUMNS) {
+    const v = Number(row[col]);
+    if (Number.isFinite(v) && v > 0) vals.push([col, v]);
+  }
+  const totalBytes = vals.reduce((a, [, v]) => a + v, 0);
+  if (totalBytes <= 0) return null;
+  vals.sort((a, b) => b[1] - a[1]);
+  return {
+    totalBytes,
+    top: vals.slice(0, 5).map(([app, bytes]) => ({
+      app, label: appLabel(app), bytes, share: bytes / totalBytes,
+    })),
+    policy: vals
+      .filter(([app]) => POLICY_APP_COLUMNS.has(app))
+      .map(([app, bytes]) => ({ app, label: appLabel(app), bytes })),
+  };
+}
+
+/**
+ * Why an AP tunnel's MTU does not agree with the Gateway, or null when it does.
+ *
+ * MTU mismatch is the one backend cause with no symptom anywhere else in this
+ * evidence set: association succeeds, small packets succeed, TLS and large
+ * transfers fail, and the RF reads perfect.
+ */
+export function mtuMismatchReason(tunnel) {
+  if (!tunnel || typeof tunnel !== 'object') return null;
+  const cfg = Number(tunnel.configMtu);
+  const learned = Number(tunnel.apLearnedMtu);
+  if (Number.isFinite(cfg) && Number.isFinite(learned) && learned > 0 && learned < cfg) {
+    return `configMtu ${cfg} but the AP learned ${learned}`;
+  }
+  const mtuState = tunnel.configMtuTunnelStatus;
+  if (mtuState && String(mtuState) !== 'Normal') {
+    return `configMtuTunnelStatus=${mtuState}`;
+  }
+  const mgmt = tunnel.internalManagementTunnelStatus;
+  if (mgmt && String(mgmt) !== 'Normal') {
+    return `internalManagementTunnelStatus=${mgmt}`;
+  }
+  return null;
+}
+
 export function airtimeSplit(row) {
   const num = (v) => {
     const n = Number(v);
