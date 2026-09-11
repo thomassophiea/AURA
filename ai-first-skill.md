@@ -1,6 +1,21 @@
 # AI-First Skill
 
-**Conversational network automation for Extreme Networks Campus Controller (XCC / OS ONE / Platform ONE).**
+> **Superseded on 2026-09-11 — AI-First is now two skills.** This document is the
+> original write-up of the single `ai-first` skill as it stood after the
+> 2026-05-15 deployment, kept for provenance. Everything below describes what is
+> now **AI-First Configuration**:
+>
+> | Skill | Invoke | Owns | Published page |
+> |---|---|---|---|
+> | **AI-First Configuration** | `/ai-first-configuration` | create · change · deploy · verify · roll back, and proving the write landed | https://claude.ai/code/artifact/5ef221ac-497d-4737-8efe-185187bb734d |
+> | **AI-First Troubleshooting** | `/ai-first-troubleshooting` | diagnosis after that: plumbing, RF, clients, APs, cable, auth, known defects, escalation | https://claude.ai/code/artifact/99b29961-74b0-448a-a5bd-e794f141421b |
+>
+> `/ai-first` still resolves — to a thin router that forwards to one of the two.
+> The live rules are in `~/.claude/skills/ai-first-configuration/SKILL.md` and
+> `~/.claude/skills/ai-first-troubleshooting/SKILL.md`; read those rather than this
+> file for anything current.
+
+**Conversational network automation for Extreme Networks Gateway (OS ONE / Platform ONE).**
 
 A Claude Code skill that turns natural-language asks into verified REST API operations against a live wireless controller. Built from a real deployment on 2026-05-15 (AIFIRST WPA2-PSK SSID, pushed to 51 profiles, broadcasting on 6 live APs within 30 seconds).
 
@@ -23,7 +38,7 @@ It is **deterministic**, not AI-inferred. Every action it claims to perform corr
 ## Architecture
 
 ```
-~/.claude/skills/ai-first/
+~/.claude/skills/ai-first-configuration/          # (was ai-first/ before the 2026-09-11 split)
 ├── SKILL.md                          # Triggers + workflow (Claude reads this first)
 ├── references/
 │   ├── api-endpoints.md              # Auth, services, profiles, topologies, APs
@@ -31,7 +46,10 @@ It is **deterministic**, not AI-inferred. Every action it claims to perform corr
 │   ├── gotchas.md                    # Silent-failure traps and validation rules
 │   └── ngc-patterns.md               # AURA xiqMigrationService bulk-create patterns
 ├── scripts/
-│   └── deploy_ssid_to_profiles.py    # Per-radio binding helper, fixes index:0 bug
+│   ├── create_service.py             # Create an SSID from a known-good template
+│   ├── deploy_ssid_to_profiles.py    # Per-radio binding helper, fixes index:0 bug
+│   ├── verify_broadcast.py           # service -> profiles -> live on the AP
+│   └── rollback_service.py           # Unbind everywhere, then DELETE
 └── scenarios/
     ├── README.md                     # Index + demo flow
     ├── create-ssid.md                # New SSID with VLAN, security, site, profiles
@@ -341,7 +359,10 @@ The skill auto-activates on phrases like:
 - *"report / audit / list SSIDs"*
 - Any mention of Campus Controller, XCC, OS ONE, Platform ONE, XIQ Controller, AURA
 
-It can also be invoked explicitly: tell Claude *"use the ai-first skill to..."*.
+It can also be invoked explicitly with `/ai-first-configuration`. Problem-shaped asks
+— "the wifi is slow", "is this coverage or interference", "why is this client
+dropping", "is authentication broken" — belong to `/ai-first-troubleshooting`
+instead; the two skills hand work to each other in both directions.
 
 ---
 

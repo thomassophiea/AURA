@@ -108,7 +108,7 @@ export interface Wifi7Snapshot {
   notes: string[];
 }
 
-/** Result of a write + mandatory read-back (ai-first verification discipline). */
+/** Result of a write + mandatory read-back (ai-first-configuration verification discipline). */
 export interface Wifi7WriteResult {
   ok: boolean;
   serialNumber: string;

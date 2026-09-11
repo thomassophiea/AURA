@@ -161,7 +161,7 @@ Creating an ECP WLAN over the API has a non-obvious requirement: **the service i
 must equal the unregistered role's id, and the role must be created first**. The
 controller does not auto-create it, and every other failure surfaces as a
 misleading `422 "Policy not found"`. The full set of traps is recorded in the
-`ai-first` skill's `references/gotchas.md`.
+`ai-first-configuration` skill's `references/gotchas.md`.
 
 `POST /v3/roles` **ignores a client-supplied `id`** and assigns one of its own.
 Because the service id has to equal the role id, the *role* decides the pair's

@@ -1,7 +1,7 @@
 /**
  * WLAN provisioning executor — the AI-First discipline in Node.
  *
- * Ports the exact rules from the `ai-first` skill (references/gotchas.md,
+ * Ports the exact rules from the `ai-first-configuration` skill (references/gotchas.md,
  * references/payload-templates.md, scripts/deploy_ssid_to_profiles.py):
  * mirror an existing service instead of inventing a payload, never write
  * `radioIfList` entries at `index: 0`, never trust a `2xx` without a
@@ -275,7 +275,7 @@ export async function provisionWlan({
     return { status: 'failed', stage: 'create_service', httpStatus: created.status, error: created.errorText };
   }
 
-  // 201 is not the verdict — read back (gotchas.md, ai-first.md "the silent drop").
+  // 201 is not the verdict — read back (gotchas.md, ai-first-configuration "the silent drop").
   let readBack;
   try {
     readBack = await fetchXcc(`/v1/services/${payload.id}`, opts);

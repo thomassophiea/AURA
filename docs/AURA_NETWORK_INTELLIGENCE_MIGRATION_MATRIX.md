@@ -67,7 +67,7 @@ wireless pipeline unchanged.
 
 **Deferred** (tracked, not built this pass — each needs its own scoped follow-up):
 update/delete/assign/schedule-WLAN actions beyond create; PSK rotation through the new
-pipeline (script exists in `ai-first`, not yet ported to the Node engine); Role/Profile/
+pipeline (script exists in `ai-first-configuration`, not yet ported to the Node engine); Role/Profile/
 Model-Profile-level editing beyond WLAN-service fields; rollback-with-separate-approval
 UI (backend `rollbackEngine`/`rollback_service.py` logic exists, not yet wired to a
 button); cross-site WLAN comparison; scheduled PDF-report use cases (controller

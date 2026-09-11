@@ -118,7 +118,7 @@ a new domain means the same five pieces `create_wlan` has:
    "gotchas" (every domain in this catalog almost certainly has its own
    silent-failure modes, the way WLAN has `radioIfList index:0` and
    WPA2-on-6GHz — these are not yet documented for the other 30 domains and
-   must be discovered before writing to them, the same way `ai-first`'s
+   must be discovered before writing to them, the same way `ai-first-configuration`'s
    `gotchas.md` was built from a real deployment, not guessed).
 5. **Honest verification** — read back the write; for domains without an
    obvious live-state signal (unlike WLAN's AP `services[]` broadcast check),
