@@ -51,6 +51,8 @@ import { createEstateRouter } from './server/estate/estateRouter.js';
 import { createMonitoringRouter } from './server/monitoring/monitoringRouter.js';
 import { createEnergyRouter } from './server/energy/energyRouter.js';
 import { createLightAwareRouter } from './server/energy/lightAware/router.js';
+import { createExperimentRouter } from './server/energy/experiment/experimentRouter.js';
+import { evaluateTrigger as evaluateEnergyTrigger, sessionFor as energySessionFor } from './server/energy/experiment/experimentEngine.js';
 import { createGuestsRouter } from './server/guests/guestsRouter.js';
 import { createPpskRouter } from './server/ppsk/ppskRouter.js';
 import { createPrivateSaeRouter } from './server/privateSae/saeRouter.js';
@@ -942,6 +944,32 @@ async function resolveLightSourceId() {
   }
 }
 
+// Drives the Energy experiment state machine from whatever the sensor feed says
+// now. Safe to call at any time: with no experiment in flight it is one indexed
+// lookup and a return.
+const ENERGY_TRIGGER_SWEEP_MS = 30_000;
+let energyTriggerSweep = null;
+let energyTriggerRunning = false;
+
+async function runEnergyTriggerSweep() {
+  if (energyTriggerRunning || !isDatabaseConfigured()) return;
+  energyTriggerRunning = true;
+  try {
+    const { listSources } = await import('./server/monitoring/sourceRepository.js');
+    const sources = await listSources({ enabledOnly: true });
+    for (const source of sources) {
+      const session = await energySessionFor(source);
+      await evaluateEnergyTrigger({ source, session });
+    }
+  } catch (error) {
+    // A trigger sweep that throws must not take the web process with it; the
+    // next sweep retries and the experiment stays exactly where it was.
+    console.warn('[energy-trigger] sweep skipped:', error?.message);
+  } finally {
+    energyTriggerRunning = false;
+  }
+}
+
 app.post('/api/light-sensor/report', express.json({ limit: '4kb' }), (req, res) => {
   const token = process.env.LIGHT_SENSOR_TOKEN;
   if (token && req.get('X-Light-Token') !== token) {
@@ -960,6 +988,9 @@ app.post('/api/light-sensor/report', express.json({ limit: '4kb' }), (req, res) 
       const sourceId = await resolveLightSourceId();
       if (sourceId) {
         await ingestLightReport({ sourceId, serial: String(serial), state, data });
+        // React to the reading we just stored rather than waiting for the next
+        // sweep — the difference is what makes a live demonstration feel live.
+        await runEnergyTriggerSweep();
       }
     })
     .catch((e) => console.warn('[light-ingest] skipped:', e?.message));
@@ -2214,6 +2245,19 @@ if (monitoringConfig) {
     scopeMiddleware: undefined, // uses default requireControllerScope
   }));
   console.log('[Proxy Server] ✓ Light-Aware API mounted at /api/energy/light-aware/*');
+
+  // North-vs-South energy experiment. Writes are operator-gated and audited:
+  // every route under this prefix either reconfigures a customer AP or changes
+  // what the stored evidence says happened.
+  app.use(
+    '/api',
+    createExperimentRouter({
+      requireOperator: requireRole('operator'),
+      audit: ({ req, action, detail }) =>
+        audit(action, { actor: req.auraActor, source: req.auraActorSource, detail }),
+    })
+  );
+  console.log('[Proxy Server] ✓ Energy experiment API mounted at /api/energy/experiment/*');
 }
 
 // ==================== System Introspection Routes ====================
@@ -2979,6 +3023,18 @@ httpServer.listen(PORT, '0.0.0.0', async () => {
     );
   }
 
+  // Energy experiment trigger sweep. A light report drives the trigger
+  // directly, but a sweep is still needed: darkness persistence elapses in
+  // wall-clock time, and a sensor that stops reporting mid-experiment has to be
+  // noticed by something other than the reports that stopped arriving.
+  energyTriggerSweep = setInterval(() => {
+    runEnergyTriggerSweep().catch(() => undefined);
+  }, ENERGY_TRIGGER_SWEEP_MS);
+  if (typeof energyTriggerSweep.unref === 'function') energyTriggerSweep.unref();
+  console.log(
+    `[Proxy Server] ✓ Energy experiment trigger sweep every ${ENERGY_TRIGGER_SWEEP_MS / 1000}s`
+  );
+
   if (monitoringConfig.collectorInProcess && monitoringConfig.collectorEnabled) {
     // unref: the HTTP listener already holds this process open, so the poll
     // timer should not be what keeps it from shutting down.
@@ -2994,6 +3050,7 @@ httpServer.listen(PORT, '0.0.0.0', async () => {
 // Graceful shutdown
 async function shutdown(signal) {
   console.log(`[Proxy Server] ${signal} received, shutting down gracefully`);
+  if (energyTriggerSweep) clearInterval(energyTriggerSweep);
   if (inProcessCollector) await inProcessCollector.stop().catch(() => undefined);
   if (inProcessRetention) inProcessRetention.stop();
   process.exit(0);

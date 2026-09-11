@@ -103,6 +103,10 @@ export function loadMonitoringConfig(env = process.env) {
     }),
     // AP-level report collection is the volume driver; opt-in.
     apReportsEnabled: readBool(env, 'MONITORING_AP_REPORTS_ENABLED', false),
+    // Per-AP measured power + radio state from /v1/aps/query. Two requests per
+    // tick for the whole fleet regardless of size, so it is on by default: it
+    // is what makes energy history exist without anyone opening a browser.
+    energyApStateEnabled: readBool(env, 'ENERGY_AP_STATE_ENABLED', true),
     persistClientIdentifiers: readBool(env, 'MONITORING_PERSIST_CLIENT_IDENTIFIERS', false),
 
     credentialKey: readString(env, 'MONITORING_CREDENTIAL_KEY'),

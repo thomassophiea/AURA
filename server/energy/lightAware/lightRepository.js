@@ -2,12 +2,28 @@
 /** SQL for light samples, transitions, observed distribution, and policies. */
 import { query, withTransaction } from '../../db/pool.js';
 
-export async function insertSample({ sourceId, apSerial, lux, reportedState, normalizedState, observedAt }) {
+export async function insertSample({
+  sourceId,
+  apSerial,
+  lux,
+  reportedState,
+  normalizedState,
+  observedAt,
+  sampleSource = 'live',
+}) {
   await query(
     `INSERT INTO light_sensor_samples
-       (monitored_source_id, ap_serial, lux, reported_state, normalized_state, observed_at)
-     VALUES ($1,$2,$3,$4,$5, COALESCE($6::timestamptz, now()))`,
-    [sourceId, apSerial, Number.isFinite(lux) ? lux : null, reportedState ?? null, normalizedState, observedAt ?? null]
+       (monitored_source_id, ap_serial, lux, reported_state, normalized_state, observed_at, sample_source)
+     VALUES ($1,$2,$3,$4,$5, COALESCE($6::timestamptz, now()), $7)`,
+    [
+      sourceId,
+      apSerial,
+      Number.isFinite(lux) ? lux : null,
+      reportedState ?? null,
+      normalizedState,
+      observedAt ?? null,
+      sampleSource === 'simulated' ? 'simulated' : 'live',
+    ]
   );
 }
 

@@ -6,12 +6,20 @@
 import { normalizeLux, commitTransition, DEFAULT_THRESHOLDS, DEFAULT_HYSTERESIS } from './lightState.js';
 import * as repo from './lightRepository.js';
 
-export async function ingestLightReport({ sourceId, serial, state, data, at }, deps = repo) {
+export async function ingestLightReport({ sourceId, serial, state, data, at, sampleSource = 'live' }, deps = repo) {
   const observedAt = at ?? new Date().toISOString();
   const lux = Number.isFinite(Number(data)) ? Number(data) : null;
   const normalizedState = normalizeLux(lux, state, DEFAULT_THRESHOLDS);
 
-  await deps.insertSample({ sourceId, apSerial: serial, lux, reportedState: state ?? null, normalizedState, observedAt });
+  await deps.insertSample({
+    sourceId,
+    apSerial: serial,
+    lux,
+    reportedState: state ?? null,
+    normalizedState,
+    observedAt,
+    sampleSource,
+  });
 
   const open = await deps.getOpenTransition({ sourceId, apSerial: serial });
   const prevState = open?.to_state ?? 'unknown';

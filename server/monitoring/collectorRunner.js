@@ -45,6 +45,10 @@ import {
   collectClients,
   COLLECTOR_NAME as CLIENT_COLLECTOR,
 } from './collectors/clientCollector.js';
+import {
+  collectEnergyApState,
+  COLLECTOR_NAME as ENERGY_AP_STATE_COLLECTOR,
+} from './collectors/energyApStateCollector.js';
 import { probeDurations, capabilitiesAreStale } from './backfill.js';
 
 const LOCK_PREFIX = 'aura:monitoring:source:';
@@ -211,6 +215,15 @@ export async function collectSource({ source, config, now = new Date(), deps = {
         }),
     },
   ];
+
+  // Runs ahead of the heavier report collectors: if the tick is going to be
+  // cut short by a slow controller, measured power is the sample worth having.
+  if (config.energyApStateEnabled !== false) {
+    collectors.unshift({
+      name: ENERGY_AP_STATE_COLLECTOR,
+      run: () => collectEnergyApState({ session, source: sourceWithCapabilities, config, now }),
+    });
+  }
 
   if (config.apReportsEnabled) {
     collectors.push({

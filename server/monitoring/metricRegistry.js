@@ -71,6 +71,9 @@ export const METRIC_FAMILIES = Object.freeze({
   INVENTORY: 'inventory',
   STATION: 'station',
   THROUGHPUT: 'throughput',
+  // Per-AP measured power + radio state from /v1/aps/query. Distinct from
+  // AP_REPORT, which is the coarser /v1/report/aps timeseries.
+  ENERGY_AP_STATE: 'energy_ap_state',
   // Per-client series. Only ever written with a pseudonymised client id, and
   // only when MONITORING_PERSIST_CLIENT_IDENTIFIERS is on.
   CLIENT: 'client',
