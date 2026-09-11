@@ -56,6 +56,36 @@ describe('cwpRequest', () => {
     await expect(cwpRequest('/x', { config, fetchFn })).rejects.toBeInstanceOf(CwpUnavailableError);
   });
 
+  it('retries once on a transport failure and succeeds if the second attempt lands', async () => {
+    const fetchFn = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('ECONNRESET'))
+      .mockResolvedValueOnce(jsonResponse(200, { ok: true }));
+    await expect(cwpRequest('/x', { config, fetchFn })).resolves.toEqual({ ok: true });
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+
+  it('retries once on a 5xx and succeeds if the second attempt lands', async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(503, { error: 'boom' }))
+      .mockResolvedValueOnce(jsonResponse(200, { ok: true }));
+    await expect(cwpRequest('/x', { config, fetchFn })).resolves.toEqual({ ok: true });
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry a 404 — a missing route is not transient', async () => {
+    const fetchFn = vi.fn().mockResolvedValue(jsonResponse(404, null));
+    await expect(cwpRequest('/x', { config, fetchFn })).rejects.toBeInstanceOf(CwpUnavailableError);
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not retry a 4xx request problem', async () => {
+    const fetchFn = vi.fn().mockResolvedValue(jsonResponse(409, { error: 'already there' }));
+    await expect(cwpRequest('/x', { config, fetchFn })).rejects.toBeInstanceOf(CwpRequestError);
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
   it('treats a route-level 404 as the service being unavailable', async () => {
     // A missing route means an old portal build or a disabled internal API —
     // not "this guest does not exist".
