@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { MetricCard } from '@/components/ui/MetricCard';
 import { cn } from '@/components/ui/utils';
 import { useEnergyExperiment, type ExperimentRange } from '@/hooks/useEnergyExperiment';
-import type { ExperimentSavings, SavingsProvenance } from '@/types/energyExperiment';
+import type { ExperimentSavings, ExperimentState, SavingsProvenance } from '@/types/energyExperiment';
 import { ExperimentComparisonChart } from './ExperimentComparisonChart';
 import { ExperimentTimeline } from './ExperimentTimeline';
 import { ExperimentApTable } from './ExperimentApTable';
@@ -49,16 +49,36 @@ function money(symbol: string, value: number | null | undefined): string {
   return value == null ? '—' : `${symbol}${value.toFixed(2)}`;
 }
 
-/** The one sentence an executive reads. Nothing is claimed that is not supported. */
-function headline(savings: ExperimentSavings | null | undefined, treatmentName: string): string {
-  if (!savings) return `Baseline collecting. ${treatmentName} has not been optimized yet.`;
+/**
+ * The one sentence an executive reads. Nothing is claimed that is not supported,
+ * and the tense follows the experiment's state — a finished run that never
+ * reached treatment must not read as one still collecting.
+ */
+function headline(
+  savings: ExperimentSavings | null | undefined,
+  treatmentName: string,
+  state: ExperimentState | null
+): string {
+  const finished = state === 'complete' || state === 'error';
+
+  if (!savings) {
+    if (state === null) return 'No experiment has been run yet.';
+    return finished
+      ? `Experiment closed before ${treatmentName} was optimized. No result to report.`
+      : `Baseline collecting. ${treatmentName} has not been optimized yet.`;
+  }
   if (!savings.claimSupported) {
-    return 'Collecting — not enough measured data yet to state a difference.';
+    return finished
+      ? 'Completed, but the measured window was too short to state a difference.'
+      : 'Collecting — not enough measured data yet to state a difference.';
   }
   const p = savings.attributed?.percent ?? null;
-  if (p == null) return 'No defensible difference can be attributed yet.';
-  if (p <= 0) return `${treatmentName} is not currently using less energy than the control site predicts.`;
-  return `${treatmentName} is using ${p.toFixed(1)}% less energy than the control site predicts.`;
+  if (p == null) return 'No defensible difference can be attributed.';
+  const verb = finished ? 'used' : 'is using';
+  if (p <= 0) {
+    return `${treatmentName} ${finished ? 'did not use' : 'is not currently using'} less energy than the control site predicts.`;
+  }
+  return `${treatmentName} ${verb} ${p.toFixed(1)}% less energy than the control site predicts.`;
 }
 
 interface Props {
@@ -117,9 +137,11 @@ export function EnergyExperimentPanel({ showControls = false }: Props) {
               {experiment ? `${treatmentName} vs ${controlName}` : 'Site energy experiment'}
             </h2>
             <p className="text-sm text-muted-foreground">
-              {experiment
-                ? `${treatmentName} is energy optimized. ${controlName} is the control, deliberately unchanged.`
-                : 'No experiment has been run yet.'}
+              {!experiment
+                ? 'No experiment has been run yet. Choose a site pair in the POC controls.'
+                : experiment.state === 'complete' || experiment.state === 'error'
+                  ? `Last run: ${treatmentName} was the treatment site, ${controlName} the control.`
+                  : `${treatmentName} is energy optimized. ${controlName} is the control, deliberately unchanged.`}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -158,7 +180,7 @@ export function EnergyExperimentPanel({ showControls = false }: Props) {
               : 'border-border bg-muted/30'
           )}
         >
-          <p className="text-lg font-semibold text-foreground">{headline(savings, treatmentName)}</p>
+          <p className="text-lg font-semibold text-foreground">{headline(savings, treatmentName, experiment?.state ?? null)}</p>
           {savings ? (
             <p className="mt-1 text-xs text-muted-foreground">
               {PROVENANCE_LABEL[savings.provenance]} · {savings.attributed?.method ?? 'method unavailable'} ·{' '}
