@@ -1,7 +1,14 @@
-# Energy North-vs-South POC
+# Energy site-vs-site experiment (POC)
 
 A controlled A/B experiment that measures what an AP energy action actually
 saves, against a concurrent control site, using real controller telemetry.
+
+**Any site can be compared against any other site.** One is the TREATMENT site —
+the energy action is applied there — and the other is the CONTROL, deliberately
+left alone so that whatever moves both sites can be subtracted out. The pair is
+configuration, chosen in the POC control panel; nothing about it is baked into
+the schema or the code. For the lab POC the pair is `EAL-PT-N` (treatment) and
+`EAL-PT-S` (control), and `EAL-PT-N` is the side that will show less energy used.
 
 The Energy page already modelled savings. This measures them — and the first
 measurement disagreed with the model by 57% relative, which is the reason the
@@ -46,7 +53,7 @@ flowchart LR
   PG --> ENG["Energy backend<br/>analysis.js · experimentEngine.js"]
   PGL --> ENG
   ENG --> API["/api/energy/experiment/*"]
-  API --> UI["Energy UI<br/>NorthSouthExperiment.tsx"]
+  API --> UI["Energy UI<br/>EnergyExperimentPanel.tsx"]
 ```
 
 The browser is never the collector. If nobody opens AURA for three days, the
@@ -98,7 +105,7 @@ Migration `0018_energy_experiment.sql`.
 
 | Table | Holds |
 |---|---|
-| `energy_experiment_config` | The North/South pair, sensor thresholds, the action. One row per source |
+| `energy_experiment_config` | The treatment/control pair, sensor thresholds, the action. One row per source |
 | `energy_experiments` | One row per run: state, windows, trigger source, frozen metrics |
 | `energy_experiment_devices` | The allowlist, snapshotted at enrollment, per side |
 | `energy_experiment_rollback` | Captured pre-change config, apply/restore verification |
@@ -171,8 +178,8 @@ double-ingest.
 ## 5. Baseline methodology
 
 1. `selectBaselineWindow` picks the longest window **both** sides can support —
-   7 d, then 3 d, then 24 h. The weaker side governs: a 7-day North and a 2-hour
-   South is a 2-hour comparison.
+   7 d, then 3 d, then 24 h. The weaker side governs: a 7-day the treatment site and a 2-hour
+   the control site is a 2-hour comparison.
 2. Below 24 h it returns `partial` and the UI says
    *"Historical baseline limited: N hours available."* It never promotes short
    history to a longer label.
@@ -181,7 +188,7 @@ double-ingest.
    measured against a 24-hour mean would be credited with the evening lull.
 4. **Every previous treatment period is cut out of the baseline window**
    (`subtractWindows`). Without this, two experiments an hour apart make the
-   second one's baseline the first one's *result*. Observed live: a North
+   second one's baseline the first one's *result*. Observed live: a the treatment site
    baseline of 12.658 W/AP against a true normal of ~13.7 turned a real ~10%
    reduction into a reported 1.3%. The baseline payload reports
    `excludedTreatmentSeconds` and `cleanBaselineSeconds` so a short baseline
@@ -192,7 +199,7 @@ double-ingest.
 
 ### Normalization
 
-Everything is reported **per AP**. North and South rarely have the same AP
+Everything is reported **per AP**. the treatment site and the control site rarely have the same AP
 count — in the lab it is 4 vs 2 — and a raw site total would make the smaller
 site look more efficient for a reason unrelated to the energy action. Site
 totals are still available; they are just never the comparison.
@@ -203,12 +210,12 @@ Three numbers, deliberately kept separate:
 
 | Figure | Meaning | Weakness |
 |---|---|---|
-| `withinNorth` | North during treatment vs North's own matched baseline | Confounded by anything that moved both sites |
-| `crossSite` | North vs South during treatment | Assumes the two sites were comparable to begin with |
-| `attributed` | **Difference-in-differences**: North's change relative to South's change over the same clock time | The headline figure |
+| `withinTreatment` | The treatment site during treatment vs its own matched baseline | Confounded by anything that moved both sites |
+| `crossSite` | treatment vs control during treatment | Assumes the two sites were comparable to begin with |
+| `attributed` | **Difference-in-differences**: the treatment site's change relative to the control site's change over the same clock time | The headline figure |
 
-`attributed = (northBaseline × southDrift) − northTreatment`, where
-`southDrift = southTreatment / southBaseline`. If the evening quietens both
+`attributed = (treatmentBaseline × controlDrift) − treatmentCurrent`, where
+`controlDrift = controlCurrent / controlBaseline`. If the evening quietens both
 sites by 10%, that 10% is removed from the claim.
 
 `assessComparability` reports how close the two sites were **before** the
@@ -282,10 +289,10 @@ A write is permitted only when **all** of these hold:
 2. the experiment is in a state where a change is legitimate (restore is allowed
    from every state, including `error`);
 3. the AP is in that experiment's device allowlist;
-4. the AP is on the **north** side — the control is never modified;
+4. the AP is on the **treatment** side — the control is never modified;
 5. the AP is present in the **live** controller inventory, read at write time;
 6. the AP's live `hostSite` still matches both its enrollment record and the
-   experiment's North site name;
+   experiment's the treatment site site name;
 7. the AP is `InService`, so the write can be verified.
 
 A UI-supplied site name is never evidence. Refusals are recorded as
@@ -315,7 +322,7 @@ read AP  →  capture rollback (persisted BEFORE the write)  →  PUT
 
 ## 9. Rollback
 
-`restoreNorth` walks every AP with `applied_at IS NOT NULL AND restore_verified
+`restoreTreatment` walks every AP with `applied_at IS NOT NULL AND restore_verified
 = false`, re-checks the scope guard, restores, and **verifies by read-back**.
 
 - Anything unverified raises a `critical` event and the experiment goes to
@@ -426,20 +433,21 @@ each AP's readings actually arrive.
 
 ## 13. Known limitations
 
-1. **`EAL-PT-N` has no access points.** The named North/South pair on this
-   controller is unusable until APs are assigned to it. The site pair is
-   configuration, so the moment APs land there it becomes selectable with no
-   code change. The lab demonstration uses `PrimarySite` (4 AP, sensors) as
-   North and `EAL` (2 AP) as South.
-2. **The lab groups are unequal (4 vs 2) and mix models** (AP5020 + AP4020X vs
-   AP5022 + AP5022FX). Handled by per-AP normalization and recorded as discovery
-   anomalies, but a matched pair would be a stronger experiment.
+1. **`EAL-PT-N` currently has no access points on the lab controller.** The
+   configured pair is `EAL-PT-N` (treatment) / `EAL-PT-S` (control); readiness
+   fails on the treatment side and says so until APs are assigned to it. No code
+   change is needed — the pair is configuration, and readiness flips to READY on
+   the next poll once membership exists.
+2. **Unequal group sizes and mixed AP models are tolerated, not ideal.**
+   Discovery raises an anomaly for both, and every comparison is normalized per
+   AP, but a matched pair is a stronger experiment. `EAL-PT-S` currently holds a
+   single AP5022.
 3. **`radio.admin_enabled` is derived**, not read. `/v1/aps/query` does not carry
    `adminState`; `/v1/aps/{serial}` does, and that is what the write path
    verifies against. The collector series is a convenience for the UI.
 4. **The AP4020X is excluded from the treatment group** by the model allow-list
    (§6.1) until its firmware behaviour is fixed. On this lab controller that
-   reduces a 4-AP North group to 3.
+   reduces a 4-AP the treatment site group to 3.
 5. **The controller intermittently returns HTTP 500** on
    `/management/v1/aps/query`. Observed once in the first hour. The collector
    records a failed run and writes nothing, so the result is a one-minute gap
@@ -458,7 +466,7 @@ each AP's readings actually arrive.
 **Prerequisites** — `POC READY` with no `fail` rows at
 `GET /api/energy/experiment/readiness`.
 
-1. Open **Energy** in AURA. The North-vs-South card is at the top.
+1. Open **Energy** in AURA. The treatment-vs-control card is at the top.
 2. **Show POC controls**.
 3. Confirm or set the site pair, then **Save pair**. (Pair changes are refused
    while an experiment is in flight.)
@@ -467,13 +475,13 @@ each AP's readings actually arrive.
    stronger the label: hours → `partial`, 24 h → `24h`, 3 d → `3d`, 7 d → `7d`.
 6. **Establish baseline.** State → `baseline_established`. Metrics are frozen
    onto the experiment row.
-7. **Turn the lights off at the North site.**
+7. **Turn the lights off at the the treatment site site.**
 8. Watch the control panel's trigger line: `dark N/M reporting · raw …`. After
    `darkness_persistence_seconds` of sustained dark readings across a quorum,
    the engine fires on its own.
 9. The timeline records: darkness confirmed → per-AP `configuration_verified` →
    `optimization_activated`.
-10. The chart diverges: North steps down, South does not. Savings accumulate.
+10. The chart diverges: the treatment site steps down, the control site does not. Savings accumulate.
 11. Switch **Live / 24H / 3D / 7D / POC**; drill into **Show detail** for per-AP
     state and the timeline.
 12. **Turn the lights back on.** Recovery is automatic once light persists.
@@ -520,7 +528,7 @@ The fallback drives the sensor input, not the result. The controller action and
 every measured watt stay real.
 
 1. POC controls → **Simulate lights off**.
-2. Simulated readings are written for every North AP every 15 s, marked
+2. Simulated readings are written for every the treatment site AP every 15 s, marked
    `simulated` in `light_sensor_samples`.
 3. The **same** persistence requirement must still elapse — the demo does not
    skip its own safety logic.
@@ -549,7 +557,7 @@ from the environmental report.
 | GET | `/api/energy/experiment/readiness` | controller scope | The 13 readiness checks |
 | GET/PUT | `/api/energy/experiment/config` | PUT: operator | The site pair, thresholds, action |
 | GET | `/api/energy/experiment/state` | controller scope | Everything the UI renders |
-| GET | `/api/energy/experiment/series?range=` | controller scope | Bucketed North/South comparison |
+| GET | `/api/energy/experiment/series?range=` | controller scope | Bucketed treatment/control comparison |
 | GET | `/api/energy/experiment/aps` | controller scope | Per-AP drill-down |
 | GET | `/api/energy/experiment/trigger` | controller scope | What the sensor logic currently believes |
 | GET | `/api/energy/experiment/scenario` | controller scope | Extrapolation from the observed result |

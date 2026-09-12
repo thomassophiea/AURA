@@ -50,15 +50,15 @@ function money(symbol: string, value: number | null | undefined): string {
 }
 
 /** The one sentence an executive reads. Nothing is claimed that is not supported. */
-function headline(savings: ExperimentSavings | null | undefined, northName: string): string {
-  if (!savings) return `Baseline collecting. ${northName} has not been optimized yet.`;
+function headline(savings: ExperimentSavings | null | undefined, treatmentName: string): string {
+  if (!savings) return `Baseline collecting. ${treatmentName} has not been optimized yet.`;
   if (!savings.claimSupported) {
     return 'Collecting — not enough measured data yet to state a difference.';
   }
   const p = savings.attributed.percent;
   if (p == null) return 'No defensible difference can be attributed yet.';
-  if (p <= 0) return `${northName} is not currently using less energy than the control predicts.`;
-  return `${northName} is using ${p.toFixed(1)}% less energy than the control predicts.`;
+  if (p <= 0) return `${treatmentName} is not currently using less energy than the control site predicts.`;
+  return `${treatmentName} is using ${p.toFixed(1)}% less energy than the control site predicts.`;
 }
 
 interface Props {
@@ -67,13 +67,13 @@ interface Props {
 }
 
 /**
- * The North-vs-South Energy POC.
+ * The Treatment-vs-Control Energy POC.
  *
  * One story, top to bottom: what was saved, on which side, proven by what.
  * Complexity (per-AP detail, event timeline, readiness) lives behind
  * drill-downs so the first five seconds read clean.
  */
-export function NorthSouthExperiment({ showControls = false }: Props) {
+export function EnergyExperimentPanel({ showControls = false }: Props) {
   const { state, series, aps, trigger, readiness, range, setRange, loading, error, busy, run } =
     useEnergyExperiment(true);
   const [controlsOpen, setControlsOpen] = useState(showControls);
@@ -84,8 +84,8 @@ export function NorthSouthExperiment({ showControls = false }: Props) {
   const baseline = state?.baseline ?? null;
   const treatment = state?.treatment ?? null;
   const quality = state?.quality ?? null;
-  const northName = experiment?.north.siteName ?? 'North';
-  const southName = experiment?.south.siteName ?? 'South';
+  const treatmentName = experiment?.treatment.siteName ?? 'Treatment';
+  const controlName = experiment?.control.siteName ?? 'Control';
   const symbol = savings?.currency.symbol ?? '$';
 
   const simulatedResult = savings?.provenance === 'simulated';
@@ -98,12 +98,12 @@ export function NorthSouthExperiment({ showControls = false }: Props) {
    * dash while the chart right below them is drawing live data.
    */
   const latest = useMemo(() => {
-    const out: { north: number | null; south: number | null } = { north: null, south: null };
+    const out: { treatment: number | null; control: number | null } = { treatment: null, control: null };
     if (!series) return out;
     for (const point of series.points) {
       if (point.wattsPerAp == null) continue;
-      if (point.siteId === series.north.siteId) out.north = point.wattsPerAp;
-      else if (point.siteId === series.south.siteId) out.south = point.wattsPerAp;
+      if (point.siteId === series.treatment.siteId) out.treatment = point.wattsPerAp;
+      else if (point.siteId === series.control.siteId) out.control = point.wattsPerAp;
     }
     return out;
   }, [series]);
@@ -113,10 +113,12 @@ export function NorthSouthExperiment({ showControls = false }: Props) {
       <Card className="space-y-4 p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-base font-semibold text-foreground">North vs South</h2>
+            <h2 className="text-base font-semibold text-foreground">
+              {experiment ? `${treatmentName} vs ${controlName}` : 'Site energy experiment'}
+            </h2>
             <p className="text-sm text-muted-foreground">
               {experiment
-                ? `${northName} is energy optimized. ${southName} is the control.`
+                ? `${treatmentName} is energy optimized. ${controlName} is the control, deliberately unchanged.`
                 : 'No experiment has been run yet.'}
             </p>
           </div>
@@ -156,7 +158,7 @@ export function NorthSouthExperiment({ showControls = false }: Props) {
               : 'border-border bg-muted/30'
           )}
         >
-          <p className="text-lg font-semibold text-foreground">{headline(savings, northName)}</p>
+          <p className="text-lg font-semibold text-foreground">{headline(savings, treatmentName)}</p>
           {savings ? (
             <p className="mt-1 text-xs text-muted-foreground">
               {PROVENANCE_LABEL[savings.provenance]} · {savings.attributed.method} ·{' '}
@@ -176,7 +178,7 @@ export function NorthSouthExperiment({ showControls = false }: Props) {
           <div className="space-y-2 rounded-md border border-[color:var(--status-success)]/40 p-3">
             <div className="flex items-center gap-2">
               <Zap className="h-4 w-4 text-[color:var(--status-success)]" aria-hidden />
-              <h3 className="text-sm font-semibold text-foreground">{northName}</h3>
+              <h3 className="text-sm font-semibold text-foreground">{treatmentName}</h3>
               <span className="text-xs uppercase tracking-wide text-[color:var(--status-success)]">
                 Energy optimized
               </span>
@@ -185,18 +187,18 @@ export function NorthSouthExperiment({ showControls = false }: Props) {
               <div>
                 <dt className="text-xs text-muted-foreground">Current / AP</dt>
                 <dd className="font-mono tabular-nums">
-                  {w(treatment?.north.wattsPerAp ?? latest.north)}
+                  {w(treatment?.treatment.wattsPerAp ?? latest.treatment)}
                 </dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">Baseline / AP</dt>
-                <dd className="font-mono tabular-nums">{w(baseline?.north.wattsPerAp)}</dd>
+                <dd className="font-mono tabular-nums">{w(baseline?.treatment.wattsPerAp)}</dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">APs optimized</dt>
                 <dd className="font-mono tabular-nums">
                   {aps.filter((a) => a.energyState === 'optimized').length}/
-                  {aps.filter((a) => a.side === 'north').length}
+                  {aps.filter((a) => a.side === 'treatment').length}
                 </dd>
               </div>
             </dl>
@@ -204,23 +206,23 @@ export function NorthSouthExperiment({ showControls = false }: Props) {
 
           <div className="space-y-2 rounded-md border border-border p-3">
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-foreground">{southName}</h3>
+              <h3 className="text-sm font-semibold text-foreground">{controlName}</h3>
               <span className="text-xs uppercase tracking-wide text-muted-foreground">Control</span>
             </div>
             <dl className="grid grid-cols-3 gap-2 text-sm">
               <div>
                 <dt className="text-xs text-muted-foreground">Current / AP</dt>
                 <dd className="font-mono tabular-nums">
-                  {w(treatment?.south.wattsPerAp ?? latest.south)}
+                  {w(treatment?.control.wattsPerAp ?? latest.control)}
                 </dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">Baseline / AP</dt>
-                <dd className="font-mono tabular-nums">{w(baseline?.south.wattsPerAp)}</dd>
+                <dd className="font-mono tabular-nums">{w(baseline?.control.wattsPerAp)}</dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">APs normal</dt>
-                <dd className="font-mono tabular-nums">{aps.filter((a) => a.side === 'south').length}</dd>
+                <dd className="font-mono tabular-nums">{aps.filter((a) => a.side === 'control').length}</dd>
               </div>
             </dl>
           </div>
@@ -244,7 +246,7 @@ export function NorthSouthExperiment({ showControls = false }: Props) {
             <MetricCard
               title="Reduction"
               value={pct(savings.attributed.percent)}
-              subtitle={`${w(savings.attributed.siteWatts)} across ${northName}`}
+              subtitle={`${w(savings.attributed.siteWatts)} across ${treatmentName}`}
               tone="healthy"
               toneValue
             />

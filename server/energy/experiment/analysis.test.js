@@ -18,7 +18,7 @@ const hoursAgo = (h) => new Date(NOW.getTime() - h * 3_600_000).toISOString();
 describe('selectBaselineWindow', () => {
   it('picks the longest window both sides can support', () => {
     const w = selectBaselineWindow({
-      coverage: { north: { earliest: hoursAgo(200) }, south: { earliest: hoursAgo(190) } },
+      coverage: { treatment: { earliest: hoursAgo(200) }, control: { earliest: hoursAgo(190) } },
       treatmentStart: NOW.toISOString(),
       now: NOW,
     });
@@ -28,7 +28,7 @@ describe('selectBaselineWindow', () => {
 
   it('is governed by the weaker side, not the stronger', () => {
     const w = selectBaselineWindow({
-      coverage: { north: { earliest: hoursAgo(200) }, south: { earliest: hoursAgo(80) } },
+      coverage: { treatment: { earliest: hoursAgo(200) }, control: { earliest: hoursAgo(80) } },
       treatmentStart: NOW.toISOString(),
       now: NOW,
     });
@@ -37,7 +37,7 @@ describe('selectBaselineWindow', () => {
 
   it('reports limited history honestly instead of promoting it', () => {
     const w = selectBaselineWindow({
-      coverage: { north: { earliest: hoursAgo(9) }, south: { earliest: hoursAgo(9) } },
+      coverage: { treatment: { earliest: hoursAgo(9) }, control: { earliest: hoursAgo(9) } },
       treatmentStart: NOW.toISOString(),
       now: NOW,
     });
@@ -185,70 +185,70 @@ describe('summarizeSide', () => {
 describe('assessComparability', () => {
   it('calls two sites comparable when they drew within 5% per AP', () => {
     expect(
-      assessComparability({ northBaseline: { wattsPerAp: 14 }, southBaseline: { wattsPerAp: 14.3 } }).verdict
+      assessComparability({ treatmentBaseline: { wattsPerAp: 14 }, controlBaseline: { wattsPerAp: 14.3 } }).verdict
     ).toBe('comparable');
   });
 
   it('flags a divergent pre-period so the cross-site claim is not leaned on', () => {
-    const r = assessComparability({ northBaseline: { wattsPerAp: 10 }, southBaseline: { wattsPerAp: 20 } });
+    const r = assessComparability({ treatmentBaseline: { wattsPerAp: 10 }, controlBaseline: { wattsPerAp: 20 } });
     expect(r.verdict).toBe('divergent');
-    expect(r.note).toMatch(/within-North/);
+    expect(r.note).toMatch(/within-Treatment/);
   });
 
   it('is unknown, not comparable, when a side has no baseline', () => {
-    expect(assessComparability({ northBaseline: {}, southBaseline: { wattsPerAp: 14 } }).verdict).toBe('unknown');
+    expect(assessComparability({ treatmentBaseline: {}, controlBaseline: { wattsPerAp: 14 } }).verdict).toBe('unknown');
   });
 });
 
 describe('attribute', () => {
-  it('credits the action only with North’s change relative to South’s', () => {
-    // Both sites drift down 10% (evening lull); North drops a further ~16%.
+  it('credits the action only with Treatment’s change relative to Control’s', () => {
+    // Both sites drift down 10% (evening lull); Treatment drops a further ~16%.
     const r = attribute({
-      northBaseline: { wattsPerAp: 14 },
-      northTreatment: { wattsPerAp: 10.6, apCount: 3 },
-      southBaseline: { wattsPerAp: 14 },
-      southTreatment: { wattsPerAp: 12.6 },
+      treatmentBaseline: { wattsPerAp: 14 },
+      treatmentCurrent: { wattsPerAp: 10.6, apCount: 3 },
+      controlBaseline: { wattsPerAp: 14 },
+      controlCurrent: { wattsPerAp: 12.6 },
     });
-    // Within-North looks like 24.3%; the honest attributed figure is ~15.9%.
-    expect(r.withinNorth.percent).toBeCloseTo(24.3, 1);
+    // Within-Treatment looks like 24.3%; the honest attributed figure is ~15.9%.
+    expect(r.withinTreatment.percent).toBeCloseTo(24.3, 1);
     expect(r.attributed.percent).toBeCloseTo(15.87, 1);
     expect(r.attributed.method).toMatch(/difference-in-differences/);
   });
 
-  it('does not credit the action when South moved exactly as much', () => {
+  it('does not credit the action when Control moved exactly as much', () => {
     const r = attribute({
-      northBaseline: { wattsPerAp: 14 },
-      northTreatment: { wattsPerAp: 12.6, apCount: 3 },
-      southBaseline: { wattsPerAp: 14 },
-      southTreatment: { wattsPerAp: 12.6 },
+      treatmentBaseline: { wattsPerAp: 14 },
+      treatmentCurrent: { wattsPerAp: 12.6, apCount: 3 },
+      controlBaseline: { wattsPerAp: 14 },
+      controlCurrent: { wattsPerAp: 12.6 },
     });
     expect(r.attributed.percent).toBeCloseTo(0, 6);
   });
 
   it('scales the per-AP figure to the site by the treatment AP count', () => {
     const r = attribute({
-      northBaseline: { wattsPerAp: 14 },
-      northTreatment: { wattsPerAp: 11.8, apCount: 6 },
-      southBaseline: { wattsPerAp: 14 },
-      southTreatment: { wattsPerAp: 14 },
+      treatmentBaseline: { wattsPerAp: 14 },
+      treatmentCurrent: { wattsPerAp: 11.8, apCount: 6 },
+      controlBaseline: { wattsPerAp: 14 },
+      controlCurrent: { wattsPerAp: 14 },
     });
     expect(r.attributed.siteWatts).toBeCloseTo(2.2 * 6, 5);
   });
 
-  it('falls back to within-North and says so when there is no control drift', () => {
+  it('falls back to within-Treatment and says so when there is no control drift', () => {
     const r = attribute({
-      northBaseline: { wattsPerAp: 14 },
-      northTreatment: { wattsPerAp: 11.8, apCount: 3 },
-      southBaseline: { wattsPerAp: null },
-      southTreatment: { wattsPerAp: null },
+      treatmentBaseline: { wattsPerAp: 14 },
+      treatmentCurrent: { wattsPerAp: 11.8, apCount: 3 },
+      controlBaseline: { wattsPerAp: null },
+      controlCurrent: { wattsPerAp: null },
     });
-    expect(r.attributed.method).toMatch(/within-North only/);
+    expect(r.attributed.method).toMatch(/within-Treatment only/);
     expect(r.attributed.deltaWattsPerAp).toBeCloseTo(2.2, 6);
   });
 
   it('produces nulls, never NaN, when nothing is measurable', () => {
     const r = attribute({
-      northBaseline: {}, northTreatment: {}, southBaseline: {}, southTreatment: {},
+      treatmentBaseline: {}, treatmentCurrent: {}, controlBaseline: {}, controlCurrent: {},
     });
     expect(r.attributed.deltaWattsPerAp).toBeNull();
     expect(r.attributed.percent).toBeNull();
@@ -286,26 +286,26 @@ describe('assessQuality', () => {
   });
 
   it('supports a savings claim when both sides have full coverage', () => {
-    const q = assessQuality({ north: side(3, 3, 3600), south: side(3, 3, 3600), windowSeconds: 3600 });
+    const q = assessQuality({ treatment: side(3, 3, 3600), control: side(3, 3, 3600), windowSeconds: 3600 });
     expect(q.rating).toBe('good');
     expect(q.savingsClaimSupported).toBe(true);
   });
 
   it('withholds the claim when the window is too short to mean anything', () => {
-    const q = assessQuality({ north: side(3, 3, 60), south: side(3, 3, 60), windowSeconds: 60 });
+    const q = assessQuality({ treatment: side(3, 3, 60), control: side(3, 3, 60), windowSeconds: 60 });
     expect(q.savingsClaimSupported).toBe(false);
   });
 
   it('withholds the claim when a side is reporting nothing', () => {
-    const q = assessQuality({ north: side(3, 3, 3600), south: side(3, 0, 0), windowSeconds: 3600 });
+    const q = assessQuality({ treatment: side(3, 3, 3600), control: side(3, 0, 0), windowSeconds: 3600 });
     expect(q.rating).toBe('insufficient');
     expect(q.savingsClaimSupported).toBe(false);
   });
 
   it('downgrades to fair when some APs are missing but the claim still stands', () => {
-    const q = assessQuality({ north: side(6, 5, 3600), south: side(6, 6, 3600), windowSeconds: 3600 });
+    const q = assessQuality({ treatment: side(6, 5, 3600), control: side(6, 6, 3600), windowSeconds: 3600 });
     expect(q.rating).toBe('fair');
-    expect(q.north.missingAps).toBe(1);
+    expect(q.treatment.missingAps).toBe(1);
     expect(q.savingsClaimSupported).toBe(true);
   });
 });

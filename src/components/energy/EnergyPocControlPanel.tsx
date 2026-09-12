@@ -51,8 +51,8 @@ const CHECK_CLASS: Record<ReadinessCheck['status'], string> = {
  */
 export function EnergyPocControlPanel({ state, readiness, trigger, busy, run, error }: Props) {
   const [discovery, setDiscovery] = useState<DiscoveryResponse | null>(null);
-  const [north, setNorth] = useState<string>('');
-  const [south, setSouth] = useState<string>('');
+  const [treatment, setNorth] = useState<string>('');
+  const [control, setSouth] = useState<string>('');
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
@@ -62,8 +62,8 @@ export function EnergyPocControlPanel({ state, readiness, trigger, busy, run, er
       .then((d) => {
         if (cancelled) return;
         setDiscovery(d);
-        setNorth(d.configured?.northSiteId ?? d.pair.north?.siteId ?? '');
-        setSouth(d.configured?.southSiteId ?? d.pair.south?.siteId ?? '');
+        setNorth(d.configured?.treatmentSiteId ?? d.pair.treatment?.siteId ?? '');
+        setSouth(d.configured?.controlSiteId ?? d.pair.control?.siteId ?? '');
       })
       .catch(() => undefined);
     return () => {
@@ -133,8 +133,8 @@ export function EnergyPocControlPanel({ state, readiness, trigger, busy, run, er
       {/* Site pair */}
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="space-y-1 text-xs">
-          <span className="font-medium text-muted-foreground">North (treatment)</span>
-          <Select value={north} onValueChange={setNorth} disabled={disabled || !!experiment}>
+          <span className="font-medium text-muted-foreground">Treatment site — energy action applied here</span>
+          <Select value={treatment} onValueChange={setNorth} disabled={disabled || !!experiment}>
             <SelectTrigger className="h-8 text-xs">
               <SelectValue placeholder="Select a site" />
             </SelectTrigger>
@@ -148,8 +148,8 @@ export function EnergyPocControlPanel({ state, readiness, trigger, busy, run, er
           </Select>
         </label>
         <label className="space-y-1 text-xs">
-          <span className="font-medium text-muted-foreground">South (control)</span>
-          <Select value={south} onValueChange={setSouth} disabled={disabled || !!experiment}>
+          <span className="font-medium text-muted-foreground">Control site — deliberately left alone</span>
+          <Select value={control} onValueChange={setSouth} disabled={disabled || !!experiment}>
             <SelectTrigger className="h-8 text-xs">
               <SelectValue placeholder="Select a site" />
             </SelectTrigger>
@@ -164,9 +164,9 @@ export function EnergyPocControlPanel({ state, readiness, trigger, busy, run, er
         </label>
       </div>
 
-      {discovery && north && south ? (
+      {discovery && treatment && control ? (
         <p className="text-xs text-muted-foreground">
-          North {discovery.membership.north.length} AP · South {discovery.membership.south.length} AP
+          Treatment {discovery.membership.treatment.length} AP · Control {discovery.membership.control.length} AP
           {discovery.anomalies.length > 0
             ? ` · ${discovery.anomalies.length} discovery warning(s)`
             : ''}
@@ -177,14 +177,14 @@ export function EnergyPocControlPanel({ state, readiness, trigger, busy, run, er
         <Button
           size="sm"
           variant="outline"
-          disabled={disabled || !north || !south || north === south || !!experiment}
+          disabled={disabled || !treatment || !control || treatment === control || !!experiment}
           onClick={() =>
             act('config', () =>
               energyExperimentService.saveConfig({
-                northSiteId: north,
-                northSiteName: discovery?.sites.find((s) => s.siteId === north)?.siteName ?? null,
-                southSiteId: south,
-                southSiteName: discovery?.sites.find((s) => s.siteId === south)?.siteName ?? null,
+                treatmentSiteId: treatment,
+                treatmentSiteName: discovery?.sites.find((s) => s.siteId === treatment)?.siteName ?? null,
+                controlSiteId: control,
+                controlSiteName: discovery?.sites.find((s) => s.siteId === control)?.siteName ?? null,
                 enabled: true,
               })
             , () => 'Site pair saved.')
@@ -229,12 +229,12 @@ export function EnergyPocControlPanel({ state, readiness, trigger, busy, run, er
             act('restore', () => energyExperimentService.restore(experiment?.id), (r) => {
               const res = r as { ok: boolean; restored: string[]; unverified: unknown[] };
               return res.ok
-                ? `North restored: ${res.restored.length} AP(s) verified.`
+                ? `Treatment site restored: ${res.restored.length} AP(s) verified.`
                 : `${res.unverified.length} AP(s) NOT confirmed restored.`;
             })
           }
         >
-          Restore North (controller)
+          Restore treatment site (controller)
         </Button>
       </div>
 

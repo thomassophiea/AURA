@@ -13,16 +13,16 @@ function experiment(overrides = {}) {
     id: 'exp-1',
     monitored_source_id: SOURCE,
     state: 'baseline_established',
-    north_site_name: 'EAL-PT-N',
-    south_site_name: 'EAL-PT-S',
+    treatment_site_name: 'EAL-PT-N',
+    control_site_name: 'EAL-PT-S',
     ...overrides,
   };
 }
 
 const ALLOWLIST = [
-  { apSerial: 'N1', side: 'north', siteId: 'north-id', siteName: 'EAL-PT-N' },
-  { apSerial: 'N2', side: 'north', siteId: 'north-id', siteName: 'EAL-PT-N' },
-  { apSerial: 'S1', side: 'south', siteId: 'south-id', siteName: 'EAL-PT-S' },
+  { apSerial: 'N1', side: 'treatment', siteId: 'treatment-id', siteName: 'EAL-PT-N' },
+  { apSerial: 'N2', side: 'treatment', siteId: 'treatment-id', siteName: 'EAL-PT-N' },
+  { apSerial: 'S1', side: 'control', siteId: 'control-id', siteName: 'EAL-PT-S' },
 ];
 
 const liveAp = (overrides = {}) => ({
@@ -35,7 +35,7 @@ const liveAp = (overrides = {}) => ({
 });
 
 describe('assertTargetAllowed', () => {
-  it('allows a north AP that is still in the north site and in service', () => {
+  it('allows a treatment AP that is still in the treatment site and in service', () => {
     const verdict = assertTargetAllowed({
       experiment: experiment(),
       allowlist: ALLOWLIST,
@@ -44,7 +44,7 @@ describe('assertTargetAllowed', () => {
       sourceId: SOURCE,
     });
     expect(verdict.allowed).toBe(true);
-    expect(verdict.device.side).toBe('north');
+    expect(verdict.device.side).toBe('treatment');
   });
 
   it('refuses the control side outright', () => {

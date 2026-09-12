@@ -1,5 +1,5 @@
 /**
- * Pure analysis for the North-vs-South experiment: baseline selection,
+ * Pure analysis for the Treatment-vs-Control experiment: baseline selection,
  * normalization, and attribution.
  *
  * No I/O, no dates-from-now, no rounding for presentation. Every function
@@ -8,12 +8,12 @@
  *
  * Three numbers get computed, and they are deliberately kept distinct:
  *
- *   withinNorth   North during treatment vs North's own matched baseline.
+ *   withinTreatment   Treatment during treatment vs Treatment's own matched baseline.
  *                 Simple, but confounded by anything that changed for both
  *                 sites (a quiet evening, a building emptying out).
- *   crossSite     North vs South during treatment. Removes time-of-day, but
+ *   crossSite     Treatment vs Control during treatment. Removes time-of-day, but
  *                 assumes the two sites were comparable to begin with.
- *   attributed    Difference-in-differences: North's change relative to South's
+ *   attributed    Difference-in-differences: Treatment's change relative to Control's
  *                 change over the same period. This is the number the UI leads
  *                 with, and it is only offered when the pre-period shows the
  *                 two sites actually tracked each other.
@@ -55,7 +55,7 @@ export function selectBaselineWindow({ coverage, treatmentStart, now = new Date(
     return { key: null, label: 'No history', availableHours: 0, sufficient: false, start: null, end: null };
   }
 
-  // The weakest side governs. A 7-day North and a 2-hour South is a 2-hour
+  // The weakest side governs. A 7-day Treatment and a 2-hour Control is a 2-hour
   // comparison, not a 7-day one.
   const commonEarliest = Math.max(...earliests);
   const availableHours = Math.max(0, (anchor.getTime() - commonEarliest) / MS_PER_HOUR);
@@ -113,7 +113,7 @@ export function matchedTimeWindows({ treatmentStart, treatmentEnd, days, now = n
  * A baseline is supposed to describe NORMAL operation. If the window overlaps a
  * period when a previous experiment had radios disabled, the "baseline" is
  * partly the treated state, and the measured effect collapses — observed live:
- * a North baseline of 12.658 W/AP against a true normal of ~13.7 turned a real
+ * a Treatment baseline of 12.658 W/AP against a true normal of ~13.7 turned a real
  * ~10% reduction into a reported 1.3%.
  *
  * Both inputs are ISO ranges. Output is sorted, non-overlapping, and may be
@@ -169,7 +169,7 @@ export function rangeSeconds(ranges) {
 /**
  * Collapse per-AP rows into a side summary.
  *
- * Per-AP normalization is not optional: North and South rarely have the same
+ * Per-AP normalization is not optional: Treatment and Control rarely have the same
  * AP count, and a raw site total would make the smaller site look more
  * efficient for a reason that has nothing to do with the energy action.
  */
@@ -221,8 +221,8 @@ export function summarizeSide(apRows, { minObservedSeconds = 60 } = {}) {
  * and one experiment there is no honest significance test to run, and a fake
  * one would be worse than none.
  */
-export function assessComparability({ northBaseline, southBaseline }) {
-  const ratio = safeDiv(northBaseline?.wattsPerAp, southBaseline?.wattsPerAp);
+export function assessComparability({ treatmentBaseline, controlBaseline }) {
+  const ratio = safeDiv(treatmentBaseline?.wattsPerAp, controlBaseline?.wattsPerAp);
   if (ratio == null) {
     return { ratio: null, verdict: 'unknown', note: 'One side has no baseline data.' };
   }
@@ -233,10 +233,10 @@ export function assessComparability({ northBaseline, southBaseline }) {
     verdict,
     note:
       verdict === 'comparable'
-        ? 'North and South drew within 5% of each other per AP before the treatment.'
+        ? 'Treatment and Control drew within 5% of each other per AP before the treatment.'
         : verdict === 'similar'
-          ? `North drew ${((ratio - 1) * 100).toFixed(1)}% ${ratio > 1 ? 'more' : 'less'} per AP than South before the treatment; the ratio is carried into the attribution.`
-          : `North and South differed by ${((ratio - 1) * 100).toFixed(1)}% per AP before the treatment. Cross-site comparison is weak; the within-North change is the more defensible figure.`,
+          ? `Treatment drew ${((ratio - 1) * 100).toFixed(1)}% ${ratio > 1 ? 'more' : 'less'} per AP than Control before the treatment; the ratio is carried into the attribution.`
+          : `Treatment and Control differed by ${((ratio - 1) * 100).toFixed(1)}% per AP before the treatment. Cross-site comparison is weak; the within-Treatment change is the more defensible figure.`,
   };
 }
 
@@ -244,18 +244,18 @@ export function assessComparability({ northBaseline, southBaseline }) {
  * The core attribution.
  *
  * @returns {{
- *   withinNorth: {deltaWattsPerAp:number|null, percent:number|null},
+ *   withinTreatment: {deltaWattsPerAp:number|null, percent:number|null},
  *   crossSite:   {deltaWattsPerAp:number|null, percent:number|null},
  *   attributed:  {deltaWattsPerAp:number|null, percent:number|null,
  *                 siteWatts:number|null, method:string, usable:boolean},
  *   comparability: object
  * }}
  */
-export function attribute({ northBaseline, northTreatment, southBaseline, southTreatment }) {
-  const nb = northBaseline?.wattsPerAp ?? null;
-  const nt = northTreatment?.wattsPerAp ?? null;
-  const sb = southBaseline?.wattsPerAp ?? null;
-  const st = southTreatment?.wattsPerAp ?? null;
+export function attribute({ treatmentBaseline, treatmentCurrent, controlBaseline, controlCurrent }) {
+  const nb = treatmentBaseline?.wattsPerAp ?? null;
+  const nt = treatmentCurrent?.wattsPerAp ?? null;
+  const sb = controlBaseline?.wattsPerAp ?? null;
+  const st = controlCurrent?.wattsPerAp ?? null;
 
   const withinDelta = nb != null && nt != null ? nb - nt : null;
   const withinPct = withinDelta != null ? safeDiv(withinDelta * 100, nb) : null;
@@ -263,32 +263,32 @@ export function attribute({ northBaseline, northTreatment, southBaseline, southT
   const crossDelta = st != null && nt != null ? st - nt : null;
   const crossPct = crossDelta != null ? safeDiv(crossDelta * 100, st) : null;
 
-  const comparability = assessComparability({ northBaseline, southBaseline });
+  const comparability = assessComparability({ treatmentBaseline, controlBaseline });
 
-  // Ratio difference-in-differences. South's own drift over the same clock time
-  // is the counterfactual: whatever moved South would have moved North too.
-  const southDrift = safeDiv(st, sb);
+  // Ratio difference-in-differences. Control's own drift over the same clock time
+  // is the counterfactual: whatever moved Control would have moved Treatment too.
+  const controlDrift = safeDiv(st, sb);
   let attributedDelta = null;
   let attributedPct = null;
   let method = 'unavailable';
   let usable = false;
 
-  if (nb != null && nt != null && southDrift != null && southDrift > 0) {
-    const expectedNorth = nb * southDrift;
-    attributedDelta = expectedNorth - nt;
-    attributedPct = safeDiv(attributedDelta * 100, expectedNorth);
-    method = 'difference-in-differences (South drift as counterfactual)';
+  if (nb != null && nt != null && controlDrift != null && controlDrift > 0) {
+    const expectedTreatment = nb * controlDrift;
+    attributedDelta = expectedTreatment - nt;
+    attributedPct = safeDiv(attributedDelta * 100, expectedTreatment);
+    method = 'difference-in-differences (Control drift as counterfactual)';
     usable = comparability.verdict !== 'unknown';
   } else if (withinDelta != null) {
     attributedDelta = withinDelta;
     attributedPct = withinPct;
-    method = 'within-North only (no usable control drift)';
+    method = 'within-Treatment only (no usable control drift)';
     usable = true;
   }
 
-  const apCount = northTreatment?.apCount ?? 0;
+  const apCount = treatmentCurrent?.apCount ?? 0;
   return {
-    withinNorth: { deltaWattsPerAp: finite(withinDelta), percent: finite(withinPct) },
+    withinTreatment: { deltaWattsPerAp: finite(withinDelta), percent: finite(withinPct) },
     crossSite: { deltaWattsPerAp: finite(crossDelta), percent: finite(crossPct) },
     attributed: {
       deltaWattsPerAp: finite(attributedDelta),
@@ -348,7 +348,7 @@ export function projectSavings({
  * Quality" chip and, more importantly, whether a savings claim is offered at
  * all.
  */
-export function assessQuality({ north, south, windowSeconds, expectedSampleIntervalSeconds = 60 }) {
+export function assessQuality({ treatment, control, windowSeconds, expectedSampleIntervalSeconds = 60 }) {
   function sideQuality(side) {
     const expected = windowSeconds > 0 ? windowSeconds : null;
     const worst = side.perAp.length
@@ -361,12 +361,12 @@ export function assessQuality({ north, south, windowSeconds, expectedSampleInter
       missingAps: side.apCountEnrolled - side.apCountWithData,
     };
   }
-  const n = sideQuality(north);
-  const s = sideQuality(south);
+  const n = sideQuality(treatment);
+  const s = sideQuality(control);
   const worstCoverage = Math.min(n.coveragePercent ?? 0, s.coveragePercent ?? 0);
   const anyMissing = n.missingAps > 0 || s.missingAps > 0;
   const enoughSamples =
-    windowSeconds >= expectedSampleIntervalSeconds * 3 && north.apCountWithData > 0 && south.apCountWithData > 0;
+    windowSeconds >= expectedSampleIntervalSeconds * 3 && treatment.apCountWithData > 0 && control.apCountWithData > 0;
 
   let rating = 'good';
   if (!enoughSamples || worstCoverage < 50) rating = 'insufficient';
@@ -374,8 +374,8 @@ export function assessQuality({ north, south, windowSeconds, expectedSampleInter
 
   return {
     rating,
-    north: n,
-    south: s,
+    treatment: n,
+    control: s,
     // The gate. Below this, the UI shows "collecting" rather than a percentage
     // — a savings number computed from three samples is noise wearing a suit.
     savingsClaimSupported: rating !== 'insufficient',

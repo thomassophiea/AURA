@@ -131,9 +131,9 @@ export function lightRunSeconds(samples, { threshold, persistenceSeconds, now = 
 }
 
 /**
- * Fleet-level verdict for the North side.
+ * Fleet-level verdict for the Treatment side.
  *
- * A single AP is not the room. `quorum` is the fraction of REPORTING North APs
+ * A single AP is not the room. `quorum` is the fraction of REPORTING Treatment APs
  * that must agree; APs that are not reporting at all are excluded from the
  * denominator rather than counted as lit, and the caller is told how many were
  * excluded so a one-AP-out-of-six "quorum" cannot pass unnoticed.

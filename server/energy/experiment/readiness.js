@@ -93,7 +93,7 @@ export async function assessReadiness({ source, session, now = new Date() }) {
   try {
     found = await discover({
       session,
-      configuredPair: { northSiteId: config?.north_site_id, southSiteId: config?.south_site_id },
+      configuredPair: { treatmentSiteId: config?.treatment_site_id, controlSiteId: config?.control_site_id },
     });
   } catch (error) {
     found = { ok: false, error: error.message };
@@ -112,49 +112,49 @@ export async function assessReadiness({ source, session, now = new Date() }) {
     return { ready: false, summary: 'The controller is unreachable.', checks, discovery: null };
   }
 
-  const north = found.pair.north;
-  const south = found.pair.south;
+  const treatment = found.pair.treatment;
+  const control = found.pair.control;
 
   checks.push(
     check(
       'site_pair',
       'Site pair',
-      north && south ? (found.pair.proposed && !config?.north_site_id ? 'warn' : 'pass') : 'fail',
-      north && south
-        ? `North = '${north.siteName}', South = '${south.siteName}'` +
-          (found.pair.proposed && !config?.north_site_id ? ' (proposed by name; confirm in the control panel).' : '.')
-        : 'North and/or South could not be resolved. Choose them in the POC control panel.',
-      { north: north ?? null, south: south ?? null }
+      treatment && control ? (found.pair.proposed && !config?.treatment_site_id ? 'warn' : 'pass') : 'fail',
+      treatment && control
+        ? `Treatment = '${treatment.siteName}', Control = '${control.siteName}'` +
+          (found.pair.proposed && !config?.treatment_site_id ? ' (proposed by name; confirm in the control panel).' : '.')
+        : 'Treatment and/or Control could not be resolved. Choose them in the POC control panel.',
+      { treatment: treatment ?? null, control: control ?? null }
     )
   );
 
-  const nMembers = found.membership.north ?? [];
-  const sMembers = found.membership.south ?? [];
+  const treatmentMembers = found.membership.treatment ?? [];
+  const controlMembers = found.membership.control ?? [];
 
   checks.push(
     check(
-      'north_membership',
-      'North access points',
-      nMembers.length === 0 ? 'fail' : 'pass',
-      nMembers.length === 0
-        ? `North site '${north?.siteName ?? '—'}' has no access points assigned.`
-        : `${nMembers.length} AP(s): ${nMembers.map((a) => `${a.serial} (${a.model})`).join(', ')}.`,
-      { aps: nMembers }
+      'treatment_membership',
+      'Treatment access points',
+      treatmentMembers.length === 0 ? 'fail' : 'pass',
+      treatmentMembers.length === 0
+        ? `Treatment site '${treatment?.siteName ?? '—'}' has no access points assigned.`
+        : `${treatmentMembers.length} AP(s): ${treatmentMembers.map((a) => `${a.serial} (${a.model})`).join(', ')}.`,
+      { aps: treatmentMembers }
     )
   );
   checks.push(
     check(
-      'south_membership',
-      'South access points (control)',
-      sMembers.length === 0 ? 'fail' : 'pass',
-      sMembers.length === 0
-        ? `South site '${south?.siteName ?? '—'}' has no access points; there is no control group.`
-        : `${sMembers.length} AP(s): ${sMembers.map((a) => `${a.serial} (${a.model})`).join(', ')}.`,
-      { aps: sMembers }
+      'control_membership',
+      'Control access points',
+      controlMembers.length === 0 ? 'fail' : 'pass',
+      controlMembers.length === 0
+        ? `Control site '${control?.siteName ?? '—'}' has no access points; there is no control group.`
+        : `${controlMembers.length} AP(s): ${controlMembers.map((a) => `${a.serial} (${a.model})`).join(', ')}.`,
+      { aps: controlMembers }
     )
   );
 
-  const offline = [...nMembers, ...sMembers].filter((a) => a.status && a.status !== 'InService');
+  const offline = [...treatmentMembers, ...controlMembers].filter((a) => a.status && a.status !== 'InService');
   checks.push(
     check(
       'ap_status',
@@ -166,19 +166,19 @@ export async function assessReadiness({ source, session, now = new Date() }) {
     )
   );
 
-  const countDiff = Math.abs(nMembers.length - sMembers.length);
+  const countDiff = Math.abs(treatmentMembers.length - controlMembers.length);
   checks.push(
     check(
       'group_balance',
       'Group balance',
       countDiff === 0 ? 'pass' : 'warn',
       countDiff === 0
-        ? `Both sides have ${nMembers.length} AP(s).`
-        : `North ${nMembers.length} vs South ${sMembers.length}. All comparisons are normalized per AP; raw site totals are not comparable.`
+        ? `Both sides have ${treatmentMembers.length} AP(s).`
+        : `Treatment ${treatmentMembers.length} vs Control ${controlMembers.length}. All comparisons are normalized per AP; raw site totals are not comparable.`
     )
   );
 
-  const siteIds = [north?.siteId, south?.siteId].filter(Boolean);
+  const siteIds = [treatment?.siteId, control?.siteId].filter(Boolean);
   const coverageRows = siteIds.length ? await repo.fetchHistoryCoverage({ sourceId, siteIds }) : [];
   const coverage = Object.fromEntries(coverageRows.map((r) => [r.siteId, r]));
   const window = selectBaselineWindow({ coverage, treatmentStart: now.toISOString(), now });
@@ -195,7 +195,7 @@ export async function assessReadiness({ source, session, now = new Date() }) {
       'history',
       'Historical data',
       window.sufficient ? 'pass' : coverageRows.length ? 'warn' : 'fail',
-      `${describeHistory(north)}; ${describeHistory(south)}. Baseline: ${window.label}.`,
+      `${describeHistory(treatment)}; ${describeHistory(control)}. Baseline: ${window.label}.`,
       { window, coverage }
     )
   );
@@ -214,7 +214,7 @@ export async function assessReadiness({ source, session, now = new Date() }) {
       stale.length === 0 ? 'pass' : 'fail',
       stale.length === 0
         ? 'Measured power for both sides is less than 10 minutes old.'
-        : `No measured power in the last 10 minutes for: ${stale.map((id) => (id === north?.siteId ? north.siteName : south?.siteName)).join(', ')}.`,
+        : `No measured power in the last 10 minutes for: ${stale.map((id) => (id === treatment?.siteId ? treatment.siteName : control?.siteName)).join(', ')}.`,
       { freshness }
     )
   );
@@ -232,8 +232,8 @@ export async function assessReadiness({ source, session, now = new Date() }) {
     )
   );
 
-  const sensorCapable = nMembers.filter((a) => supportsLightSensor(a.model));
-  const sensors = await sensorHealth(sourceId, nMembers.map((a) => a.serial));
+  const sensorCapable = treatmentMembers.filter((a) => supportsLightSensor(a.model));
+  const sensors = await sensorHealth(sourceId, treatmentMembers.map((a) => a.serial));
   const liveSensors = sensors.perAp.filter((s) => s.sampleSource === 'live' && s.ageSeconds <= 180);
   checks.push(
     check(
@@ -241,10 +241,10 @@ export async function assessReadiness({ source, session, now = new Date() }) {
       'Light sensor',
       liveSensors.length > 0 ? 'pass' : sensors.perAp.length > 0 ? 'warn' : 'warn',
       liveSensors.length > 0
-        ? `${liveSensors.length}/${sensorCapable.length} sensor-capable North AP(s) reporting live.`
+        ? `${liveSensors.length}/${sensorCapable.length} sensor-capable Treatment AP(s) reporting live.`
         : sensors.perAp.length > 0
           ? `No live sensor reports in the last 3 minutes${sensors.anySimulated ? ' (simulated samples present)' : ''}. The demo override can drive the same pipeline.`
-          : `No sensor reports yet. ${sensorCapable.length} North AP(s) are sensor-capable; deploy the lightguard agent, or use the demo override.`,
+          : `No sensor reports yet. ${sensorCapable.length} Treatment AP(s) are sensor-capable; deploy the lightguard agent, or use the demo override.`,
       { perAp: sensors.perAp, sensorCapableCount: sensorCapable.length, anySimulated: sensors.anySimulated }
     )
   );

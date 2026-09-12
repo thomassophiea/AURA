@@ -1,5 +1,5 @@
 /**
- * Typed client for the North-vs-South energy experiment API.
+ * Typed client for the Treatment-vs-Control energy experiment API.
  *
  * Reuses the monitoring auth headers so every call is scoped to the controller
  * currently in view. The browser reads and commands; it never talks to the

@@ -50,8 +50,8 @@ export function buildControlledExperimentEvidence({
   const summary = {
     experimentId: experiment.id,
     name: experiment.name,
-    treatmentSite: experiment.north?.siteName ?? experiment.north?.siteId ?? null,
-    controlSite: experiment.south?.siteName ?? experiment.south?.siteId ?? null,
+    treatmentSite: experiment.treatment?.siteName ?? experiment.treatment?.siteId ?? null,
+    controlSite: experiment.control?.siteName ?? experiment.control?.siteId ?? null,
     treatmentStart: experiment.treatmentStart ?? null,
     treatmentEnd: experiment.treatmentEnd ?? null,
     triggerSource: experiment.triggerSource,
@@ -73,7 +73,7 @@ export function buildControlledExperimentEvidence({
       technicalAction:
         'Disable the configured AP radios during qualifying environmental conditions, reverting on recovery.',
       scope: summary.treatmentSite ? `Site ${summary.treatmentSite}` : 'Treatment site',
-      affectedApCount: experimentEvidence.northApCount ?? 0,
+      affectedApCount: experimentEvidence.treatmentApCount ?? 0,
       baselinePeriodKwh: finiteOrNull(experimentEvidence.baselineKwh),
       projectedAnnualSavingsKwh: annualKwh,
       projectedReductionPercent: finiteOrNull(savings.attributed?.percent),
@@ -115,7 +115,7 @@ export function buildEnvironmentalReport({
   generatedAt,
   generatedBy,
   auraVersion,
-  // Optional: a completed North-vs-South experiment. When present it is the
+  // Optional: a completed Treatment-vs-Control experiment. When present it is the
   // strongest evidence the report can carry — a controlled, measured result
   // with a concurrent control group — so it is listed ahead of the modeled
   // opportunities and it raises the report's evidence status.

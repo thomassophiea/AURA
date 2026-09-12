@@ -1,5 +1,5 @@
 /**
- * The North-vs-South experiment state machine.
+ * The Treatment-vs-Control experiment state machine.
  *
  * Owns: enrollment, baseline, the darkness trigger, the controller write, the
  * restore, and the savings computation. Nothing above this layer talks to the
@@ -108,42 +108,42 @@ export async function startExperiment({ source, session, name, startedBy, now = 
 
   const found = await discover({
     session,
-    configuredPair: { northSiteId: config?.north_site_id, southSiteId: config?.south_site_id },
+    configuredPair: { treatmentSiteId: config?.treatment_site_id, controlSiteId: config?.control_site_id },
   });
   if (!found.ok) return { ok: false, error: found.error };
 
-  const { north, south } = found.pair;
-  if (!north || !south) {
+  const { treatment, control } = found.pair;
+  if (!treatment || !control) {
     return {
       ok: false,
       error:
-        'North and South sites are not both resolved. Set the site pair in the POC control panel — ' +
+        'Treatment and Control sites are not both resolved. Set the site pair in the POC control panel — ' +
         'the experiment will not guess which sites to treat.',
       anomalies: found.anomalies,
     };
   }
-  if (found.membership.north.length === 0) {
+  if (found.membership.treatment.length === 0) {
     return {
       ok: false,
-      error: `North site '${north.siteName}' has no access points. Assign APs to it on the controller, or re-point the pair.`,
+      error: `Treatment site '${treatment.siteName}' has no access points. Assign APs to it on the controller, or re-point the pair.`,
       anomalies: found.anomalies,
     };
   }
-  if (found.membership.south.length === 0) {
+  if (found.membership.control.length === 0) {
     return {
       ok: false,
-      error: `South site '${south.siteName}' has no access points, so there is no control group.`,
+      error: `Control site '${control.siteName}' has no access points, so there is no control group.`,
       anomalies: found.anomalies,
     };
   }
 
   const experiment = await repo.createExperiment({
     sourceId,
-    name: name || `North vs South ${now.toISOString().slice(0, 16).replace('T', ' ')}`,
-    north,
-    south,
-    northDevices: found.membership.north,
-    southDevices: found.membership.south,
+    name: name || `Treatment vs Control ${now.toISOString().slice(0, 16).replace('T', ' ')}`,
+    treatment,
+    control,
+    treatmentDevices: found.membership.treatment,
+    controlDevices: found.membership.control,
     action,
     startedBy,
     baselineStart: now.toISOString(),
@@ -153,10 +153,10 @@ export async function startExperiment({ source, session, name, startedBy, now = 
     experimentId: experiment.id,
     sourceId,
     kind: 'baseline_started',
-    message: `Baseline collection started. North '${north.siteName}' (${found.membership.north.length} AP), South '${south.siteName}' (${found.membership.south.length} AP).`,
+    message: `Baseline collection started. Treatment '${treatment.siteName}' (${found.membership.treatment.length} AP), Control '${control.siteName}' (${found.membership.control.length} AP).`,
     detail: {
-      north: found.membership.north.map((a) => ({ serial: a.serial, model: a.model, status: a.status })),
-      south: found.membership.south.map((a) => ({ serial: a.serial, model: a.model, status: a.status })),
+      treatment: found.membership.treatment.map((a) => ({ serial: a.serial, model: a.model, status: a.status })),
+      control: found.membership.control.map((a) => ({ serial: a.serial, model: a.model, status: a.status })),
       action,
     },
   });
@@ -208,7 +208,7 @@ export async function establishBaseline({ source, experimentId, now = new Date()
  * will occupy where enough history exists.
  */
 export async function computeBaseline({ source, experiment, anchor = new Date() }) {
-  const siteIds = [experiment.north_site_id, experiment.south_site_id];
+  const siteIds = [experiment.treatment_site_id, experiment.control_site_id];
   const coverageRows = await repo.fetchHistoryCoverage({ sourceId: source.id, siteIds });
   const coverage = Object.fromEntries(coverageRows.map((r) => [r.siteId, r]));
 
@@ -238,18 +238,18 @@ export async function computeBaseline({ source, experiment, anchor = new Date() 
   const ranges = subtractWindows(candidateRanges, priorTreatments);
   const excludedSeconds = rangeSeconds(candidateRanges) - rangeSeconds(ranges);
 
-  const northRows = [];
-  const southRows = [];
+  const treatmentRows = [];
+  const controlRows = [];
   for (const r of ranges) {
     if (!r.start) continue;
     const rows = await repo.fetchSiteEnergy({ sourceId: source.id, siteIds, start: r.start, end: r.end });
     for (const row of rows) {
-      (row.siteId === experiment.north_site_id ? northRows : southRows).push(row);
+      (row.siteId === experiment.treatment_site_id ? treatmentRows : controlRows).push(row);
     }
   }
 
-  const north = summarizeSide(mergeApRows(northRows));
-  const south = summarizeSide(mergeApRows(southRows));
+  const treatment = summarizeSide(mergeApRows(treatmentRows));
+  const control = summarizeSide(mergeApRows(controlRows));
 
   return {
     window: {
@@ -262,8 +262,8 @@ export async function computeBaseline({ source, experiment, anchor = new Date() 
       excludedTreatmentWindows: priorTreatments.length,
       cleanBaselineSeconds: rangeSeconds(ranges),
     },
-    north,
-    south,
+    treatment,
+    control,
     coverage,
     computedAt: anchor.toISOString(),
     provenance: 'measured',
@@ -304,17 +304,17 @@ export async function evaluateTrigger({ source, session, now = new Date() }) {
 
   const config = await repo.getConfig(source.id);
   const devices = await repo.listDevices(experiment.id);
-  const northSerials = devices.filter((d) => d.side === 'north').map((d) => d.apSerial);
+  const treatmentSerials = devices.filter((d) => d.side === 'treatment').map((d) => d.apSerial);
   const samples = await fetchRecentLightSamples({
     sourceId: source.id,
-    serials: northSerials,
+    serials: treatmentSerials,
     sinceSeconds: 1800,
     sampleSource: evaluationSampleSource(source.id),
   });
 
   const darkness = evaluateSide({
     samplesByAp: samples,
-    serials: northSerials,
+    serials: treatmentSerials,
     threshold: config?.darkness_threshold_raw ?? 3,
     persistenceSeconds: config?.darkness_persistence_seconds ?? 120,
     now,
@@ -322,7 +322,7 @@ export async function evaluateTrigger({ source, session, now = new Date() }) {
   });
   const light = evaluateSide({
     samplesByAp: samples,
-    serials: northSerials,
+    serials: treatmentSerials,
     threshold: config?.recovery_threshold_raw ?? 6,
     persistenceSeconds: config?.recovery_persistence_seconds ?? 60,
     now,
@@ -410,7 +410,7 @@ export async function verifyEffectiveness({ source, session, experimentId }) {
         experimentId, sourceId: source.id,
         kind: effective ? 'configuration_effective' : 'configuration_not_effective',
         severity: effective ? 'info' : 'warning',
-        side: 'north', apSerial: row.apSerial,
+        side: 'treatment', apSerial: row.apSerial,
         message: effective
           ? `${row.apSerial}: radio ${action.radioIndexes.join(',')} confirmed off the air.`
           : `${row.apSerial}: ${message} Not counted as optimized.`,
@@ -430,7 +430,7 @@ export async function verifyEffectiveness({ source, session, experimentId }) {
 }
 
 /**
- * Apply the energy action to the North APs.
+ * Apply the energy action to the Treatment APs.
  *
  * Every AP goes through the safety boundary, then read → capture → write →
  * re-read → verify, individually. One AP failing does not abort the others, but
@@ -455,17 +455,17 @@ export async function activateOptimization({
     trigger_source: triggerSource,
   });
   await event({
-    experimentId, sourceId: source.id, kind: 'darkness_persistence_satisfied', side: 'north',
+    experimentId, sourceId: source.id, kind: 'darkness_persistence_satisfied', side: 'treatment',
     message:
       triggerSource === 'simulated'
         ? 'Simulated darkness trigger accepted; the live policy path continues unchanged.'
-        : `Sustained darkness confirmed across ${detail.satisfiedCount ?? '?'}/${detail.reportingCount ?? '?'} reporting North sensors.`,
+        : `Sustained darkness confirmed across ${detail.satisfiedCount ?? '?'}/${detail.reportingCount ?? '?'} reporting Treatment sensors.`,
     detail,
     provenance: triggerSource === 'simulated' ? 'simulated' : provenance,
   });
 
   const devices = await repo.listDevices(experimentId);
-  const northSerials = devices.filter((d) => d.side === 'north').map((d) => d.apSerial);
+  const treatmentSerials = devices.filter((d) => d.side === 'treatment').map((d) => d.apSerial);
 
   // Re-read the LIVE inventory. Enrollment is a snapshot; membership now is the
   // only thing that may authorise a write.
@@ -484,12 +484,12 @@ export async function activateOptimization({
   }
 
   const { allowed, refused } = partitionTargets({
-    experiment, allowlist: devices, serials: northSerials, liveAps, sourceId: source.id, intent: 'apply',
+    experiment, allowlist: devices, serials: treatmentSerials, liveAps, sourceId: source.id, intent: 'apply',
   });
 
   for (const r of refused) {
     await event({
-      experimentId, sourceId: source.id, kind: 'target_refused', severity: 'warning', side: 'north',
+      experimentId, sourceId: source.id, kind: 'target_refused', severity: 'warning', side: 'treatment',
       apSerial: r.serial, message: r.detail, detail: { reason: r.reason },
     });
   }
@@ -506,7 +506,7 @@ export async function activateOptimization({
         );
         if (busy.length > 0) {
           await event({
-            experimentId, sourceId: source.id, kind: 'target_refused', severity: 'warning', side: 'north',
+            experimentId, sourceId: source.id, kind: 'target_refused', severity: 'warning', side: 'treatment',
             apSerial: target.serial,
             message: `${target.serial}: radio ${busy.map((b) => b.radioIndex).join(',')} has associated clients; skipped.`,
             detail: { reason: 'clients_present' },
@@ -546,7 +546,7 @@ export async function activateOptimization({
         experimentId, sourceId: source.id,
         kind,
         severity: kind === 'configuration_verified' ? 'info' : kind === 'configuration_failed' ? 'critical' : 'warning',
-        side: 'north', apSerial: target.serial,
+        side: 'treatment', apSerial: target.serial,
         message:
           kind === 'configuration_verified'
             ? `${target.serial}: radio ${action.radioIndexes.join(',')} disabled, confirmed by read-back and off the air.`
@@ -591,9 +591,9 @@ export async function activateOptimization({
   });
 
   await event({
-    experimentId, sourceId: source.id, kind: 'optimization_activated', side: 'north',
+    experimentId, sourceId: source.id, kind: 'optimization_activated', side: 'treatment',
     message:
-      `Energy Optimization applied to ${configuredCount}/${northSerials.length} North AP(s); ` +
+      `Energy Optimization applied to ${configuredCount}/${treatmentSerials.length} Treatment AP(s); ` +
       `${effectiveCount} confirmed off the air so far.`,
     detail: { results, refused, action },
     provenance: triggerSource === 'simulated' ? 'simulated' : 'live',
@@ -605,13 +605,13 @@ export async function activateOptimization({
 /* ----------------------------------------------------------------- restore */
 
 /**
- * Return North to its captured configuration and prove it.
+ * Return Treatment to its captured configuration and prove it.
  *
  * This is the operation that must not lie. Anything unverified is raised as a
  * critical event and reflected in the return value; the experiment is only
  * marked complete when every changed AP is confirmed back.
  */
-export async function restoreNorth({ source, session, experimentId, reason = 'operator_request', now = new Date() }) {
+export async function restoreTreatment({ source, session, experimentId, reason = 'operator_request', now = new Date() }) {
   const experiment = await repo.getExperiment(experimentId);
   if (!experiment) return { ok: false, error: 'Experiment not found.' };
 
@@ -619,7 +619,7 @@ export async function restoreNorth({ source, session, experimentId, reason = 'op
   const outstanding = rollback.filter((r) => r.appliedAt && !r.restoreVerified);
 
   await event({
-    experimentId, sourceId: source.id, kind: 'recovery_requested', side: 'north',
+    experimentId, sourceId: source.id, kind: 'recovery_requested', side: 'treatment',
     message: `Restore requested (${reason}); ${outstanding.length} AP(s) to return.`,
   });
 
@@ -636,9 +636,9 @@ export async function restoreNorth({ source, session, experimentId, reason = 'op
       ended_at: now.toISOString(),
     });
     await event({
-      experimentId, sourceId: source.id, kind: 'restoration_verified', side: 'north',
+      experimentId, sourceId: source.id, kind: 'restoration_verified', side: 'treatment',
       message: reachedTreatment
-        ? 'No outstanding configuration changes; North is already at baseline.'
+        ? 'No outstanding configuration changes; Treatment is already at baseline.'
         : 'Experiment closed before any configuration was changed. Nothing to restore.',
     });
     return { ok: true, restored: [], unverified: [], unhealthy: [], experiment: updated };
@@ -667,7 +667,7 @@ export async function restoreNorth({ source, session, experimentId, reason = 'op
       await repo.recordRestoreResult({ experimentId, serial: row.apSerial, verified: false, error: verdict.detail });
       await event({
         experimentId, sourceId: source.id, kind: 'restoration_blocked', severity: 'critical',
-        side: 'north', apSerial: row.apSerial,
+        side: 'treatment', apSerial: row.apSerial,
         message: `${row.apSerial} could not be restored: ${verdict.detail}`,
         detail: { reason: verdict.reason },
       });
@@ -681,7 +681,7 @@ export async function restoreNorth({ source, session, experimentId, reason = 'op
     if (outcome.verified) {
       restored.push(row.apSerial);
       await event({
-        experimentId, sourceId: source.id, kind: 'configuration_restored', side: 'north', apSerial: row.apSerial,
+        experimentId, sourceId: source.id, kind: 'configuration_restored', side: 'treatment', apSerial: row.apSerial,
         message: `${row.apSerial} restored to its captured configuration and confirmed by read-back.`,
         detail: { intended: outcome.intended },
       });
@@ -689,7 +689,7 @@ export async function restoreNorth({ source, session, experimentId, reason = 'op
       unverified.push({ serial: row.apSerial, error: outcome.error, stage: outcome.stage });
       await event({
         experimentId, sourceId: source.id, kind: 'restoration_failed', severity: 'critical',
-        side: 'north', apSerial: row.apSerial,
+        side: 'treatment', apSerial: row.apSerial,
         message: `${row.apSerial} was NOT confirmed back at baseline: ${outcome.error}`,
         detail: { mismatches: outcome.mismatches, stage: outcome.stage },
       });
@@ -706,7 +706,7 @@ export async function restoreNorth({ source, session, experimentId, reason = 'op
       unhealthy.push({ serial, status: live.status });
       await event({
         experimentId, sourceId: source.id, kind: 'ap_unhealthy_after_restore',
-        severity: 'critical', side: 'north', apSerial: serial,
+        severity: 'critical', side: 'treatment', apSerial: serial,
         message: `${serial}: configuration restored and confirmed, but the AP reports '${live.status}'. It has not returned to service.`,
         detail: { status: live.status, pwrUsage: live.pwrUsage ?? null },
       });
@@ -726,13 +726,13 @@ export async function restoreNorth({ source, session, experimentId, reason = 'op
     experimentId, sourceId: source.id,
     kind: allBack ? 'restoration_verified' : 'restoration_incomplete',
     severity: allBack ? 'info' : 'critical',
-    side: 'north',
+    side: 'treatment',
     message: allBack
-      ? `North restored: ${restored.length} AP(s) confirmed back at baseline.` +
+      ? `Treatment restored: ${restored.length} AP(s) confirmed back at baseline.` +
         (unhealthy.length > 0
           ? ` ${unhealthy.length} AP(s) are NOT back in service and need attention.`
           : '')
-      : `North restoration INCOMPLETE: ${unverified.length} AP(s) unconfirmed. Manual intervention required.`,
+      : `Treatment restoration INCOMPLETE: ${unverified.length} AP(s) unconfirmed. Manual intervention required.`,
     detail: { restored, unverified, unhealthy },
   });
 
@@ -746,15 +746,15 @@ export async function recover({ source, session, experimentId, reason, provenanc
 
   await repo.updateExperiment(experimentId, { state: 'recovering', recovery_start: now.toISOString() });
   await event({
-    experimentId, sourceId: source.id, kind: 'light_restored', side: 'north',
+    experimentId, sourceId: source.id, kind: 'light_restored', side: 'treatment',
     message: reason === 'light_restored'
-      ? `Light restored across ${detail.satisfiedCount ?? '?'}/${detail.reportingCount ?? '?'} reporting North sensors.`
+      ? `Light restored across ${detail.satisfiedCount ?? '?'}/${detail.reportingCount ?? '?'} reporting Treatment sensors.`
       : `Recovery triggered (${reason}).`,
     detail,
     provenance,
   });
 
-  const result = await restoreNorth({ source, session, experimentId, reason, now });
+  const result = await restoreTreatment({ source, session, experimentId, reason, now });
   await finalize({ source, experimentId, now });
   return { ...result, action: 'recovered' };
 }
@@ -767,7 +767,7 @@ export async function recover({ source, session, experimentId, reason, provenanc
  * a completed experiment recomputes to the same numbers from the same rows.
  */
 export async function summarize({ source, experiment, now = new Date() }) {
-  const siteIds = [experiment.north_site_id, experiment.south_site_id];
+  const siteIds = [experiment.treatment_site_id, experiment.control_site_id];
   const treatmentStart = experiment.treatment_start;
   const treatmentEnd = experiment.treatment_end ?? now.toISOString();
 
@@ -786,19 +786,19 @@ export async function summarize({ source, experiment, now = new Date() }) {
   const rows = await repo.fetchSiteEnergy({
     sourceId: source.id, siteIds, start: treatmentStart, end: treatmentEnd,
   });
-  const northTreatment = summarizeSide(rows.filter((r) => r.siteId === experiment.north_site_id));
-  const southTreatment = summarizeSide(rows.filter((r) => r.siteId === experiment.south_site_id));
+  const treatmentCurrent = summarizeSide(rows.filter((r) => r.siteId === experiment.treatment_site_id));
+  const controlCurrent = summarizeSide(rows.filter((r) => r.siteId === experiment.control_site_id));
 
   const elapsedSeconds = Math.max(0, (new Date(treatmentEnd) - new Date(treatmentStart)) / 1000);
   const quality = assessQuality({
-    north: northTreatment, south: southTreatment, windowSeconds: elapsedSeconds,
+    treatment: treatmentCurrent, control: controlCurrent, windowSeconds: elapsedSeconds,
   });
 
   const attribution = attribute({
-    northBaseline: baseline.north,
-    northTreatment,
-    southBaseline: baseline.south,
-    southTreatment,
+    treatmentBaseline: baseline.treatment,
+    treatmentCurrent,
+    controlBaseline: baseline.control,
+    controlCurrent,
   });
 
   const prefs = (await getRatePreferences(source.id)) ?? {
@@ -834,7 +834,7 @@ export async function summarize({ source, experiment, now = new Date() }) {
     claimSupported: quality.savingsClaimSupported,
   };
 
-  const treatment = { north: northTreatment, south: southTreatment, start: treatmentStart, end: treatmentEnd };
+  const treatment = { treatment: treatmentCurrent, control: controlCurrent, start: treatmentStart, end: treatmentEnd };
   return { baseline, treatment, savings, quality, state: experiment.state };
 }
 

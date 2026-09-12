@@ -1,5 +1,5 @@
 /**
- * SQL for the North-vs-South energy experiment.
+ * SQL for the Treatment-vs-Control energy experiment.
  *
  * Postgres is the system of record. Every question the UI asks — what happened,
  * when, how much was saved, which APs were touched, what still needs restoring —
@@ -27,10 +27,10 @@ export async function getConfig(sourceId) {
 
 export async function upsertConfig({
   sourceId,
-  northSiteId,
-  northSiteName,
-  southSiteId,
-  southSiteName,
+  treatmentSiteId,
+  treatmentSiteName,
+  controlSiteId,
+  controlSiteName,
   darknessThresholdRaw = 3,
   darknessPersistenceSeconds = 120,
   recoveryThresholdRaw = 6,
@@ -40,15 +40,15 @@ export async function upsertConfig({
 }) {
   const { rows } = await query(
     `INSERT INTO energy_experiment_config
-       (monitored_source_id, north_site_id, north_site_name, south_site_id, south_site_name,
+       (monitored_source_id, treatment_site_id, treatment_site_name, control_site_id, control_site_name,
         darkness_threshold_raw, darkness_persistence_seconds,
         recovery_threshold_raw, recovery_persistence_seconds, action, enabled, updated_at)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11, now())
      ON CONFLICT (monitored_source_id) DO UPDATE SET
-       north_site_id = EXCLUDED.north_site_id,
-       north_site_name = EXCLUDED.north_site_name,
-       south_site_id = EXCLUDED.south_site_id,
-       south_site_name = EXCLUDED.south_site_name,
+       treatment_site_id = EXCLUDED.treatment_site_id,
+       treatment_site_name = EXCLUDED.treatment_site_name,
+       control_site_id = EXCLUDED.control_site_id,
+       control_site_name = EXCLUDED.control_site_name,
        darkness_threshold_raw = EXCLUDED.darkness_threshold_raw,
        darkness_persistence_seconds = EXCLUDED.darkness_persistence_seconds,
        recovery_threshold_raw = EXCLUDED.recovery_threshold_raw,
@@ -58,7 +58,7 @@ export async function upsertConfig({
        updated_at = now()
      RETURNING *`,
     [
-      sourceId, northSiteId ?? null, northSiteName ?? null, southSiteId ?? null, southSiteName ?? null,
+      sourceId, treatmentSiteId ?? null, treatmentSiteName ?? null, controlSiteId ?? null, controlSiteName ?? null,
       darknessThresholdRaw, darknessPersistenceSeconds, recoveryThresholdRaw, recoveryPersistenceSeconds,
       JSON.stringify(action ?? {}), !!enabled,
     ]
@@ -106,23 +106,23 @@ export async function listExperiments(sourceId, limit = 20) {
  * experiment would have an incomplete safety boundary.
  */
 export async function createExperiment({
-  sourceId, name, north, south, northDevices, southDevices, action, startedBy, baselineStart,
+  sourceId, name, treatment, control, treatmentDevices, controlDevices, action, startedBy, baselineStart,
 }) {
   return withTransaction(async (client) => {
     const { rows } = await client.query(
       `INSERT INTO energy_experiments
-         (monitored_source_id, name, state, north_site_id, north_site_name,
-          south_site_id, south_site_name, baseline_start, action, started_by)
+         (monitored_source_id, name, state, treatment_site_id, treatment_site_name,
+          control_site_id, control_site_name, baseline_start, action, started_by)
        VALUES ($1,$2,'collecting_baseline',$3,$4,$5,$6,$7,$8::jsonb,$9)
        RETURNING *`,
       [
-        sourceId, name, north.siteId, north.siteName, south.siteId, south.siteName,
+        sourceId, name, treatment.siteId, treatment.siteName, control.siteId, control.siteName,
         baselineStart ?? new Date().toISOString(), JSON.stringify(action ?? {}), startedBy ?? null,
       ]
     );
     const experiment = rows[0];
 
-    for (const [side, devices] of [['north', northDevices], ['south', southDevices]]) {
+    for (const [side, devices] of [['treatment', treatmentDevices], ['control', controlDevices]]) {
       for (const d of devices) {
         await client.query(
           `INSERT INTO energy_experiment_devices
@@ -131,8 +131,8 @@ export async function createExperiment({
            ON CONFLICT (experiment_id, ap_serial) DO NOTHING`,
           [
             experiment.id, side, d.serial, d.apName ?? null, d.model ?? null,
-            side === 'north' ? north.siteId : south.siteId,
-            d.siteName ?? (side === 'north' ? north.siteName : south.siteName),
+            side === 'treatment' ? treatment.siteId : control.siteId,
+            d.siteName ?? (side === 'treatment' ? treatment.siteName : control.siteName),
             d.status ?? null,
           ]
         );
@@ -311,7 +311,7 @@ export async function listEvents(experimentId, limit = 500) {
  * Integrated per-site energy over a window, using the gap-weighted method.
  *
  * Returns per-site totals AND per-AP detail, because a site total alone cannot
- * answer "did North look better only because it has fewer APs?".
+ * answer "did Treatment look better only because it has fewer APs?".
  */
 export async function fetchSiteEnergy({ sourceId, siteIds, start, end, maxGapSeconds = 900 }) {
   const { rows } = await query(

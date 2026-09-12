@@ -1,5 +1,5 @@
 /**
- * Types for the North-vs-South energy experiment API (`/api/energy/experiment/*`).
+ * Types for the Treatment-vs-Control energy experiment API (`/api/energy/experiment/*`).
  *
  * The backend owns every calculation; these types describe what it returns.
  * Nothing here is computed in the browser — in particular `savings`, which is
@@ -16,7 +16,7 @@ export type ExperimentState =
   | 'complete'
   | 'error';
 
-export type ExperimentSide = 'north' | 'south';
+export type ExperimentSide = 'treatment' | 'control';
 export type TriggerSource = 'pending' | 'live_sensor' | 'simulated' | 'manual';
 export type EventProvenance = 'live' | 'simulated' | 'calculated';
 
@@ -38,8 +38,8 @@ export interface ExperimentSummaryRow {
   id: string;
   name: string;
   state: ExperimentState;
-  north: ExperimentSiteRef;
-  south: ExperimentSiteRef;
+  treatment: ExperimentSiteRef;
+  control: ExperimentSiteRef;
   baselineStart: string | null;
   baselineEnd: string | null;
   treatmentStart: string | null;
@@ -116,14 +116,14 @@ export interface BaselineWindow {
 
 export interface ExperimentBaseline {
   window: BaselineWindow;
-  north: SideSummary;
-  south: SideSummary;
+  treatment: SideSummary;
+  control: SideSummary;
   computedAt: string;
   provenance: 'measured';
 }
 
 export interface ExperimentSavings {
-  withinNorth: { deltaWattsPerAp: number | null; percent: number | null };
+  withinTreatment: { deltaWattsPerAp: number | null; percent: number | null };
   crossSite: { deltaWattsPerAp: number | null; percent: number | null };
   attributed: {
     deltaWattsPerAp: number | null;
@@ -154,8 +154,8 @@ export interface ExperimentSavings {
 
 export interface ExperimentQuality {
   rating: 'good' | 'fair' | 'insufficient';
-  north: { apCountEnrolled: number; apCountReporting: number; coveragePercent: number | null; missingAps: number };
-  south: { apCountEnrolled: number; apCountReporting: number; coveragePercent: number | null; missingAps: number };
+  treatment: { apCountEnrolled: number; apCountReporting: number; coveragePercent: number | null; missingAps: number };
+  control: { apCountEnrolled: number; apCountReporting: number; coveragePercent: number | null; missingAps: number };
   savingsClaimSupported: boolean;
   windowSeconds: number;
 }
@@ -184,7 +184,7 @@ export interface ExperimentStateResponse {
   events?: ExperimentEvent[];
   rollback?: ExperimentRollbackRow[];
   baseline?: ExperimentBaseline;
-  treatment?: { north: SideSummary; south: SideSummary; start: string; end: string } | null;
+  treatment?: { treatment: SideSummary; control: SideSummary; start: string; end: string } | null;
   savings?: ExperimentSavings | null;
   quality?: ExperimentQuality | null;
   demoOverride: DemoOverrideState;
@@ -204,8 +204,8 @@ export interface ExperimentSeriesResponse {
   start: string;
   end: string;
   bucketSeconds: number;
-  north: ExperimentSiteRef;
-  south: ExperimentSiteRef;
+  treatment: ExperimentSiteRef;
+  control: ExperimentSiteRef;
   points: ExperimentSeriesPoint[];
   annotations: Array<{ at: string; kind: string; message: string; provenance: EventProvenance }>;
 }
@@ -247,24 +247,24 @@ export interface ReadinessResponse {
 export interface DiscoveryResponse {
   sites: Array<{ siteId: string; siteName: string | null; timezone: string | null }>;
   pair: {
-    north: { siteId: string; siteName: string | null } | null;
-    south: { siteId: string; siteName: string | null } | null;
+    treatment: { siteId: string; siteName: string | null } | null;
+    control: { siteId: string; siteName: string | null } | null;
     proposed: boolean;
   };
   membership: {
-    north: Array<{ serial: string; apName: string | null; model: string | null; status: string | null; watts: number | null }>;
-    south: Array<{ serial: string; apName: string | null; model: string | null; status: string | null; watts: number | null }>;
+    treatment: Array<{ serial: string; apName: string | null; model: string | null; status: string | null; watts: number | null }>;
+    control: Array<{ serial: string; apName: string | null; model: string | null; status: string | null; watts: number | null }>;
   };
   anomalies: string[];
-  configured: { northSiteId: string | null; southSiteId: string | null } | null;
+  configured: { treatmentSiteId: string | null; controlSiteId: string | null } | null;
 }
 
 export interface ExperimentConfig {
   monitored_source_id: string;
-  north_site_id: string | null;
-  north_site_name: string | null;
-  south_site_id: string | null;
-  south_site_name: string | null;
+  treatment_site_id: string | null;
+  treatment_site_name: string | null;
+  control_site_id: string | null;
+  control_site_name: string | null;
   darkness_threshold_raw: number;
   darkness_persistence_seconds: number;
   recovery_threshold_raw: number;

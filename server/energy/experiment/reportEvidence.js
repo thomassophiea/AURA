@@ -1,5 +1,5 @@
 /**
- * Bridge from a completed North-vs-South experiment to the environmental report.
+ * Bridge from a completed Treatment-vs-Control experiment to the environmental report.
  *
  * Kept out of environmentalReport.js so that module stays pure and testable
  * without a database, and out of the engine so report generation cannot alter
@@ -28,7 +28,7 @@ export async function loadExperimentEvidence({ sourceId, siteId = null }) {
       e.treatment_start &&
       // A site-scoped report only cites an experiment whose treatment site it
       // is actually about.
-      (!siteId || e.north_site_id === siteId || e.south_site_id === siteId)
+      (!siteId || e.treatment_site_id === siteId || e.control_site_id === siteId)
   );
   if (!candidate) return null;
 
@@ -41,8 +41,8 @@ export async function loadExperimentEvidence({ sourceId, siteId = null }) {
     experiment: {
       id: candidate.id,
       name: candidate.name,
-      north: { siteId: candidate.north_site_id, siteName: candidate.north_site_name },
-      south: { siteId: candidate.south_site_id, siteName: candidate.south_site_name },
+      treatment: { siteId: candidate.treatment_site_id, siteName: candidate.treatment_site_name },
+      control: { siteId: candidate.control_site_id, siteName: candidate.control_site_name },
       treatmentStart: candidate.treatment_start,
       treatmentEnd: candidate.treatment_end,
       triggerSource: candidate.trigger_source,
@@ -50,7 +50,7 @@ export async function loadExperimentEvidence({ sourceId, siteId = null }) {
     },
     savings: summary.savings,
     quality: summary.quality,
-    baselineKwh: summary.baseline?.north?.kwh ?? null,
-    northApCount: devices.filter((d) => d.side === 'north').length,
+    baselineKwh: summary.baseline?.treatment?.kwh ?? null,
+    treatmentApCount: devices.filter((d) => d.side === 'treatment').length,
   };
 }

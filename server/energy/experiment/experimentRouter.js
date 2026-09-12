@@ -1,5 +1,5 @@
 /**
- * /api/energy/experiment/* — the North-vs-South POC API.
+ * /api/energy/experiment/* — the Treatment-vs-Control POC API.
  *
  * Reads are open to any caller who can authenticate against the controller
  * (same contract as the rest of the Energy API). Writes — start, activate,
@@ -92,7 +92,7 @@ export function createExperimentRouter(options = {}) {
       const session = await sessionFor(source);
       const found = await discover({
         session,
-        configuredPair: { northSiteId: config?.north_site_id, southSiteId: config?.south_site_id },
+        configuredPair: { treatmentSiteId: config?.treatment_site_id, controlSiteId: config?.control_site_id },
       });
       if (!found.ok) return fail(res, 502, found.error);
       res.json({
@@ -101,7 +101,7 @@ export function createExperimentRouter(options = {}) {
         membership: found.membership,
         anomalies: found.anomalies,
         configured: config
-          ? { northSiteId: config.north_site_id, southSiteId: config.south_site_id }
+          ? { treatmentSiteId: config.treatment_site_id, controlSiteId: config.control_site_id }
           : null,
       });
     })
@@ -125,11 +125,11 @@ export function createExperimentRouter(options = {}) {
   router.put(`${BASE}/config`, requireOperator, jsonBody, (req, res) =>
     withSource(req, res, async (source) => {
       const body = req.body ?? {};
-      if (body.northSiteId && body.southSiteId && body.northSiteId === body.southSiteId) {
-        return fail(res, 400, 'North and South must be different sites.', { errorClass: 'validation' });
+      if (body.treatmentSiteId && body.controlSiteId && body.treatmentSiteId === body.controlSiteId) {
+        return fail(res, 400, 'Treatment and Control must be different sites.', { errorClass: 'validation' });
       }
       const saved = await repo.upsertConfig({ sourceId: source.id, ...body });
-      record(req, 'energy.experiment.config', { northSiteId: saved.north_site_id, southSiteId: saved.south_site_id });
+      record(req, 'energy.experiment.config', { treatmentSiteId: saved.treatment_site_id, controlSiteId: saved.control_site_id });
       res.json(saved);
     })
   );
@@ -166,8 +166,8 @@ export function createExperimentRouter(options = {}) {
           id: experiment.id,
           name: experiment.name,
           state: experiment.state,
-          north: { siteId: experiment.north_site_id, siteName: experiment.north_site_name },
-          south: { siteId: experiment.south_site_id, siteName: experiment.south_site_name },
+          treatment: { siteId: experiment.treatment_site_id, siteName: experiment.treatment_site_name },
+          control: { siteId: experiment.control_site_id, siteName: experiment.control_site_name },
           baselineStart: experiment.baseline_start,
           baselineEnd: experiment.baseline_end,
           treatmentStart: experiment.treatment_start,
@@ -208,9 +208,9 @@ export function createExperimentRouter(options = {}) {
         : (await repo.getActiveExperiment(source.id)) ?? (await repo.listExperiments(source.id, 1))[0];
 
       const config = await repo.getConfig(source.id);
-      const northSiteId = experiment?.north_site_id ?? config?.north_site_id;
-      const southSiteId = experiment?.south_site_id ?? config?.south_site_id;
-      if (!northSiteId || !southSiteId) return fail(res, 400, 'No site pair is configured.');
+      const treatmentSiteId = experiment?.treatment_site_id ?? config?.treatment_site_id;
+      const controlSiteId = experiment?.control_site_id ?? config?.control_site_id;
+      if (!treatmentSiteId || !controlSiteId) return fail(res, 400, 'No site pair is configured.');
 
       const now = nowFn();
       const RANGES = {
@@ -236,7 +236,7 @@ export function createExperimentRouter(options = {}) {
 
       const rows = await repo.fetchSiteSeries({
         sourceId: source.id,
-        siteIds: [northSiteId, southSiteId],
+        siteIds: [treatmentSiteId, controlSiteId],
         start,
         end,
         bucketSeconds: bucket,
@@ -256,8 +256,8 @@ export function createExperimentRouter(options = {}) {
         start,
         end,
         bucketSeconds: bucket,
-        north: { siteId: northSiteId, siteName: experiment?.north_site_name ?? config?.north_site_name ?? null },
-        south: { siteId: southSiteId, siteName: experiment?.south_site_name ?? config?.south_site_name ?? null },
+        treatment: { siteId: treatmentSiteId, siteName: experiment?.treatment_site_name ?? config?.treatment_site_name ?? null },
+        control: { siteId: controlSiteId, siteName: experiment?.control_site_name ?? config?.control_site_name ?? null },
         points: rows,
         annotations,
       });
@@ -275,7 +275,7 @@ export function createExperimentRouter(options = {}) {
         repo.listRollback(experiment.id),
         repo.fetchApCurrentState({
           sourceId: source.id,
-          siteIds: [experiment.north_site_id, experiment.south_site_id],
+          siteIds: [experiment.treatment_site_id, experiment.control_site_id],
         }),
       ]);
       const rollbackBySerial = new Map(rollback.map((r) => [r.apSerial, r]));
@@ -312,7 +312,7 @@ export function createExperimentRouter(options = {}) {
             clients: live.clients ?? null,
             radios: (live.radios ?? []).sort((a, b) => Number(a.radioIndex) - Number(b.radioIndex)),
             energyState:
-              d.side === 'south'
+              d.side === 'control'
                 ? 'control'
                 : rb?.appliedAt && !rb?.restoreVerified
                   // applyError is set by the effectiveness sweep when the config
@@ -397,7 +397,7 @@ export function createExperimentRouter(options = {}) {
         (await repo.listExperiments(source.id, 1))[0]?.id;
       if (!experimentId) return fail(res, 404, 'No experiment to restore.');
       const session = await sessionFor(source);
-      const result = await engine.restoreNorth({
+      const result = await engine.restoreTreatment({
         source, session, experimentId, reason: req.body?.reason ?? 'operator_request', now: nowFn(),
       });
       record(req, 'energy.experiment.restore', {
@@ -421,7 +421,7 @@ export function createExperimentRouter(options = {}) {
       const session = await sessionFor(source);
       const results = [];
       for (const experimentId of byExperiment) {
-        results.push(await engine.restoreNorth({
+        results.push(await engine.restoreTreatment({
           source, session, experimentId, reason: 'emergency_restore_all', now: nowFn(),
         }));
       }
@@ -474,7 +474,7 @@ export function createExperimentRouter(options = {}) {
       const experiment = await repo.getActiveExperiment(source.id);
       if (!experiment) return fail(res, 409, 'Start an experiment before using the demo override.');
       const devices = await repo.listDevices(experiment.id);
-      const northSerials = devices.filter((d) => d.side === 'north').map((d) => d.apSerial);
+      const treatmentSerials = devices.filter((d) => d.side === 'treatment').map((d) => d.apSerial);
 
       if (mode === 'sensor_failure') {
         setOverride(source.id, {
@@ -482,8 +482,8 @@ export function createExperimentRouter(options = {}) {
         });
         await repo.insertEvent({
           experimentId: experiment.id, sourceId: source.id, kind: 'simulation_activated',
-          severity: 'warning', side: 'north',
-          message: 'Simulated sensor failure: the North sensor feed is being withheld. No trigger will fire.',
+          severity: 'warning', side: 'treatment',
+          message: 'Simulated sensor failure: the Treatment sensor feed is being withheld. No trigger will fire.',
           provenance: 'simulated',
         });
         return res.json({ demoOverride: describeOverride(source.id) });
@@ -497,7 +497,7 @@ export function createExperimentRouter(options = {}) {
       const state = mode === 'lights_off' ? 'dark' : 'light';
 
       async function emit() {
-        for (const serial of northSerials) {
+        for (const serial of treatmentSerials) {
           await ingestLightReport({
             sourceId: source.id, serial, state, data: raw, sampleSource: 'simulated',
           }).catch(() => undefined);
@@ -522,15 +522,15 @@ export function createExperimentRouter(options = {}) {
 
       await repo.insertEvent({
         experimentId: experiment.id, sourceId: source.id, kind: 'simulated_light_event',
-        severity: 'warning', side: 'north',
-        message: `Simulated ${mode === 'lights_off' ? 'lights off' : 'lights on'} at North (raw ${raw}) across ${northSerials.length} AP(s).`,
-        detail: { raw, state, serials: northSerials },
+        severity: 'warning', side: 'treatment',
+        message: `Simulated ${mode === 'lights_off' ? 'lights off' : 'lights on'} at Treatment (raw ${raw}) across ${treatmentSerials.length} AP(s).`,
+        detail: { raw, state, serials: treatmentSerials },
         provenance: 'simulated',
       });
 
       res.json({
         demoOverride: describeOverride(source.id),
-        emitted: northSerials.length,
+        emitted: treatmentSerials.length,
         raw,
         persistenceSeconds:
           mode === 'lights_off'
@@ -569,7 +569,7 @@ export function createExperimentRouter(options = {}) {
         .slice(0, 8);
 
       const observedWattsPerAp = summary.savings?.attributed?.deltaWattsPerAp ?? null;
-      const baselineWattsPerAp = summary.baseline?.north?.wattsPerAp ?? null;
+      const baselineWattsPerAp = summary.baseline?.treatment?.wattsPerAp ?? null;
 
       const projections = [];
       for (const apCount of apCounts) {
@@ -593,7 +593,7 @@ export function createExperimentRouter(options = {}) {
           wattsPerAp: observedWattsPerAp,
           baselineWattsPerAp,
           percent: summary.savings?.attributed?.percent ?? null,
-          apCount: summary.treatment?.north?.apCount ?? 0,
+          apCount: summary.treatment?.treatment?.apCount ?? 0,
           method: summary.savings?.attributed?.method ?? null,
           provenance: summary.savings?.provenance ?? null,
           claimSupported: summary.savings?.claimSupported ?? false,
@@ -614,9 +614,9 @@ export function createExperimentRouter(options = {}) {
       if (!experiment) return res.json({ active: false });
       const config = await repo.getConfig(source.id);
       const devices = await repo.listDevices(experiment.id);
-      const northSerials = devices.filter((d) => d.side === 'north').map((d) => d.apSerial);
+      const treatmentSerials = devices.filter((d) => d.side === 'treatment').map((d) => d.apSerial);
       const samples = await fetchRecentLightSamples({
-        sourceId: source.id, serials: northSerials, sinceSeconds: 1800,
+        sourceId: source.id, serials: treatmentSerials, sinceSeconds: 1800,
         sampleSource: evaluationSampleSource(source.id),
       });
       const now = nowFn();
@@ -624,12 +624,12 @@ export function createExperimentRouter(options = {}) {
         active: true,
         state: experiment.state,
         darkness: evaluateSide({
-          samplesByAp: samples, serials: northSerials, mode: 'dark', now,
+          samplesByAp: samples, serials: treatmentSerials, mode: 'dark', now,
           threshold: config?.darkness_threshold_raw ?? 3,
           persistenceSeconds: config?.darkness_persistence_seconds ?? 120,
         }),
         light: evaluateSide({
-          samplesByAp: samples, serials: northSerials, mode: 'light', now,
+          samplesByAp: samples, serials: treatmentSerials, mode: 'light', now,
           threshold: config?.recovery_threshold_raw ?? 6,
           persistenceSeconds: config?.recovery_persistence_seconds ?? 60,
         }),

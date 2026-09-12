@@ -1,11 +1,12 @@
 /**
- * Discover the North/South site pair and its AP membership from the live
+ * Discover the treatment/control site pair and its AP membership from the live
  * controller.
  *
- * Nothing here is hardcoded to a site id. Ids change when a site is rebuilt,
- * and the lab pair (EAL-PT-N / EAL-PT-S) is not guaranteed to be the pair a
- * given customer wants. The rule is: an explicit configured pair wins; failing
- * that, a name heuristic proposes one; failing that, the caller is told to pick.
+ * ANY site may be paired against ANY other site. Nothing here is hardcoded to a
+ * site id or to a naming convention: ids change when a site is rebuilt, and the
+ * lab pair (EAL-PT-N / EAL-PT-S) is one configuration among many. The rule is:
+ * an explicit configured pair wins; failing that, a name heuristic proposes
+ * one; failing that, the caller is told to pick.
  *
  * Verified controller endpoints (XCC 10.20.1.0-020R):
  *   GET /v3/sites       → [{ id, siteName, timezone, deviceGroups:[{apSerialNumbers}] }]
@@ -17,8 +18,16 @@
  * re-check it without another lookup.
  */
 
-const NORTH_PATTERNS = [/(^|[^a-z])north([^a-z]|$)/i, /-n$/i, /_n$/i];
-const SOUTH_PATTERNS = [/(^|[^a-z])south([^a-z]|$)/i, /-s$/i, /_s$/i];
+/**
+ * Naming conventions that PROPOSE a pair when none is configured.
+ *
+ * This is a convenience for the common lab layout (a `-N` / `-S` tower pair,
+ * or sites literally named north/south), never a rule. Any site can be the
+ * treatment and any other site the control — the configured pair always wins,
+ * and an ambiguous or absent match proposes nothing rather than guessing.
+ */
+const TREATMENT_NAME_PATTERNS = [/(^|[^a-z])north([^a-z]|$)/i, /-n$/i, /_n$/i];
+const CONTROL_NAME_PATTERNS = [/(^|[^a-z])south([^a-z]|$)/i, /-s$/i, /_s$/i];
 
 function matchesAny(name, patterns) {
   return typeof name === 'string' && patterns.some((p) => p.test(name.trim()));
@@ -106,28 +115,28 @@ export function bandForRadio(radio) {
 }
 
 /**
- * Propose a North/South pair from site names.
+ * Propose a treatment/control pair from site names.
  * Returns `null` for a side with no unambiguous match rather than guessing —
  * a wrong pair points the treatment at the wrong hardware.
  */
 export function proposePair(sites) {
-  const norths = sites.filter((s) => matchesAny(s.siteName, NORTH_PATTERNS));
-  const souths = sites.filter((s) => matchesAny(s.siteName, SOUTH_PATTERNS));
+  const treatmentMatches = sites.filter((s) => matchesAny(s.siteName, TREATMENT_NAME_PATTERNS));
+  const controlMatches = sites.filter((s) => matchesAny(s.siteName, CONTROL_NAME_PATTERNS));
   return {
-    north: norths.length === 1 ? norths[0] : null,
-    south: souths.length === 1 ? souths[0] : null,
-    northCandidates: norths,
-    southCandidates: souths,
+    treatment: treatmentMatches.length === 1 ? treatmentMatches[0] : null,
+    control: controlMatches.length === 1 ? controlMatches[0] : null,
+    treatmentCandidates: treatmentMatches,
+    controlCandidates: controlMatches,
   };
 }
 
 /**
  * Full discovery pass.
  *
- * @param {{ session: { get: Function }, configuredPair?: {northSiteId?:string, southSiteId?:string} }} args
+ * @param {{ session: { get: Function }, configuredPair?: {treatmentSiteId?:string, controlSiteId?:string} }} args
  * @returns {Promise<{ ok: boolean, error?: string, sites: object[], aps: object[],
- *                     pair: {north: object|null, south: object|null, proposed: boolean},
- *                     membership: {north: object[], south: object[]},
+ *                     pair: {treatment: object|null, control: object|null, proposed: boolean},
+ *                     membership: {treatment: object[], control: object[]},
  *                     anomalies: string[] }>}
  */
 export async function discover({ session, configuredPair = {} }) {
@@ -146,13 +155,13 @@ export async function discover({ session, configuredPair = {} }) {
   const sites = rows(siteResp.data, ['sites']).map(normalizeSite).filter((s) => s.siteId);
   const aps = rows(apResp.data, ['aps', 'accessPoints']).map(normalizeAp).filter((a) => a.serial);
 
-  const northConfigured = Boolean(configuredPair.northSiteId);
-  const southConfigured = Boolean(configuredPair.southSiteId);
-  let north = northConfigured
-    ? sites.find((s) => s.siteId === configuredPair.northSiteId) ?? null
+  const treatmentConfigured = Boolean(configuredPair.treatmentSiteId);
+  const controlConfigured = Boolean(configuredPair.controlSiteId);
+  let treatment = treatmentConfigured
+    ? sites.find((s) => s.siteId === configuredPair.treatmentSiteId) ?? null
     : null;
-  let south = southConfigured
-    ? sites.find((s) => s.siteId === configuredPair.southSiteId) ?? null
+  let control = controlConfigured
+    ? sites.find((s) => s.siteId === configuredPair.controlSiteId) ?? null
     : null;
   let proposed = false;
 
@@ -161,31 +170,31 @@ export async function discover({ session, configuredPair = {} }) {
   // silently re-point the treatment at a different site, which is the worst
   // outcome this module can produce.
   const suggestion = proposePair(sites);
-  if (!north && !northConfigured) {
-    north = suggestion.north;
+  if (!treatment && !treatmentConfigured) {
+    treatment = suggestion.treatment;
     proposed = true;
   }
-  if (!south && !southConfigured) {
-    south = suggestion.south;
+  if (!control && !controlConfigured) {
+    control = suggestion.control;
     proposed = true;
   }
 
   const membershipFor = (site) =>
     site ? aps.filter((a) => a.siteName && a.siteName === site.siteName) : [];
 
-  const membership = { north: membershipFor(north), south: membershipFor(south) };
+  const membership = { treatment: membershipFor(treatment), control: membershipFor(control) };
   const anomalies = [];
 
   // A configured site id that no longer resolves is the single most dangerous
   // discovery outcome: it silently produces an empty treatment group.
-  if (configuredPair.northSiteId && !north) {
-    anomalies.push(`Configured North site ${configuredPair.northSiteId} no longer exists on this controller.`);
+  if (configuredPair.treatmentSiteId && !treatment) {
+    anomalies.push(`Configured Treatment site ${configuredPair.treatmentSiteId} no longer exists on this controller.`);
   }
-  if (configuredPair.southSiteId && !south) {
-    anomalies.push(`Configured South site ${configuredPair.southSiteId} no longer exists on this controller.`);
+  if (configuredPair.controlSiteId && !control) {
+    anomalies.push(`Configured Control site ${configuredPair.controlSiteId} no longer exists on this controller.`);
   }
 
-  for (const [side, site] of [['North', north], ['South', south]]) {
+  for (const [side, site] of [['Treatment', treatment], ['Control', control]]) {
     if (!site) continue;
     const members = membershipFor(site);
     if (members.length === 0) {
@@ -213,15 +222,15 @@ export async function discover({ session, configuredPair = {} }) {
     }
   }
 
-  if (north && south) {
-    const diff = Math.abs(membership.north.length - membership.south.length);
+  if (treatment && control) {
+    const diff = Math.abs(membership.treatment.length - membership.control.length);
     if (diff > 0) {
       anomalies.push(
-        `North has ${membership.north.length} AP(s) and South has ${membership.south.length}; ` +
+        `Treatment has ${membership.treatment.length} AP(s) and Control has ${membership.control.length}; ` +
           'comparisons must be normalized per AP.'
       );
     }
   }
 
-  return { ok: true, sites, aps, pair: { north, south, proposed }, membership, anomalies };
+  return { ok: true, sites, aps, pair: { treatment, control, proposed }, membership, anomalies };
 }

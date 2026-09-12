@@ -20,7 +20,7 @@ import { EnergyScenarioBuilder } from './EnergyScenarioBuilder';
 import { EnergyRecommendations } from './EnergyRecommendations';
 import { EnergyPreferencesPanel } from './EnergyPreferencesPanel';
 import { EnvironmentalReportCard } from './EnvironmentalReportCard';
-import { NorthSouthExperiment } from './NorthSouthExperiment';
+import { EnergyExperimentPanel } from './EnergyExperimentPanel';
 
 export function EnergyOptimization() {
   const { filters, updateFilter } = useGlobalFilters();
@@ -118,10 +118,10 @@ export function EnergyOptimization() {
 
       <EnergyOverviewCards overview={overview.data} loading={overview.loading} />
 
-      {/* The North-vs-South controlled experiment leads the page: it is the one
+      {/* The Treatment-vs-Control controlled experiment leads the page: it is the one
           view that answers "what did Aura actually save", with a control group
           behind it. Fleet rollups continue below it. */}
-      <NorthSouthExperiment />
+      <EnergyExperimentPanel />
 
       {noData ? <EnergyEmptyState reason="no-data" /> : null}
 

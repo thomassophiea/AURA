@@ -1,5 +1,5 @@
 /**
- * Polling state for the North-vs-South energy experiment.
+ * Polling state for the Treatment-vs-Control energy experiment.
  *
  * Everything rendered comes from the server on each poll, so a browser reload,
  * a different browser, or a laptop that was closed for three days all show the

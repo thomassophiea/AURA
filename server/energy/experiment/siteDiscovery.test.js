@@ -8,8 +8,8 @@ const SITES = [
 ];
 
 const APS = [
-  { serialNumber: 'N1', apName: 'north-1', platformName: 'AP5020', hardwareType: 'AP5020-WW', hostSite: 'EAL-PT-N', status: 'InService', pwrUsage: 14.1, radios: [{ radioIndex: 3, channelFreq: 6035, txPower: 12, clients: 0 }] },
-  { serialNumber: 'S1', apName: 'south-1', platformName: 'AP5022', hardwareType: 'AP5022-WW', hostSite: 'EAL-PT-S', status: 'InService', pwrUsage: 15.0, radios: [] },
+  { serialNumber: 'N1', apName: 'treatment-1', platformName: 'AP5020', hardwareType: 'AP5020-WW', hostSite: 'EAL-PT-N', status: 'InService', pwrUsage: 14.1, radios: [{ radioIndex: 3, channelFreq: 6035, txPower: 12, clients: 0 }] },
+  { serialNumber: 'S1', apName: 'control-1', platformName: 'AP5022', hardwareType: 'AP5022-WW', hostSite: 'EAL-PT-S', status: 'InService', pwrUsage: 15.0, radios: [] },
   { serialNumber: 'P1', platformName: 'AP5020', hostSite: 'PrimarySite', status: 'InService', pwrUsage: 14.3, radios: [] },
 ];
 
@@ -63,19 +63,27 @@ describe('normalizeSite / normalizeAp', () => {
 });
 
 describe('proposePair', () => {
-  it('proposes an unambiguous north/south pair from site names', () => {
+  it('proposes an unambiguous treatment/control pair from site names', () => {
     const p = proposePair(SITES.map(normalizeSite));
-    expect(p.north.siteName).toBe('EAL-PT-N');
-    expect(p.south.siteName).toBe('EAL-PT-S');
+    expect(p.treatment.siteName).toBe('EAL-PT-N');
+    expect(p.control.siteName).toBe('EAL-PT-S');
   });
 
   it('proposes nothing when the match is ambiguous rather than guessing', () => {
     const p = proposePair([
       { siteName: 'North Campus' }, { siteName: 'North Annex' }, { siteName: 'South Wing' },
     ]);
-    expect(p.north).toBeNull();
-    expect(p.northCandidates).toHaveLength(2);
-    expect(p.south.siteName).toBe('South Wing');
+    expect(p.treatment).toBeNull();
+    expect(p.treatmentCandidates).toHaveLength(2);
+    expect(p.control.siteName).toBe('South Wing');
+  });
+
+  it('proposes nothing at all for sites that follow no naming convention', () => {
+    // Any site can be paired with any other; the operator picks. A heuristic
+    // that guessed here would point the treatment at arbitrary hardware.
+    const p = proposePair([{ siteName: 'Warehouse' }, { siteName: 'Head Office' }]);
+    expect(p.treatment).toBeNull();
+    expect(p.control).toBeNull();
   });
 });
 
@@ -83,23 +91,36 @@ describe('discover', () => {
   it('resolves membership from the AP inventory, keyed on site name', async () => {
     const found = await discover({ session: session() });
     expect(found.ok).toBe(true);
-    expect(found.membership.north.map((a) => a.serial)).toEqual(['N1']);
-    expect(found.membership.south.map((a) => a.serial)).toEqual(['S1']);
+    expect(found.membership.treatment.map((a) => a.serial)).toEqual(['N1']);
+    expect(found.membership.control.map((a) => a.serial)).toEqual(['S1']);
   });
 
   it('honours a configured pair over the name heuristic', async () => {
+    // PrimarySite matches neither convention, which is exactly the point:
+    // any site may be the treatment.
     const found = await discover({
       session: session(),
-      configuredPair: { northSiteId: 'p-id', southSiteId: 's-id' },
+      configuredPair: { treatmentSiteId: 'p-id', controlSiteId: 's-id' },
     });
-    expect(found.pair.north.siteName).toBe('PrimarySite');
-    expect(found.membership.north.map((a) => a.serial)).toEqual(['P1']);
+    expect(found.pair.treatment.siteName).toBe('PrimarySite');
+    expect(found.membership.treatment.map((a) => a.serial)).toEqual(['P1']);
+  });
+
+  it('pairs two arbitrary sites in either direction', async () => {
+    const found = await discover({
+      session: session(),
+      configuredPair: { treatmentSiteId: 's-id', controlSiteId: 'p-id' },
+    });
+    expect(found.pair.treatment.siteName).toBe('EAL-PT-S');
+    expect(found.pair.control.siteName).toBe('PrimarySite');
+    expect(found.membership.treatment.map((a) => a.serial)).toEqual(['S1']);
+    expect(found.membership.control.map((a) => a.serial)).toEqual(['P1']);
   });
 
   it('raises an anomaly when a configured site no longer exists', async () => {
     const found = await discover({
       session: session(),
-      configuredPair: { northSiteId: 'deleted-id', southSiteId: 's-id' },
+      configuredPair: { treatmentSiteId: 'deleted-id', controlSiteId: 's-id' },
     });
     expect(found.anomalies.join(' ')).toMatch(/no longer exists/);
   });
@@ -108,7 +129,7 @@ describe('discover', () => {
     const found = await discover({
       session: session({ aps: APS.filter((a) => a.serialNumber !== 'N1') }),
     });
-    expect(found.membership.north).toHaveLength(0);
+    expect(found.membership.treatment).toHaveLength(0);
     expect(found.anomalies.join(' ')).toMatch(/has no access points/);
   });
 

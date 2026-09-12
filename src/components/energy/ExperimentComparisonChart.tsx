@@ -35,7 +35,7 @@ function formatTick(iso: string, bucketSeconds: number): string {
 }
 
 /**
- * North vs South, watts per AP.
+ * Treatment vs Control, watts per AP.
  *
  * Per AP rather than site total on purpose: the two sites rarely have the same
  * number of APs, and a site total would show a gap that has nothing to do with
@@ -46,13 +46,13 @@ export function ExperimentComparisonChart({ series, loading }: Props) {
   const { data, annotations } = useMemo(() => {
     if (!series) return { data: [], annotations: [] };
 
-    const byBucket = new Map<string, { t: string; north: number | null; south: number | null }>();
+    const byBucket = new Map<string, { t: string; treatment: number | null; control: number | null }>();
     for (const point of series.points) {
       const key = new Date(point.bucketStart).toISOString();
-      if (!byBucket.has(key)) byBucket.set(key, { t: key, north: null, south: null });
+      if (!byBucket.has(key)) byBucket.set(key, { t: key, treatment: null, control: null });
       const row = byBucket.get(key)!;
-      if (point.siteId === series.north.siteId) row.north = point.wattsPerAp;
-      else if (point.siteId === series.south.siteId) row.south = point.wattsPerAp;
+      if (point.siteId === series.treatment.siteId) row.treatment = point.wattsPerAp;
+      else if (point.siteId === series.control.siteId) row.control = point.wattsPerAp;
     }
 
     return {
@@ -125,8 +125,8 @@ export function ExperimentComparisonChart({ series, loading }: Props) {
           ))}
           <Line
             type="monotone"
-            dataKey="north"
-            name={`${series?.north.siteName ?? 'North'} (treatment)`}
+            dataKey="treatment"
+            name={`${series?.treatment.siteName ?? 'Treatment'} (treatment)`}
             stroke="var(--status-success)"
             strokeWidth={2}
             dot={false}
@@ -135,8 +135,8 @@ export function ExperimentComparisonChart({ series, loading }: Props) {
           />
           <Line
             type="monotone"
-            dataKey="south"
-            name={`${series?.south.siteName ?? 'South'} (control)`}
+            dataKey="control"
+            name={`${series?.control.siteName ?? 'Control'} (control)`}
             stroke="var(--muted-foreground)"
             strokeWidth={2}
             strokeDasharray="5 4"

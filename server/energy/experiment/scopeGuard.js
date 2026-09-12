@@ -1,6 +1,6 @@
 /**
  * The safety boundary for every configuration-changing operation in the Energy
- * North-vs-South experiment.
+ * Treatment-vs-Control experiment.
  *
  * This module is pure and has no I/O on purpose: the decision to touch a piece
  * of customer hardware must be reviewable and testable in isolation, and it
@@ -8,7 +8,7 @@
  *
  * The rule it enforces: an experiment may only write to an AP that is, at this
  * instant, on the treatment side of its own device allowlist AND still a member
- * of the North site on the live controller. A UI-supplied site name is never
+ * of the Treatment site on the live controller. A UI-supplied site name is never
  * evidence — the live AP record is.
  */
 
@@ -91,7 +91,7 @@ export function assertTargetAllowed({
       `${serial} is not enrolled in this experiment.`
     );
   }
-  if (device.side !== 'north') {
+  if (device.side !== 'treatment') {
     return deny(
       REFUSAL.WRONG_SIDE,
       `${serial} is the control side (${device.side}); the control must never be modified.`
@@ -120,10 +120,10 @@ export function assertTargetAllowed({
       `${serial} reports no site membership; scope cannot be confirmed.`
     );
   }
-  if (experiment.north_site_name && liveSiteName !== experiment.north_site_name) {
+  if (experiment.treatment_site_name && liveSiteName !== experiment.treatment_site_name) {
     return deny(
       REFUSAL.SITE_MOVED,
-      `${serial} is in '${liveSiteName}', which is not the experiment's North site '${experiment.north_site_name}'.`
+      `${serial} is in '${liveSiteName}', which is not the experiment's Treatment site '${experiment.treatment_site_name}'.`
     );
   }
 

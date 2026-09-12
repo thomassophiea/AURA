@@ -36,8 +36,12 @@ export function ExperimentApTable({ aps }: Props) {
     return <p className="text-sm text-muted-foreground">No access points are enrolled.</p>;
   }
 
-  const north = aps.filter((a) => a.side === 'north');
-  const south = aps.filter((a) => a.side === 'south');
+  const treatment = aps.filter((a) => a.side === 'treatment');
+  const control = aps.filter((a) => a.side === 'control');
+  // Head the sections with the real site names — "treatment" and "control" are
+  // roles, not places, and the operator is looking for a site.
+  const treatmentLabel = `${treatment[0]?.siteName ?? 'Treatment'} — treatment`;
+  const controlLabel = `${control[0]?.siteName ?? 'Control'} — control`;
 
   const section = (label: string, rows: ExperimentApRow[], caption: string) => (
     <div key={label}>
@@ -115,8 +119,8 @@ export function ExperimentApTable({ aps }: Props) {
 
   return (
     <div className="space-y-5">
-      {section('North — treatment', north, `${north.length} AP`)}
-      {section('South — control', south, `${south.length} AP, unchanged`)}
+      {section(treatmentLabel, treatment, `${treatment.length} AP · energy action applied`)}
+      {section(controlLabel, control, `${control.length} AP · unchanged`)}
     </div>
   );
 }
