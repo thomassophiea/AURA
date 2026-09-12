@@ -55,7 +55,7 @@ function headline(savings: ExperimentSavings | null | undefined, treatmentName: 
   if (!savings.claimSupported) {
     return 'Collecting — not enough measured data yet to state a difference.';
   }
-  const p = savings.attributed.percent;
+  const p = savings.attributed?.percent ?? null;
   if (p == null) return 'No defensible difference can be attributed yet.';
   if (p <= 0) return `${treatmentName} is not currently using less energy than the control site predicts.`;
   return `${treatmentName} is using ${p.toFixed(1)}% less energy than the control site predicts.`;
@@ -86,7 +86,7 @@ export function EnergyExperimentPanel({ showControls = false }: Props) {
   const quality = state?.quality ?? null;
   const treatmentName = experiment?.treatment.siteName ?? 'Treatment';
   const controlName = experiment?.control.siteName ?? 'Control';
-  const symbol = savings?.currency.symbol ?? '$';
+  const symbol = savings?.currency?.symbol ?? '$';
 
   const simulatedResult = savings?.provenance === 'simulated';
 
@@ -161,14 +161,14 @@ export function EnergyExperimentPanel({ showControls = false }: Props) {
           <p className="text-lg font-semibold text-foreground">{headline(savings, treatmentName)}</p>
           {savings ? (
             <p className="mt-1 text-xs text-muted-foreground">
-              {PROVENANCE_LABEL[savings.provenance]} · {savings.attributed.method} ·{' '}
-              {baseline?.window.label ?? 'no baseline'}
+              {PROVENANCE_LABEL[savings.provenance]} · {savings.attributed?.method ?? 'method unavailable'} ·{' '}
+              {baseline?.window?.label ?? 'no baseline'}
               {quality ? ` · data quality: ${quality.rating}` : ''}
             </p>
           ) : null}
-          {savings && !savings.attributed.usable ? (
+          {savings && savings.attributed && !savings.attributed.usable ? (
             <p className="mt-1 text-xs text-[color:var(--status-warning)]">
-              {savings.comparability.note}
+              {savings.comparability?.note}
             </p>
           ) : null}
         </div>
@@ -187,12 +187,12 @@ export function EnergyExperimentPanel({ showControls = false }: Props) {
               <div>
                 <dt className="text-xs text-muted-foreground">Current / AP</dt>
                 <dd className="font-mono tabular-nums">
-                  {w(treatment?.treatment.wattsPerAp ?? latest.treatment)}
+                  {w(treatment?.treatment?.wattsPerAp ?? latest.treatment)}
                 </dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">Baseline / AP</dt>
-                <dd className="font-mono tabular-nums">{w(baseline?.treatment.wattsPerAp)}</dd>
+                <dd className="font-mono tabular-nums">{w(baseline?.treatment?.wattsPerAp)}</dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">APs optimized</dt>
@@ -213,12 +213,12 @@ export function EnergyExperimentPanel({ showControls = false }: Props) {
               <div>
                 <dt className="text-xs text-muted-foreground">Current / AP</dt>
                 <dd className="font-mono tabular-nums">
-                  {w(treatment?.control.wattsPerAp ?? latest.control)}
+                  {w(treatment?.control?.wattsPerAp ?? latest.control)}
                 </dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">Baseline / AP</dt>
-                <dd className="font-mono tabular-nums">{w(baseline?.control.wattsPerAp)}</dd>
+                <dd className="font-mono tabular-nums">{w(baseline?.control?.wattsPerAp)}</dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">APs normal</dt>
@@ -245,8 +245,8 @@ export function EnergyExperimentPanel({ showControls = false }: Props) {
             />
             <MetricCard
               title="Reduction"
-              value={pct(savings.attributed.percent)}
-              subtitle={`${w(savings.attributed.siteWatts)} across ${treatmentName}`}
+              value={pct(savings.attributed?.percent)}
+              subtitle={`${w(savings.attributed?.siteWatts)} across ${treatmentName}`}
               tone="healthy"
               toneValue
             />
@@ -257,7 +257,7 @@ export function EnergyExperimentPanel({ showControls = false }: Props) {
                   ? '—'
                   : `${savings.projected.annualKwh.toFixed(0)} kWh`
               }
-              subtitle={`${money(symbol, savings.projected.annualCost)} at ${symbol}${savings.currency.ratePerKwh}/kWh`}
+              subtitle={`${money(symbol, savings.projected.annualCost)} at ${symbol}${savings.currency?.ratePerKwh ?? ''}/kWh`}
             />
             <MetricCard
               title="Projected CO₂e"
