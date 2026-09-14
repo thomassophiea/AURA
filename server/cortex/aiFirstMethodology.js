@@ -24,11 +24,15 @@
  * something, that is stated as a boundary rather than softened — a leaf the API
  * cannot reach must be said out loud, not guessed.
  *
- * TOKEN COST: this block is ~900 tokens and is resent every turn. On Claude it
- * sits inside the cached prefix, so after the first turn it bills at roughly a
- * tenth of input rate. The previous prompt was aggressively compressed because
- * Groq's free tier is 8,000 TPM; prompt caching changes that arithmetic, and the
- * evidence rules are the product, so they are not the place to economise.
+ * TOKEN COST: the assembled block is 6,183 characters — on the order of 1,600
+ * tokens, measured by character count rather than a tokenizer, so treat it as an
+ * estimate and not a reading. It is resent every turn. On Claude it sits inside
+ * the cached prefix and bills at roughly a tenth of input rate after the first
+ * turn; on a small-context provider it is a real cost, which is why the
+ * situational half lives behind `retrieveGuidance()` instead of in here. The
+ * previous prompt was compressed hard because Groq's free tier is 8,000 TPM;
+ * prompt caching changes that arithmetic, and the evidence rules are the
+ * product, so they are not the place to economise.
  */
 
 /**

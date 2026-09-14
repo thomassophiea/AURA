@@ -33,6 +33,7 @@ import { GatewayEvidence } from './server/cortex/gatewayEvidence.js';
 import { CapabilityRegistry, getCapabilitiesFor } from './server/cortex/capabilityRegistry.js';
 import { createDiagnosticTools, TOOL_ACTIVITY } from './server/cortex/diagnosticTools.js';
 import { runInvestigation, auditAnswer } from './server/cortex/investigationAgent.js';
+import { selectModel } from './server/cortex/modelPolicy.js';
 import { sessionFromRequest } from './server/cortex/requestScopedSession.js';
 import { requireRole } from './server/identity/identityRouter.js';
 import { audit } from './server/identity/identityStore.js';
@@ -2542,7 +2543,20 @@ app.post(
  * its own authorisation story.
  */
 app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, async (req, res) => {
-  const { question, scope = {}, history = [], model: requestedModel } = req.body ?? {};
+  const {
+    question,
+    scope = {},
+    history = [],
+    model: requestedModel,
+    // Adversarial review of a diagnosis already on screen. Client-supplied, but
+    // it only ever raises rigour and cost — never authority — so it is safe to
+    // take from the request. It cannot reach a write path.
+    redQueen = false,
+    // Set by the UI when this turn continues an investigation rather than
+    // starting one, so "go deeper" can escalate on earned evidence (a prior
+    // pass that burned its budget) rather than on wording alone.
+    priorIterations = 0,
+  } = req.body ?? {};
 
   const send = (event, data) => {
     if (res.writableEnded) return;
@@ -2562,6 +2576,9 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
 
   let llmProvider;
   let model;
+  let chosenEffort;
+  let modelPolicyReason;
+  let escalatedTier = null;
   try {
     // Same rule as /investigate: a picker preference must not fail the request.
     let usableModel = null;
@@ -2580,6 +2597,41 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
       const fallback = createLlmProvider({});
       llmProvider = fallback.provider;
       model = process.env.CORTEX_LLM_MODEL ?? fallback.defaultModel;
+    }
+
+    // ── Tier + depth ────────────────────────────────────────────────────────
+    // Deterministic, server-side, and never delegated to the model: an LLM that
+    // can decide it deserves a bigger budget is a cost incident waiting to
+    // happen.
+    //
+    // Tier escalation only applies on Anthropic, because it is the only
+    // provider here with a published Sonnet/Opus split to escalate BETWEEN. On
+    // every other provider the chosen effort still rides along and is ignored,
+    // and the configured model is left exactly as the operator set it.
+    const policy = selectModel({
+      question,
+      intent: redQueen ? 'TROUBLESHOOTING' : 'TROUBLESHOOTING',
+      redQueen,
+      continuing: Number(priorIterations) > 0,
+      priorIterations: Number(priorIterations) || 0,
+      requestedModel: usableModel,
+    });
+    chosenEffort = policy.effort;
+    modelPolicyReason = policy.reason;
+
+    const isAnthropic = String(model).startsWith('claude-');
+    if (!usableModel && isAnthropic && policy.model !== model) {
+      try {
+        const routed = createLlmProviderForModel(policy.model, []);
+        llmProvider = routed.provider;
+        model = routed.model;
+        escalatedTier = policy.tier;
+      } catch (err) {
+        // An escalation that cannot be resolved is not a reason to fail the
+        // question — answer on the model we already have and say nothing was
+        // escalated.
+        console.warn(`[Cortex] tier escalation to ${policy.model} failed: ${err.message}`);
+      }
     }
   } catch (err) {
     // No provider configured is a setup problem, not a network verdict.
@@ -2631,6 +2683,8 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
       history: Array.isArray(history) ? history.slice(-12) : [],
       question,
       scope,
+      redQueen,
+      effort: chosenEffort,
       activityLabels: TOOL_ACTIVITY,
       onActivity: (label, meta) => {
         if (!aborted) send('activity', { label, tool: meta.tool });
@@ -2659,6 +2713,15 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
       // The model that actually answered, which may not be the one requested.
       model: result.model ?? model,
       modelFallbacks: result.modelFallbacks ?? [],
+      // Depth and spend, so the operator can see what a "go deeper" actually
+      // cost rather than discovering it on a bill. `estimatedCostUsd` is null
+      // when no model in the run has a published rate — "not priced", never
+      // "free".
+      effort: chosenEffort ?? null,
+      modelPolicyReason: modelPolicyReason ?? null,
+      escalatedTier,
+      redQueen: Boolean(redQueen),
+      cost: result.cost ?? null,
     });
 
     audit('cortex.investigate', {
@@ -2671,7 +2734,16 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
         toolCalls: result.usage.toolCalls,
         iterations: result.iterations,
         stoppedBecause: result.stoppedBecause,
-        model,
+        model: result.model ?? model,
+        effort: chosenEffort ?? null,
+        escalatedTier,
+        redQueen: Boolean(redQueen),
+        // Spend per investigation, so cost can be aggregated by day, workflow
+        // and model from the audit log without a second telemetry system.
+        promptTokens: result.cost?.promptTokens ?? 0,
+        completionTokens: result.cost?.completionTokens ?? 0,
+        cacheReadTokens: result.cost?.cacheReadTokens ?? 0,
+        estimatedCostUsd: result.cost?.estimatedCostUsd ?? null,
         // Record the audit verdict too: a claim the evidence did not support
         // is worth being able to find again after the fact.
         auditFindings: auditAnswer(result.answer, result.ledger).length,
