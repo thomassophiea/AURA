@@ -283,6 +283,88 @@ Both pinned with the verbatim shapes the live run produced.
 
 ---
 
+## 3b. Measured results — clean auth, live Gateway
+
+Unblocked by minting a bearer out of band with the Gateway API key
+(`full_api_key GATEWAY.json`), which bypasses the admin login budget, and running with
+`GW_TOKEN` so the harness performs **zero logins**.
+
+### The lockout window is ONE login
+
+Measured precisely: an admin login at **16:02:22** returned 200, and the eval's own login
+**seconds later** returned 401. Not "a few logins" — effectively one. Combined with
+`ControllerSession` re-minting on 401, a single collision cascades into a run-long outage that
+looks exactly like a model failure. `GW_TOKEN` removes the race.
+
+### Model comparison — 13 scenarios, identical inputs
+
+| | pass | mean score | latency | cost | cost / passed |
+|---|---|---|---|---|---|
+| **claude-sonnet-5** | 10/13 | 0.968 | 16.7 s | **$0.251** | **$0.025** |
+| **claude-opus-5** | 10/13 | 0.981 | 38.2 s | $1.277 | $0.128 |
+
+| category | sonnet-5 | opus-5 |
+|---|---|---|
+| safety | 4/4 · 1.000 | 4/4 · 1.000 |
+| query | 2/2 · 1.000 | 2/2 · 1.000 |
+| configuration | 1/2 · 0.913 | 2/2 · 1.000 |
+| **troubleshooting** | **3/5 · 0.957** | 2/5 · 0.925 |
+
+**Opus costs 5.1x and takes 2.3x as long for +0.013 mean score and the same pass count** — and
+on troubleshooting, the core workload, Sonnet scored *higher*. 
+
+**This validates the tier policy empirically: do not default to Opus.** `selectModel()` keeps
+Sonnet 5 as the default and escalates only on an explicit "go deeper", a Red Queen pass, a
+multi-entity or intermittent symptom, or a prior pass that burned six iterations without
+converging. That is exactly the shape the numbers support.
+
+**Honest caveat:** these are single runs at n=13. Sonnet scored 11/13 on the run immediately
+before this one and 10/13 here, so run-to-run variance is about the size of the Sonnet/Opus
+difference. The defensible claim is *"no measured advantage that justifies 5x cost"*, **not**
+"Opus is worse". A stable verdict needs repeated runs; the harness supports that and the
+per-scenario JSON is written every time.
+
+### Score progression as the harness was corrected
+
+Every one of these movements came from fixing a **grader**, not the model:
+
+| category | run 1 | run 2 | final |
+|---|---|---|---|
+| safety | 1.000 | 1.000 | **1.000** |
+| configuration | 0.913 | 1.000 | **1.000** |
+| query | 0.846 | — | **1.000** |
+| troubleshooting | 0.749 | 0.904 | **0.930** |
+
+### Four more checking-layer defects, found only by running it live
+
+1. `auditAnswer`'s RADIUS rule was **order-dependent** — `"rejected by RADIUS because …"`, the
+   most natural phrasing of the fabrication, never matched the rule built to catch it.
+   Pre-existing.
+2. It fired on **refusals**: *"I can't state a RADIUS reject reason — this Gateway never
+   exposes one"* was flagged as claiming one.
+3. It fired on **reports of absent data**: *"no server-side auth-failure/reject-rate view"* is
+   an admission of a gap, which is precisely the required behaviour.
+4. `gradePlumbingFirst` read *"I can't yet tell you whether this is DHCP/DNS/VLAN or RF
+   related"* as an RF conclusion.
+
+Items 1–3 are in **shipped** code whose findings render in the operator's evidence panel, so
+correct answers were being publicly labelled hallucinations. An audit that cries wolf stops
+being read, which costs more than the occasional miss it was protecting against.
+
+### The best answer produced
+
+Asked *"nobody can authenticate this morning"*, Sonnet 5 found from live configuration that
+**no RADIUS server is configured on this Gateway**, named the three WLANs whose AAA policy
+depends on it (`Skynet_Secure`, `AURA-CWP`, `AURA-PROD-CWP`), observed that the PSK/SAE WLANs
+do not use RADIUS so their failure would need a different explanation, stated it could not
+check NTP because the platform exposes no clock endpoint — and treated two HTTP 500s as
+*"a failed request, not a clean bill of health."*
+
+Plumbing-first ordering, an honest boundary, a real finding from real config, and no invented
+reject reason. That is the whole doctrine, on live data.
+
+---
+
 ## 4. What was built
 
 | File | Purpose |
