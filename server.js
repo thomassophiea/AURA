@@ -2610,7 +2610,9 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
     // and the configured model is left exactly as the operator set it.
     const policy = selectModel({
       question,
-      intent: redQueen ? 'TROUBLESHOOTING' : 'TROUBLESHOOTING',
+      // /investigate is the diagnosis surface: configuration intent is served
+      // by the deterministic /wireless/* routes, which never reach this code.
+      intent: 'TROUBLESHOOTING',
       redQueen,
       continuing: Number(priorIterations) > 0,
       priorIterations: Number(priorIterations) || 0,
