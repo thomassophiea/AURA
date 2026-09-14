@@ -193,18 +193,29 @@ export async function investigateWithCortex(
     history = [],
     model,
     signal,
+    redQueen = false,
+    priorIterations = 0,
     ...handlers
   }: CortexInvestigationHandlers & {
     scope?: Record<string, string | undefined>;
     history?: Array<{ role: string; content: string }>;
     model?: string;
     signal?: AbortSignal;
+    /** Adversarial review of the diagnosis already on screen. */
+    redQueen?: boolean;
+    /**
+     * How many iterations the PREVIOUS investigation in this conversation
+     * burned. The server escalates to the deep tier when a prior pass used most
+     * of its budget without converging — evidence that the question is hard,
+     * rather than the operator merely saying so.
+     */
+    priorIterations?: number;
   } = {}
 ): Promise<void> {
   const resp = await fetch('/api/cortex/investigate', {
     method: 'POST',
     headers: buildHeaders(),
-    body: JSON.stringify({ question, scope, history, model }),
+    body: JSON.stringify({ question, scope, history, model, redQueen, priorIterations }),
     signal,
   });
 

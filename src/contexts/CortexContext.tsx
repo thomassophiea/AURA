@@ -189,6 +189,15 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
   // ---- Session / conversation ----
   const [sessionId, setSessionId] = useState<string | null>(null);
   const sessionIdRef = useRef<string | null>(null);
+  /**
+   * Iterations the last investigation in this conversation used.
+   *
+   * Sent as `priorIterations` so a follow-up can escalate to the deep model on
+   * evidence that the question is genuinely hard — a previous pass that burned
+   * most of its budget — instead of only on the operator saying "go deeper".
+   * Reset when the conversation is cleared.
+   */
+  const lastIterationsRef = useRef<number>(0);
   useEffect(() => {
     sessionIdRef.current = sessionId;
   }, [sessionId]);
@@ -396,6 +405,17 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
           scope,
           history,
           model: getSelectedCortexModel(),
+          // An explicit adversarial review. The server ALSO escalates the model
+          // on "go deeper" wording by itself, but only this flag injects the
+          // Red Queen directive that makes the pass actually challenge the
+          // previous diagnosis rather than restate it at greater length.
+          redQueen: /\bred queen\b|\bchallenge (that|this|your) (diagnosis|conclusion|finding)\b/i.test(
+            message
+          ),
+          // Carried from the previous investigation in this conversation, so
+          // "go deeper" can escalate on earned evidence — a prior pass that
+          // burned its budget — rather than on wording alone.
+          priorIterations: lastIterationsRef.current,
           onActivity: (label) => {
             activity.push(label);
             setWirelessStage('fetching');
@@ -406,6 +426,9 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
           },
           onEvidence: (e) => {
             evidence = e;
+            // Feeds the NEXT turn's escalation decision.
+            const n = Number((e as { iterations?: number } | undefined)?.iterations);
+            if (Number.isFinite(n)) lastIterationsRef.current = n;
           },
           onError: (msg) => {
             hardError = msg;
@@ -573,6 +596,10 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
     setMessages([]);
     setSessionId(null);
     sessionIdRef.current = null;
+    // A new conversation has no prior pass, so it must not inherit the previous
+    // one's iteration count — that would escalate the first question of a fresh
+    // conversation to the expensive tier for no reason.
+    lastIterationsRef.current = 0;
     setConversationId(`conv-${Date.now()}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId]);
