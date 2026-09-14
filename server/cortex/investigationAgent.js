@@ -26,6 +26,42 @@
  */
 
 import { untrusted, toolSpecs as buildToolSpecs } from './diagnosticTools.js';
+import { buildMethodologyBlock, buildGuidanceBlock } from './aiFirstMethodology.js';
+import { UsageAccumulator } from './modelPolicy.js';
+
+/**
+ * The adversarial pass.
+ *
+ * Red Queen is internal methodology, not a user-facing brand — the product is
+ * Aura Cortex either way. Its whole value is that it must be able to CHANGE the
+ * answer. A pass that restates the first diagnosis at greater length has failed,
+ * and is worse than not running it, because length reads as rigour.
+ *
+ * The discipline is borrowed from how a good engineer reviews their own work:
+ * name what would have to be true for you to be wrong, then go and look at
+ * exactly that.
+ */
+export const RED_QUEEN_DIRECTIVE = `RED QUEEN — ADVERSARIAL REVIEW. You are re-examining a diagnosis that has already
+been made, and your job is to try to break it, not to restate it.
+
+Work through these in order:
+1. State the current primary hypothesis in one line.
+2. Name every alternative that fits the SAME evidence. Be specific to this case,
+   not generic: stale telemetry, a sentinel misread as a measurement, demand
+   mistaken for impairment, an upstream/DNS component misattributed to RF, an
+   authentication retry pattern that mimics a roaming problem, the client having
+   moved after the observation, a cohort too small to support the claim.
+3. For each alternative, name the ONE reading that would tell it apart from the
+   primary. If no available reading distinguishes them, say so — that is a real
+   finding about the limits of the evidence.
+4. Go and collect those discriminating readings where tools can reach them.
+5. Report whether the original diagnosis SURVIVED, was REVISED, or is now
+   UNDETERMINED — and say which specific evidence moved it.
+
+Raising or lowering confidence with a reason is a successful outcome. So is
+"the original diagnosis holds, and here is the evidence that rules out the
+alternatives." Padding is not. If the evidence cannot separate two causes, name
+both and stop — do not pick the more interesting one.`;
 
 
 /**
@@ -140,7 +176,13 @@ export function looksLikeInjection(text) {
  * The system prompt. Deliberately built from the capability registry rather
  * than hardcoded, so the model is told what this specific Gateway can answer.
  */
-export function buildSystemPrompt({ capabilities, scope = {}, toolNames = [] }) {
+export function buildSystemPrompt({
+  capabilities,
+  scope = {},
+  toolNames = [],
+  question = '',
+  redQueen = false,
+}) {
   // Compressed deliberately. Measured: the previous version was 1,661 tokens
   // and is resent on EVERY model turn, so a 4-turn investigation spent ~6,600
   // tokens restating instructions — which alone exceeded a Groq free-tier
@@ -159,12 +201,24 @@ export function buildSystemPrompt({ capabilities, scope = {}, toolNames = [] }) 
     .map(([k, v]) => `${k}=${v}`)
     .join(' ');
 
+  // The AI-First doctrine — the ordering rule, the discriminators, the
+  // sentinels, the boundaries. Vendored in aiFirstMethodology.js because the
+  // skills that own it are not on the deployed box.
+  //
+  // This block is ~900 tokens and is resent every turn. That was previously
+  // unaffordable (Groq's free tier is 8,000 TPM, and the prompt was compressed
+  // hard because of it). On Claude it now sits inside the cached prefix and
+  // bills at roughly a tenth of input rate after the first turn — so the
+  // evidence rules, which are the product, no longer have to be economised.
+  const methodology = buildMethodologyBlock();
+  const guidance = buildGuidanceBlock(question);
+
   return `You are Aura Cortex, the wireless operations assistant in AURA, working on Extreme
 Networks Gateways (OS ONE / Platform ONE). Answer like an experienced wireless engineer:
 concise, specific, never further than the evidence goes.
 
-Say "Gateway", not "controller". Site Group = the Gateway boundary; Sites sit below it.
-
+${methodology}
+${guidance ? `\n${guidance}\n` : ''}${redQueen ? `\n${RED_QUEEN_DIRECTIVE}\n` : ''}
 TOOLS: ${toolNames.join(', ')}
 You have no prior knowledge of this network — every statement about it must come from a
 tool result in this conversation. Work iteratively: call the tool that advances the
@@ -322,6 +376,13 @@ export async function runInvestigation({
    * costs nothing already gathered.
    */
   fallbackModels = [],
+  /** Run the adversarial review instead of a first-pass investigation. */
+  redQueen = false,
+  /**
+   * Reasoning depth, chosen by modelPolicy.selectModel(). Providers that do not
+   * support it ignore it; it is never sent to a model that would 400 on it.
+   */
+  effort,
 }) {
   const lim = { ...DEFAULT_LIMITS, ...limits };
   const startedAt = Date.now();
@@ -331,6 +392,15 @@ export async function runInvestigation({
   const warnings = [];
   const callCounts = new Map();
   const usage = { promptTokens: 0, completionTokens: 0, toolCalls: 0 };
+  /**
+   * Per-model accounting, kept alongside the flat totals above.
+   *
+   * A run that fell back from one model to another has two different price
+   * points in it, and a single total silently averages them into a number that
+   * is true of neither. The flat `usage` fields stay for the existing callers
+   * and tests that read them.
+   */
+  const usageByModel = new UsageAccumulator();
 
   // MUST go through buildToolSpecs(), not `t.spec` directly.
   //
@@ -345,6 +415,8 @@ export async function runInvestigation({
     capabilities,
     scope,
     toolNames: Object.keys(tools),
+    question,
+    redQueen,
   });
 
   // Flag injection attempts in the operator's own message too — a user can
@@ -425,12 +497,16 @@ export async function runInvestigation({
         messages: compactTranscript(messages),
         tools: toolSpecs,
         temperature: 0.2,
-        maxTokens: 1400,
+        // Red Queen has to be able to reach further than the pass it is
+        // reviewing, so it gets more room to answer in.
+        maxTokens: redQueen ? 2400 : 1400,
+        effort,
       });
     }
 
     usage.promptTokens += response?.usage?.prompt_tokens ?? 0;
     usage.completionTokens += response?.usage?.completion_tokens ?? 0;
+    usageByModel.record(activeModel, response?.usage);
 
     const toolCalls = response.toolCalls ?? [];
     if (!toolCalls.length) {
@@ -584,6 +660,11 @@ export async function runInvestigation({
     stoppedBecause,
     warnings,
     usage,
+    // Per-model token split and measured cost. `estimatedCostUsd` is null — not
+    // zero — when no model in the run has a published rate, so an unpriced
+    // provider reads as "not priced" rather than "free".
+    cost: usageByModel.summary(),
+    redQueen,
   };
 }
 

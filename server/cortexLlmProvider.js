@@ -147,6 +147,21 @@ export class OpenAiLlmProvider {
 
     const result = { message: choice.message?.content ?? '', raw: data };
 
+    // Same reason as the Anthropic path: the investigation loop sums these
+    // names, and returning nothing made every OpenAI-compatible provider
+    // (OpenAI, Groq, xAI, Gemini, Mistral, Cerebras, DeepSeek) report zero
+    // tokens for the whole investigation.
+    if (data.usage) {
+      result.usage = {
+        prompt_tokens: data.usage.prompt_tokens ?? 0,
+        completion_tokens: data.usage.completion_tokens ?? 0,
+        cache_read_input_tokens: data.usage.prompt_tokens_details?.cached_tokens ?? 0,
+        cache_creation_input_tokens: 0,
+      };
+    }
+    result.stopReason = choice.finish_reason ?? null;
+    if (choice.finish_reason === 'length') result.truncated = true;
+
     if (choice.message?.tool_calls?.length) {
       result.toolCalls = choice.message.tool_calls.map(tc => {
         // Small models emit malformed argument JSON often enough that an
@@ -247,6 +262,38 @@ function extractSystemPrompt(messages) {
     .join('\n\n');
 }
 
+/**
+ * Effort levels the current Claude generation accepts on `output_config.effort`.
+ * Anything outside this set is dropped rather than sent — an unknown value is a
+ * 400, and a 400 mid-investigation reads to the operator as a network fault.
+ */
+const VALID_EFFORT = new Set(['low', 'medium', 'high', 'xhigh', 'max']);
+
+/**
+ * Models that still accept sampling parameters (temperature/top_p/top_k).
+ *
+ * Sampling was REMOVED from the current Claude generation and returns 400 if
+ * sent: Opus 5, Opus 4.8, Opus 4.7, Sonnet 5 and the Fable/Mythos 5 family all
+ * reject it. This was previously a denylist, which meant every newer model —
+ * including claude-opus-5 — silently got temperature and 400'd on the first
+ * call. An allowlist fails safe: an unrecognised or future model omits
+ * temperature rather than breaking.
+ */
+const ACCEPTS_SAMPLING = [
+  'claude-opus-4-6',
+  'claude-sonnet-4-6',
+  'claude-haiku-4-5',
+  'claude-sonnet-4-5',
+  'claude-3',
+];
+
+/**
+ * `output_config.effort` is only honoured on the current generation. Haiku 4.5
+ * and the 4.6 family error on it, so it is gated the same fail-safe way as
+ * sampling: an unrecognised model gets no effort rather than a 400.
+ */
+const ACCEPTS_EFFORT = ['claude-opus-5', 'claude-sonnet-5', 'claude-opus-4-8', 'claude-opus-4-7'];
+
 export class AnthropicLlmProvider {
   #client;
 
@@ -257,7 +304,14 @@ export class AnthropicLlmProvider {
     this.#client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
   }
 
-  async generateResponse({ model, messages, tools, temperature = 0.3, maxTokens = 1024 }) {
+  /**
+   * @param {object} args
+   * @param {string} [args.effort] - low|medium|high|xhigh|max. The deep-reasoning
+   *   lever: the model router raises this for "go deeper" and Red Queen passes
+   *   instead of only swapping model, because effort is the cheaper half of the
+   *   quality trade.
+   */
+  async generateResponse({ model, messages, tools, temperature = 0.3, maxTokens = 1024, effort }) {
     const systemText = extractSystemPrompt(messages);
     const claudeMessages = toClaudeMessages(messages);
 
@@ -284,30 +338,35 @@ export class AnthropicLlmProvider {
     if (system) params.system = system;
     if (claudeTools) params.tools = claudeTools;
 
-    // Sampling parameters (temperature/top_p/top_k) were REMOVED from the
-    // current Claude generation and return 400 if sent: Opus 5, Opus 4.8,
-    // Opus 4.7, Sonnet 5 and the Fable/Mythos 5 family all reject them.
-    //
-    // This was previously a denylist (`!model.startsWith('claude-opus-4-7')`),
-    // which meant every newer model — including claude-opus-5 — silently got
-    // temperature and 400'd on the first call. An allowlist fails safe: an
-    // unrecognised or future model omits temperature rather than breaking.
-    //
     // Thinking is deliberately not configured: on Opus 5 and Sonnet 5, omitting
     // `thinking` runs adaptive thinking, which is what we want. `budget_tokens`
     // would 400 on those models.
-    const ACCEPTS_SAMPLING = [
-      'claude-opus-4-6',
-      'claude-sonnet-4-6',
-      'claude-haiku-4-5',
-      'claude-sonnet-4-5',
-      'claude-3',
-    ];
     if (ACCEPTS_SAMPLING.some((prefix) => model.startsWith(prefix))) {
       params.temperature = temperature;
     }
 
-    const response = await this.#client.messages.create(params);
+    // Effort is the depth dial. It rides in `output_config`, never top-level.
+    if (effort && VALID_EFFORT.has(effort) && ACCEPTS_EFFORT.some((p) => model.startsWith(p))) {
+      params.output_config = { effort };
+    }
+
+    let response;
+    try {
+      response = await this.#client.messages.create(params);
+    } catch (err) {
+      throw translateAnthropicError(err, model);
+    }
+
+    // `refusal` is a 200 with no usable content. Read stop_reason BEFORE content
+    // or the answer is silently empty and reads to the operator as "Cortex had
+    // nothing to say about my network".
+    if (response.stop_reason === 'refusal') {
+      const category = response.stop_details?.category ?? 'unspecified';
+      throw new Error(
+        `Anthropic declined this request (category: ${category}). This is a safety ` +
+          'decision by the model, not a Gateway or network fault.'
+      );
+    }
 
     let text = '';
     const toolCalls = [];
@@ -325,8 +384,61 @@ export class AnthropicLlmProvider {
 
     const result = { message: text, raw: response };
     if (toolCalls.length) result.toolCalls = toolCalls;
+
+    // USAGE. Reported in the OpenAI-shaped keys the investigation loop already
+    // sums (`usage.prompt_tokens` / `completion_tokens`), because that loop is
+    // provider-neutral and reads those names.
+    //
+    // This was the defect: AnthropicLlmProvider previously returned no `usage`
+    // at all, so `investigationAgent.js` accumulated 0 + 0 on every turn and
+    // every Claude-backed investigation reported zero tokens and zero cost. The
+    // cost telemetry looked healthy precisely because it was measuring nothing.
+    const u = response.usage ?? {};
+    result.usage = {
+      prompt_tokens: u.input_tokens ?? 0,
+      completion_tokens: u.output_tokens ?? 0,
+      // Cache accounting is separate from input_tokens in Claude's usage block:
+      // a cache READ is billed ~0.1x and a cache WRITE ~1.25x, so folding them
+      // into one number would misprice the turn in both directions.
+      cache_read_input_tokens: u.cache_read_input_tokens ?? 0,
+      cache_creation_input_tokens: u.cache_creation_input_tokens ?? 0,
+    };
+    result.stopReason = response.stop_reason ?? null;
+    if (response.stop_reason === 'max_tokens') {
+      result.truncated = true;
+    }
     return result;
   }
+}
+
+/**
+ * Map an SDK exception to an Error whose message the investigation loop's
+ * `shouldTryAnotherModel()` can classify. That function matches on 429 / 404 /
+ * 401 / 403 as text, so the status code has to survive into the message —
+ * a bare `err.message` from the SDK often does not carry it.
+ */
+export function translateAnthropicError(err, model) {
+  const status = err?.status ?? err?.statusCode;
+  const detail = err?.message ?? String(err);
+  if (err instanceof Anthropic.AuthenticationError || status === 401) {
+    return new Error(`Anthropic 401: the API key was rejected. ${detail}`);
+  }
+  if (err instanceof Anthropic.PermissionDeniedError || status === 403) {
+    return new Error(`Anthropic 403: this key is not entitled to ${model}. ${detail}`);
+  }
+  if (err instanceof Anthropic.NotFoundError || status === 404) {
+    return new Error(`Anthropic 404: model ${model} was not found or is retired. ${detail}`);
+  }
+  if (err instanceof Anthropic.RateLimitError || status === 429) {
+    return new Error(`Anthropic 429 rate_limit on ${model}. ${detail}`);
+  }
+  if (status === 400) {
+    return new Error(`Anthropic 400 (bad request) on ${model}: ${detail}`);
+  }
+  if (err instanceof Anthropic.APIConnectionError) {
+    return new Error(`Could not reach the Anthropic API: ${detail}`);
+  }
+  return new Error(`Anthropic error on ${model}${status ? ` (${status})` : ''}: ${detail}`);
 }
 
 

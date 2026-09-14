@@ -392,3 +392,161 @@ describe('sanitizeCortexContext', () => {
     expect(result.visibleRowsSummary.rowCount).toBe(100);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Usage, effort and error translation.
+//
+// The usage tests exist because of a real, silent defect: AnthropicLlmProvider
+// returned no `usage` at all, so investigationAgent.js summed 0 + 0 on every
+// turn and every Claude-backed investigation reported zero tokens and zero
+// cost. Nothing failed — the telemetry simply measured nothing.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('AnthropicLlmProvider usage and effort', () => {
+  let originalFetch;
+  let lastBody;
+  let nextResponse;
+
+  const baseResponse = {
+    id: 'msg_test',
+    type: 'message',
+    role: 'assistant',
+    model: 'claude-opus-5',
+    content: [{ type: 'text', text: 'ok' }],
+    stop_reason: 'end_turn',
+    usage: {
+      input_tokens: 120,
+      output_tokens: 45,
+      cache_read_input_tokens: 900,
+      cache_creation_input_tokens: 30,
+    },
+  };
+
+  beforeEach(() => {
+    originalFetch = globalThis.fetch;
+    lastBody = null;
+    nextResponse = { status: 200, body: baseResponse };
+    globalThis.fetch = async (_url, init) => {
+      lastBody = JSON.parse(init?.body ?? '{}');
+      return new Response(JSON.stringify(nextResponse.body), {
+        status: nextResponse.status,
+        headers: { 'content-type': 'application/json' },
+      });
+    };
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('returns usage in the OpenAI-shaped keys the investigation loop sums', async () => {
+    const p = new AnthropicLlmProvider({ apiKey: 'sk-ant-FAKE' });
+    const r = await p.generateResponse({
+      model: 'claude-opus-5',
+      messages: [{ role: 'user', content: 'hi' }],
+    });
+    expect(r.usage).toEqual({
+      prompt_tokens: 120,
+      completion_tokens: 45,
+      cache_read_input_tokens: 900,
+      cache_creation_input_tokens: 30,
+    });
+  });
+
+  it('reports usage as zeroes rather than undefined when the API omits the block', async () => {
+    nextResponse = { status: 200, body: { ...baseResponse, usage: undefined } };
+    const p = new AnthropicLlmProvider({ apiKey: 'sk-ant-FAKE' });
+    const r = await p.generateResponse({
+      model: 'claude-opus-5',
+      messages: [{ role: 'user', content: 'hi' }],
+    });
+    expect(r.usage.prompt_tokens).toBe(0);
+  });
+
+  it('sends effort inside output_config, not top-level', async () => {
+    const p = new AnthropicLlmProvider({ apiKey: 'sk-ant-FAKE' });
+    await p.generateResponse({
+      model: 'claude-opus-5',
+      messages: [{ role: 'user', content: 'hi' }],
+      effort: 'xhigh',
+    });
+    expect(lastBody.output_config).toEqual({ effort: 'xhigh' });
+    expect(lastBody.effort).toBeUndefined();
+  });
+
+  it('drops an invalid effort value rather than sending a 400', async () => {
+    const p = new AnthropicLlmProvider({ apiKey: 'sk-ant-FAKE' });
+    await p.generateResponse({
+      model: 'claude-opus-5',
+      messages: [{ role: 'user', content: 'hi' }],
+      effort: 'turbo',
+    });
+    expect(lastBody.output_config).toBeUndefined();
+  });
+
+  it('omits effort on a model that does not accept it', async () => {
+    const p = new AnthropicLlmProvider({ apiKey: 'sk-ant-FAKE' });
+    await p.generateResponse({
+      model: 'claude-haiku-4-5',
+      messages: [{ role: 'user', content: 'hi' }],
+      effort: 'high',
+    });
+    expect(lastBody.output_config).toBeUndefined();
+  });
+
+  it('flags truncation when the model hit max_tokens', async () => {
+    nextResponse = { status: 200, body: { ...baseResponse, stop_reason: 'max_tokens' } };
+    const p = new AnthropicLlmProvider({ apiKey: 'sk-ant-FAKE' });
+    const r = await p.generateResponse({
+      model: 'claude-opus-5',
+      messages: [{ role: 'user', content: 'hi' }],
+    });
+    expect(r.truncated).toBe(true);
+    expect(r.stopReason).toBe('max_tokens');
+  });
+
+  it('raises a refusal as a named error instead of returning an empty answer', async () => {
+    // A refusal is HTTP 200 with no usable content. Reading content without
+    // checking stop_reason first yields '' — which reaches the operator as
+    // "Cortex had nothing to say about my network".
+    nextResponse = {
+      status: 200,
+      body: {
+        ...baseResponse,
+        content: [],
+        stop_reason: 'refusal',
+        stop_details: { type: 'refusal', category: 'cyber' },
+      },
+    };
+    const p = new AnthropicLlmProvider({ apiKey: 'sk-ant-FAKE' });
+    await expect(
+      p.generateResponse({ model: 'claude-opus-5', messages: [{ role: 'user', content: 'hi' }] })
+    ).rejects.toThrow(/declined this request.*cyber/i);
+  });
+});
+
+describe('translateAnthropicError', () => {
+  it('keeps the status code in the message so model-fallback can classify it', async () => {
+    const { translateAnthropicError } = await import('./cortexLlmProvider.js');
+    const { shouldTryAnotherModel } = await import('./cortex/investigationAgent.js');
+
+    const rateLimited = translateAnthropicError({ status: 429, message: 'slow down' }, 'claude-opus-5');
+    expect(rateLimited.message).toMatch(/429/);
+    // The loop must be able to see this as worth retrying on another model.
+    expect(shouldTryAnotherModel(rateLimited)).toBe(true);
+
+    const notFound = translateAnthropicError({ status: 404, message: 'gone' }, 'claude-opus-5');
+    expect(shouldTryAnotherModel(notFound)).toBe(true);
+
+    // An auth failure is NOT worth another model — the same key fails identically.
+    const unauthorized = translateAnthropicError({ status: 401, message: 'bad key' }, 'claude-opus-5');
+    expect(unauthorized.message).toMatch(/401/);
+    expect(shouldTryAnotherModel(unauthorized)).toBe(false);
+  });
+
+  it('names the model in the message', async () => {
+    const { translateAnthropicError } = await import('./cortexLlmProvider.js');
+    const e = translateAnthropicError({ status: 403, message: 'no' }, 'claude-opus-5');
+    expect(e.message).toMatch(/claude-opus-5/);
+  });
+});
