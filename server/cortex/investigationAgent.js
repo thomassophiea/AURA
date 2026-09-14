@@ -844,7 +844,47 @@ export function auditAnswer(answer, ledger) {
   // supporting tools succeeded.
   const claims = [
     {
-      re: /\bRADIUS\b[^.]*\b(reject|rejected|denied|refus)/i,
+      // Must be a CLAIM, not a refusal to make one.
+      //
+      // Proven live on the lab Gateway: the model wrote a correct answer that
+      // said "I can't state a RADIUS reject reason — this Gateway never exposes
+      // one", and this rule flagged it as claiming a RADIUS rejection. Because
+      // `requires` is empty the finding is unconditional, and it surfaces in the
+      // operator's evidence panel — so a correct, careful answer was being
+      // publicly marked as a hallucination.
+      //
+      // An audit that cries wolf stops being read, which costs more than the
+      // occasional miss it was protecting against.
+      // Order-independent within one sentence. Both the original rule and my
+      // first correction required RADIUS to appear BEFORE the verb, so the most
+      // natural phrasing of the fabrication — "the client was rejected by
+      // RADIUS because ..." — never matched the check built to catch it.
+      re: /(?=[^.!?]*\bRADIUS\b)(?=[^.!?]*\b(?:reject(?:ed|ion)?|denied|refus\w*)\b)[^.!?]+/i,
+      // Two shapes are NOT claims and must not be flagged:
+      //   1. refusing to state one ("I can't state a RADIUS reject reason")
+      //   2. reporting that the DATA is absent ("no RADIUS server health widget
+      //      is configured, so I have no server-side reject-rate view")
+      // The second fired on a live run. It is an admission of a gap — exactly
+      // the behaviour the doctrine asks for — and flagging it told the operator
+      // a careful answer was a hallucination.
+      //
+      // A sentence asserting an EVENT is the only thing that counts. Nouns like
+      // view / rate / widget / capability are about the availability of
+      // evidence, not about a client being rejected.
+      negate: new RegExp(
+        [
+          // refusal to state
+          String.raw`\b(can'?t|cannot|won'?t|unable to|never|not)\b[^.!?]{0,80}\b(state|say|report|expose|provide|determine|know|confirm)\b`,
+          // absence of the data itself
+          String.raw`\bno\b[^.!?]{0,60}\b(view|visibility|data|insight|record|detail|reason|decision|widget|endpoint|route)\b`,
+          String.raw`\b(not|never)\s+(configured|available|exposed|surfaced|reported|present)\b`,
+          String.raw`\bno per-client RADIUS\b`,
+          String.raw`\bdoes ?n'?t (expose|report|surface)\b`,
+          // discussing the shape of the evidence rather than an event
+          String.raw`\b(reject|denial)[- ]?(rate|count|view|widget|metric|statistic)s?\b`,
+        ].join('|'),
+        'i'
+      ),
       requires: [],
       finding: 'Claims a RADIUS rejection. This Gateway exposes no per-client RADIUS decision.',
     },
@@ -880,6 +920,16 @@ export function auditAnswer(answer, ledger) {
 
   for (const c of claims) {
     if (!c.re.test(answer ?? '')) continue;
+    // Sentence-scoped negation check: a rule with a `negate` pattern only fires
+    // on a sentence that matches the claim AND is not itself a refusal to make
+    // it. Scoped per sentence so a refusal in one place cannot launder a real
+    // fabrication in another.
+    if (c.negate) {
+      const hits = String(answer ?? '')
+        .split(/(?<=[.!?])\s+/)
+        .filter((s) => c.re.test(s) && !c.negate.test(s));
+      if (!hits.length) continue;
+    }
     if (c.requires.length === 0) {
       // Nothing can support this claim — it is unsupportable by construction.
       findings.push({ severity: 'high', detail: c.finding });

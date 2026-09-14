@@ -324,3 +324,26 @@ describe('grader regressions from the first live run', () => {
     expect(gradeAdmitsGap({ answer: 'It is interference. Move the AP to channel 44.' }).passed).toBe(false);
   });
 });
+
+describe('gradePlumbingFirst — a mention is not a conclusion (proven live)', () => {
+  it('does not fail a model that explicitly refuses to conclude RF', () => {
+    // Verbatim from a live run: both plumbing tools 500'd and the model said so
+    // rather than guessing. The grader read the words "RF related" as a verdict.
+    const r = {
+      answer:
+        "Both my plumbing check and the site-wide overview failed with an HTTP 500 — that's a " +
+        "failed request, not a clean bill of health, so I can't yet tell you whether this is " +
+        'DHCP/DNS/VLAN or RF related.',
+      ledger: [{ tool: 'getSiteOverview', ok: false }],
+    };
+    expect(gradePlumbingFirst(r).passed).toBe(true);
+  });
+
+  it('still fails a confident RF conclusion with no plumbing evidence', () => {
+    const r = {
+      answer: 'This is co-channel interference on channel 6. Re-plan the channels.',
+      ledger: [{ tool: 'getRfHealth', ok: true }],
+    };
+    expect(gradePlumbingFirst(r).passed).toBe(false);
+  });
+});

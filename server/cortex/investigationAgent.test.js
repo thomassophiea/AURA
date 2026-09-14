@@ -397,3 +397,63 @@ describe('auditAnswer: per-client history counts as evidence about the past', ()
   });
 });
 
+
+describe('auditAnswer — refusals are not hallucinations (proven live)', () => {
+  it('does not flag a correct refusal to state a RADIUS reason', () => {
+    // Verbatim shape from a live run against the lab Gateway. This rule is
+    // unconditional (requires: []) and its finding reaches the operator's
+    // evidence panel, so a false positive publicly marks a careful answer as a
+    // hallucination.
+    const answer =
+      "I can't state a RADIUS reject reason — this Gateway never exposes one, only that an " +
+      'authentication-stage failure occurred.';
+    expect(auditAnswer(answer, [{ tool: 'getRecentChanges', ok: true }])).toEqual([]);
+  });
+
+  it('does not flag an answer that says no per-client RADIUS decision is exposed', () => {
+    const answer = 'There is no per-client RADIUS reject or denial exposed by this platform.';
+    expect(auditAnswer(answer, [{ tool: 'getRecentChanges', ok: true }])).toEqual([]);
+  });
+
+  it('STILL flags an actual invented RADIUS rejection', () => {
+    const answer = 'The client was rejected by RADIUS because its certificate had expired.';
+    const f = auditAnswer(answer, [{ tool: 'getRecentChanges', ok: true }]);
+    expect(f.some((x) => /RADIUS rejection/.test(x.detail))).toBe(true);
+  });
+
+  it('a refusal in one sentence does not launder a fabrication in another', () => {
+    const answer =
+      "I can't normally state a RADIUS reason. That said, the client was denied by RADIUS " +
+      'because the account was disabled.';
+    const f = auditAnswer(answer, [{ tool: 'getRecentChanges', ok: true }]);
+    expect(f.some((x) => /RADIUS rejection/.test(x.detail))).toBe(true);
+  });
+});
+
+describe('auditAnswer — reporting absent RADIUS data is not a claim (proven live)', () => {
+  it('does not flag an answer that says no reject data exists', () => {
+    // Verbatim from a live run. This is an admission of a gap — exactly the
+    // behaviour the doctrine asks for — and it was being reported to the
+    // operator as a hallucination.
+    const answer =
+      '**No RADIUS server health widget is configured on this Gateway**, so I have no ' +
+      'server-side auth-failure/reject-rate view either.';
+    expect(auditAnswer(answer, [{ tool: 'getWlanConfig', ok: true }])).toEqual([]);
+  });
+
+  it('does not flag discussion of a reject-rate metric that does not exist', () => {
+    const answer = 'There is no RADIUS reject-rate metric exposed by this platform.';
+    expect(auditAnswer(answer, [{ tool: 'getWlanConfig', ok: true }])).toEqual([]);
+  });
+
+  it('STILL flags an asserted rejection event in either word order', () => {
+    for (const a of [
+      'The client was rejected by RADIUS because its certificate had expired.',
+      'RADIUS rejected this client due to an unknown identity.',
+      'Authentication was denied by RADIUS for that user.',
+    ]) {
+      const f = auditAnswer(a, [{ tool: 'getRecentChanges', ok: true }]);
+      expect(f.some((x) => /RADIUS rejection/.test(x.detail)), a).toBe(true);
+    }
+  });
+});

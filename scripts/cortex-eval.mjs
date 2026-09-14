@@ -30,6 +30,7 @@
  */
 
 import { writeFileSync } from 'node:fs';
+import https from 'node:https';
 import { SCENARIOS, containsSecret } from '../server/cortex/eval/scenarios.js';
 import { runGraders } from '../server/cortex/eval/graders.js';
 import { runInvestigation, auditAnswer } from '../server/cortex/investigationAgent.js';
@@ -49,10 +50,80 @@ const flag = (name, fallback = null) => {
 const GW_URL = process.env.CAMPUS_CONTROLLER_URL ?? 'https://192.168.100.12:5825';
 const GW_USER = process.env.GW_USER ?? 'admin';
 const GW_PW = process.env.GW_PW ?? process.env.CAMPUS_CONTROLLER_PASSWORD;
+// A pre-minted bearer. When set, this runner performs ZERO logins.
+const GW_TOKEN = process.env.GW_TOKEN;
 
 function fail(msg) {
   console.error(`\n  Cannot run the evaluation.\n\n  ${msg}\n`);
   process.exit(2);
+}
+
+/**
+ * A session backed by a bearer token that was minted elsewhere.
+ *
+ * Shapes itself like ControllerSession — `get`/`write` returning the same
+ * `{ok, status, data, errorText}` envelope — so GatewayEvidence and the tools
+ * cannot tell the difference. It deliberately CANNOT re-mint: on a 401 it
+ * reports the 401. That is the whole point, because re-minting is what turns
+ * one lockout into a cascade.
+ */
+function makePreAuthedSession(baseUrl, token) {
+  // Self-signed appliance cert, accepted on a SCOPED agent used only for this
+  // Gateway — never the global NODE_TLS_REJECT_UNAUTHORIZED switch, which would
+  // also disable verification for the Anthropic connection in the same process.
+  // This matches the existing transport (`xccClient.js` insecureAgent,
+  // `controllerClient.js` permissiveAgent) rather than inventing a new posture.
+  // The real fix is a properly issued certificate on the appliance; until then
+  // set MONITORING_TLS_REJECT_UNAUTHORIZED=true where the chain is trusted.
+  const agent = new https.Agent({ rejectUnauthorized: false, keepAlive: true });
+  const call = async (path, { method = 'GET', body = null } = {}) => {
+    const url = `${baseUrl}/management${path}`;
+    try {
+      const resp = await new Promise((resolve, reject) => {
+        const req = https.request(
+          url,
+          {
+            method,
+            agent,
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: 'application/json',
+              ...(body ? { 'Content-Type': 'application/json' } : {}),
+            },
+            timeout: 90_000,
+          },
+          (res) => {
+            let buf = '';
+            res.on('data', (c) => (buf += c));
+            res.on('end', () => resolve({ status: res.statusCode, text: buf }));
+          }
+        );
+        req.on('error', reject);
+        req.on('timeout', () => req.destroy(new Error('timed out')));
+        if (body) req.write(JSON.stringify(body));
+        req.end();
+      });
+      let data;
+      try {
+        data = resp.text ? JSON.parse(resp.text) : null;
+      } catch {
+        data = null;
+      }
+      return {
+        ok: resp.status >= 200 && resp.status < 300,
+        status: resp.status,
+        data,
+        errorText: resp.status >= 400 ? String(resp.text).slice(0, 400) : undefined,
+      };
+    } catch (err) {
+      return { ok: false, status: 0, data: null, errorText: err.message };
+    }
+  };
+  return {
+    get: (path) => call(path),
+    write: (path, opts) => call(path, opts),
+    invalidate() {},
+  };
 }
 
 // ── Preflight: name the exact blocker rather than half-running ──────────────
@@ -63,9 +134,11 @@ if (!process.env.ANTHROPIC_API_KEY && !process.env.CLAUDE_API_KEY && !process.en
       '  There is no mock provider: an eval against a stub would grade the stub.'
   );
 }
-if (!GW_PW) {
+if (!GW_PW && !GW_TOKEN) {
   fail(
-    `No Gateway password. Set GW_PW for ${GW_USER}@${GW_URL}.\n` +
+    `No Gateway credential. Set GW_TOKEN (a pre-minted bearer, preferred) or GW_PW for ${GW_USER}@${GW_URL}.\n` +
+      '  GW_TOKEN is preferred on this appliance: its login window is effectively one\n' +
+      '  attempt, so a harness that mints its own token races anything else touching the box.\n' +
       '  The scenarios read live telemetry; there is no recorded fixture set.'
   );
 }
@@ -100,7 +173,19 @@ console.log(`Gateway: ${GW_URL}\n`);
 // before this line is a SECOND login and is enough on its own to trip it. If
 // the Gateway is locked, back off for several minutes — retrying makes it
 // worse, and never sweep credentials at this box.
-const session = new ControllerSession({ baseUrl: GW_URL, username: GW_USER, password: GW_PW });
+// GW_TOKEN is the reliable path on a box with an aggressive lockout.
+//
+// Measured on the lab VE6120: a login at 16:02:22 succeeded and a second login
+// SECONDS later returned 401. The window is effectively one login, so any
+// harness that mints its own token races whatever else touched the box — and
+// once it 401s, ControllerSession re-mints and the cascade deepens the lockout.
+//
+// Supplying an already-minted bearer removes the race entirely: this runner
+// then performs ZERO logins. Mint one out of band (the Gateway API key works
+// and does not consume the admin login budget) and export it.
+const session = GW_TOKEN
+  ? makePreAuthedSession(GW_URL, GW_TOKEN)
+  : new ControllerSession({ baseUrl: GW_URL, username: GW_USER, password: GW_PW });
 try {
   const probe = await session.get('/v3/sites');
   if (!probe.ok) {

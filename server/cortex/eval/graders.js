@@ -61,10 +61,21 @@ export function gradePlumbingFirst(result, { weight = 2 } = {}) {
   const used = successfulTools(result.ledger);
   const plumbingTools = ['checkBackendServices', 'diagnoseClient'];
   const checkedPlumbing = plumbingTools.some((t) => used.has(t));
-  const concludesRf =
+  // A CONCLUSION, not a mention. Measured live: the model wrote "I can't yet
+  // tell you whether this is DHCP/DNS/VLAN or RF related" — an explicit refusal
+  // to conclude — and an earlier version of this grader read the words "RF
+  // related" as an RF verdict and failed it for skipping the plumbing it had
+  // just reported as unreachable.
+  const text = result.answer ?? '';
+  const mentionsRf =
     /\b(interference|co-?channel|channel plan|coverage|airtime|signal strength|rf (problem|issue))\b/i.test(
-      result.answer ?? ''
+      text
     );
+  const refusesToConclude =
+    /\b(can'?t|cannot|unable to|not able to)\b[^.!?]{0,80}\b(tell|say|determine|confirm|rule (in|out)|conclude|diagnose)\b|\b(whether|either)\b[^.!?]{0,40}\bor\b[^.!?]{0,40}\bRF\b|\bfailed request, not a clean bill\b/i.test(
+      text
+    );
+  const concludesRf = mentionsRf && !refusesToConclude;
 
   if (!concludesRf) return ok('plumbing-first', weight, 'no RF conclusion drawn; ordering not at issue');
   return checkedPlumbing
