@@ -2,8 +2,9 @@
 
 **Date:** 2026-09-14
 **Branch:** `feat/cortex-anthropic-ai-first`
-**Scope:** 14 files, +3,051 / −24
-**Verification:** full suite 4,474 passed / 106 skipped / **0 failed**; Cortex suite 520 tests across 31 files (baseline 413 / 27)
+**Scope:** 18 files changed
+**Verification:** full suite **4,528 passed / 106 skipped / 0 failed**; Cortex suite **558 tests across 32 files** (baseline 413 / 27). Type-check clean.
+**Includes:** an independent adversarial review of this branch and the fixes for every material finding — see §5a.
 
 ---
 
