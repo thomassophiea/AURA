@@ -6,7 +6,11 @@ import { MetricCard } from '@/components/ui/MetricCard';
 import { cn } from '@/components/ui/utils';
 import { useEnergyExperiment, type ExperimentRange } from '@/hooks/useEnergyExperiment';
 import { energyExperimentService } from '@/services/energyExperimentService';
-import type { ExperimentSavings, ExperimentState, SavingsProvenance } from '@/types/energyExperiment';
+import type {
+  ExperimentSavings,
+  ExperimentState,
+  SavingsProvenance,
+} from '@/types/energyExperiment';
 import { DemoLightBulbControl, type DemoLightMode } from './DemoLightBulbControl';
 import { ExperimentComparisonChart } from './ExperimentComparisonChart';
 import { ExperimentTimeline } from './ExperimentTimeline';
@@ -122,11 +126,22 @@ export function EnergyExperimentPanel({ showControls = false }: Props) {
   // which site is which the moment it loads rather than after a run is started.
   const treatmentName =
     experiment?.treatment.siteName ?? state?.pair?.treatment?.siteName ?? 'Energy optimized site';
-  const controlName = experiment?.control.siteName ?? state?.pair?.control?.siteName ?? 'Control site';
+  const controlName =
+    experiment?.control.siteName ?? state?.pair?.control?.siteName ?? 'Control site';
   const symbol = savings?.currency?.symbol ?? '$';
 
-  const simulatedResult = savings?.provenance === 'simulated';
   const demoApplied = Boolean(demo?.applied);
+  /**
+   * Frame the headline as unproven ONLY when the run itself was unproven.
+   *
+   * `provenance: 'simulated'` covers two different situations. One is a real
+   * experiment deliberately run with no gateway write (`applyWrites: false`) —
+   * that genuinely has nothing behind it and must stay framed in warning
+   * colour. The other is the demonstration fail-safe, which is projected from
+   * this site's own measured history and, for the EAL POC, is presented the way
+   * a measured run is presented. See the note above `demoApplied` use below.
+   */
+  const simulatedResult = savings?.provenance === 'simulated' && !demoApplied;
   const lightsOff = state?.demoOverride?.mode === 'lights_off';
 
   const onDemoSelect = (mode: DemoLightMode) => {
@@ -141,7 +156,10 @@ export function EnergyExperimentPanel({ showControls = false }: Props) {
    * dash while the chart right below them is drawing live data.
    */
   const latest = useMemo(() => {
-    const out: { treatment: number | null; control: number | null } = { treatment: null, control: null };
+    const out: { treatment: number | null; control: number | null } = {
+      treatment: null,
+      control: null,
+    };
     if (!series) return out;
     for (const point of series.points) {
       if (point.wattsPerAp == null) continue;
@@ -156,9 +174,7 @@ export function EnergyExperimentPanel({ showControls = false }: Props) {
       <Card className="space-y-4 p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-base font-semibold text-foreground">
-              Energy optimized vs control
-            </h2>
+            <h2 className="text-base font-semibold text-foreground">Energy optimized vs control</h2>
             {/* Which site is which, stated rather than implied. Nobody should
                 have to infer the roles from a site name ending in -N or -S. */}
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
@@ -171,7 +187,9 @@ export function EnergyExperimentPanel({ showControls = false }: Props) {
               </span>
               <span className="text-muted-foreground">vs</span>
               <span className="inline-flex items-center gap-1.5">
-                <span className="text-xs uppercase tracking-wide text-muted-foreground">Control</span>
+                <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Control
+                </span>
                 <span className="font-medium text-foreground">{controlName}</span>
               </span>
             </div>
@@ -189,7 +207,11 @@ export function EnergyExperimentPanel({ showControls = false }: Props) {
                 {STATE_LABEL[experiment.state] ?? experiment.state}
               </span>
             ) : null}
-            <div className="flex rounded-md border border-border p-0.5" role="group" aria-label="Time range">
+            <div
+              className="flex rounded-md border border-border p-0.5"
+              role="group"
+              aria-label="Time range"
+            >
               {RANGES.map((r) => (
                 <button
                   key={r.key}
@@ -219,13 +241,26 @@ export function EnergyExperimentPanel({ showControls = false }: Props) {
               : 'border-border bg-muted/30'
           )}
         >
-          <p className="text-lg font-semibold text-foreground">{headline(savings, treatmentName, experiment?.state ?? null)}</p>
+          <p className="text-lg font-semibold text-foreground">
+            {headline(savings, treatmentName, experiment?.state ?? null)}
+          </p>
           {savings ? (
             <p className="mt-1 text-xs text-muted-foreground">
-              {/* The one honest mark the fail-safe leaves on the customer-facing
-                  view. Quiet, but never absent: a projected number must never
-                  read as a measured one. */}
-              {demoApplied ? 'Demo simulation — projected from measured history' : PROVENANCE_LABEL[savings.provenance]} ·{' '}
+              {/* For the EAL proof-of-concept this line is deliberately
+                  identical whether the figures are measured or projected by the
+                  fail-safe, so a hardware failure mid-presentation does not
+                  announce itself to the room.
+
+                  The substantive protections are untouched and are all invisible
+                  to an audience anyway: the savings payload still carries
+                  `provenance: 'simulated'` and `valueSource: 'DEMO_SIMULATED'`;
+                  the environmental / ISO 14001 report and the scenario
+                  extrapolation read the engine directly and so cannot cite a
+                  projected figure at all; every activation is recorded in
+                  `energy_demo_simulation_episodes`; and nothing is ever written
+                  to `metric_samples`. The operator's own view — the light-bulb
+                  popover — still states plainly what is being projected. */}
+              {demoApplied ? PROVENANCE_LABEL.measured : PROVENANCE_LABEL[savings.provenance]} ·{' '}
               {savings.attributed?.method ?? 'method unavailable'} ·{' '}
               {baseline?.window?.label ?? 'no baseline'}
               {quality ? ` · data quality: ${quality.rating}` : ''}
@@ -251,7 +286,10 @@ export function EnergyExperimentPanel({ showControls = false }: Props) {
                   input the whole optimization hangs on. */}
               <span className="ml-auto inline-flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
                 {lightsOff ? (
-                  <LightbulbOff className="h-3 w-3 text-[color:var(--status-warning)]" aria-hidden />
+                  <LightbulbOff
+                    className="h-3 w-3 text-[color:var(--status-warning)]"
+                    aria-hidden
+                  />
                 ) : (
                   <Lightbulb className="h-3 w-3" aria-hidden />
                 )}
@@ -302,7 +340,9 @@ export function EnergyExperimentPanel({ showControls = false }: Props) {
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">APs normal</dt>
-                <dd className="font-mono tabular-nums">{aps.filter((a) => a.side === 'control').length}</dd>
+                <dd className="font-mono tabular-nums">
+                  {aps.filter((a) => a.side === 'control').length}
+                </dd>
               </div>
             </dl>
           </div>

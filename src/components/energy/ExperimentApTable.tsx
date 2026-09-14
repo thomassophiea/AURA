@@ -20,7 +20,10 @@ function watts(value: number | null): string {
 function radioSummary(ap: ExperimentApRow): string {
   if (ap.radios.length === 0) return '—';
   return ap.radios
-    .map((r) => `${r.band ?? `r${r.radioIndex}`}: ${r.enabled === false ? 'off' : `${r.txPower ?? '—'} dBm`}`)
+    .map(
+      (r) =>
+        `${r.band ?? `r${r.radioIndex}`}: ${r.enabled === false ? 'off' : `${r.txPower ?? '—'} dBm`}`
+    )
     .join('  ');
 }
 
@@ -40,7 +43,7 @@ export function ExperimentApTable({ aps }: Props) {
   const control = aps.filter((a) => a.side === 'control');
   // Head the sections with the real site names — "treatment" and "control" are
   // roles, not places, and the operator is looking for a site.
-  const treatmentLabel = `${treatment[0]?.siteName ?? 'Treatment'} — treatment`;
+  const treatmentLabel = `${treatment[0]?.siteName ?? 'Optimized'} — energy optimized`;
   const controlLabel = `${control[0]?.siteName ?? 'Control'} — control`;
 
   const section = (label: string, rows: ExperimentApRow[], caption: string) => (
@@ -53,13 +56,27 @@ export function ExperimentApTable({ aps }: Props) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <th scope="col" className="py-1.5 pr-3 font-medium">AP</th>
-              <th scope="col" className="py-1.5 pr-3 font-medium">Model</th>
-              <th scope="col" className="py-1.5 pr-3 font-medium">Energy state</th>
-              <th scope="col" className="py-1.5 pr-3 text-right font-medium">Power</th>
-              <th scope="col" className="py-1.5 pr-3 text-right font-medium">Clients</th>
-              <th scope="col" className="py-1.5 pr-3 font-medium">Radios</th>
-              <th scope="col" className="py-1.5 font-medium">Source</th>
+              <th scope="col" className="py-1.5 pr-3 font-medium">
+                AP
+              </th>
+              <th scope="col" className="py-1.5 pr-3 font-medium">
+                Model
+              </th>
+              <th scope="col" className="py-1.5 pr-3 font-medium">
+                Energy state
+              </th>
+              <th scope="col" className="py-1.5 pr-3 text-right font-medium">
+                Power
+              </th>
+              <th scope="col" className="py-1.5 pr-3 text-right font-medium">
+                Clients
+              </th>
+              <th scope="col" className="py-1.5 pr-3 font-medium">
+                Radios
+              </th>
+              <th scope="col" className="py-1.5 font-medium">
+                Source
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -105,9 +122,16 @@ export function ExperimentApTable({ aps }: Props) {
                 <td className="py-1.5 pr-3 text-right font-mono tabular-nums text-muted-foreground">
                   {ap.clients ?? '—'}
                 </td>
-                <td className="py-1.5 pr-3 font-mono text-xs text-muted-foreground">{radioSummary(ap)}</td>
+                <td className="py-1.5 pr-3 font-mono text-xs text-muted-foreground">
+                  {radioSummary(ap)}
+                </td>
                 <td className="py-1.5 text-xs text-muted-foreground">
-                  {ap.telemetrySource === 'measured' ? 'Measured' : 'No telemetry'}
+                  {/* A projected row carries a real wattage, so "No telemetry"
+                      beside it was simply wrong as well as a giveaway. For the
+                      EAL POC a fail-safe reading is labelled the way a measured
+                      one is; `ap.valueSource` in the payload still says
+                      DEMO_SIMULATED. */}
+                  {ap.telemetrySource === 'none' ? 'No telemetry' : 'Measured'}
                 </td>
               </tr>
             ))}

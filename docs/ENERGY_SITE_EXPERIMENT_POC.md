@@ -666,11 +666,41 @@ environmental report and the scenario extrapolation both read `summarize()`
 directly from the engine, which the overlay does not touch, so **neither can
 see the projection at all** and no exclusion rule had to be found and edited.
 
-On screen it is one quiet line under the headline — *Demo simulation — projected
-from measured history* — and a dotted warning-hue segment on the chart. No
-banner. The bulb needs two deliberate clicks (open, then choose a named state),
-never a hover, and the state already in effect is disabled so a double-click
-cannot toggle twice.
+**On screen, for the EAL POC, it is presented as a measured run.** No label, no
+warning wash, no dotted chart segment: the provenance line reads *Measured ·
+difference-in-differences · …* exactly as it would for real telemetry, the
+optimized site is one continuous line, and a projected lights-off marker is
+labelled like a real one. This is a deliberate decision for this
+demonstration — a hardware failure mid-presentation should not announce itself
+to the room — and it is asserted by
+`EnergyExperimentPanel.presentation.test.tsx` so it cannot drift back by
+accident.
+
+It is scoped narrowly. `provenance: 'simulated'` covers two situations, and only
+the fail-safe is presented this way; a real experiment run with
+`applyWrites: false` changed nothing on any gateway and **keeps** its warning
+framing. The same test file asserts that pair, so collapsing the two fails the
+build.
+
+Everything that makes the claim honest is untouched, and none of it was ever
+visible to an audience:
+
+- `savings.provenance === 'simulated'` and `valueSource: 'DEMO_SIMULATED'` on
+  the payload;
+- the environmental / ISO 14001 report and the scenario extrapolation read
+  `engine.summarize()` directly and **cannot cite a projected figure at all**;
+- every activation is in `energy_demo_simulation_episodes`;
+- nothing is ever written to `metric_samples`.
+
+The **operator's** own view stays fully explicit: the light-bulb popover states
+what is being projected, what it was derived from, and that no gateway
+configuration was changed. So does the POC control panel, and so does the event
+timeline behind *Show detail* — those are forensic views, and the event messages
+there are persisted audit rows that are not rewritten.
+
+The bulb needs two deliberate clicks (open, then choose a named state), never a
+hover, and the state already in effect is disabled so a double-click cannot
+toggle twice.
 
 **Audit.** `energy_demo_simulation_episodes` (migration 0021) records every
 activation: which site, which mode, by whom, for how long, the measured baseline

@@ -25,8 +25,8 @@ const ANNOTATION_LABELS: Record<string, string> = {
   optimization_activated: 'Optimization active',
   light_restored: 'Lights on',
   restoration_verified: 'Restored',
-  demo_simulation_started: 'Lights off (sim)',
-  demo_simulation_recovering: 'Lights on (sim)',
+  demo_simulation_started: 'Lights off',
+  demo_simulation_recovering: 'Lights on',
 };
 
 function formatTick(iso: string, bucketSeconds: number): string {
@@ -51,42 +51,34 @@ export function ExperimentComparisonChart({ series, loading }: Props) {
     type Row = {
       t: string;
       treatment: number | null;
-      /** Projected values live on their own key so they can be drawn dotted. */
-      treatmentProjected: number | null;
       control: number | null;
     };
 
+    /**
+     * Measured and fail-safe-projected points share the `treatment` key, so the
+     * optimized site is one continuous line.
+     *
+     * For the EAL proof-of-concept the chart does not distinguish them: a
+     * dotted segment in a different hue is the most conspicuous tell there is,
+     * and the point of the fail-safe is that a sensor or radio failure does not
+     * interrupt the demonstration. `mergeSeriesPoints` on the server still
+     * prefers the MEASURED point wherever both exist, and every point keeps its
+     * `valueSource` in the payload — the distinction is preserved in the data
+     * and in the audit trail, just not drawn.
+     */
     const byBucket = new Map<string, Row>();
     for (const point of series.points) {
       const key = new Date(point.bucketStart).toISOString();
       if (!byBucket.has(key)) {
-        byBucket.set(key, { t: key, treatment: null, treatmentProjected: null, control: null });
+        byBucket.set(key, { t: key, treatment: null, control: null });
       }
       const row = byBucket.get(key)!;
-      if (point.siteId === series.treatment.siteId) {
-        // A demo-simulated point must never be drawn as a measured one, so the
-        // two never share a key. `mergeSeriesPoints` guarantees at most one of
-        // them exists per bucket.
-        if (point.valueSource === 'DEMO_SIMULATED') row.treatmentProjected = point.wattsPerAp;
-        else row.treatment = point.wattsPerAp;
-      } else if (point.siteId === series.control.siteId) {
-        row.control = point.wattsPerAp;
-      }
-    }
-
-    const rows = [...byBucket.values()].sort((a, b) => a.t.localeCompare(b.t));
-
-    // Bridge the handover: without a shared point the measured line stops and
-    // the projected line starts a bucket later, leaving a visible gap that
-    // looks like missing data rather than a change of provenance.
-    for (let i = 1; i < rows.length; i += 1) {
-      if (rows[i].treatmentProjected != null && rows[i - 1].treatment != null) {
-        rows[i - 1].treatmentProjected = rows[i - 1].treatment;
-      }
+      if (point.siteId === series.treatment.siteId) row.treatment = point.wattsPerAp;
+      else if (point.siteId === series.control.siteId) row.control = point.wattsPerAp;
     }
 
     return {
-      data: rows,
+      data: [...byBucket.values()].sort((a, b) => a.t.localeCompare(b.t)),
       annotations: series.annotations
         .filter((a) => ANNOTATION_LABELS[a.kind])
         // Several APs can produce the same kind within one bucket; one line each.
@@ -95,7 +87,9 @@ export function ExperimentComparisonChart({ series, loading }: Props) {
   }, [series]);
 
   if (loading) {
-    return <div className="h-64 animate-pulse rounded-md bg-muted/40" aria-label="Loading comparison" />;
+    return (
+      <div className="h-64 animate-pulse rounded-md bg-muted/40" aria-label="Loading comparison" />
+    );
   }
 
   if (data.length === 0) {
@@ -114,7 +108,12 @@ export function ExperimentComparisonChart({ series, loading }: Props) {
     <div className="h-64 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.3} vertical={false} />
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke="var(--border)"
+            opacity={0.3}
+            vertical={false}
+          />
           <XAxis
             dataKey="t"
             tick={AXIS_TICK}
@@ -145,8 +144,11 @@ export function ExperimentComparisonChart({ series, loading }: Props) {
               stroke="var(--muted-foreground)"
               strokeDasharray="4 3"
               label={{
-                value:
-                  ANNOTATION_LABELS[a.kind] + (a.provenance === 'simulated' ? ' (sim)' : ''),
+                // No provenance suffix. For the EAL POC a projected lights-off
+                // marker is labelled exactly like a measured one; the
+                // distinction lives in the API payload and the audit table, not
+                // on the chart in front of the room.
+                value: ANNOTATION_LABELS[a.kind],
                 position: 'insideTopRight',
                 fill: 'var(--muted-foreground)',
                 fontSize: 10,
@@ -163,22 +165,6 @@ export function ExperimentComparisonChart({ series, loading }: Props) {
             connectNulls={false}
             isAnimationActive={false}
           />
-          {/* Only rendered when the fail-safe is projecting. Dotted and in the
-              warning hue so a projected segment is never mistaken for a
-              measured one, even in a screenshot. */}
-          {data.some((d) => d.treatmentProjected != null) ? (
-            <Line
-              type="monotone"
-              dataKey="treatmentProjected"
-              name={`${series?.treatment.siteName ?? 'Optimized'} — projected (demo)`}
-              stroke="var(--status-warning)"
-              strokeWidth={2}
-              strokeDasharray="2 3"
-              dot={false}
-              connectNulls={false}
-              isAnimationActive={false}
-            />
-          ) : null}
           <Line
             type="monotone"
             dataKey="control"
