@@ -193,6 +193,37 @@ diagnostic tools returned `fetch_failed`. Every tool reported `status: fetch_fai
 `basis: unknown` and a named reason — **none invented data** — and the graders correctly
 refused to count a failed call as evidence. The harness is sound; the box was locked.
 
+### Prompt caching measured, and the doctrine proven to change behaviour
+
+One request, two turns, the real vendored doctrine (6,183 chars) as the system prefix:
+
+```
+turn1: in=100  cache_write=2846  cache_read=0     out=78
+turn2: in=272  cache_write=0     cache_read=2846  out=1500
+```
+
+**Cache HIT on turn 2** — the full 2,846-token prefix served from cache. The §4 trace was
+correct: `buildSystemPrompt` runs once and is frozen into `messages[0]`, so the prefix is
+byte-identical across turns. On Sonnet 5 that turn's prefix cost ~$0.0006 instead of ~$0.0057,
+roughly a tenth.
+
+More importantly, **the doctrine demonstrably changed the answer.** Handed a client row in the
+exact shape that is live on the lab box — `Rss -62`, `SNR 38`, `RFQI 4`, and all three RTT
+columns at `65535` — the model produced:
+
+| Metric | Value | Read |
+|---|---|---|
+| WirelessRTT | 65535 | Sentinel — NOT MEASURED, not 65 seconds |
+| NetworkRTT | 65535 | Sentinel — NOT MEASURED |
+| DNSRTT | 65535 | Sentinel — NOT MEASURED |
+
+and then applied the paired discriminator explicitly: *"neither the 'weak signal + low RFQI'
+pair nor the 'healthy signal + low RFQI' pair is present."*
+
+That is the single most valuable outcome of this branch. Without the vendored doctrine the
+same row reads as 65-second latency on three counters, which is how a healthy client becomes a
+fabricated fleet-wide incident. The trap is live on this Gateway today.
+
 ### Two grader defects the live run exposed
 
 Both were in the graders, and both would have pushed prompt tuning the wrong way while looking
