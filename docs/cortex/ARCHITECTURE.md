@@ -48,6 +48,38 @@ SSE: activity → answer → evidence   (UI shows all three)
 | `server/cortex/investigationAgent.js` | The bounded loop, the evidence ledger, injection fencing, the answer audit. |
 | `server/cortex/requestScopedSession.js` | Reads the Gateway **as the caller**, so RBAC is inherited and cannot be exceeded. |
 | `server/cortexLlmProvider.js` | Provider abstraction (pre-existing, extended). |
+| `server/cortex/aiFirstMethodology.js` | The AI-First doctrine, **vendored**: ordering rule, discriminators, sentinels, platform boundaries, vocabulary. Plus `retrieveGuidance()`, the situational half, selected by the operator's question. |
+| `server/cortex/modelPolicy.js` | Deterministic model tier + effort routing, and per-model cost. |
+| `server/cortex/remediationBridge.js` | Diagnosis → remediation proposal, with an explicit owner per item. |
+| `server/cortex/eval/` | Behavioural graders + the AI-First scenario set. |
+
+### Why the methodology is vendored
+
+The authoritative source is the `ai-first-troubleshooting` / `ai-first-configuration` skills,
+which live in an operator's `~/.claude/skills` and **are not on the deployed box** — Cortex runs
+on Railway. The parts of the doctrine the model must hold on every turn are therefore copied
+into `aiFirstMethodology.js`, deliberately and visibly, rather than being re-invented in a
+prompt string. The large, situational half (runbooks, scenarios) stays behind
+`retrieveGuidance()` and is selected by the operator's question, capped at three notes.
+
+`retrieveGuidance()` is matched against the **operator's question only**, never against network
+text. Running it over device names would let an SSID steer which discipline the model receives.
+
+### Depth and cost
+
+Model tier and `output_config.effort` are chosen server-side by `selectModel()`, never by the
+model. An LLM that can grant itself a bigger budget is a cost incident waiting to happen.
+Escalation to the Opus tier happens on an explicit "go deeper", a Red Queen pass, a
+multi-entity or intermittent symptom, or a prior pass that burned ≥6 iterations without
+converging. Tier escalation applies only on Anthropic, the only provider here with a published
+Sonnet/Opus split to escalate between.
+
+Usage is now reported by every provider. It previously was not: `AnthropicLlmProvider` returned
+no `usage` block at all while the investigation loop summed one, so every Claude-backed
+investigation reported zero tokens and zero cost — and looked healthy because of it. Cache
+read and write are tracked separately because they bill at roughly 0.1× and 1.25× of input.
+`estimatedCostUsd` is `null`, never `0`, for a provider with no published rate: "not priced"
+must not read as "free".
 
 ## The three properties that matter
 
@@ -107,7 +139,7 @@ to that shape works, and the investigation loop is provider-agnostic.
 | **Groq** — *active* | The only provider with a key present. OpenAI-compatible tool calling. `openai/gpt-oss-120b` used for reasoning; `gpt-oss-20b` fits a smaller TPM budget. |
 | **GitHub Copilot SDK** | **The recommended subscription-backed path.** GA 2026-06-02, `@github/copilot-sdk` v1.0.13. GitHub OAuth/App → requests billed to the user's own Copilot subscription; typed custom tools via `defineTool`; headless CLI server mode over TCP for backends; `mode:"empty"` + per-session credentials + `availableTools` for multi-user; a `pre-tool-use` hook that can approve/deny/modify tool calls, which maps cleanly onto our authorisation seam. **Not yet implemented.** |
 | **Claude Agent SDK** | Subscription-backed use is **not currently viable**: the monthly Agent SDK credit for Pro/Max was announced for 2026-06-15 and Anthropic has **paused it** ("For now, nothing has changed"), and no third-party auth mechanism for a hosted web app is documented. Usable only with a dedicated Anthropic API key, which is Option C. |
-| **Anthropic API (key)** | Supported by the existing provider. No key is configured. |
+| **Anthropic API (key)** | **The intended path.** Fully implemented: prompt caching on the system prefix, `output_config.effort`, usage + cache accounting, typed error translation, and a `refusal` stop-reason guard (a refusal is HTTP 200 with empty content — reading `content` without checking `stop_reason` first yields an empty answer that reads as "Cortex had nothing to say about your network"). Default tier `claude-sonnet-5`, deep tier `claude-opus-5`. **Still no key configured — this is the one hard blocker.** |
 | **OpenAI** | Supported by the existing provider. No key is configured. |
 | **Ollama / local** | Supported by the registry. Attractive for a self-contained demo; untested here, so not claimed to work. |
 
@@ -211,3 +243,33 @@ its existing proxy, and the `X-Controller-URL` header already selects the target
 per request — so **no edge agent is needed** for the current topology. If a
 future Gateway is not reachable from Railway at layer 3, the outbound-initiated
 edge-agent design is the right answer, but building it now would be speculative.
+
+## Evaluation
+
+`scripts/cortex-eval.mjs` runs the AI-First scenario set against a real provider and a real
+Gateway and grades **behaviour, not prose**. Two correct answers can be worded completely
+differently; what must not vary is which evidence was gathered, which claims were avoided, and
+whether anything was written.
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-… GW_PW=… node scripts/cortex-eval.mjs
+… --compare claude-sonnet-5,claude-opus-5     # empirical tier comparison
+… --category safety                           # the adversarial set only
+… --json audit/eval-baseline.json
+```
+
+Exit codes: `0` all passed · `1` a quality regression · **`3` a SAFETY scenario failed** ·
+`2` cannot run (missing credentials — it names which, and never substitutes a stub).
+
+Graders are deliberately LLM-free. An LLM judge scoring an LLM on wireless correctness would
+share the exact blind spots being tested for. Each grader is unit-tested against a failing
+result as well as a passing one — a grader that can only pass turns a green report into
+evidence of nothing while looking like evidence of something. Writing those tests caught two
+real defects in the graders themselves.
+
+Scenarios are drawn from the AI-First runbooks (`troubleshoot-client`, `troubleshoot-ssid`,
+`check-backend-services`, `scope-the-problem`, `what-changed`, `verify-auth-path`,
+`report-aps`, `create-vlan`) plus a safety set covering prompt injection, conversational
+privilege escalation, secret exfiltration and a fleet-wide destructive request. Those are the
+questions this product actually gets asked; a vendor benchmark says nothing about telling
+coverage from contention on this Gateway.
