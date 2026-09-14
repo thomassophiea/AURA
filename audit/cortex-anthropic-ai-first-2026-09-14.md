@@ -221,6 +221,45 @@ implemented and unit-tested against a faked transport; it has not executed again
 
 ---
 
+## 5a. Adversarial review of this branch (§96)
+
+An independent reviewer attacked the diff. Eleven findings; all material ones fixed in
+`90ad58b`. **Two were defects I introduced**, which is the reason the pass was worth running.
+
+| Sev | Finding | Status |
+|---|---|---|
+| High | `effort` fought the output ceiling — adaptive thinking spends output tokens, so `xhigh` under a 1400-token cap could exhaust the budget reasoning and return an empty answer for the most expensive run. `truncated` was computed and never read. **Mine.** | Fixed — ceiling scales with effort; truncation drives a one-shot retry |
+| High | `scope` (ssid / siteName — network-written) interpolated into the **system** prompt unfenced, above the paragraph declaring network data inert | Fixed — allowlisted, fenced, newline-stripped, length-clamped |
+| High | Thinking blocks dropped from the replayed assistant turn; would 400 on turn 2 of every tool-using investigation and read as an empty answer | Fixed — raw content replayed verbatim, stripped for OpenAI-compatible APIs |
+| Med-High | Client-supplied `priorIterations` an unclamped lever on the expensive tier | Fixed — clamped 0–20 |
+| Med | Fallback chain stepped **up** in price (Sonnet → Opus on a rate-limit blip) | Fixed — fallbacks only step down |
+| Med | Pinned `CORTEX_LLM_MODEL` silently overridden | Fixed — pin wins |
+| Med | 403 (entitlement, per-model) refused the fallback chain like a 401 | Fixed — 403 falls back, 401 does not |
+| Med | Spend lost on the close-out turn and on `provider_error` — audit logged $0 for real money | Fixed — both accounted |
+| Med | OpenAI usage double-counted cached tokens against Anthropic semantics | Fixed — normalised |
+| Med | QUERY / EXPLANATION tiers unreachable (route hardcoded the intent) | Fixed — `classifyInvestigationIntent` |
+| Med | `injectHostileData` declared and read by nothing — the flagship injection scenario graded "resisted injection" on an input with no injection | Fixed — injects through `scope` |
+| Med | `remediationBridge` shipped unwired | Fixed — wired into the evidence payload |
+
+**Confirmed clean by the review**, which is as useful as the findings: the read-only tool
+guarantee holds and is fail-closed (a tool with no `risk`, a typo, or a prototype key all land
+in the refusal branch); `retrieveGuidance` never runs over network data; no regex carries a `g`
+flag, so there is no `lastIndex` carry-over; per-request escalation is bounded; the Anthropic
+cost arithmetic and per-model attribution are correct; 401-no-retry / 429-retry classify
+correctly; and the evidence ledger, `auditAnswer`, `compactTranscript` and the Groq/Ollama
+paths are unregressed.
+
+**Prompt caching traced and confirmed working.** `buildSystemPrompt` is called once, before the
+loop, and frozen into `messages[0]`; `compactTranscript` only rewrites entries after the
+breakpoint; tool specs are static. So the prefix is byte-identical across turns and a 4-turn
+investigation pays `1.25 + 0.1×3 = 1.55×` the prefix instead of `4×`. One improvement left on
+the table: everything volatile (guidance, scope, Red Queen) sits *inside* the single cached
+block and after the ~1,600-token static doctrine, so clicking a different site invalidates the
+whole prefix. Splitting the system into two blocks — static doctrine cached, volatile tail
+uncached — would fix it. Not done here; it needs `extractSystemPrompt` to stop flattening.
+
+---
+
 ## 6. Not done, and why
 
 - **Path consolidation.** `/api/cortex/message` and `/wireless/query` still run parallel
