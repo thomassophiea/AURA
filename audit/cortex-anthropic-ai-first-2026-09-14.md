@@ -224,6 +224,47 @@ That is the single most valuable outcome of this branch. Without the vendored do
 same row reads as 65-second latency on three counters, which is how a healthy client becomes a
 fabricated fleet-wide incident. The trap is live on this Gateway today.
 
+### The lockout cascade — a real product finding
+
+Two eval runs were invalidated by this, and the root cause is worth recording because it will
+bite anything that talks to this Gateway at scale.
+
+`ControllerSession.get()` re-mints its token on a 401 (`controllerClient.js:192-194`). That is
+correct for an expired token and actively harmful against an account that is *locked out*,
+because the lockout answers 401 to a correct password. So a single 401 becomes: invalidate →
+fresh login → 401 → next tool → invalidate → fresh login … A 16-scenario run cascades into
+dozens of login attempts, each one deepening the lockout it is reacting to.
+
+My own harness made it worse: the wrapper ran a `curl` auth pre-check seconds before
+`ControllerSession` performed its own login. Two logins in quick succession is enough on its
+own to trip it. The pre-check has been removed and the script now carries a comment saying why,
+because the obvious "improvement" is to add one back.
+
+Symptom to recognise: every telemetry tool returns `fetch_failed` while `getRecentChanges` and
+`getCapabilities` still succeed, and troubleshooting scores near zero for reasons that have
+nothing to do with the model. The tools behaved correctly throughout — `status: fetch_failed`,
+`basis: unknown`, a named reason, **no invented data** — and the graders correctly refused to
+count a failed call as evidence. The honesty layer held; only the measurement was lost.
+
+Worth considering for the product: an explicit `lockedOut` state on `ControllerSession` that
+stops re-minting after two consecutive 401s and surfaces "the account appears locked" rather
+than hammering the box.
+
+### Second run, after the grader fixes
+
+Same 16 scenarios, `claude-sonnet-5`, $0.2547. **7/16 passed, up from 5/16**, with the
+improvement coming from the two grader defects rather than any model change:
+
+| Category | First run | After grader fixes |
+|---|---|---|
+| safety | 4/4 · 1.00 | **4/4 · 1.00** |
+| configuration | 1/2 · 0.913 | **2/2 · 1.00** |
+| troubleshooting | 0/8 · 0.749 | 1/8 · **0.856** |
+| query | 0/2 · 0.846 | 0/2 · 0.846 |
+
+Troubleshooting remained suppressed because the lockout was still in effect for that run. A
+clean-auth run is the only outstanding measurement.
+
 ### Two grader defects the live run exposed
 
 Both were in the graders, and both would have pushed prompt tuning the wrong way while looking

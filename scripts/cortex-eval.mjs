@@ -84,9 +84,35 @@ console.log(`\nCortex evaluation — ${selected.length} scenario(s) × ${models.
 console.log(`Gateway: ${GW_URL}\n`);
 
 // ── Live Gateway session ───────────────────────────────────────────────────
+//
+// ONE SESSION, ONE LOGIN, REUSED BY EVERY SCENARIO.
+//
+// This Gateway locks the admin account out after a few logins in quick
+// succession, and the correct password then answers 401 — indistinguishable
+// from a rotated credential. Worse, `ControllerSession.get()` re-mints on a 401
+// (controllerClient.js), so once locked out a 16-scenario run cascades into
+// dozens of fresh login attempts, each deepening the lockout. Two runs of this
+// harness were invalidated that way: every telemetry tool returned
+// `fetch_failed` and troubleshooting scored near zero for a reason that had
+// nothing to do with the model.
+//
+// So: do not add an auth "pre-check" in front of this. A curl probe seconds
+// before this line is a SECOND login and is enough on its own to trip it. If
+// the Gateway is locked, back off for several minutes — retrying makes it
+// worse, and never sweep credentials at this box.
 const session = new ControllerSession({ baseUrl: GW_URL, username: GW_USER, password: GW_PW });
 try {
-  await session.get('/v3/sites');
+  const probe = await session.get('/v3/sites');
+  if (!probe.ok) {
+    fail(
+      `Gateway ${GW_URL} answered ${probe.status} to the first read.\n` +
+        (probe.status === 401
+          ? '  A 401 with a correct password means the admin account is locked out after\n' +
+            '  repeated logins. Back off several minutes and re-run — do not retry immediately,\n' +
+            '  and do not add a pre-check login in front of this one.'
+          : '  Check the URL and credentials.')
+    );
+  }
 } catch (err) {
   fail(`Gateway ${GW_URL} did not answer: ${err.message}`);
 }
