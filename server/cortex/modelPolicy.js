@@ -91,6 +91,41 @@ export function looksComplex(text) {
 }
 
 /**
+ * Coarse intent classification for the diagnosis surface.
+ *
+ * Deliberately conservative: it only pulls a question OUT of the
+ * troubleshooting default when the shape is unmistakable, because the cost of
+ * mis-routing a real fault to the cheap tier is a worse diagnosis, while the
+ * cost of mis-routing a lookup to the expensive tier is only money.
+ *
+ * Configuration is not classified here — writes are served by the deterministic
+ * /wireless/* routes and never reach the investigation loop.
+ */
+const QUERY_SHAPES = [
+  /^\s*(how many|how much|what is the (count|number)|count (the|all)?)\b/i,
+  /^\s*(list|show|display|get|give me)\b(?![^?]*\b(why|slow|fail|drop|broken|problem|issue|unhappy)\b)/i,
+  /^\s*(which|what) (aps?|clients?|sites?|wlans?|networks?|devices?)\b(?![^?]*\b(why|slow|fail|drop|problem)\b)/i,
+  /\bis\s+\S+\s+(online|up|connected|present)\b\?*\s*$/i,
+];
+
+const EXPLANATION_SHAPES = [
+  /^\s*(what (is|are|does|do)|explain|describe|define|tell me about)\b(?![^?]*\b(my|our|this|that)\b.*\b(client|ap|site|wlan)\b)/i,
+  /^\s*(how (does|do)|why (does|do)) \w+ (work|behave)\b/i,
+];
+
+export function classifyInvestigationIntent(question) {
+  if (typeof question !== 'string' || !question.trim()) return 'TROUBLESHOOTING';
+  // A problem word anywhere outranks a lookup-shaped opening: "show me why the
+  // Guest network keeps dropping" is troubleshooting wearing a list's clothes.
+  if (/\b(why|slow|fail(ing|ed)?|drop(ping|ped)?|broken|unhappy|problem|issue|can'?t|cannot|not working|outage)\b/i.test(question)) {
+    return 'TROUBLESHOOTING';
+  }
+  if (QUERY_SHAPES.some((re) => re.test(question))) return 'QUERY';
+  if (EXPLANATION_SHAPES.some((re) => re.test(question))) return 'EXPLANATION';
+  return 'TROUBLESHOOTING';
+}
+
+/**
  * Choose model + effort for one turn.
  *
  * @param {object} args

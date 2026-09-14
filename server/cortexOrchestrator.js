@@ -33,6 +33,51 @@ You have direct access to live controller APIs through the tools provided. Inves
 The current page context is a HINT, not a constraint. Investigate beyond it whenever the question warrants.
 When data is truncated (large arrays), summarise what was returned and re-call with a tighter filter.`;
 
+/**
+ * Cap a tool payload without handing the model malformed JSON.
+ *
+ * The previous form was `JSON.stringify(data).slice(0, MAX)`, which cuts the
+ * string at an arbitrary byte — usually mid-key, mid-value or mid-escape. The
+ * model then receives something that opens like JSON and never closes, and has
+ * to guess what the truncated record said. That is a silent quality failure:
+ * nothing errors, the answer just gets worse in a way no log records.
+ *
+ * Arrays are the case that actually matters here (client and AP lists), so they
+ * are truncated ELEMENT-WISE and the payload states how many rows were dropped.
+ * The model can then say "showing 20 of 90" instead of inventing a total.
+ */
+export function truncateToolPayload(data, max = MAX_TOOL_CONTENT_CHARS) {
+  const full = JSON.stringify(data ?? null);
+  if (full.length <= max) return full;
+
+  if (Array.isArray(data)) {
+    const kept = [];
+    let size = 2; // the enclosing brackets
+    for (const item of data) {
+      const s = JSON.stringify(item);
+      // Leave room for the truncation notice appended below.
+      if (size + s.length + 1 > max - 160) break;
+      kept.push(item);
+      size += s.length + 1;
+    }
+    return JSON.stringify({
+      __truncated__: true,
+      returned: kept.length,
+      totalRows: data.length,
+      note: `Showing ${kept.length} of ${data.length} rows. Re-call with a tighter filter for the rest; do not infer the omitted rows.`,
+      rows: kept,
+    });
+  }
+
+  // Non-array payloads: keep the shape, drop the content, and say so. A stated
+  // omission is recoverable; a broken object is not.
+  return JSON.stringify({
+    __truncated__: true,
+    note: `Payload was ${full.length} characters, over the ${max} limit, and was withheld rather than cut mid-structure. Re-call with a narrower query.`,
+    keys: data && typeof data === 'object' ? Object.keys(data).slice(0, 40) : undefined,
+  });
+}
+
 function buildSystemMessage(context) {
   const sanitized = sanitizeCortexContext(context);
   const lines = [
@@ -257,7 +302,7 @@ export class CortexOrchestrator {
             path: res.callMeta?.path,
           });
           const content = res.ok
-            ? JSON.stringify(res.data).slice(0, MAX_TOOL_CONTENT_CHARS)
+            ? truncateToolPayload(res.data)
             : JSON.stringify({ error: res.error });
           session.messages.push({
             role: 'tool',

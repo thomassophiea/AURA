@@ -7,6 +7,7 @@ import {
   UsageAccumulator,
   DEFAULT_MODEL,
   DEEP_MODEL,
+  classifyInvestigationIntent,
 } from './modelPolicy.js';
 
 describe('escalation detection', () => {
@@ -183,5 +184,51 @@ describe('UsageAccumulator', () => {
     acc.record('claude-opus-5', null);
     acc.record('claude-opus-5', { prompt_tokens: 10, completion_tokens: 1 });
     expect(acc.summary().turns).toBe(1);
+  });
+});
+
+describe('classifyInvestigationIntent', () => {
+  it('routes inventory shapes to QUERY so they get the cheap tier', () => {
+    for (const q of [
+      'How many APs are at AURA_LAB?',
+      'how many clients are connected',
+      'list the WLANs',
+      'show me the access points',
+      'which sites have the most clients',
+    ]) {
+      expect(classifyInvestigationIntent(q), q).toBe('QUERY');
+    }
+  });
+
+  it('routes conceptual questions to EXPLANATION', () => {
+    expect(classifyInvestigationIntent('What is AFC?')).toBe('EXPLANATION');
+    expect(classifyInvestigationIntent('explain fast transition')).toBe('EXPLANATION');
+  });
+
+  it('keeps anything with a problem word as TROUBLESHOOTING', () => {
+    for (const q of [
+      'why is this client unhappy?',
+      'the wifi is slow',
+      'clients keep dropping',
+      // A lookup-shaped opening must not win over a problem word: this is
+      // troubleshooting wearing a list's clothes.
+      'show me why the Guest network keeps dropping',
+      'list the APs that are broken',
+    ]) {
+      expect(classifyInvestigationIntent(q), q).toBe('TROUBLESHOOTING');
+    }
+  });
+
+  it('defaults to TROUBLESHOOTING on anything ambiguous or empty', () => {
+    expect(classifyInvestigationIntent('')).toBe('TROUBLESHOOTING');
+    expect(classifyInvestigationIntent(null)).toBe('TROUBLESHOOTING');
+    expect(classifyInvestigationIntent('AURA_PSAE')).toBe('TROUBLESHOOTING');
+  });
+
+  it('an inventory question really does reach the cheap tier end to end', () => {
+    const intent = classifyInvestigationIntent('How many APs are at AURA_LAB?');
+    const r = selectModel({ question: 'How many APs are at AURA_LAB?', intent });
+    expect(r.model).toBe(DEFAULT_MODEL);
+    expect(r.effort).toBe('low');
   });
 });

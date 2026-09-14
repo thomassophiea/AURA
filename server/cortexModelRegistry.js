@@ -313,11 +313,21 @@ export function resolveActiveProvider() {
 /**
  * Models to try if the primary fails in a way another model could fix.
  *
- * Ordered by the registry, which lists each provider's models strongest-first,
- * so a fallback steps DOWN in capability rather than sideways. On Groq that
- * matters twice over: gpt-oss-20b has a smaller per-request footprint, so it is
- * also the model most likely to fit when the primary tripped the 8,000 TPM
- * free-tier ceiling.
+ * A fallback must step DOWN, never up.
+ *
+ * The registry lists each provider strongest-first, and taking that order
+ * verbatim was correct only while the primary was always the top entry. The
+ * tier split made that the uncommon case: with `claude-sonnet-5` as the routine
+ * default, registry order handed back `['claude-opus-5', 'claude-haiku-4-5']`,
+ * so the FIRST fallback was the most expensive model in the catalogue. A
+ * momentary Sonnet rate-limit would silently promote an entire investigation to
+ * Opus — roughly 2.5x on both input and output — and the operator would see
+ * only "claude-sonnet-5 was unavailable, so claude-opus-5 answered instead".
+ *
+ * So: keep registry order, but drop anything positioned above the primary. A
+ * rate-limited or retired model falls back to something cheaper and smaller,
+ * which is also the model most likely to fit when the primary tripped a
+ * per-minute token ceiling.
  *
  * `CORTEX_LLM_FALLBACK_MODELS` (comma-separated) overrides this entirely,
  * including with an empty value to disable fallback.
@@ -331,5 +341,10 @@ export function resolveFallbackModels(providerName, primaryModel, env = process.
       .filter((m) => m && m !== primaryModel);
   }
   const models = MODEL_REGISTRY[providerName] ?? [];
-  return models.map((m) => m.id).filter((id) => id !== primaryModel);
+  const ids = models.map((m) => m.id);
+  const primaryIndex = ids.indexOf(primaryModel);
+  // Primary not in this provider's list (a pinned or custom id): fall back to
+  // the full list rather than nothing.
+  const candidates = primaryIndex === -1 ? ids : ids.slice(primaryIndex + 1);
+  return candidates.filter((id) => id !== primaryModel);
 }

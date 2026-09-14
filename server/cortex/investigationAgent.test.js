@@ -212,9 +212,41 @@ describe('model fallback', () => {
       expect(shouldTryAnotherModel(new Error('model has been decommissioned'))).toBe(true);
     });
 
-    it('does NOT fall back on auth failures — another model shares the credential', () => {
+    it('does NOT fall back on a 401 — every model shares the credential', () => {
       expect(shouldTryAnotherModel(new Error('OpenAI API error 401: invalid_api_key'))).toBe(false);
-      expect(shouldTryAnotherModel(new Error('403 forbidden'))).toBe(false);
+      expect(shouldTryAnotherModel(new Error('Anthropic 401: the API key was rejected.'))).toBe(false);
+    });
+
+    it('DOES fall back on a 403 — entitlement is per-model, unlike a credential', () => {
+      // Changed deliberately. 403 was previously lumped in with 401 on the
+      // rationale that "another model has the same credential and will fail
+      // identically". That is true of a bad key and false of entitlement: a key
+      // entitled to Sonnet but not Opus is a common shape, and with tier
+      // escalation it meant every "go deeper" and every Red Queen pass
+      // hard-failed with an empty answer while a model that would have worked
+      // sat unused in the fallback list.
+      expect(shouldTryAnotherModel(new Error('403 forbidden'))).toBe(true);
+      expect(
+        shouldTryAnotherModel(new Error('Anthropic 403: this key is not entitled to claude-opus-5.'))
+      ).toBe(true);
+    });
+
+    it('does NOT fall back on an over-length prompt — a bigger model is not the fix', () => {
+      // Anthropic's wording ("prompt is too long: N tokens > M maximum") matched
+      // none of the older context-length patterns, so it fell through to
+      // provider_error instead of being recognised as a transcript problem.
+      expect(shouldTryAnotherModel(new Error('prompt is too long: 250000 tokens > 200000 maximum')))
+        .toBe(false);
+    });
+
+    it('does not burn a fallback on an unsupported PARAMETER', () => {
+      // `not supported` alone over-matched: a 400 about a rejected request
+      // field is not an error another model fixes.
+      expect(
+        shouldTryAnotherModel(new Error('Anthropic 400 (bad request): output_config is not supported'))
+      ).toBe(false);
+      // But an unsupported MODEL still falls back.
+      expect(shouldTryAnotherModel(new Error('model claude-x is not supported'))).toBe(true);
     });
 
     it('does NOT fall back on a generation fault already retried in-provider', () => {

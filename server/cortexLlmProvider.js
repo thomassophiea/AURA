@@ -75,7 +75,12 @@ export class OpenAiLlmProvider {
   async generateResponse({ model, messages, tools, temperature = 0.3, maxTokens = 1024 }) {
     const body = {
       model,
-      messages,
+      // Strip internal fields before they hit the wire. `_providerContent` is
+      // carried on assistant turns so the Anthropic adapter can replay thinking
+      // blocks verbatim; OpenAI-compatible APIs reject unknown message keys
+      // outright (Groq answers "property 'toolCalls' is unsupported" for
+      // exactly this class of mistake), so it must not travel.
+      messages: messages.map(({ _providerContent, ...rest }) => rest),
       temperature,
       max_tokens: maxTokens,
     };
@@ -152,10 +157,20 @@ export class OpenAiLlmProvider {
     // (OpenAI, Groq, xAI, Gemini, Mistral, Cerebras, DeepSeek) report zero
     // tokens for the whole investigation.
     if (data.usage) {
+      // NORMALISE TO ANTHROPIC SEMANTICS, which is what the cost model assumes.
+      //
+      // The two schemas disagree: OpenAI's `prompt_tokens` INCLUDES
+      // `cached_tokens`, while Anthropic's `input_tokens` EXCLUDES
+      // `cache_read_input_tokens`. Reporting OpenAI's numbers as-is counts the
+      // cached tokens twice, and `estimateCostUsd` would then bill them at
+      // 1.0x + 0.1x. Harmless today only because no OpenAI-family model has a
+      // published rate in MODEL_PRICING — it would start over-reporting the
+      // moment one is added.
+      const cached = data.usage.prompt_tokens_details?.cached_tokens ?? 0;
       result.usage = {
-        prompt_tokens: data.usage.prompt_tokens ?? 0,
+        prompt_tokens: Math.max(0, (data.usage.prompt_tokens ?? 0) - cached),
         completion_tokens: data.usage.completion_tokens ?? 0,
-        cache_read_input_tokens: data.usage.prompt_tokens_details?.cached_tokens ?? 0,
+        cache_read_input_tokens: cached,
         cache_creation_input_tokens: 0,
       };
     }
@@ -213,6 +228,29 @@ function toClaudeMessages(messages) {
 
   for (const m of messages) {
     if (m.role === 'system') continue; // handled separately
+
+    // REPLAY THE ASSISTANT TURN VERBATIM WHEN WE HAVE IT.
+    //
+    // The current Claude generation runs adaptive thinking, so an assistant
+    // turn that requested a tool also carries `thinking` blocks. Those blocks
+    // are bound to the turn: reconstructing the turn from {content, tool_calls}
+    // — as the branch below does — drops them, and replaying a tool_result
+    // alongside a thinking-stripped assistant turn is rejected on models that
+    // require the block echoed back unchanged.
+    //
+    // The failure mode is nasty: it would surface as a 400 on the SECOND turn
+    // of every tool-using investigation, be labelled "bad request", and not be
+    // retried — so it reads as an empty answer, not as a bug.
+    //
+    // So: keep the raw provider content on the message and send it back
+    // untouched. The reconstruction path below remains for transcripts that
+    // came from another provider or from stored history.
+    if (m.role === 'assistant' && Array.isArray(m._providerContent) && m._providerContent.length) {
+      flushPending();
+      out.push({ role: 'assistant', content: m._providerContent });
+      continue;
+    }
+
     if (m.role === 'tool') {
       pendingToolResults.push({
         type: 'tool_result',
@@ -384,6 +422,10 @@ export class AnthropicLlmProvider {
 
     const result = { message: text, raw: response };
     if (toolCalls.length) result.toolCalls = toolCalls;
+    // The raw block list, so the caller can replay this turn unchanged rather
+    // than reconstructing it and losing the thinking blocks. See
+    // toClaudeMessages().
+    result.providerContent = response.content ?? [];
 
     // USAGE. Reported in the OpenAI-shaped keys the investigation loop already
     // sums (`usage.prompt_tokens` / `completion_tokens`), because that loop is

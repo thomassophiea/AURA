@@ -263,3 +263,41 @@ describe('resolveFallbackModels', () => {
     expect(resolveFallbackModels('groq', 'a', { CORTEX_LLM_FALLBACK_MODELS: '' })).toEqual([]);
   });
 });
+
+describe('resolveFallbackModels — a fallback must step DOWN in price', () => {
+  it('never offers a more expensive model than the primary', () => {
+    // The defect: registry order is strongest-first, so with claude-sonnet-5 as
+    // the routine default the first fallback was claude-opus-5 — the most
+    // expensive model in the catalogue. A momentary Sonnet rate-limit would
+    // silently promote a whole investigation to Opus.
+    const fb = resolveFallbackModels('anthropic', 'claude-sonnet-5', {});
+    expect(fb).not.toContain('claude-opus-5');
+    expect(fb).toContain('claude-haiku-4-5');
+  });
+
+  it('still offers the full chain below the top model', () => {
+    const fb = resolveFallbackModels('anthropic', 'claude-opus-5', {});
+    expect(fb).toEqual(['claude-sonnet-5', 'claude-haiku-4-5']);
+  });
+
+  it('returns nothing below the cheapest model', () => {
+    expect(resolveFallbackModels('anthropic', 'claude-haiku-4-5', {})).toEqual([]);
+  });
+
+  it('falls back to the whole list when the primary is not in the registry', () => {
+    // A pinned or custom id should not silently disable fallback entirely.
+    const fb = resolveFallbackModels('anthropic', 'claude-some-future-model', {});
+    expect(fb.length).toBeGreaterThan(0);
+  });
+
+  it('still honours an explicit override', () => {
+    expect(
+      resolveFallbackModels('anthropic', 'claude-sonnet-5', {
+        CORTEX_LLM_FALLBACK_MODELS: 'claude-opus-5',
+      })
+    ).toEqual(['claude-opus-5']);
+    expect(
+      resolveFallbackModels('anthropic', 'claude-sonnet-5', { CORTEX_LLM_FALLBACK_MODELS: '' })
+    ).toEqual([]);
+  });
+});

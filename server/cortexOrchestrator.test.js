@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { CortexOrchestrator } from './cortexOrchestrator.js';
+import { CortexOrchestrator, truncateToolPayload } from './cortexOrchestrator.js';
 /**
  * A local test double. The production MockLlmProvider was deleted because it
  * shipped fabricated telemetry; a stub confined to this test file carries no
@@ -178,5 +178,48 @@ describe('CortexOrchestrator', () => {
     const { sessionId } = orch.createSession(makeContext());
     await orch.processMessage(sessionId, 'hi', makeContext()); // no authToken/controllerUrl
     expect(sentTools[0]).toBeUndefined();
+  });
+});
+
+describe('truncateToolPayload', () => {
+  it('returns the payload unchanged when it fits', () => {
+    const small = { a: 1, b: 'two' };
+    expect(truncateToolPayload(small)).toBe(JSON.stringify(small));
+  });
+
+  it('always produces parseable JSON, even when truncating', () => {
+    // The defect this replaces: JSON.stringify(x).slice(0, N) cuts at an
+    // arbitrary byte, so the model received something that opened like JSON
+    // and never closed.
+    const big = Array.from({ length: 500 }, (_, i) => ({
+      mac: `00:11:22:33:44:${i}`,
+      hostname: `client-${i}-with-a-reasonably-long-name`,
+      rss: -60 - (i % 30),
+    }));
+    const out = truncateToolPayload(big, 1000);
+    expect(() => JSON.parse(out)).not.toThrow();
+  });
+
+  it('truncates an array element-wise and states what was dropped', () => {
+    const big = Array.from({ length: 500 }, (_, i) => ({ mac: `00:11:22:33:44:${i}`, rss: -70 }));
+    const parsed = JSON.parse(truncateToolPayload(big, 1000));
+    expect(parsed.__truncated__).toBe(true);
+    expect(parsed.totalRows).toBe(500);
+    expect(parsed.returned).toBeLessThan(500);
+    expect(parsed.returned).toBe(parsed.rows.length);
+    // The model must be able to say "20 of 500" rather than invent a total.
+    expect(parsed.note).toMatch(/of 500 rows/);
+  });
+
+  it('withholds an oversized object rather than cutting it mid-structure', () => {
+    const obj = { blob: 'x'.repeat(5000), other: 1 };
+    const parsed = JSON.parse(truncateToolPayload(obj, 1000));
+    expect(parsed.__truncated__).toBe(true);
+    expect(parsed.keys).toContain('blob');
+    expect(parsed.note).toMatch(/withheld rather than cut/);
+  });
+
+  it('handles null without throwing', () => {
+    expect(truncateToolPayload(null)).toBe('null');
   });
 });

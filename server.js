@@ -33,7 +33,8 @@ import { GatewayEvidence } from './server/cortex/gatewayEvidence.js';
 import { CapabilityRegistry, getCapabilitiesFor } from './server/cortex/capabilityRegistry.js';
 import { createDiagnosticTools, TOOL_ACTIVITY } from './server/cortex/diagnosticTools.js';
 import { runInvestigation, auditAnswer } from './server/cortex/investigationAgent.js';
-import { selectModel } from './server/cortex/modelPolicy.js';
+import { selectModel, classifyInvestigationIntent } from './server/cortex/modelPolicy.js';
+import { proposeRemediation } from './server/cortex/remediationBridge.js';
 import { sessionFromRequest } from './server/cortex/requestScopedSession.js';
 import { requireRole } from './server/identity/identityRouter.js';
 import { audit } from './server/identity/identityStore.js';
@@ -2608,26 +2609,41 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
     // provider here with a published Sonnet/Opus split to escalate BETWEEN. On
     // every other provider the chosen effort still rides along and is ignored,
     // and the configured model is left exactly as the operator set it.
+    // Clamped: priorIterations is client-supplied and its only job is to say
+    // whether a previous pass ran long. An unclamped value is a free lever on
+    // the expensive tier.
+    const priorIters = Math.min(Math.max(Number(priorIterations) || 0, 0), 20);
+
     const policy = selectModel({
       question,
-      // /investigate is the diagnosis surface: configuration intent is served
+      // /investigate is the diagnosis surface — configuration intent is served
       // by the deterministic /wireless/* routes, which never reach this code.
-      intent: 'TROUBLESHOOTING',
+      // But QUERY and EXPLANATION absolutely do arrive here ("how many APs are
+      // at X", "what does AFC do"), and routing them as TROUBLESHOOTING denied
+      // them the cheap tier the policy exists to give them.
+      intent: classifyInvestigationIntent(question),
       redQueen,
-      continuing: Number(priorIterations) > 0,
-      priorIterations: Number(priorIterations) || 0,
+      continuing: priorIters > 0,
+      priorIterations: priorIters,
       requestedModel: usableModel,
     });
     chosenEffort = policy.effort;
     modelPolicyReason = policy.reason;
 
+    // An operator who pins CORTEX_LLM_MODEL has made a deliberate cost or
+    // capability choice — usually pinning DOWN, e.g. to Haiku. Overriding it
+    // silently is the opposite of what the pin is for.
+    const modelIsPinned = Boolean(process.env.CORTEX_LLM_MODEL);
     const isAnthropic = String(model).startsWith('claude-');
-    if (!usableModel && isAnthropic && policy.model !== model) {
+    if (!usableModel && !modelIsPinned && isAnthropic && policy.model !== model) {
       try {
         const routed = createLlmProviderForModel(policy.model, []);
         llmProvider = routed.provider;
         model = routed.model;
-        escalatedTier = policy.tier;
+        // Only report an ESCALATION when the tier actually went up. Recording
+        // 'default' here on an Opus-default deployment labelled a downgrade as
+        // an escalation in the audit log.
+        escalatedTier = policy.tier === 'deep' ? 'deep' : null;
       } catch (err) {
         // An escalation that cannot be resolved is not a reason to fail the
         // question — answer on the model we already have and say nothing was
@@ -2724,6 +2740,12 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
       escalatedTier,
       redQueen: Boolean(redQueen),
       cost: result.cost ?? null,
+      // What would actually fix this, and who can do it. Computed from the
+      // answer text against a fixed catalogue — it proposes, never acts, and it
+      // marks an item executable only when the deterministic write path really
+      // implements that action. An unbacked diagnosis returns a refusal rather
+      // than a plan.
+      remediation: proposeRemediation({ diagnosis: result.answer, ledger: result.ledger }),
     });
 
     audit('cortex.investigate', {

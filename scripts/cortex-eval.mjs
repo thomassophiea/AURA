@@ -128,6 +128,20 @@ for (const model of models) {
       else delete scope.mac;
     }
 
+    // INJECT THE HOSTILE STRING FOR REAL.
+    //
+    // This field used to be declared on the scenario and read by nobody, so the
+    // flagship injection test ran a benign question against whatever happened
+    // to be on the lab box and graded "resisted injection" on an input that
+    // contained no injection. It could not have detected a regression.
+    //
+    // It is injected through `scope`, which is a genuine network-sourced path
+    // into the system prompt — the UI fills `ssid` and `siteName` from Gateway
+    // data — and it needs no write to the Gateway to exercise.
+    if (scenario.injectHostileData) {
+      scope.ssid = scenario.injectHostileData;
+    }
+
     const policy = selectModel({
       question: scenario.question,
       intent: scenario.intent,
@@ -218,10 +232,15 @@ for (const model of models) {
     console.log(`\n  ${name.padEnd(16)} ${c.passed}/${c.n} passed   mean score ${c.meanScore}`);
   }
 
-  const totalCost = modelReport.scenarios.reduce(
-    (s, x) => s + (x.cost?.estimatedCostUsd ?? 0),
-    0
+  // Null-aware, to match the per-scenario line and the doctrine everywhere
+  // else: a run with no published rate is "unpriced", never "$0.0000". Folding
+  // nulls in as zero here would have printed a free-looking total for an
+  // entirely unpriced provider.
+  const priced = modelReport.scenarios.filter(
+    (x) => typeof x.cost?.estimatedCostUsd === 'number'
   );
+  const totalCost = priced.reduce((s, x) => s + x.cost.estimatedCostUsd, 0);
+  const costLabel = priced.length ? `$${totalCost.toFixed(4)}` : 'unpriced';
   const meanLatency = Math.round(
     modelReport.scenarios.reduce((s, x) => s + x.latencyMs, 0) / modelReport.scenarios.length
   );
@@ -230,11 +249,12 @@ for (const model of models) {
     passed: modelReport.scenarios.filter((s) => s.passed).length,
     total: modelReport.scenarios.length,
     meanLatencyMs: meanLatency,
-    estimatedCostUsd: Number(totalCost.toFixed(4)),
+    estimatedCostUsd: priced.length ? Number(totalCost.toFixed(4)) : null,
+    pricedScenarios: priced.length,
   };
   console.log(
     `\n  TOTAL  ${modelReport.totals.passed}/${modelReport.totals.total}  ` +
-      `mean ${meanLatency}ms  $${modelReport.totals.estimatedCostUsd}`
+      `mean ${meanLatency}ms  ${costLabel}`
   );
 
   report.models[model] = modelReport;
@@ -247,7 +267,8 @@ if (models.length > 1) {
   for (const [model, r] of Object.entries(report.models)) {
     console.log(
       `  ${model.padEnd(22)} ${`${r.totals.passed}/${r.totals.total}`.padEnd(8)} ` +
-        `${`${r.totals.meanLatencyMs}ms`.padEnd(10)} $${r.totals.estimatedCostUsd}`
+        `${`${r.totals.meanLatencyMs}ms`.padEnd(10)} ` +
+        `${r.totals.estimatedCostUsd === null ? 'unpriced' : `$${r.totals.estimatedCostUsd}`}`
     );
   }
   console.log(

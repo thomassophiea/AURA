@@ -75,8 +75,9 @@ describe('redQueen reaches the system prompt', () => {
     });
     const system = provider.calls[0].messages.find((m) => m.role === 'system');
     expect(system.content).toMatch(/RED QUEEN — ADVERSARIAL REVIEW/);
-    // Red Queen has to be able to reach further than the pass it reviews.
-    expect(provider.calls[0].maxTokens).toBe(2400);
+    // Red Queen has to be able to reach further than the pass it reviews, and
+    // the ceiling must clear the thinking the effort level will spend.
+    expect(provider.calls[0].maxTokens).toBeGreaterThanOrEqual(8000);
   });
 
   it('omits the directive on a normal pass', async () => {
@@ -90,7 +91,63 @@ describe('redQueen reaches the system prompt', () => {
     });
     const system = provider.calls[0].messages.find((m) => m.role === 'system');
     expect(system.content).not.toMatch(/RED QUEEN/);
+    // No effort chosen -> the conservative floor.
     expect(provider.calls[0].maxTokens).toBe(1400);
+  });
+
+  it('scales the output ceiling with effort, because thinking bills as output', () => {
+    // The defect this pins: adaptive thinking spends OUTPUT tokens, so asking
+    // for xhigh depth under a 1400-token ceiling lets the model exhaust its
+    // budget reasoning and stop with `max_tokens` before emitting any text or
+    // any tool_use block. The loop then reads the empty string as the answer.
+    const cases = [
+      ['low', 1400],
+      ['medium', 2400],
+      ['high', 6000],
+      ['xhigh', 10000],
+    ];
+    return Promise.all(
+      cases.map(async ([effort, expected]) => {
+        const provider = recordingProvider();
+        await runInvestigation({
+          provider,
+          model: 'claude-opus-5',
+          tools: noTools,
+          capabilities,
+          question: 'why is this client unhappy?',
+          effort,
+        });
+        expect(provider.calls[0].maxTokens, `effort=${effort}`).toBe(expected);
+      })
+    );
+  });
+
+  it('retries once with more room when a turn truncates with nothing to show', async () => {
+    let n = 0;
+    const provider = {
+      calls: [],
+      async generateResponse(params) {
+        this.calls.push(params);
+        n += 1;
+        // First turn: hit the ceiling before producing anything.
+        if (n === 1) return { message: '', truncated: true, stopReason: 'max_tokens' };
+        return { message: 'The client is on AURA_PSAE at -62 dBm.', usage: { prompt_tokens: 10 } };
+      },
+    };
+    const r = await runInvestigation({
+      provider,
+      model: 'claude-opus-5',
+      tools: noTools,
+      capabilities,
+      question: 'why is this client unhappy?',
+      effort: 'high',
+    });
+
+    expect(provider.calls).toHaveLength(2);
+    // The retry gets strictly more room than the attempt that truncated.
+    expect(provider.calls[1].maxTokens).toBeGreaterThan(provider.calls[0].maxTokens);
+    expect(r.answer).toMatch(/AURA_PSAE/);
+    expect(r.warnings.join(' ')).toMatch(/hit its output limit/i);
   });
 });
 
