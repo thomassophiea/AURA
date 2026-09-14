@@ -52,8 +52,33 @@ sets). See the experiment log for the plan to (a) make AURA_PPSK genuinely per-u
 ## Nomenclature (current)
 
 - **Aura PPSK** — SSID `AURA_PPSK`. ("Skynet PPSK" is obsolete; do not reintroduce.)
-- **Aura Private SAE** — SSID `AURA_PSAE` (to be built on wl2 / 6 GHz).
+- **Aura Private SAE** — SSID `AURA_PSAE`. **Built.** See the 2026-09-14 note below.
 - Keep `AURA-CWP` as-is.
+
+## 2026-09-14 — read-only re-verification against the live Gateway
+
+Confirmed by direct API read (`GET /v1/services`, `GET /v3/sites`, `GET /v1/aps/query`,
+flex `MuTable`) on `192.168.100.12:5825`. No writes were made.
+
+- **`AURA_PSAE` exists**, with controller privacy `WpaSaeElement` (WPA3-SAE). The
+  "to be built" wording above predated it and was stale. 8 services are defined on the
+  box: `Skynet`, `Skynet_Secure` (`Wpa3Enterprise192bElement`), `Skynet_Junior`,
+  `Skynet_Guest`, `AURA_PSAE`, `AURA_PPSK`, `AURA-CWP`, `AURA-PROD-CWP`.
+- **7 sites**, `AURA_LAB` among them. **8 APs** in the fleet.
+- **Flex `MuTable` decodes** (base64 → zlib → JSON): 90 client rows over the 3H window.
+- **A live sentinel example worth keeping.** The first sampled client row reads
+  `Rss -62`, `SNR 38`, `RFQI 4` — all real — alongside `WirelessRTT`, `NetworkRTT` and
+  `DNSRTT` **all at 65535**, which means *not measured*, not 65 seconds. Real signal and
+  sentinel latency on the same row is the exact shape that makes a naive tool report a
+  fleet-wide latency incident for a healthy client.
+- **`GET /v1/aps/query` returns null `operationalStatus` and null `siteName`**, not only the
+  already-documented null `profileId`. Anything reading AP status or site membership from
+  `/query` silently gets nothing and will report a healthy fleet as unknown, or fail to join
+  APs to sites. Use `GET /v1/aps/{serial}` for those fields. This belongs in
+  `ai-first-configuration/references/gotchas.md` alongside the `profileId` entry.
+- **Admin lockout reproduced.** A second login roughly a minute after the first returned a
+  credential failure with the correct password; the first token stayed valid throughout.
+  Mint once and reuse — do not let a multi-step tool authenticate per call.
 
 ## AAA / Gateway relationship
 
