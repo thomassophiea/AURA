@@ -127,3 +127,24 @@ describe('the projection never becomes telemetry', () => {
     expect(migration).not.toMatch(/ALTER TABLE energy_experiments/i);
   });
 });
+
+describe('a restart cannot leave the audit trail claiming a live simulation', () => {
+  it('the web process reconciles orphaned episodes at boot', async () => {
+    const text = await code('../../../server.js');
+    expect(text).toContain('closeOrphanedDemoEpisodes');
+  });
+
+  it('the collector worker does NOT — the override lives in the web process', async () => {
+    // A collector restart is independent of the web process. If it closed
+    // episodes, it would close one the web process still has running, and the
+    // trail would say a simulation stopped while it was still on screen.
+    const text = await code('../../../server/collectorWorker.js');
+    expect(text).not.toContain('closeOrphanedDemoEpisodes');
+  });
+
+  it('reconciliation is scoped to open rows and names the cause', async () => {
+    const text = await source('experimentRepository.js');
+    expect(text).toContain("ended_reason = 'service_restarted'");
+    expect(text).toMatch(/UPDATE energy_demo_simulation_episodes[\s\S]*?WHERE ended_at IS NULL/);
+  });
+});

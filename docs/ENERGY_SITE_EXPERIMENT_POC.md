@@ -712,6 +712,14 @@ The live override itself stays in process memory and dies with the service, on
 purpose — a forgotten override is the one way this feature could quietly poison
 real history. Replaying the episode rows never re-arms anything.
 
+Because the override dies but its audit row does not, the **web** process closes
+any episode still marked open at boot, with `ended_reason = 'service_restarted'`.
+Without it a restart mid-simulation left a row whose duration kept growing,
+reading as "a simulation has been running for two hours" long after it stopped —
+observed on Integration across a deploy. The collector worker deliberately does
+**not** do this: the override lives in the web process, and a collector restart
+must not close an episode that is still on screen.
+
 ---
 
 ## 17. API

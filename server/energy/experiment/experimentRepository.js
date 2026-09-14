@@ -58,9 +58,17 @@ export async function upsertConfig({
        updated_at = now()
      RETURNING *`,
     [
-      sourceId, treatmentSiteId ?? null, treatmentSiteName ?? null, controlSiteId ?? null, controlSiteName ?? null,
-      darknessThresholdRaw, darknessPersistenceSeconds, recoveryThresholdRaw, recoveryPersistenceSeconds,
-      JSON.stringify(action ?? {}), !!enabled,
+      sourceId,
+      treatmentSiteId ?? null,
+      treatmentSiteName ?? null,
+      controlSiteId ?? null,
+      controlSiteName ?? null,
+      darknessThresholdRaw,
+      darknessPersistenceSeconds,
+      recoveryThresholdRaw,
+      recoveryPersistenceSeconds,
+      JSON.stringify(action ?? {}),
+      !!enabled,
     ]
   );
   return rows[0];
@@ -106,7 +114,15 @@ export async function listExperiments(sourceId, limit = 20) {
  * experiment would have an incomplete safety boundary.
  */
 export async function createExperiment({
-  sourceId, name, treatment, control, treatmentDevices, controlDevices, action, startedBy, baselineStart,
+  sourceId,
+  name,
+  treatment,
+  control,
+  treatmentDevices,
+  controlDevices,
+  action,
+  startedBy,
+  baselineStart,
 }) {
   return withTransaction(async (client) => {
     const { rows } = await client.query(
@@ -116,13 +132,23 @@ export async function createExperiment({
        VALUES ($1,$2,'collecting_baseline',$3,$4,$5,$6,$7,$8::jsonb,$9)
        RETURNING *`,
       [
-        sourceId, name, treatment.siteId, treatment.siteName, control.siteId, control.siteName,
-        baselineStart ?? new Date().toISOString(), JSON.stringify(action ?? {}), startedBy ?? null,
+        sourceId,
+        name,
+        treatment.siteId,
+        treatment.siteName,
+        control.siteId,
+        control.siteName,
+        baselineStart ?? new Date().toISOString(),
+        JSON.stringify(action ?? {}),
+        startedBy ?? null,
       ]
     );
     const experiment = rows[0];
 
-    for (const [side, devices] of [['treatment', treatmentDevices], ['control', controlDevices]]) {
+    for (const [side, devices] of [
+      ['treatment', treatmentDevices],
+      ['control', controlDevices],
+    ]) {
       for (const d of devices) {
         await client.query(
           `INSERT INTO energy_experiment_devices
@@ -130,7 +156,11 @@ export async function createExperiment({
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
            ON CONFLICT (experiment_id, ap_serial) DO NOTHING`,
           [
-            experiment.id, side, d.serial, d.apName ?? null, d.model ?? null,
+            experiment.id,
+            side,
+            d.serial,
+            d.apName ?? null,
+            d.model ?? null,
             side === 'treatment' ? treatment.siteId : control.siteId,
             d.siteName ?? (side === 'treatment' ? treatment.siteName : control.siteName),
             d.status ?? null,
@@ -144,9 +174,20 @@ export async function createExperiment({
 
 export async function updateExperiment(id, patch) {
   const allowed = new Set([
-    'state', 'baseline_start', 'baseline_end', 'treatment_start', 'treatment_end',
-    'recovery_start', 'ended_at', 'trigger_source', 'controller_writes_applied',
-    'baseline_metrics', 'treatment_metrics', 'savings', 'telemetry_quality', 'error_summary',
+    'state',
+    'baseline_start',
+    'baseline_end',
+    'treatment_start',
+    'treatment_end',
+    'recovery_start',
+    'ended_at',
+    'trigger_source',
+    'controller_writes_applied',
+    'baseline_metrics',
+    'treatment_metrics',
+    'savings',
+    'telemetry_quality',
+    'error_summary',
   ]);
   const sets = [];
   const params = [id];
@@ -157,7 +198,9 @@ export async function updateExperiment(id, patch) {
         ? JSON.stringify(value)
         : value
     );
-    sets.push(`${key} = $${params.length}${key.endsWith('_metrics') || key === 'savings' || key === 'telemetry_quality' ? '::jsonb' : ''}`);
+    sets.push(
+      `${key} = $${params.length}${key.endsWith('_metrics') || key === 'savings' || key === 'telemetry_quality' ? '::jsonb' : ''}`
+    );
   }
   if (sets.length === 0) return getExperiment(id);
   const { rows } = await query(
@@ -277,8 +320,16 @@ export async function listOutstandingRestores(sourceId) {
 /* ------------------------------------------------------------------- events */
 
 export async function insertEvent({
-  experimentId, sourceId, kind, message, severity = 'info', side = null,
-  apSerial = null, detail = {}, provenance = 'live', occurredAt = null,
+  experimentId,
+  sourceId,
+  kind,
+  message,
+  severity = 'info',
+  side = null,
+  apSerial = null,
+  detail = {},
+  provenance = 'live',
+  occurredAt = null,
 }) {
   const { rows } = await query(
     `INSERT INTO energy_experiment_events
@@ -287,8 +338,16 @@ export async function insertEvent({
      VALUES ($1,$2, COALESCE($3::timestamptz, now()), $4,$5,$6,$7,$8,$9::jsonb,$10)
      RETURNING id, occurred_at`,
     [
-      experimentId ?? null, sourceId, occurredAt, kind, severity, side, apSerial,
-      message, JSON.stringify(detail ?? {}), provenance,
+      experimentId ?? null,
+      sourceId,
+      occurredAt,
+      kind,
+      severity,
+      side,
+      apSerial,
+      message,
+      JSON.stringify(detail ?? {}),
+      provenance,
     ]
   );
   return rows[0];
@@ -533,7 +592,12 @@ export async function openDemoEpisode({
 }
 
 /** Close the open episode on a source, recording what it was showing at the end. */
-export async function closeDemoEpisode({ sourceId, reason = 'operator_request', projection = null, reductionShare = null }) {
+export async function closeDemoEpisode({
+  sourceId,
+  reason = 'operator_request',
+  projection = null,
+  reductionShare = null,
+}) {
   const { rows } = await query(
     `UPDATE energy_demo_simulation_episodes
         SET ended_at = now(),
@@ -546,6 +610,34 @@ export async function closeDemoEpisode({ sourceId, reason = 'operator_request', 
     [sourceId, reason, projection ? JSON.stringify(projection) : null, reductionShare]
   );
   return rows[0] ?? null;
+}
+
+/**
+ * Close every episode left open by a process that went away.
+ *
+ * The live override is held in process memory and dies with the service, by
+ * design. Its audit row does not — so a restart during an active simulation
+ * left a row with `ended_at IS NULL` whose duration kept growing, reading as
+ * "a simulation has been running for two hours" long after it stopped. Observed
+ * on Integration across a deploy.
+ *
+ * Called once at web-process boot, before anything can set a new override.
+ * Deliberately NOT called by the collector worker: the override lives in the
+ * web process, and a collector restart must not close an episode the web
+ * process still has running.
+ *
+ * `service_restarted` distinguishes this from an operator's own reset, so the
+ * trail says what actually happened rather than implying a clean stop.
+ */
+export async function closeOrphanedDemoEpisodes() {
+  const { rows } = await query(
+    `UPDATE energy_demo_simulation_episodes
+        SET ended_at = now(), ended_reason = 'service_restarted'
+      WHERE ended_at IS NULL
+      RETURNING id, site_name AS "siteName", mode,
+                EXTRACT(EPOCH FROM (now() - started_at))::int AS "durationSeconds"`
+  );
+  return rows;
 }
 
 /** The simulation history for a controller — for the timeline and for audit. */

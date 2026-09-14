@@ -53,6 +53,7 @@ import { createEnergyRouter } from './server/energy/energyRouter.js';
 import { createLightAwareRouter } from './server/energy/lightAware/router.js';
 import { createExperimentRouter } from './server/energy/experiment/experimentRouter.js';
 import { evaluateTrigger as evaluateEnergyTrigger, sessionFor as energySessionFor } from './server/energy/experiment/experimentEngine.js';
+import { closeOrphanedDemoEpisodes } from './server/energy/experiment/experimentRepository.js';
 import { createGuestsRouter } from './server/guests/guestsRouter.js';
 import { createPpskRouter } from './server/ppsk/ppskRouter.js';
 import { createPrivateSaeRouter } from './server/privateSae/saeRouter.js';
@@ -3021,6 +3022,22 @@ httpServer.listen(PORT, '0.0.0.0', async () => {
     console.log(
       `[Proxy Server] ✓ In-process retention sweep every ${monitoringConfig.cleanupIntervalSeconds}s`
     );
+  }
+
+  // An Energy demo simulation cannot survive a restart — the override lives in
+  // process memory on purpose — so any episode still marked open belongs to a
+  // process that is gone. Close it before anything can start a new one, or the
+  // audit trail keeps counting a simulation that stopped at the last deploy.
+  try {
+    const orphaned = await closeOrphanedDemoEpisodes();
+    if (orphaned.length > 0) {
+      console.log(
+        `[Proxy Server] ✓ Closed ${orphaned.length} Energy demo episode(s) left open by a previous process: ` +
+          orphaned.map((o) => `${o.siteName ?? 'unknown site'} (${o.mode})`).join(', ')
+      );
+    }
+  } catch (error) {
+    console.warn(`[Proxy Server] ⚠  Energy demo episode reconcile failed: ${error.message}`);
   }
 
   // Energy experiment trigger sweep. A light report drives the trigger
