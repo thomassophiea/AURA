@@ -49,6 +49,30 @@ matches the standing controller-config-gen gap (controller never emits `wpa_psk_
 sets). See the experiment log for the plan to (a) make AURA_PPSK genuinely per-user here and
 (b) build AURA_PSAE.
 
+### 2026-09-14 (later) — the AP named in this document is NOT in this site
+
+Verified read-only against the live Gateway while chasing what looked like a Cortex bug. It
+was not a bug: Cortex answered "0 APs at AURA_LAB" and that is **correct**.
+
+- **`AURA_LAB`'s device group `5010-LAB1` has `apSerialNumbers: []` — it is empty.**
+- Serial `WM012243W-30032`, which the table at the top of this file calls **`AP5010-LAB`** and
+  places in `AURA_LAB`, is actually named **`AP5010-TEST`** on the Gateway and reports
+  **`hostSite: "AFC LAB"`**.
+- So the blast-radius boundary at the top of this document names an AP that does not currently
+  belong to the site it claims. **Re-verify the target resolves before any write** — which is
+  what that boundary already says, and this is exactly the case it exists to catch.
+
+**API shape worth recording:** the AP→site field is **`hostSite`** on `GET /v1/aps/{serial}`.
+It is **not** `siteName`, and `GET /v1/aps/query` carries **no site field at all** — both
+`siteName` and `siteId` come back `null` for every AP. Anything joining APs to sites on
+`siteName` silently matches nothing and will report an empty site that is merely unjoinable.
+This belongs in `ai-first-configuration/references/gotchas.md` next to the `profileId: null`
+entry.
+
+**Token idle timeout confirmed:** a bearer minted at 16:01 and last used at 16:28 was rejected
+at 17:33 — the documented 1-hour *idle* timeout, not the 2-hour TTL. Long-running tooling must
+refresh on idle, not only on expiry.
+
 ## Nomenclature (current)
 
 - **Aura PPSK** — SSID `AURA_PPSK`. ("Skynet PPSK" is obsolete; do not reintroduce.)
