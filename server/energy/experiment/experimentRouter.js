@@ -19,6 +19,7 @@ import * as repo from './experimentRepository.js';
 import * as engine from './experimentEngine.js';
 import { discover } from './siteDiscovery.js';
 import { assessReadiness } from './readiness.js';
+import { selectDisplayExperiment } from './displayScope.js';
 import { fetchRecentLightSamples, evaluateSide } from './lightSignal.js';
 import { extrapolateObserved } from '../scenarioEngine.js';
 import { summarizeSide } from './analysis.js';
@@ -95,6 +96,20 @@ export function createExperimentRouter(options = {}) {
     }
   }
 
+  /**
+   * The experiment the page is currently about, per `displayScope.js`.
+   *
+   * A finished run against a pair that is no longer the configured one is
+   * history, not the current subject — see that module for why.
+   */
+  async function displayExperiment(source, config) {
+    const [active, recent] = await Promise.all([
+      repo.getActiveExperiment(source.id),
+      repo.listExperiments(source.id, 1),
+    ]);
+    return selectDisplayExperiment({ active, latest: recent[0] ?? null, config });
+  }
+
   /* ------------------------------------------------- demo fail-safe overlay */
 
   /**
@@ -141,7 +156,11 @@ export function createExperimentRouter(options = {}) {
         // recent measured average IS its current level; it stays real data
         // either way, and it is the only side that must never be projected.
         controlSiteId && !controlCurrent
-          ? repo.fetchApBaselineWatts({ sourceId: source.id, siteId: controlSiteId, before: nowFn().toISOString() })
+          ? repo.fetchApBaselineWatts({
+              sourceId: source.id,
+              siteId: controlSiteId,
+              before: nowFn().toISOString(),
+            })
           : Promise.resolve([]),
         getRatePreferences(source.id),
       ]);
@@ -162,11 +181,16 @@ export function createExperimentRouter(options = {}) {
         );
 
       const elapsed = Math.max(60, (nowFn().getTime() - Date.parse(decision.startedAt)) / 1000);
-      const measuredControl = controlCurrent ?? (controlAps.length ? asSide(controlAps, elapsed) : null);
+      const measuredControl =
+        controlCurrent ?? (controlAps.length ? asSide(controlAps, elapsed) : null);
       const effectiveBaseline =
         baseline ??
         (baselineAps.length || controlAps.length
-          ? { treatment: asSide(baselineAps, elapsed), control: measuredControl, provenance: 'measured' }
+          ? {
+              treatment: asSide(baselineAps, elapsed),
+              control: measuredControl,
+              provenance: 'measured',
+            }
           : null);
 
       const overlay = computeOverlay({
@@ -176,7 +200,8 @@ export function createExperimentRouter(options = {}) {
         baseline: effectiveBaseline,
         controlCurrent: measuredControl,
         prefs: rates,
-        emissionsFactor: rates.emissionsFactorKgPerKwh ?? engine.DEFAULT_EMISSIONS_FACTOR_KG_PER_KWH,
+        emissionsFactor:
+          rates.emissionsFactorKgPerKwh ?? engine.DEFAULT_EMISSIONS_FACTOR_KG_PER_KWH,
         calc,
         now: nowFn(),
         bucketSeconds,
@@ -195,11 +220,18 @@ export function createExperimentRouter(options = {}) {
       const session = await sessionFor(source);
       const found = await discover({
         session,
-        configuredPair: { treatmentSiteId: config?.treatment_site_id, controlSiteId: config?.control_site_id },
+        configuredPair: {
+          treatmentSiteId: config?.treatment_site_id,
+          controlSiteId: config?.control_site_id,
+        },
       });
       if (!found.ok) return fail(res, 502, found.error);
       res.json({
-        sites: found.sites.map((s) => ({ siteId: s.siteId, siteName: s.siteName, timezone: s.timezone })),
+        sites: found.sites.map((s) => ({
+          siteId: s.siteId,
+          siteName: s.siteName,
+          timezone: s.timezone,
+        })),
         pair: found.pair,
         membership: found.membership,
         anomalies: found.anomalies,
@@ -228,11 +260,20 @@ export function createExperimentRouter(options = {}) {
   router.put(`${BASE}/config`, requireOperator, jsonBody, (req, res) =>
     withSource(req, res, async (source) => {
       const body = req.body ?? {};
-      if (body.treatmentSiteId && body.controlSiteId && body.treatmentSiteId === body.controlSiteId) {
-        return fail(res, 400, 'Treatment and Control must be different sites.', { errorClass: 'validation' });
+      if (
+        body.treatmentSiteId &&
+        body.controlSiteId &&
+        body.treatmentSiteId === body.controlSiteId
+      ) {
+        return fail(res, 400, 'Treatment and Control must be different sites.', {
+          errorClass: 'validation',
+        });
       }
       const saved = await repo.upsertConfig({ sourceId: source.id, ...body });
-      record(req, 'energy.experiment.config', { treatmentSiteId: saved.treatment_site_id, controlSiteId: saved.control_site_id });
+      record(req, 'energy.experiment.config', {
+        treatmentSiteId: saved.treatment_site_id,
+        controlSiteId: saved.control_site_id,
+      });
       res.json(saved);
     })
   );
@@ -243,24 +284,28 @@ export function createExperimentRouter(options = {}) {
   router.get(`${BASE}/state`, (req, res) =>
     withSource(req, res, async (source) => {
       const experimentId = req.query.experimentId;
+      const scopeConfig = await repo.getConfig(source.id);
+      // An explicit id is an explicit request — honour it even if the pair has
+      // moved on, because that is how /history drills into a past run.
       const experiment = experimentId
         ? await repo.getExperiment(experimentId)
-        : (await repo.getActiveExperiment(source.id)) ??
-          (await repo.listExperiments(source.id, 1))[0] ??
-          null;
+        : (await displayExperiment(source, scopeConfig)).experiment;
 
       if (!experiment) {
         // No experiment, but the fail-safe must still work: if the call that
         // would have started one is what failed, the operator needs the story
         // on screen regardless. The projection is display-only, so there is
         // nothing here it could corrupt.
-        const config = await repo.getConfig(source.id);
+        const config = scopeConfig;
         const { override, overlay } = await resolveOverlay({ source, config });
         return res.json({
           experiment: null,
           pair: config
             ? {
-                treatment: { siteId: config.treatment_site_id, siteName: config.treatment_site_name },
+                treatment: {
+                  siteId: config.treatment_site_id,
+                  siteName: config.treatment_site_name,
+                },
                 control: { siteId: config.control_site_id, siteName: config.control_site_name },
               }
             : null,
@@ -293,7 +338,10 @@ export function createExperimentRouter(options = {}) {
           id: experiment.id,
           name: experiment.name,
           state: experiment.state,
-          treatment: { siteId: experiment.treatment_site_id, siteName: experiment.treatment_site_name },
+          treatment: {
+            siteId: experiment.treatment_site_id,
+            siteName: experiment.treatment_site_name,
+          },
           control: { siteId: experiment.control_site_id, siteName: experiment.control_site_name },
           baselineStart: experiment.baseline_start,
           baselineEnd: experiment.baseline_end,
@@ -337,11 +385,11 @@ export function createExperimentRouter(options = {}) {
     withSource(req, res, async (source) => {
       const range = String(req.query.range ?? '24h');
       const experimentId = req.query.experimentId;
+      const config = await repo.getConfig(source.id);
       const experiment = experimentId
         ? await repo.getExperiment(experimentId)
-        : (await repo.getActiveExperiment(source.id)) ?? (await repo.listExperiments(source.id, 1))[0];
+        : (await displayExperiment(source, config)).experiment;
 
-      const config = await repo.getConfig(source.id);
       const treatmentSiteId = experiment?.treatment_site_id ?? config?.treatment_site_id;
       const controlSiteId = experiment?.control_site_id ?? config?.control_site_id;
       if (!treatmentSiteId || !controlSiteId) return fail(res, 400, 'No site pair is configured.');
@@ -389,10 +437,20 @@ export function createExperimentRouter(options = {}) {
       const annotations = experiment
         ? (await repo.listEvents(experiment.id))
             .filter((e) =>
-              ['optimization_activated', 'light_restored', 'darkness_persistence_satisfied',
-               'restoration_verified', 'baseline_established'].includes(e.kind)
+              [
+                'optimization_activated',
+                'light_restored',
+                'darkness_persistence_satisfied',
+                'restoration_verified',
+                'baseline_established',
+              ].includes(e.kind)
             )
-            .map((e) => ({ at: e.occurredAt, kind: e.kind, message: e.message, provenance: e.provenance }))
+            .map((e) => ({
+              at: e.occurredAt,
+              kind: e.kind,
+              message: e.message,
+              provenance: e.provenance,
+            }))
         : [];
 
       res.json({
@@ -400,15 +458,24 @@ export function createExperimentRouter(options = {}) {
         start,
         end,
         bucketSeconds: bucket,
-        treatment: { siteId: treatmentSiteId, siteName: experiment?.treatment_site_name ?? config?.treatment_site_name ?? null },
-        control: { siteId: controlSiteId, siteName: experiment?.control_site_name ?? config?.control_site_name ?? null },
+        treatment: {
+          siteId: treatmentSiteId,
+          siteName: experiment?.treatment_site_name ?? config?.treatment_site_name ?? null,
+        },
+        control: {
+          siteId: controlSiteId,
+          siteName: experiment?.control_site_name ?? config?.control_site_name ?? null,
+        },
         points,
         annotations: overlay?.applied
           ? [
               ...annotations,
               {
                 at: overlay.startedAt,
-                kind: overlay.mode === 'lights_off' ? 'demo_simulation_started' : 'demo_simulation_recovering',
+                kind:
+                  overlay.mode === 'lights_off'
+                    ? 'demo_simulation_started'
+                    : 'demo_simulation_recovering',
                 message:
                   overlay.mode === 'lights_off'
                     ? 'Demo simulation: projected optimization begins here.'
@@ -418,7 +485,12 @@ export function createExperimentRouter(options = {}) {
             ]
           : annotations,
         demoSimulation: overlay
-          ? { active: overlay.active, applied: overlay.applied, mode: overlay.mode, startedAt: overlay.startedAt }
+          ? {
+              active: overlay.active,
+              applied: overlay.applied,
+              mode: overlay.mode,
+              startedAt: overlay.startedAt,
+            }
           : null,
       });
     })
@@ -426,8 +498,8 @@ export function createExperimentRouter(options = {}) {
 
   router.get(`${BASE}/aps`, (req, res) =>
     withSource(req, res, async (source) => {
-      const experiment =
-        (await repo.getActiveExperiment(source.id)) ?? (await repo.listExperiments(source.id, 1))[0];
+      const apsConfig = await repo.getConfig(source.id);
+      const { experiment } = await displayExperiment(source, apsConfig);
       if (!experiment) return res.json({ aps: [] });
 
       const [devices, rollback, state] = await Promise.all([
@@ -469,16 +541,17 @@ export function createExperimentRouter(options = {}) {
           const live = stateBySerial.get(d.apSerial) ?? {};
           const rb = rollbackBySerial.get(d.apSerial) ?? null;
           // The control side is never projected, whatever the override says.
-          const projected = d.side === 'treatment' ? projectedBySerial.get(d.apSerial) ?? null : null;
+          const projected =
+            d.side === 'treatment' ? (projectedBySerial.get(d.apSerial) ?? null) : null;
           const realState =
             d.side === 'control'
               ? 'control'
               : rb?.appliedAt && !rb?.restoreVerified
-                // applyError is set by the effectiveness sweep when the config
-                // landed but the radio is still transmitting. Such an AP is
-                // changed — it still needs restoring — but it is NOT saving
-                // anything, so it must not be counted as optimized.
-                ? rb.applyError
+                ? // applyError is set by the effectiveness sweep when the config
+                  // landed but the radio is still transmitting. Such an AP is
+                  // changed — it still needs restoring — but it is NOT saving
+                  // anything, so it must not be counted as optimized.
+                  rb.applyError
                   ? 'changed_not_effective'
                   : 'optimized'
                 : 'normal';
@@ -532,7 +605,10 @@ export function createExperimentRouter(options = {}) {
         startedBy: req.user?.userId ?? req.body?.startedBy ?? null,
         now: nowFn(),
       });
-      record(req, 'energy.experiment.start', { ok: result.ok, experimentId: result.experiment?.id });
+      record(req, 'energy.experiment.start', {
+        ok: result.ok,
+        experimentId: result.experiment?.id,
+      });
       if (!result.ok) return fail(res, 409, result.error, { anomalies: result.anomalies });
       res.json(result);
     })
@@ -542,8 +618,15 @@ export function createExperimentRouter(options = {}) {
     withSource(req, res, async (source) => {
       const experiment = await repo.getActiveExperiment(source.id);
       if (!experiment) return fail(res, 404, 'No experiment is in flight.');
-      const result = await engine.establishBaseline({ source, experimentId: experiment.id, now: nowFn() });
-      record(req, 'energy.experiment.baseline_close', { experimentId: experiment.id, ok: result.ok });
+      const result = await engine.establishBaseline({
+        source,
+        experimentId: experiment.id,
+        now: nowFn(),
+      });
+      record(req, 'energy.experiment.baseline_close', {
+        experimentId: experiment.id,
+        ok: result.ok,
+      });
       if (!result.ok) return fail(res, 409, result.error);
       res.json(result);
     })
@@ -574,15 +657,22 @@ export function createExperimentRouter(options = {}) {
   router.post(`${BASE}/restore`, requireOperator, jsonBody, (req, res) =>
     withSource(req, res, async (source) => {
       const experimentId =
-        req.body?.experimentId ?? (await repo.getActiveExperiment(source.id))?.id ??
+        req.body?.experimentId ??
+        (await repo.getActiveExperiment(source.id))?.id ??
         (await repo.listExperiments(source.id, 1))[0]?.id;
       if (!experimentId) return fail(res, 404, 'No experiment to restore.');
       const session = await sessionFor(source);
       const result = await engine.restoreTreatment({
-        source, session, experimentId, reason: req.body?.reason ?? 'operator_request', now: nowFn(),
+        source,
+        session,
+        experimentId,
+        reason: req.body?.reason ?? 'operator_request',
+        now: nowFn(),
       });
       record(req, 'energy.experiment.restore', {
-        experimentId, ok: result.ok, unverified: result.unverified?.length ?? 0,
+        experimentId,
+        ok: result.ok,
+        unverified: result.unverified?.length ?? 0,
       });
       await engine.finalize({ source, experimentId, now: nowFn() });
       // A partial restore is not a server error — it is a true, important result.
@@ -602,13 +692,20 @@ export function createExperimentRouter(options = {}) {
       const session = await sessionFor(source);
       const results = [];
       for (const experimentId of byExperiment) {
-        results.push(await engine.restoreTreatment({
-          source, session, experimentId, reason: 'emergency_restore_all', now: nowFn(),
-        }));
+        results.push(
+          await engine.restoreTreatment({
+            source,
+            session,
+            experimentId,
+            reason: 'emergency_restore_all',
+            now: nowFn(),
+          })
+        );
       }
       const unverified = results.flatMap((r) => r.unverified ?? []);
       record(req, 'energy.experiment.restore_all', {
-        experiments: byExperiment.length, unverified: unverified.length,
+        experiments: byExperiment.length,
+        unverified: unverified.length,
       });
       res.status(unverified.length === 0 ? 200 : 207).json({
         ok: unverified.length === 0,
@@ -634,7 +731,9 @@ export function createExperimentRouter(options = {}) {
       const mode = String(req.body?.mode ?? '');
       const valid = ['lights_off', 'lights_on', 'sensor_failure', 'reset'];
       if (!valid.includes(mode)) {
-        return fail(res, 400, `mode must be one of ${valid.join(', ')}.`, { errorClass: 'validation' });
+        return fail(res, 400, `mode must be one of ${valid.join(', ')}.`, {
+          errorClass: 'validation',
+        });
       }
 
       /**
@@ -682,15 +781,22 @@ export function createExperimentRouter(options = {}) {
         const experiment = await repo.getActiveExperiment(source.id);
         if (experiment) {
           await repo.insertEvent({
-            experimentId: experiment.id, sourceId: source.id, kind: 'simulation_disabled',
-            severity: 'warning', message: 'Demo override cleared; the live sensor feed is authoritative again.',
+            experimentId: experiment.id,
+            sourceId: source.id,
+            kind: 'simulation_disabled',
+            severity: 'warning',
+            message: 'Demo override cleared; the live sensor feed is authoritative again.',
             provenance: 'simulated',
           });
         }
         // Close the audit record. The live override is already gone; this is
         // the history of it, and an episode left open would block the next one.
         const closed = await repo
-          .closeDemoEpisode({ sourceId: source.id, reason: 'reset_to_live_sensor', reductionShare: fromShare })
+          .closeDemoEpisode({
+            sourceId: source.id,
+            reason: 'reset_to_live_sensor',
+            reductionShare: fromShare,
+          })
           .catch(() => null);
         return res.json({ demoOverride: describeOverride(source.id), episode: closed });
       }
@@ -710,12 +816,19 @@ export function createExperimentRouter(options = {}) {
 
       if (mode === 'sensor_failure') {
         setOverride(source.id, {
-          mode, startedAt: nowFn().toISOString(), startedBy: req.user?.userId ?? null, timer: null,
+          mode,
+          startedAt: nowFn().toISOString(),
+          startedBy: req.user?.userId ?? null,
+          timer: null,
         });
         await repo.insertEvent({
-          experimentId: experiment.id, sourceId: source.id, kind: 'simulation_activated',
-          severity: 'warning', side: 'treatment',
-          message: 'Simulated sensor failure: the Treatment sensor feed is being withheld. No trigger will fire.',
+          experimentId: experiment.id,
+          sourceId: source.id,
+          kind: 'simulation_activated',
+          severity: 'warning',
+          side: 'treatment',
+          message:
+            'Simulated sensor failure: the Treatment sensor feed is being withheld. No trigger will fire.',
           provenance: 'simulated',
         });
         return res.json({ demoOverride: describeOverride(source.id) });
@@ -731,7 +844,11 @@ export function createExperimentRouter(options = {}) {
       async function emit() {
         for (const serial of treatmentSerials) {
           await ingestLightReport({
-            sourceId: source.id, serial, state, data: raw, sampleSource: 'simulated',
+            sourceId: source.id,
+            serial,
+            state,
+            data: raw,
+            sampleSource: 'simulated',
           }).catch(() => undefined);
         }
       }
@@ -768,8 +885,11 @@ export function createExperimentRouter(options = {}) {
 
       if (experiment) {
         await repo.insertEvent({
-          experimentId: experiment.id, sourceId: source.id, kind: 'simulated_light_event',
-          severity: 'warning', side: 'treatment',
+          experimentId: experiment.id,
+          sourceId: source.id,
+          kind: 'simulated_light_event',
+          severity: 'warning',
+          side: 'treatment',
           message: `Simulated ${mode === 'lights_off' ? 'lights off' : 'lights on'} at Treatment (raw ${raw}) across ${treatmentSerials.length} AP(s).`,
           detail: { raw, state, serials: treatmentSerials },
           provenance: 'simulated',
@@ -781,10 +901,16 @@ export function createExperimentRouter(options = {}) {
       const treatmentSiteId = experiment?.treatment_site_id ?? config?.treatment_site_id ?? null;
       const baselineAps = treatmentSiteId
         ? await repo
-            .fetchApBaselineWatts({ sourceId: source.id, siteId: treatmentSiteId, before: startedAt })
+            .fetchApBaselineWatts({
+              sourceId: source.id,
+              siteId: treatmentSiteId,
+              before: startedAt,
+            })
             .catch(() => [])
         : [];
-      const usableBaseline = baselineAps.filter((a) => Number.isFinite(a.baselineWatts) && a.baselineWatts > 0);
+      const usableBaseline = baselineAps.filter(
+        (a) => Number.isFinite(a.baselineWatts) && a.baselineWatts > 0
+      );
       const episode = await repo
         .openDemoEpisode({
           sourceId: source.id,
@@ -819,8 +945,8 @@ export function createExperimentRouter(options = {}) {
         projectionOnly: !experiment,
         persistenceSeconds:
           mode === 'lights_off'
-            ? config?.darkness_persistence_seconds ?? 120
-            : config?.recovery_persistence_seconds ?? 60,
+            ? (config?.darkness_persistence_seconds ?? 120)
+            : (config?.recovery_persistence_seconds ?? 60),
       });
     })
   );
@@ -847,13 +973,20 @@ export function createExperimentRouter(options = {}) {
    */
   router.get(`${BASE}/scenario`, (req, res) =>
     withSource(req, res, async (source) => {
+      // The same subject the rest of the page is about. Extrapolating from a
+      // run against a pair that is no longer configured would quote a saving
+      // measured on different hardware than the page is discussing.
       const experiment = req.query.experimentId
         ? await repo.getExperiment(req.query.experimentId)
-        : (await repo.getActiveExperiment(source.id)) ?? (await repo.listExperiments(source.id, 1))[0];
+        : (await displayExperiment(source, await repo.getConfig(source.id))).experiment;
       if (!experiment) return fail(res, 404, 'No experiment to extrapolate from.');
 
       const summary = await engine.summarize({ source, experiment, now: nowFn() });
-      const prefs = (await getRatePreferences(source.id)) ?? { ratePerKwh: 0.14, currencySymbol: '$', currencyCode: 'USD' };
+      const prefs = (await getRatePreferences(source.id)) ?? {
+        ratePerKwh: 0.14,
+        currencySymbol: '$',
+        currencyCode: 'USD',
+      };
 
       const apCounts = String(req.query.apCounts ?? '10,100,1000,10000')
         .split(',')
@@ -896,11 +1029,14 @@ export function createExperimentRouter(options = {}) {
           provenance: summary.savings?.provenance ?? null,
           claimSupported: summary.savings?.claimSupported ?? false,
         },
-        currency: { code: prefs.currencyCode, symbol: prefs.currencySymbol, ratePerKwh: prefs.ratePerKwh },
+        currency: {
+          code: prefs.currencyCode,
+          symbol: prefs.currencySymbol,
+          ratePerKwh: prefs.ratePerKwh,
+        },
         projections,
         // Said plainly so nobody reads a projection as a measurement.
-        note:
-          'Projections scale a measured per-AP watt reduction. They assume the same action, the same AP class, and the stated hours per day.',
+        note: 'Projections scale a measured per-AP watt reduction. They assume the same action, the same AP class, and the stated hours per day.',
       });
     })
   );
@@ -914,7 +1050,9 @@ export function createExperimentRouter(options = {}) {
       const devices = await repo.listDevices(experiment.id);
       const treatmentSerials = devices.filter((d) => d.side === 'treatment').map((d) => d.apSerial);
       const samples = await fetchRecentLightSamples({
-        sourceId: source.id, serials: treatmentSerials, sinceSeconds: 1800,
+        sourceId: source.id,
+        serials: treatmentSerials,
+        sinceSeconds: 1800,
         sampleSource: evaluationSampleSource(source.id),
       });
       const now = nowFn();
@@ -922,12 +1060,18 @@ export function createExperimentRouter(options = {}) {
         active: true,
         state: experiment.state,
         darkness: evaluateSide({
-          samplesByAp: samples, serials: treatmentSerials, mode: 'dark', now,
+          samplesByAp: samples,
+          serials: treatmentSerials,
+          mode: 'dark',
+          now,
           threshold: config?.darkness_threshold_raw ?? 3,
           persistenceSeconds: config?.darkness_persistence_seconds ?? 120,
         }),
         light: evaluateSide({
-          samplesByAp: samples, serials: treatmentSerials, mode: 'light', now,
+          samplesByAp: samples,
+          serials: treatmentSerials,
+          mode: 'light',
+          now,
           threshold: config?.recovery_threshold_raw ?? 6,
           persistenceSeconds: config?.recovery_persistence_seconds ?? 60,
         }),
