@@ -21,15 +21,26 @@ import { discover } from './siteDiscovery.js';
 import { assessReadiness } from './readiness.js';
 import { fetchRecentLightSamples, evaluateSide } from './lightSignal.js';
 import { extrapolateObserved } from '../scenarioEngine.js';
+import { summarizeSide } from './analysis.js';
 import { getRatePreferences } from '../energyRepository.js';
 
 import {
+  attachEpisode,
   clearOverride,
   describeOverride,
   evaluationSampleSource,
   setOverride,
   __resetOverrides,
 } from './demoOverrideRegistry.js';
+import {
+  decideOverlay,
+  computeOverlay,
+  mergeSeriesPoints,
+  publicOverlay,
+  VALUE_SOURCE,
+} from './demoOverlay.js';
+import { MEASURED_RADIO_DISABLE_SHARE, shareAt } from './demoProjection.js';
+import * as calc from '../energyCalculator.js';
 
 export function createExperimentRouter(options = {}) {
   const {
@@ -81,6 +92,98 @@ export function createExperimentRouter(options = {}) {
       } catch {
         /* auditing must never break the operation it describes */
       }
+    }
+  }
+
+  /* ------------------------------------------------- demo fail-safe overlay */
+
+  /**
+   * Resolve the demo projection for this request, if one applies.
+   *
+   * Called by every read route so the whole payload tells one story. It fetches
+   * only what the projection needs — the optimized site's MEASURED watts from
+   * before the override began — and hands the arithmetic to demoOverlay.js.
+   *
+   * Failing soft here is deliberate: a broken fallback must not take out the
+   * real Energy view it exists to protect.
+   */
+  async function resolveOverlay({
+    source,
+    experiment = null,
+    config = null,
+    savings = null,
+    baseline = null,
+    controlCurrent = null,
+    bucketSeconds = 60,
+  }) {
+    const override = describeOverride(source.id);
+    const decision = decideOverlay({ override, experiment, savings });
+    if (!decision.apply) return { override, decision, overlay: null };
+
+    const treatmentSiteId = experiment?.treatment_site_id ?? config?.treatment_site_id ?? null;
+    if (!treatmentSiteId) {
+      return { override, decision, overlay: null };
+    }
+
+    const controlSiteId = experiment?.control_site_id ?? config?.control_site_id ?? null;
+
+    try {
+      const [baselineAps, controlAps, prefs] = await Promise.all([
+        repo.fetchApBaselineWatts({
+          sourceId: source.id,
+          siteId: treatmentSiteId,
+          before: decision.startedAt,
+        }),
+        // The control's own MEASURED level. Needed because the cross-site
+        // comparison is the story — "the optimized site used less than the
+        // control" — and without an experiment there is no established baseline
+        // to borrow one from. The control is by definition unmodified, so its
+        // recent measured average IS its current level; it stays real data
+        // either way, and it is the only side that must never be projected.
+        controlSiteId && !controlCurrent
+          ? repo.fetchApBaselineWatts({ sourceId: source.id, siteId: controlSiteId, before: nowFn().toISOString() })
+          : Promise.resolve([]),
+        getRatePreferences(source.id),
+      ]);
+      const rates = prefs ?? { currencyCode: 'USD', currencySymbol: '$', ratePerKwh: 0.14 };
+
+      const asSide = (rows, windowSeconds) =>
+        summarizeSide(
+          rows
+            .filter((a) => Number.isFinite(a.baselineWatts) && a.baselineWatts > 0)
+            .map((a) => ({
+              apSerial: a.apSerial,
+              model: a.model ?? null,
+              avgWatts: a.baselineWatts,
+              kwh: 0,
+              observedSeconds: Math.max(60, windowSeconds),
+              sampleCount: a.sampleCount ?? 1,
+            }))
+        );
+
+      const elapsed = Math.max(60, (nowFn().getTime() - Date.parse(decision.startedAt)) / 1000);
+      const measuredControl = controlCurrent ?? (controlAps.length ? asSide(controlAps, elapsed) : null);
+      const effectiveBaseline =
+        baseline ??
+        (baselineAps.length || controlAps.length
+          ? { treatment: asSide(baselineAps, elapsed), control: measuredControl, provenance: 'measured' }
+          : null);
+
+      const overlay = computeOverlay({
+        decision,
+        baselineAps,
+        treatmentSiteId,
+        baseline: effectiveBaseline,
+        controlCurrent: measuredControl,
+        prefs: rates,
+        emissionsFactor: rates.emissionsFactorKgPerKwh ?? engine.DEFAULT_EMISSIONS_FACTOR_KG_PER_KWH,
+        calc,
+        now: nowFn(),
+        bucketSeconds,
+      });
+      return { override, decision, overlay };
+    } catch {
+      return { override, decision, overlay: null };
     }
   }
 
@@ -147,9 +250,25 @@ export function createExperimentRouter(options = {}) {
           null;
 
       if (!experiment) {
+        // No experiment, but the fail-safe must still work: if the call that
+        // would have started one is what failed, the operator needs the story
+        // on screen regardless. The projection is display-only, so there is
+        // nothing here it could corrupt.
+        const config = await repo.getConfig(source.id);
+        const { override, overlay } = await resolveOverlay({ source, config });
         return res.json({
           experiment: null,
-          demoOverride: describeOverride(source.id),
+          pair: config
+            ? {
+                treatment: { siteId: config.treatment_site_id, siteName: config.treatment_site_name },
+                control: { siteId: config.control_site_id, siteName: config.control_site_name },
+              }
+            : null,
+          savings: overlay?.applied ? overlay.savings : null,
+          treatment: overlay?.applied ? overlay.treatment : null,
+          quality: overlay?.applied ? overlay.quality : null,
+          demoOverride: override,
+          demoSimulation: publicOverlay(overlay),
           outstandingRestores: await repo.listOutstandingRestores(source.id),
         });
       }
@@ -160,6 +279,14 @@ export function createExperimentRouter(options = {}) {
         repo.listRollback(experiment.id),
         engine.summarize({ source, experiment, now: nowFn() }),
       ]);
+
+      const { override, overlay } = await resolveOverlay({
+        source,
+        experiment,
+        savings: summary.savings,
+        baseline: summary.baseline,
+        controlCurrent: summary.treatment?.control ?? null,
+      });
 
       res.json({
         experiment: {
@@ -183,7 +310,14 @@ export function createExperimentRouter(options = {}) {
         events,
         rollback,
         ...summary,
-        demoOverride: describeOverride(source.id),
+        // The projection replaces the measured figures ONLY where
+        // `decideOverlay` permitted it — never when the real path already has a
+        // supported measured claim. See demoOverlay.js for the precedence.
+        ...(overlay?.applied
+          ? { savings: overlay.savings, treatment: overlay.treatment, quality: overlay.quality }
+          : {}),
+        demoOverride: override,
+        demoSimulation: publicOverlay(overlay),
         outstandingRestores: await repo.listOutstandingRestores(source.id),
       });
     })
@@ -242,6 +376,16 @@ export function createExperimentRouter(options = {}) {
         bucketSeconds: bucket,
       });
 
+      const { overlay } = await resolveOverlay({
+        source,
+        experiment: experiment ?? null,
+        config,
+        bucketSeconds: bucket,
+      });
+      // Measured points win on any bucket where both exist; the projection
+      // fills only what the real feed does not cover.
+      const points = mergeSeriesPoints(rows, overlay?.seriesPoints ?? [], treatmentSiteId);
+
       const annotations = experiment
         ? (await repo.listEvents(experiment.id))
             .filter((e) =>
@@ -258,8 +402,24 @@ export function createExperimentRouter(options = {}) {
         bucketSeconds: bucket,
         treatment: { siteId: treatmentSiteId, siteName: experiment?.treatment_site_name ?? config?.treatment_site_name ?? null },
         control: { siteId: controlSiteId, siteName: experiment?.control_site_name ?? config?.control_site_name ?? null },
-        points: rows,
-        annotations,
+        points,
+        annotations: overlay?.applied
+          ? [
+              ...annotations,
+              {
+                at: overlay.startedAt,
+                kind: overlay.mode === 'lights_off' ? 'demo_simulation_started' : 'demo_simulation_recovering',
+                message:
+                  overlay.mode === 'lights_off'
+                    ? 'Demo simulation: projected optimization begins here.'
+                    : 'Demo simulation: projected recovery begins here.',
+                provenance: 'simulated',
+              },
+            ]
+          : annotations,
+        demoSimulation: overlay
+          ? { active: overlay.active, applied: overlay.applied, mode: overlay.mode, startedAt: overlay.startedAt }
+          : null,
       });
     })
   );
@@ -278,6 +438,9 @@ export function createExperimentRouter(options = {}) {
           siteIds: [experiment.treatment_site_id, experiment.control_site_id],
         }),
       ]);
+      const { overlay } = await resolveOverlay({ source, experiment });
+      const projectedBySerial = overlay?.apInstant ?? new Map();
+
       const rollbackBySerial = new Map(rollback.map((r) => [r.apSerial, r]));
       const stateBySerial = new Map();
       for (const row of state) {
@@ -305,25 +468,40 @@ export function createExperimentRouter(options = {}) {
         aps: devices.map((d) => {
           const live = stateBySerial.get(d.apSerial) ?? {};
           const rb = rollbackBySerial.get(d.apSerial) ?? null;
+          // The control side is never projected, whatever the override says.
+          const projected = d.side === 'treatment' ? projectedBySerial.get(d.apSerial) ?? null : null;
+          const realState =
+            d.side === 'control'
+              ? 'control'
+              : rb?.appliedAt && !rb?.restoreVerified
+                // applyError is set by the effectiveness sweep when the config
+                // landed but the radio is still transmitting. Such an AP is
+                // changed — it still needs restoring — but it is NOT saving
+                // anything, so it must not be counted as optimized.
+                ? rb.applyError
+                  ? 'changed_not_effective'
+                  : 'optimized'
+                : 'normal';
           return {
             ...d,
-            currentWatts: live.watts ?? null,
-            observedAt: live.wattsAt ?? null,
+            currentWatts: projected?.watts ?? live.watts ?? null,
+            observedAt: projected?.observedAt ?? live.wattsAt ?? null,
             clients: live.clients ?? null,
             radios: (live.radios ?? []).sort((a, b) => Number(a.radioIndex) - Number(b.radioIndex)),
             energyState:
-              d.side === 'control'
-                ? 'control'
-                : rb?.appliedAt && !rb?.restoreVerified
-                  // applyError is set by the effectiveness sweep when the config
-                  // landed but the radio is still transmitting. Such an AP is
-                  // changed — it still needs restoring — but it is NOT saving
-                  // anything, so it must not be counted as optimized.
-                  ? rb.applyError
-                    ? 'changed_not_effective'
-                    : 'optimized'
-                  : 'normal',
-            telemetrySource: live.watts != null ? 'measured' : 'none',
+              projected && overlay?.mode === 'lights_off' && realState === 'normal'
+                ? 'optimized'
+                : realState,
+            telemetrySource: projected
+              ? VALUE_SOURCE.DEMO_SIMULATED
+              : live.watts != null
+                ? 'measured'
+                : 'none',
+            valueSource: projected
+              ? VALUE_SOURCE.DEMO_SIMULATED
+              : live.watts != null
+                ? VALUE_SOURCE.REAL
+                : null,
             rollback: rb
               ? {
                   capturedAt: rb.capturedAt,
@@ -335,6 +513,9 @@ export function createExperimentRouter(options = {}) {
               : null,
           };
         }),
+        demoSimulation: overlay
+          ? { active: overlay.active, applied: overlay.applied, mode: overlay.mode }
+          : null,
       });
     })
   );
@@ -456,6 +637,44 @@ export function createExperimentRouter(options = {}) {
         return fail(res, 400, `mode must be one of ${valid.join(', ')}.`, { errorClass: 'validation' });
       }
 
+      /**
+       * The projected reduction share in effect at this instant, carried into
+       * the next mode.
+       *
+       * Without it, toggling lights off → on → off part-way through a ramp
+       * makes the projected curve jump: the recovery would start from zero
+       * rather than from where the line actually was. Repeated toggling is
+       * exactly what a nervous presenter does, so it has to be stable.
+       *
+       * Read from the live overlay where there is one, because that is the
+       * share the screen is ACTUALLY showing — it is the mean of the per-AP
+       * varied shares, not the base constant. Using the constant here left a
+       * visible half-point step at the handover. The pure computation is the
+       * fallback for when the overlay cannot be built.
+       */
+      const previous = describeOverride(source.id);
+      let fromShare = 0;
+      if (previous.projection) {
+        const priorConfig = await repo.getConfig(source.id);
+        const priorExperiment = await repo.getActiveExperiment(source.id);
+        const { overlay: priorOverlay } = await resolveOverlay({
+          source,
+          experiment: priorExperiment,
+          config: priorConfig,
+        });
+        if (Number.isFinite(priorOverlay?.reductionShare)) {
+          fromShare = priorOverlay.reductionShare;
+        } else {
+          const elapsed = (nowFn().getTime() - Date.parse(previous.projection.startedAt)) / 1000;
+          fromShare = shareAt({
+            mode: previous.projection.mode,
+            elapsedSeconds: elapsed,
+            targetShare: MEASURED_RADIO_DISABLE_SHARE,
+            fromShare: previous.projection.fromShare ?? 0,
+          });
+        }
+      }
+
       clearOverride(source.id);
       record(req, 'energy.experiment.demo_override', { mode });
 
@@ -468,12 +687,25 @@ export function createExperimentRouter(options = {}) {
             provenance: 'simulated',
           });
         }
-        return res.json({ demoOverride: describeOverride(source.id) });
+        // Close the audit record. The live override is already gone; this is
+        // the history of it, and an episode left open would block the next one.
+        const closed = await repo
+          .closeDemoEpisode({ sourceId: source.id, reason: 'reset_to_live_sensor', reductionShare: fromShare })
+          .catch(() => null);
+        return res.json({ demoOverride: describeOverride(source.id), episode: closed });
       }
 
       const experiment = await repo.getActiveExperiment(source.id);
-      if (!experiment) return fail(res, 409, 'Start an experiment before using the demo override.');
-      const devices = await repo.listDevices(experiment.id);
+
+      // A simulated sensor failure is a simulation of the TRIGGER only, so it
+      // needs an experiment whose trigger it can starve. The light modes do
+      // not: if the call that would have started the experiment is what failed,
+      // the fallback still has to put the story on screen.
+      if (mode === 'sensor_failure' && !experiment) {
+        return fail(res, 409, 'Start an experiment before simulating a sensor failure.');
+      }
+
+      const devices = experiment ? await repo.listDevices(experiment.id) : [];
       const treatmentSerials = devices.filter((d) => d.side === 'treatment').map((d) => d.apSerial);
 
       if (mode === 'sensor_failure') {
@@ -507,36 +739,102 @@ export function createExperimentRouter(options = {}) {
       // Persistence is a real requirement, not a formality: emit immediately
       // and then on a cadence, so the configured dwell has to genuinely elapse
       // before the policy fires. The demo does not skip its own safety logic.
-      await emit();
-      const timer = setInterval(() => {
-        emit()
-          .then(() => engine.sessionFor(source))
-          .then((session) => engine.evaluateTrigger({ source, session, now: nowFn() }))
-          .catch(() => undefined);
-      }, 15_000);
-      if (typeof timer.unref === 'function') timer.unref();
+      //
+      // This drives the REAL path — sensor rows, trigger, controller write. It
+      // runs whenever there is an experiment to run it against, and the
+      // display-layer projection runs alongside it as the fail-safe. If the
+      // real path works, `decideOverlay` stands the projection down.
+      let timer = null;
+      if (experiment && treatmentSerials.length > 0) {
+        await emit();
+        timer = setInterval(() => {
+          emit()
+            .then(() => engine.sessionFor(source))
+            .then((session) => engine.evaluateTrigger({ source, session, now: nowFn() }))
+            .catch(() => undefined);
+        }, 15_000);
+        if (typeof timer.unref === 'function') timer.unref();
+      }
 
+      const startedAt = nowFn().toISOString();
       setOverride(source.id, {
-        mode, startedAt: nowFn().toISOString(), startedBy: req.user?.userId ?? null, timer,
+        mode,
+        startedAt,
+        startedBy: req.user?.userId ?? null,
+        timer,
+        // Where the projected curve resumes from, so a mid-ramp toggle is smooth.
+        fromShare,
       });
 
-      await repo.insertEvent({
-        experimentId: experiment.id, sourceId: source.id, kind: 'simulated_light_event',
-        severity: 'warning', side: 'treatment',
-        message: `Simulated ${mode === 'lights_off' ? 'lights off' : 'lights on'} at Treatment (raw ${raw}) across ${treatmentSerials.length} AP(s).`,
-        detail: { raw, state, serials: treatmentSerials },
-        provenance: 'simulated',
-      });
+      if (experiment) {
+        await repo.insertEvent({
+          experimentId: experiment.id, sourceId: source.id, kind: 'simulated_light_event',
+          severity: 'warning', side: 'treatment',
+          message: `Simulated ${mode === 'lights_off' ? 'lights off' : 'lights on'} at Treatment (raw ${raw}) across ${treatmentSerials.length} AP(s).`,
+          detail: { raw, state, serials: treatmentSerials },
+          provenance: 'simulated',
+        });
+      }
+
+      // The audit record of this activation. Separate table, DEMO_SIMULATED by
+      // constraint, never read by the environmental report.
+      const treatmentSiteId = experiment?.treatment_site_id ?? config?.treatment_site_id ?? null;
+      const baselineAps = treatmentSiteId
+        ? await repo
+            .fetchApBaselineWatts({ sourceId: source.id, siteId: treatmentSiteId, before: startedAt })
+            .catch(() => [])
+        : [];
+      const usableBaseline = baselineAps.filter((a) => Number.isFinite(a.baselineWatts) && a.baselineWatts > 0);
+      const episode = await repo
+        .openDemoEpisode({
+          sourceId: source.id,
+          experimentId: experiment?.id ?? null,
+          siteId: treatmentSiteId,
+          siteName: experiment?.treatment_site_name ?? config?.treatment_site_name ?? null,
+          controlSiteId: experiment?.control_site_id ?? config?.control_site_id ?? null,
+          controlSiteName: experiment?.control_site_name ?? config?.control_site_name ?? null,
+          mode,
+          startedBy: req.user?.userId ?? null,
+          baselineWattsPerAp: usableBaseline.length
+            ? usableBaseline.reduce((sum, a) => sum + a.baselineWatts, 0) / usableBaseline.length
+            : null,
+          apCount: usableBaseline.length,
+          reductionShare: mode === 'lights_off' ? MEASURED_RADIO_DISABLE_SHARE : 0,
+          projection: {
+            fromShare,
+            baseShare: MEASURED_RADIO_DISABLE_SHARE,
+            controllerPathDriven: Boolean(experiment && treatmentSerials.length > 0),
+            baselineSerials: usableBaseline.map((a) => a.apSerial),
+          },
+        })
+        .catch(() => null);
+
+      if (episode?.id) attachEpisode(source.id, episode.id);
 
       res.json({
         demoOverride: describeOverride(source.id),
         emitted: treatmentSerials.length,
         raw,
+        episode,
+        projectionOnly: !experiment,
         persistenceSeconds:
           mode === 'lights_off'
             ? config?.darkness_persistence_seconds ?? 120
             : config?.recovery_persistence_seconds ?? 60,
       });
+    })
+  );
+
+  /**
+   * The demo-simulation audit trail.
+   *
+   * Every activation of the fail-safe, what it was projecting from, and how long
+   * it ran. Read-only and deliberately findable: "was any of this simulated?"
+   * must be answerable without reading code.
+   */
+  router.get(`${BASE}/demo/episodes`, (req, res) =>
+    withSource(req, res, async (source) => {
+      res.json({ episodes: await repo.listDemoEpisodes(source.id, req.query.limit) });
     })
   );
 

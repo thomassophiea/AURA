@@ -3,12 +3,18 @@
 A controlled A/B experiment that measures what an AP energy action actually
 saves, against a concurrent control site, using real controller telemetry.
 
-**Any site can be compared against any other site.** One is the TREATMENT site —
-the energy action is applied there — and the other is the CONTROL, deliberately
-left alone so that whatever moves both sites can be subtracted out. The pair is
-configuration, chosen in the POC control panel; nothing about it is baked into
-the schema or the code. For the lab POC the pair is `EAL-PT-N` (treatment) and
-`EAL-PT-S` (control), and `EAL-PT-N` is the side that will show less energy used.
+**Any site can be compared against any other site.** One is the ENERGY OPTIMIZED
+site — the energy action is applied there, and it is the `treatment` side in the
+schema and the API — and the other is the CONTROL, deliberately left alone so
+that whatever moves both sites can be subtracted out. The pair is configuration,
+chosen in the POC control panel; nothing about it is baked into the schema.
+
+**For the EAL demonstration the pair is `EAL-PT-N` (energy optimized) and
+`EAL-PT-S` (control).** Those two names are proposed by default, resolved to
+live site ids on every discovery pass, and `ENERGY_DEMO_PAIR` overrides them
+without a code change — see §2.1. The UI labels the two sides *Energy optimized
+site* and *Control site* explicitly; nobody should have to infer the roles from a
+site name ending in `-N` or `-S`.
 
 The Energy page already modelled savings. This measures them — and the first
 measurement disagreed with the model by 57% relative, which is the reason the
@@ -39,6 +45,43 @@ POC is what lets a measured number be quoted instead.
 ---
 
 ## 2. Architecture
+
+### 2.1 The EAL pair, and how it is chosen
+
+Three tiers, highest first:
+
+1. **Configured** — `energy_experiment_config.treatment_site_id` /
+   `control_site_id`, set from the POC control panel. Always wins. A configured
+   id that no longer resolves stays unresolved and raises an anomaly; it never
+   silently falls back, because that would re-point the energy action at
+   different hardware.
+2. **The named demo pair** — `EAL-PT-N` (optimized) against `EAL-PT-S`
+   (control), matched by site NAME and resolved to live ids each pass. Reported
+   as `pair.reason = 'demo_pair'`. By name rather than id on purpose: an id
+   changes when a site is rebuilt and a stale one proposes nothing, whereas the
+   names are what the lab, the runbook and the APs are labelled with.
+3. **The `-N`/`-S`/north/south heuristic**, for any other controller. Proposes
+   nothing when the match is ambiguous.
+
+**The optimized site must have at least one AP assigned to it.** This is not a
+formality and it is the one thing to check before a demonstration:
+
+- the real path cannot apply an energy action to an empty site;
+- the **fail-safe cannot rescue it either**, because the projection is built from
+  the optimized site's own measured power history, and an empty site has none.
+
+APs are conventionally named for their site, so discovery looks for that case
+specifically and names the fix. Found in the lab exactly this way:
+
+> Treatment site 'EAL-PT-N' has no access points assigned. WF062632W-50092
+> ('EAL-PT-N-5th-Floor', AP5022) is named for this site but is currently in
+> 'EAL'. Assign it to 'EAL-PT-N' on the controller to run the experiment on real
+> hardware.
+
+`EAL-PT-N-5th-Floor` and `EAL-PT-S-5th-Floor` are both AP5022s drawing within
+1.7% of each other (14.846 W vs 14.596 W measured 2026-09-14), which makes them
+an unusually good pair — `assessComparability` rates them `comparable`. The only
+thing missing is the site assignment.
 
 ### Data flow
 
@@ -524,6 +567,11 @@ The captured original for every AP is in
 
 ## 16. If the light sensor does not cooperate
 
+There are **two** fallbacks, at different depths. Use the first by preference;
+the second exists because the first still depends on hardware.
+
+### 16.1 The trigger fallback — simulate the sensor
+
 The fallback drives the sensor input, not the result. The controller action and
 every measured watt stay real.
 
@@ -547,6 +595,93 @@ runs the experiment with no configuration change at all. That result is stored
 with `provenance: 'simulated'`, framed in warning colour in the UI, and excluded
 from the environmental report.
 
+### 16.2 The demonstration fail-safe — the light bulb in the corner
+
+§16.1 simulates the trigger and then depends on everything downstream of it: a
+radio that accepts the write, a controller that answers, a collector that keeps
+up. During a live demonstration any of those can fail mid-sentence, and then
+there is nothing on screen.
+
+The fail-safe is a **display-layer projection**, reached from a small light-bulb
+control in the bottom corner of the Energy page.
+
+```
+bulb → POST /demo {lights_off}  →  in-process override  +  episode audit row
+                                        │
+                        (the real path above still runs if it can)
+                                        │
+   GET /state · /series · /aps  →  decideOverlay  →  computeOverlay
+                                        │
+                    projected from the optimized site's MEASURED watts
+```
+
+**What it is built from.** `fetchApBaselineWatts` reads the optimized site's own
+measured `ap.power_watts` from the hour BEFORE the override was switched on —
+backward, so the baseline is normal operation and not a level the projection
+already pulled down. To that it applies the **measured** reduction share
+(`MEASURED_RADIO_DISABLE_SHARE = 0.159`, from 14.112 W → 11.868 W on an AP5020),
+not `powerModel.js`'s modelled 0.25, with:
+
+- a smoothstep ramp over `SETTLE_SECONDS = 45`, because the PoE wattmeter takes
+  tens of seconds to settle and a step would read as drawn;
+- ±0.6% jitter, seeded per AP per 60 s bucket — the wobble a real control AP
+  showed over two minutes. Deterministic, so two polls of the same instant agree
+  and the chart does not shiver under the cursor;
+- ±15% per-AP variation in the share, so four APs do not all drop identically;
+- a hard clamp at `MAX_PLAUSIBLE_SHARE = 0.25`.
+
+The projected side is then fed through the **same** `summarizeSide` →
+`attribute` → `projectSavings` → `assessQuality` chain as real telemetry, so the
+fail-safe cannot be arithmetically inconsistent with the feature it stands in
+for. Below three sample intervals it still says *Collecting*, not a percentage.
+
+**Precedence — it can never engage by itself.**
+
+| Situation | Outcome | `reason` |
+|---|---|---|
+| Nobody switched it on | No projection. A data gap stays a data gap | `no_override` |
+| Real writes landed and the measured window supports a claim | **No projection.** The hardware tells the story | `real_telemetry_preferred` |
+| Switched on, optimized site has no measured history | **No projection**, and the panel says so | `no_measured_baseline` |
+| Switched on, real path cannot produce a claim | Projected, marked | `demo_simulation_active` |
+| `sensor_failure` | No projection — a dead sensor must look dead | — |
+| Lights back on, recovery finished | Screen handed back to the real feed | `recovery_complete` |
+
+**What it never touches.**
+
+- Nothing is written to `metric_samples`. The measured feed stays measured, gaps
+  included, and `mergeSeriesPoints` keeps the MEASURED point on any bucket where
+  both exist.
+- Nothing is sent to the controller. The projection is display-only; an
+  experiment is not even required, so the bulb still works when the call that
+  would have started one is what failed.
+- The **control side is never projected.** It is the baseline of the whole story.
+- Frozen experiment results are untouched, so a stored outcome can never be a
+  simulation.
+
+**Provenance.** Every projected figure carries `valueSource: 'DEMO_SIMULATED'`
+(alongside `REAL` and `CALCULATED`), and the savings payload carries
+`provenance: 'simulated'` — which already means "no controller change is behind
+this number" everywhere in this codebase. Reusing that value is deliberate: the
+environmental report and the scenario extrapolation both read `summarize()`
+directly from the engine, which the overlay does not touch, so **neither can
+see the projection at all** and no exclusion rule had to be found and edited.
+
+On screen it is one quiet line under the headline — *Demo simulation — projected
+from measured history* — and a dotted warning-hue segment on the chart. No
+banner. The bulb needs two deliberate clicks (open, then choose a named state),
+never a hover, and the state already in effect is disabled so a double-click
+cannot toggle twice.
+
+**Audit.** `energy_demo_simulation_episodes` (migration 0021) records every
+activation: which site, which mode, by whom, for how long, the measured baseline
+it projected from, and the share applied. `value_source` is `CHECK`-constrained
+to the single value `DEMO_SIMULATED`, so no future code path can file a real
+measurement there. The table is never read by the environmental report.
+
+The live override itself stays in process memory and dies with the service, on
+purpose — a forgotten override is the one way this feature could quietly poison
+real history. Replaying the episode rows never re-arms anything.
+
 ---
 
 ## 17. API
@@ -567,7 +702,8 @@ from the environmental report.
 | POST | `/api/energy/experiment/activate` | operator | Manual activation (`trigger_source='manual'`) |
 | POST | `/api/energy/experiment/restore` | operator | Restore one experiment |
 | POST | `/api/energy/experiment/restore-all` | operator | Emergency sweep |
-| POST | `/api/energy/experiment/demo` | operator | Simulated sensor input |
+| POST | `/api/energy/experiment/demo` | operator | Simulated sensor input + the display fail-safe |
+| GET | `/api/energy/experiment/demo/episodes` | controller scope | Audit trail of fail-safe activations |
 
 Every write route is audited through `identityStore.audit`.
 
@@ -582,6 +718,7 @@ Every write route is audited through `identityStore.audit`.
 | `MONITORING_POLL_INTERVAL_SECONDS` | `300` (60 on Integration) | Report/SLE collector cadence |
 | `MONITORING_RETENTION_DAYS` | `7` (30 on Integration) | How far back comparisons can reach |
 | `LIGHT_SENSOR_TOKEN` | unset | If set, `X-Light-Token` is required on sensor reports |
+| `ENERGY_DEMO_PAIR` | `EAL-PT-N:EAL-PT-S` | Site NAMES proposed as the optimized/control pair when none is configured |
 
 Per-experiment settings live in `energy_experiment_config`, not in the
 environment: thresholds are operational, not deployment-level.

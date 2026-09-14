@@ -19,7 +19,36 @@
  */
 
 /**
- * Naming conventions that PROPOSE a pair when none is configured.
+ * The EAL proof-of-concept pair, BY NAME.
+ *
+ * The EAL demonstration is given against two specific sites — `EAL-PT-N` is the
+ * energy-optimized site and `EAL-PT-S` is the control — and the demo should not
+ * depend on an operator remembering to pick them out of a dropdown. So they are
+ * proposed by name, ahead of the generic heuristic below.
+ *
+ * By NAME and not by id, deliberately: a site id changes when a site is rebuilt
+ * and a stale id silently proposes nothing, whereas the names are what the lab,
+ * the runbook and the APs themselves are labelled with. The id is resolved from
+ * the live controller every time.
+ *
+ * This is still only a PROPOSAL. A configured pair always wins, either side can
+ * be re-pointed at any other site, and `ENERGY_DEMO_PAIR` overrides the names
+ * without a code change.
+ */
+const DEFAULT_DEMO_PAIR = { treatment: 'EAL-PT-N', control: 'EAL-PT-S' };
+
+export function demoPairNames(env = process.env) {
+  const raw = env?.ENERGY_DEMO_PAIR;
+  if (typeof raw === 'string' && raw.includes(':')) {
+    const [treatment, control] = raw.split(':').map((s) => s.trim());
+    if (treatment && control) return { treatment, control };
+  }
+  return DEFAULT_DEMO_PAIR;
+}
+
+/**
+ * Naming conventions that PROPOSE a pair when none is configured and the named
+ * demo pair is not present on this controller.
  *
  * This is a convenience for the common lab layout (a `-N` / `-S` tower pair,
  * or sites literally named north/south), never a rule. Any site can be the
@@ -31,6 +60,13 @@ const CONTROL_NAME_PATTERNS = [/(^|[^a-z])south([^a-z]|$)/i, /-s$/i, /_s$/i];
 
 function matchesAny(name, patterns) {
   return typeof name === 'string' && patterns.some((p) => p.test(name.trim()));
+}
+
+function byExactName(sites, name) {
+  if (!name) return null;
+  const wanted = String(name).trim().toLowerCase();
+  const hits = sites.filter((s) => String(s.siteName ?? '').trim().toLowerCase() === wanted);
+  return hits.length === 1 ? hits[0] : null;
 }
 
 /** Rows out of a controller list response, tolerating the several shapes XCC returns. */
@@ -116,10 +152,31 @@ export function bandForRadio(radio) {
 
 /**
  * Propose a treatment/control pair from site names.
+ *
+ * Two tiers, in order:
+ *   1. the named EAL demo pair, when both of its sites exist on this controller;
+ *   2. the `-N`/`-S`/north/south heuristic.
+ *
  * Returns `null` for a side with no unambiguous match rather than guessing —
- * a wrong pair points the treatment at the wrong hardware.
+ * a wrong pair points the treatment at the wrong hardware. `reason` says which
+ * tier answered, so the UI can tell "this is the EAL demo pair" from "this is a
+ * guess about your site names".
  */
-export function proposePair(sites) {
+export function proposePair(sites, env = process.env) {
+  const names = demoPairNames(env);
+  const demoTreatment = byExactName(sites, names.treatment);
+  const demoControl = byExactName(sites, names.control);
+  if (demoTreatment && demoControl) {
+    return {
+      treatment: demoTreatment,
+      control: demoControl,
+      treatmentCandidates: [demoTreatment],
+      controlCandidates: [demoControl],
+      reason: 'demo_pair',
+      demoPair: names,
+    };
+  }
+
   const treatmentMatches = sites.filter((s) => matchesAny(s.siteName, TREATMENT_NAME_PATTERNS));
   const controlMatches = sites.filter((s) => matchesAny(s.siteName, CONTROL_NAME_PATTERNS));
   return {
@@ -127,6 +184,8 @@ export function proposePair(sites) {
     control: controlMatches.length === 1 ? controlMatches[0] : null,
     treatmentCandidates: treatmentMatches,
     controlCandidates: controlMatches,
+    reason: 'name_heuristic',
+    demoPair: names,
   };
 }
 
@@ -198,7 +257,31 @@ export async function discover({ session, configuredPair = {} }) {
     if (!site) continue;
     const members = membershipFor(site);
     if (members.length === 0) {
-      anomalies.push(`${side} site '${site.siteName}' has no access points assigned.`);
+      // An empty side is fatal to the experiment, so say what to do about it
+      // rather than only that it is empty. APs are conventionally NAMED for the
+      // site they belong to, so an AP called `EAL-PT-N-5th-Floor` sitting in
+      // site `EAL` is almost certainly a site assignment nobody finished — and
+      // that is exactly the state the lab was found in. Naming the specific AP
+      // and where it currently sits turns a dead end into a one-step fix.
+      const orphans = aps.filter(
+        (a) =>
+          a.apName &&
+          site.siteName &&
+          a.apName.toLowerCase().includes(String(site.siteName).toLowerCase()) &&
+          a.siteName !== site.siteName
+      );
+      anomalies.push(
+        orphans.length > 0
+          ? `${side} site '${site.siteName}' has no access points assigned. ` +
+              orphans
+                .map(
+                  (o) =>
+                    `${o.serial} ('${o.apName}', ${o.model ?? 'unknown model'}) is named for this site but is currently in '${o.siteName ?? 'no site'}'`
+                )
+                .join('; ') +
+              `. Assign it to '${site.siteName}' on the controller to run the experiment on real hardware.`
+          : `${side} site '${site.siteName}' has no access points assigned.`
+      );
     }
     // Declared-vs-observed disagreement means the site record and the AP
     // inventory are out of step; the AP inventory wins, but say so.
@@ -232,5 +315,21 @@ export async function discover({ session, configuredPair = {} }) {
     }
   }
 
-  return { ok: true, sites, aps, pair: { treatment, control, proposed }, membership, anomalies };
+  return {
+    ok: true,
+    sites,
+    aps,
+    pair: {
+      treatment,
+      control,
+      proposed,
+      // Which tier proposed this pair — 'demo_pair' means the named EAL
+      // demonstration sites were found, so the UI can say so rather than
+      // presenting it as a guess.
+      reason: proposed ? suggestion.reason : 'configured',
+      demoPair: suggestion.demoPair,
+    },
+    membership,
+    anomalies,
+  };
 }

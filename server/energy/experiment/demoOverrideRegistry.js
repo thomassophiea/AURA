@@ -11,13 +11,46 @@
  * marked `simulated`.
  */
 
-/** sourceId -> { mode, startedAt, startedBy, timer } */
+/** sourceId -> { mode, startedAt, startedBy, timer, fromShare, episodeId } */
 const overrides = new Map();
 
 export const OVERRIDE_MODES = Object.freeze(['lights_off', 'lights_on', 'sensor_failure', 'reset']);
 
 export function setOverride(sourceId, entry) {
   overrides.set(sourceId, entry);
+}
+
+/**
+ * The projected reduction share in effect at the moment a mode ends.
+ *
+ * Carried across a mode change so a lights-on recovery starts from where the
+ * curve actually was rather than from the settled figure. Without it, toggling
+ * off → on → off mid-ramp makes the projected line jump, which is the one thing
+ * a fallback built to rescue a demo must not do. Defaults to 0 so a first
+ * lights-off begins at the measured baseline.
+ */
+export function shareAtHandover(sourceId) {
+  const existing = overrides.get(sourceId);
+  return Number.isFinite(existing?.lastShare) ? existing.lastShare : 0;
+}
+
+/** Remember the share the projection has reached, for the next handover. */
+export function recordShare(sourceId, share) {
+  const existing = overrides.get(sourceId);
+  if (existing && Number.isFinite(share)) existing.lastShare = share;
+}
+
+/**
+ * Tie the live override to its persisted audit row.
+ *
+ * Mutates the existing entry rather than replacing it: the entry holds the
+ * sensor-emit interval, and re-setting it from a partial copy would drop the
+ * timer handle, leaving an interval running that nothing can ever clear.
+ */
+export function attachEpisode(sourceId, episodeId) {
+  const existing = overrides.get(sourceId);
+  if (existing) existing.episodeId = episodeId;
+  return existing ?? null;
 }
 
 export function clearOverride(sourceId) {
@@ -51,12 +84,29 @@ export function evaluationSampleSource(sourceId) {
 
 export function describeOverride(sourceId) {
   const o = overrides.get(sourceId);
-  if (!o) return { active: false, mode: 'live_sensor' };
+  if (!o) return { active: false, mode: 'live_sensor', projection: null };
   return {
     active: true,
     mode: o.mode,
     startedAt: o.startedAt,
     startedBy: o.startedBy ?? null,
+    /**
+     * Whether this override is also driving the display-layer projection.
+     *
+     * `lights_off`/`lights_on` do; `sensor_failure` does not, because a dead
+     * sensor should look like a dead sensor. `fromShare` is what a recovery
+     * ramps down from, and `episodeId` ties the live override to its persisted
+     * audit row.
+     */
+    projection:
+      o.mode === 'lights_off' || o.mode === 'lights_on'
+        ? {
+            mode: o.mode,
+            startedAt: o.startedAt,
+            fromShare: Number.isFinite(o.fromShare) ? o.fromShare : 0,
+            episodeId: o.episodeId ?? null,
+          }
+        : null,
     note:
       o.mode === 'sensor_failure'
         ? 'Simulated sensor failure: no sensor samples are being written, so no trigger can fire.'

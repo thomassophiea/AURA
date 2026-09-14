@@ -1,5 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
-import { normalizeSite, normalizeAp, bandForRadio, proposePair, discover, rows } from './siteDiscovery.js';
+import {
+  normalizeSite,
+  normalizeAp,
+  bandForRadio,
+  proposePair,
+  discover,
+  rows,
+  demoPairNames,
+} from './siteDiscovery.js';
 
 const SITES = [
   { id: 'n-id', siteName: 'EAL-PT-N', timezone: 'America/New_York', deviceGroups: [{ apSerialNumbers: ['N1'] }] },
@@ -159,5 +167,83 @@ describe('discover', () => {
   it('fails cleanly when the controller cannot answer', async () => {
     expect((await discover({ session: session({ sitesOk: false }) })).ok).toBe(false);
     expect((await discover({ session: session({ apsOk: false }) })).ok).toBe(false);
+  });
+});
+
+describe('the named EAL demo pair', () => {
+  it('defaults to EAL-PT-N (optimized) against EAL-PT-S (control)', () => {
+    expect(demoPairNames({})).toEqual({ treatment: 'EAL-PT-N', control: 'EAL-PT-S' });
+  });
+
+  it('is overridable by environment without a code change', () => {
+    expect(demoPairNames({ ENERGY_DEMO_PAIR: 'Floor 3 : Floor 4' })).toEqual({
+      treatment: 'Floor 3',
+      control: 'Floor 4',
+    });
+  });
+
+  it('ignores a malformed override rather than proposing half a pair', () => {
+    expect(demoPairNames({ ENERGY_DEMO_PAIR: 'nonsense' })).toEqual({
+      treatment: 'EAL-PT-N',
+      control: 'EAL-PT-S',
+    });
+    expect(demoPairNames({ ENERGY_DEMO_PAIR: 'only-one:' })).toEqual({
+      treatment: 'EAL-PT-N',
+      control: 'EAL-PT-S',
+    });
+  });
+
+  it('is proposed by name ahead of the -N/-S heuristic', () => {
+    const proposal = proposePair(SITES.map(normalizeSite), {});
+    expect(proposal.reason).toBe('demo_pair');
+    expect(proposal.treatment.siteName).toBe('EAL-PT-N');
+    expect(proposal.control.siteName).toBe('EAL-PT-S');
+  });
+
+  it('falls back to the heuristic when the demo sites are not on this controller', () => {
+    const sites = [
+      { id: 'a', siteName: 'Campus-North', deviceGroups: [] },
+      { id: 'b', siteName: 'Campus-South', deviceGroups: [] },
+    ].map(normalizeSite);
+    const proposal = proposePair(sites, {});
+    expect(proposal.reason).toBe('name_heuristic');
+    expect(proposal.treatment.siteName).toBe('Campus-North');
+  });
+
+  it('never overrides a configured pair', async () => {
+    const found = await discover({
+      session: session(),
+      configuredPair: { treatmentSiteId: 'p-id', controlSiteId: 's-id' },
+    });
+    expect(found.pair.treatment.siteName).toBe('PrimarySite');
+    expect(found.pair.reason).toBe('configured');
+  });
+});
+
+describe('an empty side names the AP that is probably meant to be there', () => {
+  // The exact state the lab was found in: the AP called EAL-PT-N-5th-Floor was
+  // sitting in site EAL, so site EAL-PT-N had no APs and the experiment could
+  // not run. "Has no access points" alone does not get anyone to the fix.
+  const MISFILED = [
+    { serialNumber: 'S1', apName: 'EAL-PT-S-5th-Floor', platformName: 'AP5022', hostSite: 'EAL-PT-S', status: 'InService', pwrUsage: 14.6, radios: [] },
+    { serialNumber: 'N1', apName: 'EAL-PT-N-5th-Floor', platformName: 'AP5022', hostSite: 'EAL', status: 'InService', pwrUsage: 14.8, radios: [] },
+  ];
+
+  it('names the serial, its model and where it actually is', async () => {
+    const found = await discover({
+      session: session({ sites: SITES.map((s) => ({ ...s, deviceGroups: [] })), aps: MISFILED }),
+    });
+    const text = found.anomalies.join(' ');
+    expect(text).toMatch(/N1/);
+    expect(text).toMatch(/EAL-PT-N-5th-Floor/);
+    expect(text).toMatch(/currently in 'EAL'/);
+    expect(text).toMatch(/Assign it to 'EAL-PT-N'/);
+  });
+
+  it('still reports an empty side plainly when no AP is named for it', async () => {
+    const found = await discover({
+      session: session({ sites: SITES.map((s) => ({ ...s, deviceGroups: [] })), aps: [] }),
+    });
+    expect(found.anomalies.join(' ')).toMatch(/has no access points assigned/);
   });
 });

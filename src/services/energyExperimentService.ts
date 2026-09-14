@@ -17,6 +17,7 @@ import type {
   ReadinessResponse,
   TriggerView,
   DemoOverrideState,
+  DemoEpisode,
 } from '../types/energyExperiment';
 
 const BASE = '/api/energy/experiment';
@@ -89,8 +90,16 @@ export const energyExperimentService = {
       '/restore-all'
     ),
   demo: (mode: 'lights_off' | 'lights_on' | 'sensor_failure' | 'reset') =>
-    post<{ demoOverride: DemoOverrideState; emitted?: number; raw?: number; persistenceSeconds?: number }>(
-      '/demo',
-      { mode }
-    ),
+    post<{
+      demoOverride: DemoOverrideState;
+      emitted?: number;
+      raw?: number;
+      /** True when no experiment was running, so only the display layer is simulated. */
+      projectionOnly?: boolean;
+      episode?: { id: string; startedAt: string } | null;
+      persistenceSeconds?: number;
+    }>('/demo', { mode }),
+
+  /** The audit trail of fail-safe activations. */
+  getDemoEpisodes: () => request<{ episodes: DemoEpisode[] }>('/demo/episodes'),
 };

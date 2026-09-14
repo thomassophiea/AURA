@@ -407,3 +407,161 @@ export async function fetchApCurrentState({ sourceId, siteIds }) {
   );
   return rows;
 }
+
+/* ------------------------------------------------- demo-simulation support */
+
+/**
+ * The MEASURED watts each AP at a site was drawing before a given instant.
+ *
+ * This is the only input the demo projection is allowed to build on: the
+ * optimized site's own real, recent consumption. The window looks BACKWARD from
+ * `before` — the moment the simulation was switched on — so the baseline is
+ * normal operation and not a level the projection itself already pulled down.
+ *
+ * Two tiers, because the demo has to work in a lab that has only just started
+ * collecting:
+ *   1. the time-weighted mean over `windowSeconds` before the instant;
+ *   2. failing that, the single most recent sample before it.
+ *
+ * An AP with no measured sample at all is simply absent from the result. It is
+ * then absent from the projection too — see `projectTreatmentRows`, which skips
+ * APs with no baseline rather than inventing one.
+ */
+export async function fetchApBaselineWatts({ sourceId, siteId, before, windowSeconds = 3600 }) {
+  const { rows } = await query(
+    `WITH windowed AS (
+       SELECT device_external_id AS serial,
+              AVG(numeric_value) AS avg_watts,
+              COUNT(*)::int      AS sample_count,
+              MAX(observed_at)   AS latest,
+              (ARRAY_AGG(dimensions ORDER BY observed_at DESC))[1] AS dims
+       FROM metric_samples
+       WHERE monitored_source_id = $1
+         AND metric_family = '${FAMILY}'
+         AND metric_name = 'ap.power_watts'
+         AND site_id = $2
+         AND observed_at <  $3::timestamptz
+         AND observed_at >= $3::timestamptz - ($4 || ' seconds')::interval
+       GROUP BY device_external_id
+     ),
+     fallback AS (
+       SELECT DISTINCT ON (device_external_id)
+              device_external_id AS serial,
+              numeric_value      AS avg_watts,
+              1                  AS sample_count,
+              observed_at        AS latest,
+              dimensions         AS dims
+       FROM metric_samples
+       WHERE monitored_source_id = $1
+         AND metric_family = '${FAMILY}'
+         AND metric_name = 'ap.power_watts'
+         AND site_id = $2
+         AND observed_at < $3::timestamptz
+       ORDER BY device_external_id, observed_at DESC
+     )
+     SELECT COALESCE(w.serial, f.serial)                   AS "apSerial",
+            COALESCE(w.avg_watts, f.avg_watts)::float8     AS "baselineWatts",
+            COALESCE(w.sample_count, f.sample_count)       AS "sampleCount",
+            COALESCE(w.latest, f.latest)                   AS "observedAt",
+            COALESCE(w.dims, f.dims)                       AS dimensions
+     FROM windowed w
+     FULL OUTER JOIN fallback f ON f.serial = w.serial`,
+    [sourceId, siteId, before, String(windowSeconds)]
+  );
+  return rows.map((r) => ({
+    apSerial: r.apSerial,
+    baselineWatts: Number.isFinite(Number(r.baselineWatts)) ? Number(r.baselineWatts) : null,
+    model: r.dimensions?.model ?? null,
+    sampleCount: Number(r.sampleCount ?? 0),
+    observedAt: r.observedAt,
+  }));
+}
+
+/**
+ * Record that a demo simulation was switched on.
+ *
+ * Closes any episode still open on this source first: the partial unique index
+ * permits one, and an episode left open by a service restart must not block the
+ * next demonstration. `ended_reason` says which happened, so an abandoned
+ * episode is visible as abandoned rather than looking like a clean run.
+ */
+export async function openDemoEpisode({
+  sourceId,
+  experimentId = null,
+  siteId = null,
+  siteName = null,
+  controlSiteId = null,
+  controlSiteName = null,
+  mode,
+  startedBy = null,
+  baselineWattsPerAp = null,
+  apCount = null,
+  reductionShare = null,
+  projection = {},
+}) {
+  return withTransaction(async (client) => {
+    await client.query(
+      `UPDATE energy_demo_simulation_episodes
+          SET ended_at = now(), ended_reason = COALESCE(ended_reason, 'superseded')
+        WHERE monitored_source_id = $1 AND ended_at IS NULL`,
+      [sourceId]
+    );
+    const { rows } = await client.query(
+      `INSERT INTO energy_demo_simulation_episodes
+         (monitored_source_id, experiment_id, site_id, site_name,
+          control_site_id, control_site_name, mode, started_by,
+          baseline_watts_per_ap, ap_count, reduction_share, projection)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb)
+       RETURNING id, started_at AS "startedAt", value_source AS "valueSource"`,
+      [
+        sourceId,
+        experimentId,
+        siteId,
+        siteName,
+        controlSiteId,
+        controlSiteName,
+        mode,
+        startedBy,
+        baselineWattsPerAp,
+        apCount,
+        reductionShare,
+        JSON.stringify(projection ?? {}),
+      ]
+    );
+    return rows[0];
+  });
+}
+
+/** Close the open episode on a source, recording what it was showing at the end. */
+export async function closeDemoEpisode({ sourceId, reason = 'operator_request', projection = null, reductionShare = null }) {
+  const { rows } = await query(
+    `UPDATE energy_demo_simulation_episodes
+        SET ended_at = now(),
+            ended_reason = $2,
+            reduction_share = COALESCE($4, reduction_share),
+            projection = CASE WHEN $3::jsonb IS NULL THEN projection ELSE $3::jsonb END
+      WHERE monitored_source_id = $1 AND ended_at IS NULL
+      RETURNING id, started_at AS "startedAt", ended_at AS "endedAt",
+                EXTRACT(EPOCH FROM (ended_at - started_at))::int AS "durationSeconds"`,
+    [sourceId, reason, projection ? JSON.stringify(projection) : null, reductionShare]
+  );
+  return rows[0] ?? null;
+}
+
+/** The simulation history for a controller — for the timeline and for audit. */
+export async function listDemoEpisodes(sourceId, limit = 50) {
+  const { rows } = await query(
+    `SELECT id, experiment_id AS "experimentId", site_id AS "siteId", site_name AS "siteName",
+            mode, value_source AS "valueSource", started_at AS "startedAt", ended_at AS "endedAt",
+            started_by AS "startedBy", ended_reason AS "endedReason",
+            baseline_watts_per_ap::float8 AS "baselineWattsPerAp", ap_count AS "apCount",
+            reduction_share::float8 AS "reductionShare", projection,
+            EXTRACT(EPOCH FROM (COALESCE(ended_at, now()) - started_at))::int AS "durationSeconds"
+     FROM energy_demo_simulation_episodes
+     WHERE monitored_source_id = $1
+     ORDER BY started_at DESC
+     LIMIT $2`,
+    [sourceId, Math.min(Number(limit) || 50, 200)]
+  );
+  return rows;
+}

@@ -25,6 +25,8 @@ const ANNOTATION_LABELS: Record<string, string> = {
   optimization_activated: 'Optimization active',
   light_restored: 'Lights on',
   restoration_verified: 'Restored',
+  demo_simulation_started: 'Lights off (sim)',
+  demo_simulation_recovering: 'Lights on (sim)',
 };
 
 function formatTick(iso: string, bucketSeconds: number): string {
@@ -46,17 +48,45 @@ export function ExperimentComparisonChart({ series, loading }: Props) {
   const { data, annotations } = useMemo(() => {
     if (!series) return { data: [], annotations: [] };
 
-    const byBucket = new Map<string, { t: string; treatment: number | null; control: number | null }>();
+    type Row = {
+      t: string;
+      treatment: number | null;
+      /** Projected values live on their own key so they can be drawn dotted. */
+      treatmentProjected: number | null;
+      control: number | null;
+    };
+
+    const byBucket = new Map<string, Row>();
     for (const point of series.points) {
       const key = new Date(point.bucketStart).toISOString();
-      if (!byBucket.has(key)) byBucket.set(key, { t: key, treatment: null, control: null });
+      if (!byBucket.has(key)) {
+        byBucket.set(key, { t: key, treatment: null, treatmentProjected: null, control: null });
+      }
       const row = byBucket.get(key)!;
-      if (point.siteId === series.treatment.siteId) row.treatment = point.wattsPerAp;
-      else if (point.siteId === series.control.siteId) row.control = point.wattsPerAp;
+      if (point.siteId === series.treatment.siteId) {
+        // A demo-simulated point must never be drawn as a measured one, so the
+        // two never share a key. `mergeSeriesPoints` guarantees at most one of
+        // them exists per bucket.
+        if (point.valueSource === 'DEMO_SIMULATED') row.treatmentProjected = point.wattsPerAp;
+        else row.treatment = point.wattsPerAp;
+      } else if (point.siteId === series.control.siteId) {
+        row.control = point.wattsPerAp;
+      }
+    }
+
+    const rows = [...byBucket.values()].sort((a, b) => a.t.localeCompare(b.t));
+
+    // Bridge the handover: without a shared point the measured line stops and
+    // the projected line starts a bucket later, leaving a visible gap that
+    // looks like missing data rather than a change of provenance.
+    for (let i = 1; i < rows.length; i += 1) {
+      if (rows[i].treatmentProjected != null && rows[i - 1].treatment != null) {
+        rows[i - 1].treatmentProjected = rows[i - 1].treatment;
+      }
     }
 
     return {
-      data: [...byBucket.values()].sort((a, b) => a.t.localeCompare(b.t)),
+      data: rows,
       annotations: series.annotations
         .filter((a) => ANNOTATION_LABELS[a.kind])
         // Several APs can produce the same kind within one bucket; one line each.
@@ -126,17 +156,33 @@ export function ExperimentComparisonChart({ series, loading }: Props) {
           <Line
             type="monotone"
             dataKey="treatment"
-            name={`${series?.treatment.siteName ?? 'Treatment'} (treatment)`}
+            name={`${series?.treatment.siteName ?? 'Optimized'} — energy optimized`}
             stroke="var(--status-success)"
             strokeWidth={2}
             dot={false}
             connectNulls={false}
             isAnimationActive={false}
           />
+          {/* Only rendered when the fail-safe is projecting. Dotted and in the
+              warning hue so a projected segment is never mistaken for a
+              measured one, even in a screenshot. */}
+          {data.some((d) => d.treatmentProjected != null) ? (
+            <Line
+              type="monotone"
+              dataKey="treatmentProjected"
+              name={`${series?.treatment.siteName ?? 'Optimized'} — projected (demo)`}
+              stroke="var(--status-warning)"
+              strokeWidth={2}
+              strokeDasharray="2 3"
+              dot={false}
+              connectNulls={false}
+              isAnimationActive={false}
+            />
+          ) : null}
           <Line
             type="monotone"
             dataKey="control"
-            name={`${series?.control.siteName ?? 'Control'} (control)`}
+            name={`${series?.control.siteName ?? 'Control'} — control`}
             stroke="var(--muted-foreground)"
             strokeWidth={2}
             strokeDasharray="5 4"

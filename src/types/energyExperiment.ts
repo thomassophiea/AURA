@@ -29,6 +29,13 @@ export type SavingsProvenance =
   /** No controller action was taken; any divergence is modelled. */
   | 'simulated';
 
+/**
+ * How a single figure was arrived at. Distinct from `SavingsProvenance`, which
+ * describes a whole savings claim: this labels an individual value so a number
+ * on screen can never be mistaken for a different class of number.
+ */
+export type ValueSource = 'REAL' | 'CALCULATED' | 'DEMO_SIMULATED';
+
 export interface ExperimentSiteRef {
   siteId: string;
   siteName: string | null;
@@ -150,6 +157,7 @@ export interface ExperimentSavings {
   emissionsFactorSource: string;
   provenance: SavingsProvenance;
   claimSupported: boolean;
+  valueSource?: ValueSource;
 }
 
 export interface ExperimentQuality {
@@ -166,6 +174,62 @@ export interface DemoOverrideState {
   startedAt?: string;
   startedBy?: string | null;
   note?: string;
+  /** Non-null when this override is also driving the display-layer projection. */
+  projection?: {
+    mode: 'lights_off' | 'lights_on';
+    startedAt: string;
+    fromShare: number;
+    episodeId: string | null;
+  } | null;
+}
+
+/**
+ * The demonstration fail-safe, as the server reports it.
+ *
+ * `active` means an operator switched it on. `applied` means it is actually
+ * replacing figures — which it does NOT do when the real measured path is
+ * already producing a supported claim (`reason: 'real_telemetry_preferred'`) or
+ * when the optimized site has no measured history to project from
+ * (`reason: 'no_measured_baseline'`).
+ */
+export interface DemoSimulationState {
+  active: boolean;
+  applied: boolean;
+  reason:
+    | 'demo_simulation_active'
+    | 'real_telemetry_preferred'
+    | 'no_measured_baseline'
+    | 'recovery_complete'
+    | string;
+  mode: 'lights_off' | 'lights_on';
+  startedAt: string;
+  valueSource: ValueSource;
+  note: string;
+  /** Present only when `applied` is true. */
+  reductionShare?: number | null;
+  baseShare?: number;
+  elapsedSeconds?: number;
+  apCount?: number;
+  baselineWattsPerAp?: number | null;
+  /** True when the control side had no live reading and was held at its baseline. */
+  controlAssumed?: boolean;
+}
+
+export interface DemoEpisode {
+  id: string;
+  experimentId: string | null;
+  siteId: string | null;
+  siteName: string | null;
+  mode: 'lights_off' | 'lights_on' | 'sensor_failure';
+  valueSource: 'DEMO_SIMULATED';
+  startedAt: string;
+  endedAt: string | null;
+  startedBy: string | null;
+  endedReason: string | null;
+  baselineWattsPerAp: number | null;
+  apCount: number | null;
+  reductionShare: number | null;
+  durationSeconds: number;
 }
 
 export interface OutstandingRestore {
@@ -188,6 +252,9 @@ export interface ExperimentStateResponse {
   savings?: ExperimentSavings | null;
   quality?: ExperimentQuality | null;
   demoOverride: DemoOverrideState;
+  demoSimulation?: DemoSimulationState | null;
+  /** The configured pair, present when no experiment has been created yet. */
+  pair?: { treatment: ExperimentSiteRef; control: ExperimentSiteRef } | null;
   outstandingRestores: OutstandingRestore[];
 }
 
@@ -197,6 +264,8 @@ export interface ExperimentSeriesPoint {
   siteWatts: number | null;
   wattsPerAp: number | null;
   apCount: number;
+  /** `DEMO_SIMULATED` on points the fail-safe projected; `REAL` on measured ones. */
+  valueSource?: ValueSource;
 }
 
 export interface ExperimentSeriesResponse {
@@ -219,7 +288,8 @@ export interface ExperimentApRow extends ExperimentDevice {
    *  still reporting transmit power — changed, still needs restoring, saving
    *  nothing. */
   energyState: 'control' | 'optimized' | 'changed_not_effective' | 'normal';
-  telemetrySource: 'measured' | 'none';
+  telemetrySource: 'measured' | 'none' | 'DEMO_SIMULATED';
+  valueSource?: ValueSource | null;
   rollback: {
     capturedAt: string;
     appliedAt: string | null;
@@ -250,6 +320,9 @@ export interface DiscoveryResponse {
     treatment: { siteId: string; siteName: string | null } | null;
     control: { siteId: string; siteName: string | null } | null;
     proposed: boolean;
+    /** `demo_pair` when the named EAL demonstration sites were found. */
+    reason?: 'configured' | 'demo_pair' | 'name_heuristic';
+    demoPair?: { treatment: string; control: string };
   };
   membership: {
     treatment: Array<{ serial: string; apName: string | null; model: string | null; status: string | null; watts: number | null }>;

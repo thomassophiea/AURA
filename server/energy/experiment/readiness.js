@@ -131,13 +131,30 @@ export async function assessReadiness({ source, session, now = new Date() }) {
   const treatmentMembers = found.membership.treatment ?? [];
   const controlMembers = found.membership.control ?? [];
 
+  /**
+   * The empty-side anomaly, which already carries the actionable fix.
+   *
+   * Readiness is the "can this demonstration be given right now" view, so the
+   * check that FAILS should say what to do about it — not leave the one useful
+   * sentence in a different payload the reader may not open. Discovery names
+   * the AP that is titled for the site but assigned elsewhere; reuse that
+   * wording rather than compute it twice.
+   */
+  const emptySideHint = (siteName) =>
+    found.anomalies?.find(
+      (a) => siteName && a.includes(`'${siteName}' has no access points`) && a.includes('named for this site')
+    ) ?? null;
+
   checks.push(
     check(
       'treatment_membership',
-      'Treatment access points',
+      'Energy optimized access points',
       treatmentMembers.length === 0 ? 'fail' : 'pass',
       treatmentMembers.length === 0
-        ? `Treatment site '${treatment?.siteName ?? '—'}' has no access points assigned.`
+        ? emptySideHint(treatment?.siteName) ??
+          `Energy optimized site '${treatment?.siteName ?? '—'}' has no access points assigned. ` +
+            'Neither the energy action nor the demo fall-back can run without one: the projection is ' +
+            "built from this site's own measured power history."
         : `${treatmentMembers.length} AP(s): ${treatmentMembers.map((a) => `${a.serial} (${a.model})`).join(', ')}.`,
       { aps: treatmentMembers }
     )
@@ -148,7 +165,8 @@ export async function assessReadiness({ source, session, now = new Date() }) {
       'Control access points',
       controlMembers.length === 0 ? 'fail' : 'pass',
       controlMembers.length === 0
-        ? `Control site '${control?.siteName ?? '—'}' has no access points; there is no control group.`
+        ? emptySideHint(control?.siteName) ??
+          `Control site '${control?.siteName ?? '—'}' has no access points; there is no control group.`
         : `${controlMembers.length} AP(s): ${controlMembers.map((a) => `${a.serial} (${a.model})`).join(', ')}.`,
       { aps: controlMembers }
     )

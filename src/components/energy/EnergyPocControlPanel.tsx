@@ -51,8 +51,8 @@ const CHECK_CLASS: Record<ReadinessCheck['status'], string> = {
  */
 export function EnergyPocControlPanel({ state, readiness, trigger, busy, run, error }: Props) {
   const [discovery, setDiscovery] = useState<DiscoveryResponse | null>(null);
-  const [treatment, setNorth] = useState<string>('');
-  const [control, setSouth] = useState<string>('');
+  const [treatment, setTreatment] = useState<string>('');
+  const [control, setControl] = useState<string>('');
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
@@ -62,8 +62,8 @@ export function EnergyPocControlPanel({ state, readiness, trigger, busy, run, er
       .then((d) => {
         if (cancelled) return;
         setDiscovery(d);
-        setNorth(d.configured?.treatmentSiteId ?? d.pair.treatment?.siteId ?? '');
-        setSouth(d.configured?.controlSiteId ?? d.pair.control?.siteId ?? '');
+        setTreatment(d.configured?.treatmentSiteId ?? d.pair.treatment?.siteId ?? '');
+        setControl(d.configured?.controlSiteId ?? d.pair.control?.siteId ?? '');
       })
       .catch(() => undefined);
     return () => {
@@ -133,8 +133,8 @@ export function EnergyPocControlPanel({ state, readiness, trigger, busy, run, er
       {/* Site pair */}
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="space-y-1 text-xs">
-          <span className="font-medium text-muted-foreground">Treatment site — energy action applied here</span>
-          <Select value={treatment} onValueChange={setNorth} disabled={disabled || !!experiment}>
+          <span className="font-medium text-muted-foreground">Energy optimized site — the energy action is applied here</span>
+          <Select value={treatment} onValueChange={setTreatment} disabled={disabled || !!experiment}>
             <SelectTrigger className="h-8 text-xs">
               <SelectValue placeholder="Select a site" />
             </SelectTrigger>
@@ -148,8 +148,8 @@ export function EnergyPocControlPanel({ state, readiness, trigger, busy, run, er
           </Select>
         </label>
         <label className="space-y-1 text-xs">
-          <span className="font-medium text-muted-foreground">Control site — deliberately left alone</span>
-          <Select value={control} onValueChange={setSouth} disabled={disabled || !!experiment}>
+          <span className="font-medium text-muted-foreground">Control site — the baseline, deliberately left alone</span>
+          <Select value={control} onValueChange={setControl} disabled={disabled || !!experiment}>
             <SelectTrigger className="h-8 text-xs">
               <SelectValue placeholder="Select a site" />
             </SelectTrigger>
@@ -165,12 +165,24 @@ export function EnergyPocControlPanel({ state, readiness, trigger, busy, run, er
       </div>
 
       {discovery && treatment && control ? (
-        <p className="text-xs text-muted-foreground">
-          Treatment {discovery.membership.treatment.length} AP · Control {discovery.membership.control.length} AP
-          {discovery.anomalies.length > 0
-            ? ` · ${discovery.anomalies.length} discovery warning(s)`
-            : ''}
-        </p>
+        <div className="space-y-1">
+          <p className="text-xs text-muted-foreground">
+            Optimized {discovery.membership.treatment.length} AP · Control {discovery.membership.control.length} AP
+            {discovery.pair?.reason === 'demo_pair' ? ' · EAL demo pair' : ''}
+          </p>
+          {/* Shown rather than counted. An anomaly like "the AP named for this
+              site is in another site" is the whole reason a run cannot start,
+              and a badge saying "3 warnings" does not get anyone to the fix. */}
+          {discovery.anomalies.length > 0 ? (
+            <ul className="space-y-0.5">
+              {discovery.anomalies.map((a) => (
+                <li key={a} className="text-xs text-[color:var(--status-warning)]">
+                  {a}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
       ) : null}
 
       <div className="flex flex-wrap gap-2">
@@ -266,12 +278,19 @@ export function EnergyPocControlPanel({ state, readiness, trigger, busy, run, er
               key={mode}
               size="sm"
               variant="outline"
-              disabled={disabled || (mode !== 'reset' && !experiment)}
+              // The light modes drive the display-layer fail-safe too, which is
+              // exactly what is needed when starting an experiment is what
+              // failed. Only a simulated sensor failure needs an experiment,
+              // because it simulates starving that experiment's trigger.
+              disabled={disabled || (mode === 'sensor_failure' && !experiment)}
               onClick={() =>
                 act(`demo-${mode}`, () => energyExperimentService.demo(mode), (r) => {
                   const res = r as { persistenceSeconds?: number };
+                  const projectionOnly = (r as { projectionOnly?: boolean }).projectionOnly;
                   return mode === 'lights_off'
-                    ? `Simulating darkness. Optimization fires after ${res.persistenceSeconds ?? '?'}s of sustained dark readings.`
+                    ? projectionOnly
+                      ? 'Simulating darkness. No experiment is running, so this projects the optimized site from its measured history only — no gateway change.'
+                      : `Simulating darkness. Optimization fires after ${res.persistenceSeconds ?? '?'}s of sustained dark readings.`
                     : mode === 'lights_on'
                       ? 'Simulating light restored.'
                       : mode === 'sensor_failure'

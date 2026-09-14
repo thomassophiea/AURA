@@ -1,6 +1,8 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import {
   setOverride,
+  shareAtHandover,
+  recordShare,
   clearOverride,
   getOverride,
   evaluationSampleSource,
@@ -13,7 +15,7 @@ afterEach(() => __resetOverrides());
 describe('demoOverrideRegistry', () => {
   it('listens to the live sensor channel by default', () => {
     expect(evaluationSampleSource('src-1')).toBe('live');
-    expect(describeOverride('src-1')).toEqual({ active: false, mode: 'live_sensor' });
+    expect(describeOverride('src-1')).toEqual({ active: false, mode: 'live_sensor', projection: null });
   });
 
   it('switches the trigger to the simulated channel while an override is active', () => {
@@ -56,5 +58,31 @@ describe('demoOverrideRegistry', () => {
     expect(describeOverride('src-1').note).toMatch(/no sensor samples/i);
     // Still the simulated channel — and it is empty, which is the point.
     expect(evaluationSampleSource('src-1')).toBe('simulated');
+  });
+});
+
+describe('the projection handover', () => {
+  it('starts a first lights-off from the measured baseline', () => {
+    expect(shareAtHandover('src-1')).toBe(0);
+  });
+
+  it('remembers the share reached, so a recovery does not start from zero', () => {
+    setOverride('src-1', { mode: 'lights_off', startedAt: 'now' });
+    recordShare('src-1', 0.11);
+    expect(shareAtHandover('src-1')).toBeCloseTo(0.11, 6);
+  });
+
+  it('ignores a non-numeric share rather than corrupting the curve', () => {
+    setOverride('src-1', { mode: 'lights_off', startedAt: 'now' });
+    recordShare('src-1', Number.NaN);
+    expect(shareAtHandover('src-1')).toBe(0);
+  });
+
+  it('drives the projection for the light modes but not for a dead sensor', () => {
+    setOverride('src-1', { mode: 'lights_off', startedAt: 'now', fromShare: 0.05 });
+    expect(describeOverride('src-1').projection).toMatchObject({ mode: 'lights_off', fromShare: 0.05 });
+
+    setOverride('src-2', { mode: 'sensor_failure', startedAt: 'now' });
+    expect(describeOverride('src-2').projection).toBeNull();
   });
 });
