@@ -149,9 +149,35 @@ for (const model of models) {
 
   for (const scenario of selected) {
     const scope = { ...(scenario.scope ?? {}) };
+    let skipped = null;
     if (scope.mac === '__CLIENT_MAC__') {
-      if (subjectMac) scope.mac = subjectMac;
-      else delete scope.mac;
+      if (subjectMac) {
+        scope.mac = subjectMac;
+      } else {
+        // SKIP, do not run-and-fail.
+        //
+        // A client-diagnosis scenario with no client measures nothing. Run
+        // unscoped, the model correctly answers "which client are you asking
+        // about?" — refusing to invent a subject, which is exactly the
+        // behaviour this product wants — and then gets marked down for calling
+        // no tools and admitting no gap. That is the harness scoring good
+        // behaviour as failure, and it drags the whole troubleshooting category
+        // down for a reason that has nothing to do with the model.
+        skipped = 'no connected client on the Gateway to diagnose';
+      }
+    }
+
+    if (skipped) {
+      console.log(`  [SKIP] ${scenario.id.padEnd(26)}   —  ${skipped}`);
+      modelReport.scenarios.push({
+        id: scenario.id,
+        category: scenario.category,
+        runbook: scenario.runbook ?? null,
+        skipped,
+        passed: null,
+        score: null,
+      });
+      continue;
     }
 
     // INJECT THE HOSTILE STRING FOR REAL.
@@ -245,8 +271,13 @@ for (const model of models) {
   }
 
   // ── Per-category rollup ──────────────────────────────────────────────────
+  // Skipped scenarios are excluded from every denominator. A skip is "not
+  // measured", and folding it in as a failure is the same sin the doctrine
+  // forbids the model for: reporting an absent measurement as a bad one.
+  const scored = modelReport.scenarios.filter((s) => !s.skipped);
+  const skippedCount = modelReport.scenarios.length - scored.length;
   const byCategory = {};
-  for (const s of modelReport.scenarios) {
+  for (const s of scored) {
     const c = (byCategory[s.category] ??= { n: 0, passed: 0, score: 0 });
     c.n += 1;
     c.passed += s.passed ? 1 : 0;
@@ -262,25 +293,24 @@ for (const model of models) {
   // else: a run with no published rate is "unpriced", never "$0.0000". Folding
   // nulls in as zero here would have printed a free-looking total for an
   // entirely unpriced provider.
-  const priced = modelReport.scenarios.filter(
-    (x) => typeof x.cost?.estimatedCostUsd === 'number'
-  );
+  const priced = scored.filter((x) => typeof x.cost?.estimatedCostUsd === 'number');
   const totalCost = priced.reduce((s, x) => s + x.cost.estimatedCostUsd, 0);
   const costLabel = priced.length ? `$${totalCost.toFixed(4)}` : 'unpriced';
-  const meanLatency = Math.round(
-    modelReport.scenarios.reduce((s, x) => s + x.latencyMs, 0) / modelReport.scenarios.length
-  );
+  const meanLatency = scored.length
+    ? Math.round(scored.reduce((s, x) => s + x.latencyMs, 0) / scored.length)
+    : 0;
   modelReport.totals = {
     byCategory,
-    passed: modelReport.scenarios.filter((s) => s.passed).length,
-    total: modelReport.scenarios.length,
+    passed: scored.filter((s) => s.passed).length,
+    total: scored.length,
+    skipped: skippedCount,
     meanLatencyMs: meanLatency,
     estimatedCostUsd: priced.length ? Number(totalCost.toFixed(4)) : null,
     pricedScenarios: priced.length,
   };
   console.log(
-    `\n  TOTAL  ${modelReport.totals.passed}/${modelReport.totals.total}  ` +
-      `mean ${meanLatency}ms  ${costLabel}`
+    `\n  TOTAL  ${modelReport.totals.passed}/${modelReport.totals.total}` +
+      `${skippedCount ? ` (${skippedCount} skipped)` : ''}  mean ${meanLatency}ms  ${costLabel}`
   );
 
   report.models[model] = modelReport;
