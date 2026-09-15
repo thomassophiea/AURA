@@ -4,6 +4,7 @@ import {
   EPISTEMIC,
   DOMAIN,
   domainOf,
+  SOURCE_FAMILY,
   sourceFamilyOf,
   digestToolResult,
   plumbingState,
@@ -297,5 +298,28 @@ describe('buildConfidenceBlock', () => {
 
   it('is empty when there is no evidence to describe', () => {
     expect(buildConfidenceBlock(buildEvidenceGraph([]))).toBe('');
+  });
+});
+
+describe('SOURCE_FAMILY covers every tool', () => {
+  it('has an entry for each diagnostic tool', async () => {
+    // Rule 2 of the contract: tools reading the same table are ONE source. A
+    // tool with no entry falls back to `tool:<name>`, becomes its own family,
+    // and silently manufactures corroboration — every verdict it agrees with
+    // inflates. correlateProblem and reconcileConfiguration were both missing,
+    // and correlateProblem reads the same MuTable as getSiteOverview.
+    const { TOOL_ACTIVITY } = await import('./diagnosticTools.js');
+    const missing = Object.keys(TOOL_ACTIVITY).filter((t) => !SOURCE_FAMILY[t]);
+    expect(missing).toEqual([]);
+  });
+
+  it('keeps the two AURA-internal surfaces in the right families', () => {
+    // Service levels are computed from the SAME monitoring samples the history
+    // tools read, so they must not count as a second source.
+    expect(SOURCE_FAMILY.getServiceLevels).toBe(SOURCE_FAMILY.getMetricHistory);
+    // Sentinel actively probes RADIUS, DHCP and DNS itself rather than reading
+    // Gateway telemetry, so it is genuinely independent and may corroborate.
+    expect(SOURCE_FAMILY.getInfrastructureAlerts).toBe('infra-probe');
+    expect(SOURCE_FAMILY.getInfrastructureAlerts).not.toBe(SOURCE_FAMILY.getSiteOverview);
   });
 });

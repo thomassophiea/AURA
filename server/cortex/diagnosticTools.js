@@ -45,6 +45,13 @@ import {
   CLIENT_HISTORY_UNAVAILABLE,
 } from './historyEvidence.js';
 import { normaliseSiteKey } from './scopeResolver.js';
+import {
+  serviceLevels,
+  infrastructureAlerts,
+  infrastructureAnalytics,
+  SLE_METRIC_ORDER,
+  SLE_SERVER_DIVERGENT_METRICS,
+} from './operationalEvidence.js';
 import { expandBlastRadius, counterfactual, describeBlastRadius } from './correlationEngine.js';
 import { reconcileWlan, expectationFromPeer, configuredWlanState } from './stateReconciler.js';
 
@@ -88,6 +95,8 @@ export const TOOL_ACTIVITY = {
   compareClientToPeers: 'Comparing against other clients on the same AP and WLAN…',
   checkBackendServices: 'Checking DHCP, DNS and VLAN plumbing…',
   getSiteOverview: 'Summarising site health…',
+  getServiceLevels: 'Reading service levels by site…',
+  getInfrastructureAlerts: 'Checking infrastructure probes — RADIUS, DHCP, DNS, VLAN…',
   getRecentChanges: 'Looking for recent configuration changes…',
   getCapabilities: 'Checking what this Gateway can report…',
   getMetricHistory: 'Comparing against stored history…',
@@ -1782,6 +1791,249 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
                   'fleet report is not hiding a removed device.',
           },
           'AURA monitoring database (current_state) vs /v1/aps/query'
+        );
+      },
+    },
+
+    // ────────────────────────────────────────────────────────────────────
+    getServiceLevels: {
+      risk: RISK.READ,
+      spec: {
+        name: 'getServiceLevels',
+        description:
+          'START HERE for any wireless complaint with no named client or AP. AURA\'s own service levels, already correlated PER SITE: the seven scored metrics (Time to Connect, Successful Connects, Coverage, Roaming, Throughput, Capacity, AP Health), each site\'s overall score, and which metric is its weakest — sorted worst first. This is what the operator is looking at on the Service Levels page, so it tells you WHERE to investigate before you read a single radio. A metric missing from a site was NOT MEASURED, never 100%.',
+        parameters: {
+          type: 'object',
+          properties: {
+            siteName: { type: 'string', description: 'Optional: scope to one site' },
+          },
+          additionalProperties: false,
+        },
+      },
+      handler: async ({ siteName } = {}) => {
+        const src = await historySources();
+        if (!src.ok || !src.sourceIds.length) {
+          return {
+            basis: 'unknown',
+            unavailable: true,
+            reason:
+              'AURA has no monitoring source for this Gateway, so no service levels have been ' +
+              `collected${src.error ? ` (${src.error})` : ''}. This needs the collector enabled ` +
+              'and the database reachable.',
+            instruction:
+              'Say service levels are unavailable. Do NOT infer that service is good, and do ' +
+              'not substitute live client telemetry and call it a service level.',
+          };
+        }
+
+        const sle = await serviceLevels({ sourceIds: src.sourceIds });
+        if (!sle.ok) return fetchFailed('AURA service levels', { error: sle.error });
+        if (!sle.sites.length) {
+          return {
+            basis: 'unknown',
+            unavailable: true,
+            status: 'never_collected',
+            reason:
+              'The monitoring source exists but holds no service-level samples for this Gateway.',
+            instruction:
+              'This is a collection gap, not a healthy network. Say no service levels have been ' +
+              'recorded yet.',
+          };
+        }
+
+        // Stored samples carry site_id; the operator and the scope resolver both
+        // speak site NAMES. Join them, and keep the id when no name resolves so
+        // a site is never silently dropped from a worst-first ranking.
+        const siteCatalogue = await evidence.sites().catch(() => ({ ok: false, rows: [] }));
+        const nameById = new Map();
+        for (const s of siteCatalogue.rows ?? []) {
+          const id = s?.id ?? s?.siteId;
+          const name = s?.siteName ?? s?.name;
+          if (id && name) nameById.set(String(id), String(name));
+        }
+
+        const named = sle.sites.map((s) => ({
+          ...s,
+          siteName: s.siteId ? nameById.get(String(s.siteId)) ?? null : null,
+        }));
+
+        const scoped = applySiteScope(named, (s) => s.siteName, { explicit: siteName });
+        if (scoped.matchedNothing) return scopeMatchedNothing('sites with service levels', scoped);
+
+        // THE CONTRADICTION CHECK.
+        //
+        // AURA's collector and the Gateway's live flex tables are independent
+        // reads of the same estate, and they have been seen to disagree
+        // completely: the Service Levels page showed 34 clients at PrimarySite
+        // while live client telemetry returned zero rows for every site. That
+        // disagreement is itself a finding — one of the two paths is failing —
+        // and it must be surfaced rather than resolved by picking a favourite.
+        const live = await clientData();
+        const liveBySite = new Map();
+        if (live.ok) {
+          for (const r of dedupeByMac(live.rows)) {
+            const key = normaliseSiteKey(r.SiteName);
+            if (key) liveBySite.set(key, (liveBySite.get(key) ?? 0) + 1);
+          }
+        }
+        const disagreements = !live.ok
+          ? []
+          : scoped.rows
+              .filter((s) => {
+                if (s.overall === null) return false;
+                const measuredOver = Math.max(...s.metrics.map((m) => m.sampleBasis), 0);
+                if (measuredOver <= 0) return false;
+                const liveCount = s.siteName ? liveBySite.get(normaliseSiteKey(s.siteName)) ?? 0 : 0;
+                return liveCount === 0;
+              })
+              .map((s) => ({
+                site: untrusted(s.siteName ?? s.siteId),
+                collectorMeasuredOver: Math.max(...s.metrics.map((m) => m.sampleBasis), 0),
+                collectorSampleAgeSeconds: s.freshestSampleAgeSeconds,
+                liveGatewayClientRows: 0,
+              }));
+
+        return observed(
+          {
+            scope: scoped.scoped ? scoped.names.join(', ') : 'all sites',
+            scopeApplied: scopeApplied(scoped),
+            siteCount: scoped.rows.length,
+            worstFirst: scoped.rows.map((s) => ({
+              site: untrusted(s.siteName ?? `site id ${s.siteId}`),
+              overall: s.overall,
+              status: s.overallStatus,
+              weakestMetric: s.weakestMetric
+                ? `${s.weakestMetric.label} ${s.weakestMetric.successRate}%`
+                : null,
+              measuredMetrics: s.metricsMeasured.length,
+              notMeasured: s.metricsNotMeasured,
+              sampleAgeSeconds: s.freshestSampleAgeSeconds,
+              metrics: s.metrics.map((m) => ({
+                metric: m.label,
+                successRate: m.successRate,
+                measuredOver: m.sampleBasis,
+                ageSeconds: m.ageSeconds,
+              })),
+            })),
+            contradictsLiveTelemetry: disagreements,
+            thresholdCaveat:
+              'These scores are recomputed server-side from AURA\'s collector. Coverage and ' +
+              'Throughput use the same thresholds as the Service Levels page; ' +
+              `${SLE_SERVER_DIVERGENT_METRICS.join(', ')} use server defaults and can differ ` +
+              'from the number on screen. Operator-configured thresholds apply to the page only.',
+            note:
+              `Any of the seven metrics (${SLE_METRIC_ORDER.length} total) absent from a site's ` +
+              'measuredMetrics was NOT MEASURED — report it as not measured, never as 100%. ' +
+              (disagreements.length
+                ? 'contradictsLiveTelemetry is NOT empty: the collector holds scored samples for ' +
+                  'a site where the Gateway returns no live client rows. Say the two sources ' +
+                  'disagree, say you cannot tell from here which one is wrong, and do not present ' +
+                  'either figure as settled.'
+                : 'The collector and live Gateway telemetry agree on which sites have clients.'),
+          },
+          'AURA monitoring DB (metricFamily=sle) + /v3/sites + flex(MuTable)'
+        );
+      },
+    },
+
+    // ────────────────────────────────────────────────────────────────────
+    getInfrastructureAlerts: {
+      risk: RISK.READ,
+      spec: {
+        name: 'getInfrastructureAlerts',
+        description:
+          'AURA\'s eight infrastructure probes and their current alerts: VLAN trunk presence, DHCP reachability, RADIUS reachability, client DHCP failure rates, DNS reachability, certificate expiry, firmware consistency and AP status. Read this SECOND, after getServiceLevels and before scoring any radio — these are active probes of the plumbing, and a RADIUS or DHCP outage presents with perfect RF. Each alert carries its target, how many times it has recurred, and whether anyone has acknowledged it.',
+        parameters: {
+          type: 'object',
+          properties: {
+            severity: { type: 'string', description: 'Optional: critical | warning | info' },
+            check: {
+              type: 'string',
+              description:
+                'Optional probe key: vlan_trunk, dhcp_reachability, radius_reachability, ' +
+                'client_dhcp_failure, dns_reachability, cert_expiry, firmware_consistency, ap_status',
+            },
+            includeAnalytics: {
+              type: 'boolean',
+              description: 'Include MTTA/MTTR and noisiest checks over the last 30 days',
+            },
+          },
+          additionalProperties: false,
+        },
+      },
+      handler: async ({ severity = null, check = null, includeAnalytics = false } = {}) => {
+        const res = await infrastructureAlerts({ severity, check });
+        if (!res.ok) return fetchFailed('the infrastructure probe state', { error: res.error });
+
+        // A probe engine that was never configured has never run. Zero alerts
+        // from it is not a clean bill of health, and this is the one place that
+        // distinction can still be made.
+        if (!res.status?.configured) {
+          return {
+            basis: 'unknown',
+            unavailable: true,
+            status: 'never_configured',
+            reason:
+              'AURA\'s infrastructure probes have never been pointed at a Gateway, so none of ' +
+              'the eight checks has run.',
+            instruction:
+              'Say the infrastructure probes are not configured. Zero alerts here means NOT ' +
+              'CHECKED, not healthy — do not report the plumbing as clean.',
+          };
+        }
+
+        const checks = Object.entries(res.status.checks ?? {}).map(([name, c]) => ({
+          probe: name,
+          state: c?.status ?? 'unknown',
+          lastRunAt: c?.lastRunAt ?? null,
+          alertCount: c?.alertCount ?? 0,
+          error: c?.error ? untrusted(c.error) : null,
+        }));
+        const neverRan = checks.filter((c) => c.state === 'idle' || !c.lastRunAt).map((c) => c.probe);
+
+        const analytics = includeAnalytics ? await infrastructureAnalytics({ days: 30 }) : null;
+
+        return observed(
+          {
+            polling: Boolean(res.status.polling),
+            lastPollAt: res.status.lastPollAt ?? null,
+            authExpired: Boolean(res.status.authExpired),
+            // The engine is configured for ONE site at a time and alerts carry
+            // no site of their own — so an alert cannot be attributed to a site
+            // and must not be described as belonging to one.
+            engineSiteScope: res.status.siteId ?? null,
+            counts: res.counts,
+            probes: checks,
+            probesNeverRan: neverRan,
+            alerts: res.alerts.map((a) => ({
+              severity: a.severity,
+              probe: a.checkName,
+              message: untrusted(a.message),
+              target: untrusted(a.target),
+              // The UI's "497x". A repeat count is the difference between a
+              // transient blip and a sustained outage, and the old resolver
+              // dropped it along with the whole context object.
+              occurrences: Number(a.occurrences) || 1,
+              firstSeenAt: a.firstSeenAt ?? null,
+              lastSeenAt: a.lastSeenAt ?? null,
+              resolved: Boolean(a.resolvedAt),
+              acknowledged: Boolean(a.acknowledgedAt),
+              context: a.context ?? {},
+            })),
+            truncated: res.truncated,
+            analytics: analytics?.ok ? analytics.analytics : null,
+            analyticsUnavailable: analytics && !analytics.ok ? analytics.error : null,
+            note:
+              'These are ACTIVE PROBES, independent of client telemetry — a RADIUS, DHCP, DNS ' +
+              'or VLAN fault presents with perfect RF, which is why this is read before radios. ' +
+              'Alerts carry NO site attribution on this platform: the probe engine is scoped to ' +
+              'one site globally (engineSiteScope) and individual alerts have no site of their ' +
+              'own, so never state which site an alert belongs to — say the target and the probe. ' +
+              (neverRan.length
+                ? `These probes have not run: ${neverRan.join(', ')} — their silence is not a pass.`
+                : 'Every probe has run at least once.'),
+          },
+          'AURA Sentinel engine (8 active probes)'
         );
       },
     },

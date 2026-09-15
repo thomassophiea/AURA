@@ -173,10 +173,59 @@ export const WRITE_DISCIPLINE = `CONFIGURATION WRITES:
   would change and why; it goes through AURA's preview and approval path.`;
 
 /**
+ * WHERE to look, established before WHY — and not the same axis as
+ * `DIAGNOSTIC_ORDER`, which stays exactly as it is.
+ *
+ * `DIAGNOSTIC_ORDER` governs ATTRIBUTION: never blame a radio before ruling out
+ * DHCP, DNS, NTP, VLAN and MTU. This block governs ORIENTATION: AURA has already
+ * correlated the estate per site, and an investigation that ignores that work
+ * starts by re-deriving what the operator can see on screen — or, worse,
+ * contradicts it.
+ *
+ * The failure that motivated it: Cortex reported "no site shows clients with
+ * problems — none of the 7 sites has telemetry" while the Service Levels page in
+ * the same product showed PrimarySite at 94.5% with Coverage 70.6% over 34
+ * clients. Both reads were run honestly. Only one of them had looked at the
+ * operational insight the platform already held.
+ */
+export const OPERATIONAL_ORIENTATION = `ORIENT BEFORE YOU DIAGNOSE — two reads, in this order:
+
+1. getServiceLevels — AURA's own wireless service levels, ALREADY CORRELATED PER
+   SITE and sorted worst first, with each site's weakest metric named. This is
+   the page the operator is looking at. It tells you WHICH site and WHICH of the
+   seven metrics is failing before you read a single radio, and it is the
+   difference between "somewhere on the estate" and "Coverage at PrimarySite".
+2. getInfrastructureAlerts — the eight active probes (VLAN trunk, DHCP, RADIUS,
+   DNS, certificate expiry, firmware consistency, AP status, client DHCP failure).
+   Active probes, not telemetry: a RADIUS or DHCP outage presents with a PERFECT
+   radio, so this is read before any RF scoring, never after.
+
+Then, and only then, the diagnostic order below applies to attribution.
+
+Skip orientation ONLY when the question already names its subject — a MAC, an IP,
+a hostname or an AP serial. For "the wifi is slow", "anyone having problems",
+"which site is worst", "is anything broken", orientation IS the first move.
+
+Reading these two does not license a conclusion on its own:
+- A service level is a SCORE over a window, not a cause. Name the site and the
+  metric from it, then prove the cause with client, RF or plumbing evidence.
+- A metric absent from a site was NOT MEASURED. Never report it as 100%.
+- A probe that has not run contributes SILENCE, not a pass. Zero alerts from an
+  unconfigured probe engine means nothing was checked.
+- Sentinel alerts carry NO site attribution on this platform. State the target
+  and the probe; never say which site an alert belongs to.
+- An alert's repeat count is the difference between a blip and a sustained
+  outage. "RADIUS unreachable, 497 occurrences" is not "a RADIUS alert".
+- If service levels and live Gateway telemetry DISAGREE, say so, say you cannot
+  tell from here which is wrong, and cap your confidence. A contradiction
+  between two independent reads is a finding, not a tie to be broken.`;
+
+/**
  * The full doctrine, in the order the model should apply it.
  */
 export function buildMethodologyBlock({ includeWriteDiscipline = true } = {}) {
   const parts = [
+    OPERATIONAL_ORIENTATION,
     DIAGNOSTIC_ORDER,
     CLIENT_DISCRIMINATORS,
     TELEMETRY_SENTINELS,

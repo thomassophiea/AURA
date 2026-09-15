@@ -13,6 +13,13 @@ export class AlertStore {
 
   constructor() {
     this.#pruneTimer = setInterval(() => this.#pruneResolved(), 60_000);
+    // unref() for the same reason SentinelEngine's escalation timer does it:
+    // pruning matters only while the process is already alive doing work, and
+    // it must never be the reason the process stays alive. Without this,
+    // constructing the engine — which every import of the singleton does —
+    // pinned the event loop, so any script that merely imported a module
+    // reaching Sentinel never exited.
+    this.#pruneTimer.unref?.();
   }
 
   /**

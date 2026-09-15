@@ -457,3 +457,75 @@ describe('auditAnswer — reporting absent RADIUS data is not a claim (proven li
     }
   });
 });
+
+/**
+ * Audit rules for the two operational-insight tools.
+ *
+ * Every rule here is tested BOTH ways, because "an audit that cries wolf stops
+ * being read" has been learned three times on this codebase: once for the
+ * RADIUS-rejection rule flagging a refusal to state one, once for it flagging a
+ * report that the data was absent, and once for getMetricHistory being flagged
+ * for discussing airtime while doing exactly that.
+ */
+describe('auditAnswer — service levels and infrastructure probes', () => {
+  const ok = (tool) => [{ tool, ok: true }];
+
+  it('flags a service level reported with no tool that can produce one', () => {
+    const findings = auditAnswer(
+      'Time to Connect is 91.2% and AP Health is 100%.',
+      ok('getRfHealth')
+    );
+    expect(findings.some((f) => /service level/i.test(f.detail))).toBe(true);
+  });
+
+  it('does not flag a service level backed by getServiceLevels', () => {
+    const findings = auditAnswer(
+      'Time to Connect is 91.2% and AP Health is 100%.',
+      ok('getServiceLevels')
+    );
+    expect(findings.some((f) => /service level/i.test(f.detail))).toBe(false);
+  });
+
+  it('does not flag ordinary RF words as unsupported service levels', () => {
+    // "coverage", "throughput", "capacity" and "roaming" are SLE metric names
+    // AND ordinary RF vocabulary. A correct answer built from radio evidence
+    // uses them constantly, and flagging it would mark that answer as a
+    // hallucination in the operator's evidence panel.
+    const findings = auditAnswer(
+      'This is a coverage problem, not contention: throughput is fine and the client is not roaming.',
+      ok('getRfHealth')
+    );
+    expect(findings.some((f) => /service level/i.test(f.detail))).toBe(false);
+  });
+
+  it('flags a reachability verdict with no probe behind it', () => {
+    const findings = auditAnswer(
+      'The RADIUS server at 192.168.100.1 is unreachable.',
+      ok('getSiteOverview')
+    );
+    expect(findings.some((f) => /reachable/i.test(f.detail))).toBe(true);
+  });
+
+  it('does not flag a reachability verdict backed by the probes', () => {
+    const findings = auditAnswer(
+      'The RADIUS server at 192.168.100.1 is unreachable — 497 occurrences.',
+      ok('getInfrastructureAlerts')
+    );
+    expect(findings.some((f) => /reachable/i.test(f.detail))).toBe(false);
+  });
+
+  it('does not flag SAYING you cannot determine reachability', () => {
+    // The honest answer is not a claim. This is the exact shape that made the
+    // RADIUS-rejection rule fire on a correct answer.
+    const findings = auditAnswer(
+      'I cannot tell you whether the RADIUS server is reachable — no probe has run.',
+      []
+    );
+    expect(findings.some((f) => /reachable/i.test(f.detail))).toBe(false);
+  });
+
+  it('accepts a DHCP statement backed by the DHCP probe alone', () => {
+    const findings = auditAnswer('DHCP reachability is clean on every VLAN.', ok('getInfrastructureAlerts'));
+    expect(findings.some((f) => /DHCP/i.test(f.detail))).toBe(false);
+  });
+});

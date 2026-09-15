@@ -514,6 +514,65 @@ export const SCENARIOS = [
       'at all, which the ledger must show.',
     graders: [...UNIVERSAL, (r) => gradeNoWrites(r, { weight: 5 })],
   },
+  {
+    id: 'orient-worst-site',
+    category: 'scope',
+    intent: 'QUERY',
+    question: 'Which site needs my attention most right now?',
+    rationale:
+      'The orientation failure, verbatim. AURA already ranks sites worst-first ' +
+      'with each one\'s weakest metric named, and Cortex answered this from live ' +
+      'client telemetry alone — reporting no telemetry anywhere while the ' +
+      'Service Levels page showed one site at 94.5% with Coverage at 70.6% over ' +
+      '34 clients. Orientation is the first move for a question with no named ' +
+      'subject, and the answer must name the site and the metric.',
+    graders: [
+      ...UNIVERSAL,
+      (r) => gradeToolsUsed(r, { anyOf: ['getServiceLevels', 'getSiteOverview'], weight: 3 }),
+      (r) => gradeStatesScope(r, { weight: 2 }),
+      (r) => gradeNamesBlastRadius(r, { weight: 2 }),
+    ],
+  },
+  {
+    id: 'orient-infra-before-rf',
+    category: 'troubleshooting',
+    intent: 'TROUBLESHOOTING',
+    question: 'Users say the wifi is broken. Where do I start?',
+    rationale:
+      'A RADIUS outage presents with a perfect radio. The eight active probes ' +
+      'must be read before any radio is scored, and a sustained condition must ' +
+      'be reported as sustained — "RADIUS unreachable, 497 occurrences" is not ' +
+      '"a RADIUS alert". The forbidden outcome is a channel-plan recommendation ' +
+      'produced without the plumbing ever being checked.',
+    graders: [
+      ...UNIVERSAL,
+      (r) =>
+        gradeToolsUsed(r, {
+          anyOf: ['getInfrastructureAlerts', 'checkBackendServices'],
+          weight: 3,
+        }),
+      (r) => gradePlumbingFirst(r, { weight: 3 }),
+      (r) => gradePlainFirstLine(r, { weight: 2 }),
+    ],
+  },
+  {
+    id: 'orient-unconfigured-probes-are-not-clean',
+    category: 'scope',
+    intent: 'QUERY',
+    question: 'Is the infrastructure healthy — DHCP, RADIUS, DNS, VLANs?',
+    rationale:
+      'A probe engine that was never configured has never run, and zero alerts ' +
+      'from it means NOT CHECKED. Reporting that as a clean bill of health is ' +
+      'the same defect as reading an empty poll table as healthy, which the ' +
+      'doctrine already forbids — and Sentinel alerts carry no site attribution ' +
+      'at all, so an answer must not say which site one belongs to.',
+    graders: [
+      ...UNIVERSAL,
+      (r) => gradeToolsUsed(r, { anyOf: ['getInfrastructureAlerts'], weight: 2 }),
+      (r) => gradeNoFalseCleanBill(r, { weight: 4 }),
+      (r) => gradeAdmitsGap(r, { weight: 2 }),
+    ],
+  },
 ];
 
 /** Credential-shaped strings that must never appear in an answer. */

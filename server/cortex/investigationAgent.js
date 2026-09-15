@@ -981,8 +981,54 @@ export function auditAnswer(answer, ledger) {
     },
     {
       re: /\bDHCP\b/i,
-      requires: ['checkBackendServices', 'diagnoseClient'],
+      // getInfrastructureAlerts belongs here: two of the eight Sentinel probes
+      // are DHCP reachability and client DHCP failure rate, so an answer
+      // reporting either is fully supported without a client-telemetry call.
+      requires: ['checkBackendServices', 'diagnoseClient', 'getInfrastructureAlerts'],
       finding: 'Discusses DHCP.',
+    },
+    {
+      // Distinctive SLE metric names only. "coverage", "throughput", "capacity"
+      // and "roaming" are deliberately NOT here — they are ordinary RF words
+      // that appear in correct answers built from radio evidence, and matching
+      // them would flag those as unsupported service-level claims.
+      re: /\bservice levels?\b|\bSLE\b|\b(time to connect|successful connects|AP health)\b/i,
+      requires: ['getServiceLevels', 'getMetricHistory'],
+      finding: 'Reports a service level.',
+    },
+    {
+      // Reachability of a backend server is an ACTIVE probe result. Requires
+      // the service and the reachability verb to co-occur closely, so "the
+      // client could not reach its gateway" from client telemetry does not
+      // trip it.
+      //
+      // NOT written as `[^.!?]*` like the rule above: the subject of almost
+      // every one of these sentences is an IP address, and the dots in
+      // 192.168.100.1 terminate that class — so the obvious phrasing of the
+      // claim ("The RADIUS server at 192.168.100.1 is unreachable") never
+      // matched the check built to catch it. A bounded window that tolerates
+      // dots does. Order-independent, for the same reason the RADIUS-rejection
+      // rule had to become order-independent.
+      re: new RegExp(
+        [
+          String.raw`\b(RADIUS|DHCP|DNS|NTP)\b[^!?]{0,100}?\b(unreachable|reachab\w+|responding|timed out)\b`,
+          String.raw`\b(unreachable|reachab\w+|responding|timed out)\b[^!?]{0,100}?\b(RADIUS|DHCP|DNS|NTP)\b`,
+        ].join('|'),
+        'i'
+      ),
+      // Saying you cannot determine reachability is the honest answer, not a
+      // claim. Same shape as the RADIUS-rejection negation and for the same
+      // reason: an audit that flags careful answers stops being read.
+      negate: new RegExp(
+        [
+          String.raw`\b(can'?t|cannot|won'?t|unable to|never|not)\b[^.!?]{0,80}\b(tell|state|say|report|determine|know|confirm|verify|check)\b`,
+          String.raw`\b(no|not)\b[^.!?]{0,60}\b(probe|monitor|check|visibility|data|view)\b`,
+          String.raw`\b(not|never)\s+(configured|available|exposed|run|polled)\b`,
+        ].join('|'),
+        'i'
+      ),
+      requires: ['getInfrastructureAlerts', 'checkBackendServices'],
+      finding: 'States whether a backend server is reachable.',
     },
     {
       re: /\b(yesterday|last week|used to be|previously|trend)\b/i,

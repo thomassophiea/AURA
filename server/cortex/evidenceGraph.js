@@ -106,6 +106,14 @@ export const SOURCE_FAMILY = {
   diagnoseClient: 'client-telemetry',
   getSiteOverview: 'client-telemetry',
   compareClientToPeers: 'client-telemetry',
+  // Reads MuTable, exactly like getSiteOverview and diagnoseClient. Without an
+  // entry here `sourceFamilyOf` fell back to `tool:correlateProblem`, so a
+  // blast-radius result AGREEING with the site overview counted as two
+  // independent sources when it is one table read twice — which is the precise
+  // mechanism SOURCE_FAMILY exists to prevent, and it was inflating verdicts.
+  correlateProblem: 'client-telemetry',
+  // Services, topologies and profiles — the same reads getWlanConfig makes.
+  reconcileConfiguration: 'configuration',
   checkBackendServices: 'plumbing',
   getRfHealth: 'radio-telemetry',
   getApHealth: 'ap-inventory',
@@ -117,6 +125,15 @@ export const SOURCE_FAMILY = {
   getClientHistory: 'stored-history',
   findVanishedDevices: 'stored-history',
   getCapabilities: 'capability-probe',
+  // Service levels are computed by AURA's collector from the SAME monitoring
+  // samples the three history tools read, so they belong to that family. Giving
+  // them a family of their own would let "history says X" and "service levels
+  // say X" count as two sources agreeing when it is one table read twice.
+  getServiceLevels: 'stored-history',
+  // Sentinel is genuinely independent: eight ACTIVE probes that reach out to
+  // RADIUS, DHCP and DNS themselves rather than reading Gateway telemetry. It
+  // corroborates the others honestly, which is the whole point of separating it.
+  getInfrastructureAlerts: 'infra-probe',
 };
 
 export function sourceFamilyOf(tool) {
@@ -194,6 +211,47 @@ export function digestToolResult(tool, payload) {
     d.vlan = { dangling: (payload.vlan.danglingTopologies ?? []).length };
   }
   if (payload.ntp?.basis) d.ntpBasis = payload.ntp.basis;
+
+  // Service levels — the orientation read. The weakest metric at the worst site
+  // is the verdict; the count of sites with no measurement at all is the part
+  // that must not be mistaken for good news.
+  if (Array.isArray(payload.worstFirst)) {
+    const scored = payload.worstFirst.filter((s) => Number.isFinite(s?.overall));
+    d.serviceLevels = {
+      siteCount: payload.worstFirst.length,
+      sitesScored: scored.length,
+      worstOverall: scored.length ? scored[0].overall : null,
+      worstStatus: scored.length ? scored[0].status ?? null : null,
+      // Named, not the value — a metric name is ours, a site name is not.
+      weakestMetricPresent: Boolean(scored.length && scored[0].weakestMetric),
+      sitesUnmeasured: payload.worstFirst.length - scored.length,
+    };
+  }
+  // A disagreement between two independent reads is itself evidence, and it
+  // must reach the graph: it is the reason a verdict gets capped rather than
+  // corroborated.
+  if (Array.isArray(payload.contradictsLiveTelemetry)) {
+    d.sourceConflicts = payload.contradictsLiveTelemetry.length;
+  }
+
+  // Infrastructure probes. `probesNeverRan` is the load-bearing field: a probe
+  // that has not run contributes silence, and silence is not a pass.
+  if (Array.isArray(payload.probes)) {
+    d.infraProbes = {
+      probeCount: payload.probes.length,
+      neverRan: (payload.probesNeverRan ?? []).length,
+      critical: payload.counts?.critical ?? 0,
+      warning: payload.counts?.warning ?? 0,
+      // A sustained condition, not a blip — the repeat count is what separates
+      // them and the old resolver dropped it entirely.
+      maxOccurrences: Array.isArray(payload.alerts)
+        ? payload.alerts.reduce((max, a) => Math.max(max, Number(a?.occurrences) || 0), 0)
+        : 0,
+      probesAlerting: Array.isArray(payload.alerts)
+        ? [...new Set(payload.alerts.map((a) => a?.probe).filter(Boolean))]
+        : [],
+    };
+  }
 
   // Cohort size, which caps any claim about a population.
   if (Number.isFinite(payload.peerCount)) d.peerCount = payload.peerCount;
