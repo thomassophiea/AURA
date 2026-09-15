@@ -287,3 +287,116 @@ describe('buildClarification', () => {
     expect(c.originalQuestion).toBe('problems?');
   });
 });
+
+/**
+ * Regressions from the field, 2026-09-15. Three separate defects, all visible
+ * in one screenshot of the panel:
+ *
+ *   "Which sites have clients with problems right now? Rank them worst first,
+ *    and flag any site with no telemetry at all."
+ *      → extracted the site name "flag", and clarified instead of answering a
+ *        question that trips THREE fleet patterns ("which sites", "worst", "any").
+ *
+ *   "can you add a guest nbetwork to primary site?"
+ *      → extracted the site name "nbetwork to primary".
+ *      → and even "primary site" alone could not match a site called
+ *        "PrimarySite", because the fold inserts no word break into camelCase.
+ *
+ * The common shape: the weak "<words> site" pattern treats ordinary prose as a
+ * proper noun, and a guess made from prose then outranks an explicit estate-wide
+ * verb. A wrong clarification is not a safe failure — it stops the operator
+ * dead on a question the platform could have answered.
+ */
+describe('scope resolution — prose is not a site name', () => {
+  it('does not read a quantifier over sites as the name of one', () => {
+    // "any site", "every site", "each site" quantify OVER sites. There is no
+    // building called "flag".
+    expect(extractSitePhrase('flag any site with no telemetry at all')).toBeNull();
+    expect(extractSitePhrase('rank every site worst first')).toBeNull();
+    expect(extractSitePhrase('check each site for problems')).toBeNull();
+    expect(extractSitePhrase('no site has telemetry')).toBeNull();
+  });
+
+  it('answers the estate-wide question instead of asking which site "flag" is', () => {
+    const r = resolveScope({
+      question:
+        'Which sites have clients with problems right now? Rank them worst first, and flag any site with no telemetry at all.',
+      inventory: INVENTORY,
+    });
+    expect(r.needsClarification).toBe(false);
+    expect(r.level).toBe('fleet');
+    expect(r.source).toBe('rule5-fleet-verb');
+  });
+
+  it('keeps only the name-ish tail when prose runs into the phrase', () => {
+    // "guest nbetwork to primary site" — a site name contains no preposition,
+    // so everything up to and including the last one is prose.
+    expect(extractSitePhrase('can you add a guest nbetwork to primary site?')).toBe('primary');
+  });
+
+  it('resolves "primary site" to PrimarySite rather than dead-ending', () => {
+    const r = resolveScope({
+      question: 'can you add a guest nbetwork to primary site?',
+      inventory: INVENTORY,
+    });
+    expect(r.needsClarification).toBe(false);
+    expect(r.level).toBe('site');
+    expect(r.siteNames).toEqual(['PrimarySite']);
+  });
+
+  it('matches a camelCase site name typed as two words', () => {
+    expect(scoreSiteMatch('primary site', 'PrimarySite')).toBe(100);
+    expect(findNamedSites('how is primary site doing?', SITES).map((s) => s.name)).toEqual([
+      'PrimarySite',
+    ]);
+  });
+
+  it('does not find a short site name buried inside an unrelated word', () => {
+    // A live estate has a site called EAL. "real", "meal" and "healthy" must
+    // not scope an investigation to it.
+    const sites = [{ name: 'EAL' }, { name: 'EAL-PT-S' }];
+    expect(findNamedSites('is the real problem healthy clients?', sites)).toEqual([]);
+    expect(findNamedSites('how is EAL doing?', sites).map((s) => s.name)).toEqual(['EAL']);
+  });
+
+  it('still lets an explicitly named unknown site beat a stray fleet word', () => {
+    // The contract rule 4 exists for: "any issues at site Boston?" says Boston
+    // out loud. That must keep clarifying, not widen to the estate.
+    const r = resolveScope({ question: 'any issues at site Boston?', inventory: INVENTORY });
+    expect(r.needsClarification).toBe(true);
+    expect(r.unresolved).toEqual(['Boston']);
+  });
+
+  it('still reads a real "<name> site" reference', () => {
+    // The weak pattern has a legitimate job — do not disable it wholesale.
+    expect(extractSitePhrase('what is broken at the Boston site?')).toMatch(/boston/i);
+  });
+});
+
+describe('scope resolution — a common word that happens to be a name', () => {
+  it('does not read "a guest network" as the SSID called Guest', () => {
+    // An indefinite article means the operator is describing a KIND of thing,
+    // not pointing at one that exists. "add a guest network" is a request to
+    // create one; "is Guest broadcasting?" is a question about the WLAN.
+    expect(findNamedEntity('can you add a guest network to primary site?', INVENTORY)).toBeNull();
+    expect(findNamedEntity('is Guest broadcasting?', INVENTORY)).toMatchObject({
+      kind: 'wlan',
+      value: 'Guest',
+    });
+  });
+
+  it('scopes a create-a-network request to the site, not to a WLAN', () => {
+    const r = resolveScope({
+      question: 'can you add a guest nbetwork to primary site?',
+      inventory: INVENTORY,
+    });
+    expect(r.level).toBe('site');
+    expect(r.siteNames).toEqual(['PrimarySite']);
+  });
+
+  it('does not find a short SSID buried inside an unrelated word', () => {
+    const inv = { sites: [], ssids: ['EAL'], apNames: [] };
+    expect(findNamedEntity('is the real problem healthy clients?', inv)).toBeNull();
+    expect(findNamedEntity('is EAL up?', inv)).toMatchObject({ kind: 'wlan', value: 'EAL' });
+  });
+});

@@ -66,15 +66,58 @@ const FLEET_PATTERNS = [
  * proceed, so it must not quietly collapse into one branch.
  */
 const SITE_PHRASE_PATTERNS = [
-  /\b(?:at|in|for|on)\s+(?:the\s+)?site\s+["']?([A-Za-z0-9][A-Za-z0-9 _.\-]{1,40}?)["']?(?=[,.?!]|$|\s+(?:site|and|or|but|which|that|is|are|has|have))/i,
-  /\bsite\s+(?:called|named)\s+["']?([A-Za-z0-9][A-Za-z0-9 _.\-]{1,40}?)["']?(?=[,.?!]|$)/i,
-  /\b(?:at|in)\s+(?:the\s+)?["']([A-Za-z0-9][A-Za-z0-9 _.\-]{1,40})["']/i,
-  // "<name> site" — capped at three words. An unbounded capture here swallowed
-  // the whole clause: "what is wrong at this site?" yielded the phrase "what is
-  // wrong at this", which then matched nothing and produced a clarification for
-  // a question that never named a site at all.
-  /\b((?:[A-Za-z0-9][A-Za-z0-9_.\-]*)(?:\s+[A-Za-z0-9][A-Za-z0-9_.\-]*){0,2})\s+site\b/i,
+  // EXPLICIT forms: the operator said the word "site" and then named one, or
+  // quoted a name. These are trusted enough to beat a stray fleet word —
+  // "any issues at site Boston?" is about Boston, not the estate.
+  {
+    weak: false,
+    re: /\b(?:at|in|for|on)\s+(?:the\s+)?site\s+["']?([A-Za-z0-9][A-Za-z0-9 _.-]{1,40}?)["']?(?=[,.?!]|$|\s+(?:site|and|or|but|which|that|is|are|has|have))/i,
+  },
+  {
+    weak: false,
+    re: /\bsite\s+(?:called|named)\s+["']?([A-Za-z0-9][A-Za-z0-9 _.-]{1,40}?)["']?(?=[,.?!]|$)/i,
+  },
+  { weak: false, re: /\b(?:at|in)\s+(?:the\s+)?["']([A-Za-z0-9][A-Za-z0-9 _.-]{1,40})["']/i },
+  // WEAK form: "<name> site" — capped at three words. An unbounded capture here
+  // swallowed the whole clause: "what is wrong at this site?" yielded the phrase
+  // "what is wrong at this", which then matched nothing and produced a
+  // clarification for a question that never named a site at all.
+  //
+  // This one reads ordinary prose as a proper noun, so its capture gets the
+  // stricter cleaning in `cleanWeakSitePhrase`.
+  {
+    weak: true,
+    re: /\b((?:[A-Za-z0-9][A-Za-z0-9_.-]*)(?:\s+[A-Za-z0-9][A-Za-z0-9_.-]*){0,2})\s+site\b/i,
+  },
 ];
+
+/**
+ * Determiners and quantifiers. When one of these is the word immediately before
+ * "site", the sentence is quantifying OVER sites and has named none.
+ *
+ * This is the whole of the "flag any site" bug: `cleanSitePhrase` trimmed the
+ * trailing "any" and kept what came before it, so
+ * "...and flag any site with no telemetry" reported a site called "flag" and
+ * clarified a question that had already said "which sites", "worst" and "any".
+ * The determiner is not filler to be trimmed — it is proof there is no name.
+ */
+const SITE_PHRASE_QUANTIFIERS = new Set([
+  'a', 'an', 'the', 'this', 'that', 'these', 'those', 'any', 'each', 'every',
+  'all', 'no', 'some', 'other', 'another', 'same', 'one', 'which', 'what',
+  'whatever', 'per', 'my', 'our', 'your', 'their', 'its',
+]);
+
+/**
+ * Prepositions and conjunctions. A site name contains none of them, so
+ * everything up to and including the last one is sentence, not name.
+ *
+ * "add a guest nbetwork to primary site" captured "nbetwork to primary" and
+ * asked which site that was. The name is the tail: "primary".
+ */
+const SITE_PHRASE_CONNECTIVES = new Set([
+  'at', 'in', 'on', 'for', 'to', 'of', 'and', 'or', 'with', 'about', 'from',
+  'by', 'into', 'onto', 'than', 'then', 'but',
+]);
 
 /**
  * Words that stand in for the inherited scope rather than naming a site, and
@@ -108,6 +151,34 @@ function cleanSitePhrase(raw) {
   return phrase.length >= 2 ? phrase : null;
 }
 
+/**
+ * Clean a capture from the weak "<words> site" pattern, which sees prose.
+ *
+ * Two rejections the end-trimming in `cleanSitePhrase` cannot make, because
+ * trimming a word off the end keeps whatever preceded it:
+ *
+ *   "flag any site ..."             → determiner before "site" → NO name
+ *   "guest nbetwork to primary site" → name is the tail after "to" → "primary"
+ *
+ * Returning null here is not a lost answer: the resolver falls through to the
+ * fleet verb and then to the estate default, both of which say what they cover.
+ */
+function cleanWeakSitePhrase(raw) {
+  const tokens = String(raw ?? '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!tokens.length) return null;
+
+  if (SITE_PHRASE_QUANTIFIERS.has(tokens[tokens.length - 1].toLowerCase())) return null;
+
+  let start = 0;
+  for (let i = 0; i < tokens.length; i += 1) {
+    if (SITE_PHRASE_CONNECTIVES.has(tokens[i].toLowerCase())) start = i + 1;
+  }
+  return cleanSitePhrase(tokens.slice(start).join(' '));
+}
+
 /** AP serials on this platform: two letters, digits, a letter, a dash, a tail. */
 const AP_SERIAL_RE = /\b[A-Z]{2}\d{6,9}[A-Z]?-?[A-Z0-9]{4,8}\b/;
 
@@ -134,6 +205,26 @@ function tokensOf(value) {
 }
 
 /**
+ * Every key one site name answers to.
+ *
+ * `normaliseSiteKey` folds punctuation to a word break, which is why `AURA_LAB`
+ * and `aura lab` are the same site. It inserts no break into camelCase, so
+ * `PrimarySite` folded to `primarysite` and an operator typing "primary site"
+ * matched NOTHING — the site was in the catalogue, named in the question, and
+ * the resolver still asked which site was meant. Same class of failure as the
+ * punctuation one, in the direction nobody checked.
+ */
+export function siteKeyVariants(siteName) {
+  const raw = String(siteName ?? '');
+  const keys = new Set();
+  const direct = normaliseSiteKey(raw);
+  if (direct) keys.add(direct);
+  const split = normaliseSiteKey(raw.replace(/([a-z0-9])([A-Z])/g, '$1 $2'));
+  if (split) keys.add(split);
+  return [...keys];
+}
+
+/**
  * Score how well an operator's phrase matches a known site.
  *
  * Returns null for no match. Higher is better. Deliberately NOT an edit
@@ -144,7 +235,18 @@ function tokensOf(value) {
  */
 export function scoreSiteMatch(phrase, siteName) {
   const p = normaliseSiteKey(phrase);
-  const s = normaliseSiteKey(siteName);
+  if (!p) return null;
+  // Best over every spelling the site answers to, so "primary site" scores
+  // against "primary site" rather than only against "primarysite".
+  let best = null;
+  for (const s of siteKeyVariants(siteName)) {
+    const score = scoreAgainstKey(p, s);
+    if (score !== null && (best === null || score > best)) best = score;
+  }
+  return best;
+}
+
+function scoreAgainstKey(p, s) {
   if (!p || !s) return null;
   if (p === s) return 100;
   // The site name appears whole inside what the operator wrote, or vice versa.
@@ -168,19 +270,25 @@ export function scoreSiteMatch(phrase, siteName) {
 export function findNamedSites(question, sites = []) {
   const q = normaliseSiteKey(question);
   if (!q) return [];
-  const byLength = [...sites].sort(
-    (a, b) => normaliseSiteKey(b.name).length - normaliseSiteKey(a.name).length
-  );
+  // Padded, and matched on whole words. A bare `includes` scoped an
+  // investigation to the site called EAL on the words "real", "meal" and
+  // "healthy" — a three-letter site name is a substring of ordinary English.
+  const padded = ` ${q} `;
+  const entries = sites
+    .map((site) => ({ site, keys: siteKeyVariants(site.name).filter(Boolean) }))
+    .filter((e) => e.keys.length);
+  const longest = (e) => Math.max(...e.keys.map((k) => k.length));
+  entries.sort((a, b) => longest(b) - longest(a));
+
   const hits = [];
   const claimed = [];
-  for (const site of byLength) {
-    const key = normaliseSiteKey(site.name);
-    if (!key) continue;
-    if (!q.includes(key)) continue;
+  for (const { site, keys } of entries) {
+    const hit = keys.find((key) => padded.includes(` ${key} `));
+    if (!hit) continue;
     // A shorter name fully contained in one we already matched is the same
     // mention, not a second site.
-    if (claimed.some((c) => c.includes(key))) continue;
-    claimed.push(key);
+    if (claimed.some((c) => c.includes(hit))) continue;
+    claimed.push(hit);
     hits.push(site);
   }
   return hits;
@@ -189,13 +297,40 @@ export function findNamedSites(question, sites = []) {
 /** The site-ish phrase the operator used, when no known site matched it. */
 export function extractSitePhrase(question) {
   const text = String(question ?? '');
-  for (const re of SITE_PHRASE_PATTERNS) {
+  for (const { re, weak } of SITE_PHRASE_PATTERNS) {
     const m = text.match(re);
     if (!m || !m[1]) continue;
-    const candidate = cleanSitePhrase(m[1]);
+    const candidate = weak ? cleanWeakSitePhrase(m[1]) : cleanSitePhrase(m[1]);
     if (candidate) return candidate;
   }
   return null;
+}
+
+/**
+ * Does `key` appear in the question as a REFERENCE to a thing that exists?
+ *
+ * Two ways a bare `includes` got this wrong, both with live names:
+ *
+ *   - Substring. An SSID or site called "EAL" matched inside "real", "meal" and
+ *     "healthy", scoping an investigation to it on a question that never
+ *     mentioned it. Whole words only.
+ *   - Indefinite article. "can you add a guest network to primary site?" matched
+ *     the existing SSID "Guest" and returned entity scope, so a request to
+ *     CREATE a network was answered as a question about one that already exists.
+ *     "a guest network" describes a kind of thing; "is Guest broadcasting?"
+ *     points at one. An "a"/"an" immediately before the name is the tell.
+ *
+ * A name that appears once, article-prefixed, is descriptive. The same name
+ * appearing anywhere else in the sentence still counts as a reference.
+ */
+function namesEntity(paddedQuestion, key) {
+  const token = ` ${key} `;
+  for (let idx = paddedQuestion.indexOf(token); idx !== -1; ) {
+    // Everything up to and including the space that opens this occurrence.
+    if (!/ (?:a|an) $/.test(paddedQuestion.slice(0, idx + 1))) return true;
+    idx = paddedQuestion.indexOf(token, idx + 1);
+  }
+  return false;
 }
 
 /** Does the question name a specific client, AP or SSID? */
@@ -219,10 +354,10 @@ export function findNamedEntity(question, inventory = {}) {
 
   // Known SSIDs, longest first for the same reason sites are.
   const ssids = [...(inventory.ssids ?? [])].sort((a, b) => String(b).length - String(a).length);
-  const normQuestion = normaliseSiteKey(text);
+  const paddedQuestion = ` ${normaliseSiteKey(text)} `;
   for (const ssid of ssids) {
     const key = normaliseSiteKey(ssid);
-    if (key && key.length >= 3 && normQuestion.includes(key)) {
+    if (key && key.length >= 3 && namesEntity(paddedQuestion, key)) {
       return { kind: 'wlan', value: ssid, matchedOn: 'SSID name' };
     }
   }
@@ -231,7 +366,7 @@ export function findNamedEntity(question, inventory = {}) {
   const apNames = [...(inventory.apNames ?? [])].sort((a, b) => String(b).length - String(a).length);
   for (const apName of apNames) {
     const key = normaliseSiteKey(apName);
-    if (key && key.length >= 4 && normQuestion.includes(key)) {
+    if (key && key.length >= 4 && namesEntity(paddedQuestion, key)) {
       return { kind: 'ap', value: apName, matchedOn: 'AP name' };
     }
   }
