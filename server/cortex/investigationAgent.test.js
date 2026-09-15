@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  duplicateCallNote,
   runInvestigation,
   shouldTryAnotherModel,
   stripNullArgs,
@@ -527,5 +528,27 @@ describe('auditAnswer — service levels and infrastructure probes', () => {
   it('accepts a DHCP statement backed by the DHCP probe alone', () => {
     const findings = auditAnswer('DHCP reachability is clean on every VLAN.', ok('getInfrastructureAlerts'));
     expect(findings.some((f) => /DHCP/i.test(f.detail))).toBe(false);
+  });
+});
+
+describe('the repeat-call guard does not discredit the earlier result', () => {
+  it('says the prior result is unchanged and valid, not stale', () => {
+    const payload = duplicateCallNote('getServiceLevels');
+
+    expect(payload.status).toBe('duplicate_call');
+    expect(payload.note).toMatch(/getServiceLevels/);
+    expect(payload.note).toMatch(/UNCHANGED and still valid/);
+    expect(payload.note).toMatch(/loop guard, not a failed read/);
+    expect(payload.note).toMatch(/DIFFERENT arguments/);
+    // The phrasing that caused the misread must not come back.
+    expect(payload.note).not.toMatch(/does not answer the question/);
+  });
+
+  it('is not shaped like a failed read', () => {
+    // `status: 'fetch_failed'` would make the ledger count it as a failure and
+    // drag confidence down for what is only a loop guard.
+    const payload = duplicateCallNote('getRfHealth');
+    expect(payload.status).not.toBe('fetch_failed');
+    expect(payload).not.toHaveProperty('error');
   });
 });

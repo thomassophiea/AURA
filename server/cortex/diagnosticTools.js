@@ -58,6 +58,15 @@ import { reconcileWlan, expectationFromPeer, configuredWlanState } from './state
 /** Per-AP state reads in one backend check. A fleet sweep is not free. */
 const MAX_AP_STATE_READS = 40;
 
+/**
+ * How long the service-level tool waits on live telemetry for its cross-check.
+ *
+ * Deliberately far below the flex read's own cost. A healthy flex read takes
+ * 12-30 s and an unhealthy one 500s at about 31 — and the cross-check only
+ * decorates an answer the collector has already fully supplied.
+ */
+const LIVE_CROSSCHECK_MS = 6_000;
+
 /** Tool risk classes. Only `read` and `diagnostic` appear in this file. */
 export const RISK = {
   READ: 'read',
@@ -158,6 +167,30 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
   const apData = () => fetchList('aps', '/v1/aps/query');
   const profileData = () => fetchList('prof', '/v3/profiles');
 
+  /**
+   * Await a read, but not for longer than `ms`.
+   *
+   * For a cross-check that must never hold up the answer it decorates. A flex
+   * read takes 12-30 s on this appliance and, when the reporting service is
+   * unwell, returns 500 after about 31 — so orientation was waiting half a
+   * minute to learn nothing. The underlying promise is NOT cancelled: it stays
+   * in the per-request `once()` cache, so a later tool that genuinely needs the
+   * rows still awaits the same in-flight read rather than starting a second one.
+   */
+  const withinBudget = async (promise, ms) => {
+    let timer;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise((resolve) => {
+          timer = setTimeout(() => resolve({ ok: false, rows: [], error: `did not complete within ${ms} ms`, timedOut: true }), ms);
+        }),
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+
   /** Rows-only accessors for the paths where a partial answer is acceptable. */
   const clientRows = async () => (await clientData()).rows;
   const radioRows = async () => (await radioData()).rows;
@@ -249,16 +282,37 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
     };
   };
 
-  /** Standard shape for "the read failed", so the model never guesses. */
-  const fetchFailed = (what, res) => ({
+  /**
+   * Standard shape for "the read failed", so the model never guesses.
+   *
+   * `alternative` exists because a dead end and a detour are different answers.
+   * When /v1/report/flex/3H was returning 500, every site-level tool failed and
+   * the investigation concluded it could not rank anything — while AURA's own
+   * service levels, collected independently into a local database, sat there
+   * perfectly able to answer the question. Naming the route that still works
+   * turns "I cannot tell you" into an answer.
+   */
+  const fetchFailed = (what, res, alternative = null) => ({
     basis: 'unknown',
     unavailable: true,
     status: 'fetch_failed',
     reason: `Could not read ${what} from the Gateway: ${res.error}`,
     instruction:
       'This is a failed request, NOT an empty result. Say the data could not be retrieved. ' +
-      'Do not report zero, none, or healthy.',
+      'Do not report zero, none, or healthy.' + (alternative ? ` ${alternative}` : ''),
   });
+
+  /**
+   * The detour to offer when the Gateway's live client telemetry is unreachable.
+   *
+   * Service levels come from AURA's own collector via its database, so they are
+   * unaffected by a fault in the Gateway's reporting service.
+   */
+  const CLIENT_TELEMETRY_ALTERNATIVE =
+    'This endpoint being down does NOT mean the question is unanswerable: AURA collects ' +
+    'service levels into its own database, independently of this Gateway endpoint. Call ' +
+    'getServiceLevels for a per-site ranking, and getInfrastructureAlerts for the plumbing ' +
+    'probes. Report the telemetry fault AND whatever those two can still tell you.';
 
   // ──────────────────────────────────────────────────────────────────────────
   // SITE SCOPE
@@ -397,6 +451,13 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
       return {
         ok: cfg.ok || clients.ok || aps.ok,
         configuredListAvailable: cfg.ok,
+        // Whether the telemetry read SUCCEEDED, which is a different question
+        // from whether it returned rows. Without this the two collapse, and a
+        // failed read becomes a per-site assertion that the site has no
+        // measurements — see the note in listSites.
+        telemetryReadOk: clients.ok,
+        telemetryReadError: clients.ok ? null : clients.error,
+        apReadOk: aps.ok,
         error: cfg.ok ? null : cfg.error,
         sites: [...byKey.values()],
       };
@@ -1142,7 +1203,7 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
       },
       handler: async ({ siteName, worst = 10 } = {}) => {
         const [clients, apsRes] = await Promise.all([clientData(), apData()]);
-        if (!clients.ok) return fetchFailed('client telemetry', clients);
+        if (!clients.ok) return fetchFailed('client telemetry', clients, CLIENT_TELEMETRY_ALTERNATIVE);
         if (!apsRes.ok) return fetchFailed('the AP inventory', apsRes);
         const rows = clients.rows;
         const aps = apsRes.rows;
@@ -1245,30 +1306,57 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
         const inv = await siteInventory();
         if (!inv.ok) return fetchFailed('the site catalogue', { error: inv.error ?? 'no source responded' });
 
+        // WHEN THE TELEMETRY READ FAILED, hasTelemetry IS NOT FALSE — IT IS
+        // UNKNOWN.
+        //
+        // `siteInventory` derives telemetry presence from the client rows, so a
+        // failed read yielded zero names and EVERY site came back
+        // `hasTelemetry: false`. The note below then instructed the model to
+        // report each one as "no data" — turning one failed request into seven
+        // per-site factual claims. Observed live: /v1/report/flex/3H returned
+        // 500 and the answer said "none of the 7 sites have any live
+        // measurements at all", which is a statement about the sites and was
+        // really a statement about the request.
+        const telemetryUnknown = !inv.telemetryReadOk;
+
         const sites = inv.sites.map((s) => ({
           name: untrusted(s.name),
           configured: s.configured,
-          hasTelemetry: s.hasTelemetry,
-          apCount: s.apCount,
-          clientCount: s.clientCount,
+          hasTelemetry: telemetryUnknown ? null : s.hasTelemetry,
+          apCount: inv.apReadOk ? s.apCount : null,
+          clientCount: telemetryUnknown ? null : s.clientCount,
           // The distinction the old telemetry-derived list could not make.
-          healthBasis: s.hasTelemetry ? 'observed' : 'unknown',
+          healthBasis: telemetryUnknown ? 'read_failed' : s.hasTelemetry ? 'observed' : 'unknown',
         }));
 
-        const silent = sites.filter((s) => s.configured && !s.hasTelemetry);
+        // Only meaningful when the read actually succeeded. A "silent site" is
+        // a site that reported nothing, not a site nobody managed to ask.
+        const silent = telemetryUnknown
+          ? []
+          : sites.filter((s) => s.configured && !s.hasTelemetry);
 
         return observed(
           {
             siteCount: sites.length,
             sites,
             configuredListAvailable: inv.configuredListAvailable,
+            telemetryReadOk: inv.telemetryReadOk,
+            telemetryReadError: inv.telemetryReadError,
             silentSites: silent.map((s) => s.name),
             note:
               (inv.configuredListAvailable
                 ? 'Configured sites come from /v3/sites; counts come from live telemetry. '
                 : 'The configured site list could not be read, so this covers only sites that appear in telemetry — a site with no clients may be missing entirely. ') +
-              'A site with hasTelemetry=false has NO measurements at all. Report it as "no data", ' +
-              'never as healthy: an idle site and a completely broken one look identical from here.',
+              (telemetryUnknown
+                ? 'THE CLIENT TELEMETRY READ FAILED on this Gateway, so hasTelemetry and ' +
+                  'clientCount are null — UNKNOWN, not zero and not false. Do NOT say these ' +
+                  'sites have no measurements: that is a claim about the sites, and what failed ' +
+                  'was the request. Report that the telemetry read is failing, name it as a ' +
+                  'Gateway reporting fault, and use the site NAMES and configured list — which ' +
+                  'are still good — for anything that does not need measurements.'
+                : 'A site with hasTelemetry=false has NO measurements at all. Report it as ' +
+                  '"no data", never as healthy: an idle site and a completely broken one look ' +
+                  'identical from here.'),
           },
           '/v3/sites + flex(MuTable) + /v1/aps/query'
         );
@@ -1296,7 +1384,7 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
       },
       handler: async ({ siteName, severity = 'warning' } = {}) => {
         const clients = await clientData();
-        if (!clients.ok) return fetchFailed('client telemetry', clients);
+        if (!clients.ok) return fetchFailed('client telemetry', clients, CLIENT_TELEMETRY_ALTERNATIVE);
         const unique = dedupeByMac(clients.rows);
         const scopeResult = applySiteScope(unique, (r) => r.SiteName, { explicit: siteName });
         if (scopeResult.matchedNothing) return scopeMatchedNothing('client telemetry rows', scopeResult);
@@ -1868,7 +1956,18 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
         // while live client telemetry returned zero rows for every site. That
         // disagreement is itself a finding — one of the two paths is failing —
         // and it must be surfaced rather than resolved by picking a favourite.
-        const live = await clientData();
+        // THREE STATES, NOT TWO. A comparison that could not be MADE is not a
+        // comparison that AGREED — and the first version of this tool returned
+        // an empty `contradictsLiveTelemetry` with a note asserting the sources
+        // agreed whenever the live read failed. On a Gateway whose
+        // /v1/report/flex/3H was returning 500 that produced exactly the
+        // laundered claim the rest of this file is built to prevent: a failed
+        // request presented as corroboration.
+        // Bounded: the cross-check is a bonus, not the deliverable. Orientation
+        // is the FIRST tool a wireless question runs, and it must not spend 31
+        // seconds discovering that the Gateway's reporting service is down
+        // before handing back service levels it already had in hand.
+        const live = await withinBudget(clientData(), LIVE_CROSSCHECK_MS);
         const liveBySite = new Map();
         if (live.ok) {
           for (const r of dedupeByMac(live.rows)) {
@@ -1876,6 +1975,7 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
             if (key) liveBySite.set(key, (liveBySite.get(key) ?? 0) + 1);
           }
         }
+        const comparison = live.ok ? 'made' : 'unavailable';
         const disagreements = !live.ok
           ? []
           : scoped.rows
@@ -1916,6 +2016,10 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
               })),
             })),
             contradictsLiveTelemetry: disagreements,
+            // Machine-readable, so the audit and the answer can both tell
+            // "compared and agreed" from "could not compare".
+            liveTelemetryComparison: comparison,
+            liveTelemetryReadError: live.ok ? null : live.error,
             thresholdCaveat:
               'These scores are recomputed server-side from AURA\'s collector. Coverage and ' +
               'Throughput use the same thresholds as the Service Levels page; ' +
@@ -1924,12 +2028,18 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
             note:
               `Any of the seven metrics (${SLE_METRIC_ORDER.length} total) absent from a site's ` +
               'measuredMetrics was NOT MEASURED — report it as not measured, never as 100%. ' +
-              (disagreements.length
-                ? 'contradictsLiveTelemetry is NOT empty: the collector holds scored samples for ' +
-                  'a site where the Gateway returns no live client rows. Say the two sources ' +
-                  'disagree, say you cannot tell from here which one is wrong, and do not present ' +
-                  'either figure as settled.'
-                : 'The collector and live Gateway telemetry agree on which sites have clients.'),
+              (comparison === 'unavailable'
+                ? 'THE SERVICE LEVELS BELOW ARE STILL VALID AND STILL ANSWER THE QUESTION. The ' +
+                  'live Gateway client-telemetry read FAILED, so the cross-check against it ' +
+                  'could not be made — that is not agreement and not a reason to discard these ' +
+                  'scores. Rank the sites from what is here, and say separately that the ' +
+                  "Gateway's live client telemetry is down so you could not corroborate it."
+                : disagreements.length
+                  ? 'contradictsLiveTelemetry is NOT empty: the collector holds scored samples ' +
+                    'for a site where the Gateway returns no live client rows. Say the two ' +
+                    'sources disagree, say you cannot tell from here which one is wrong, and do ' +
+                    'not present either figure as settled.'
+                  : 'The collector and live Gateway telemetry agree on which sites have clients.'),
           },
           'AURA monitoring DB (metricFamily=sle) + /v3/sites + flex(MuTable)'
         );

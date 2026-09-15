@@ -357,3 +357,187 @@ describe('getInfrastructureAlerts — the plumbing probes', () => {
     expect(withAnalytics.analytics).toMatchObject({ total: 7 });
   });
 });
+
+/**
+ * Regressions from a live run against a Gateway whose /v1/report/flex/3H was
+ * returning 500 "Exception: null" after ~31 s — the appliance's own reporting
+ * timeout.
+ *
+ * The answer that came back was epistemically careful and completely useless:
+ * it declared it could not rank any site, while a successful getServiceLevels
+ * call sat in its own evidence panel marked `ok observed`. Three separate
+ * things conspired, and one of them was a lie this tool told.
+ */
+describe('getServiceLevels when live telemetry is down', () => {
+  const FAILING_SESSION = {
+    baseUrl: 'https://gw.test',
+    get: async (path) => {
+      if (path.startsWith('/v1/report/flex')) {
+        return { ok: false, status: 500, data: null, errorSummary: 'Exception: null' };
+      }
+      if (path === '/v3/sites') return { ok: true, status: 200, data: SITES };
+      return { ok: false, status: 404, data: null, errorSummary: 'not found' };
+    },
+  };
+
+  const makeFailing = (scope = {}) =>
+    createDiagnosticTools({
+      session: FAILING_SESSION,
+      scope,
+      capabilities: new CapabilityRegistry(),
+    });
+
+  beforeEach(() => {
+    serviceLevels.mockResolvedValue({
+      ok: true,
+      sites: [
+        sleSite('site-primary', 94.5, { metricName: 'coverage', label: 'Coverage', successRate: 70.6 }),
+        sleSite('site-afc', 100, null),
+      ],
+      meta: {},
+      error: null,
+    });
+  });
+
+  it('does NOT report a failed cross-check as agreement', async () => {
+    // The bug. `disagreements` was empty because the read failed, and the note
+    // then asserted "The collector and live Gateway telemetry agree on which
+    // sites have clients" — a claim manufactured out of a 500.
+    const r = await makeFailing().getServiceLevels.handler({});
+    expect(r.liveTelemetryComparison).toBe('unavailable');
+    expect(r.contradictsLiveTelemetry).toEqual([]);
+    // The forbidden sentence, verbatim — the one the tool used to emit off the
+    // back of a 500. Matching on bare /agree/i would also catch the new
+    // wording "that is not agreement", which is the correction, not the bug.
+    expect(r.note).not.toMatch(/telemetry agree on which sites/i);
+    expect(r.note).toMatch(/not agreement/i);
+  });
+
+  it('still hands back the ranking, and says the corroboration is what is missing', async () => {
+    // The service levels came from AURA's own database and are untouched by the
+    // Gateway fault. Discarding them was the expensive part of that answer.
+    const r = await makeFailing().getServiceLevels.handler({});
+    expect(r.basis).toBe('observed');
+    expect(r.siteCount).toBe(2);
+    expect(r.worstFirst[0].overall).toBe(94.5);
+    expect(r.note).toMatch(/STILL VALID/i);
+    expect(r.note).toMatch(/not a reason to discard/i);
+    expect(r.liveTelemetryReadError).toMatch(/Exception: null/);
+  });
+
+  it('does not wait on a read that is going to time out', async () => {
+    // Orientation is the first tool a wireless question runs. A flex read that
+    // 500s after 31 s must not be 31 s of an operator's time.
+    const slow = {
+      baseUrl: 'https://gw.test',
+      get: async (path) => {
+        if (path.startsWith('/v1/report/flex')) {
+          await new Promise((r) => setTimeout(r, 30_000));
+          return { ok: false, status: 500, data: null, errorSummary: 'Exception: null' };
+        }
+        if (path === '/v3/sites') return { ok: true, status: 200, data: SITES };
+        return { ok: false, status: 404, data: null, errorSummary: 'not found' };
+      },
+    };
+    const tools = createDiagnosticTools({
+      session: slow,
+      scope: {},
+      capabilities: new CapabilityRegistry(),
+    });
+
+    const t0 = Date.now();
+    const r = await tools.getServiceLevels.handler({});
+    const elapsed = Date.now() - t0;
+
+    expect(elapsed).toBeLessThan(12_000);
+    expect(r.liveTelemetryComparison).toBe('unavailable');
+    expect(r.siteCount).toBe(2);
+  }, 20_000);
+});
+
+describe('listSites when the telemetry read fails', () => {
+  it('reports hasTelemetry as UNKNOWN, not false, for every site', async () => {
+    // One failed request was becoming seven per-site factual claims: the live
+    // answer said "none of the 7 sites have any live measurements at all",
+    // which is a statement about the sites when it was a statement about the
+    // request.
+    const failing = {
+      baseUrl: 'https://gw.test',
+      get: async (path) => {
+        if (path.startsWith('/v1/report/flex')) {
+          return { ok: false, status: 500, data: null, errorSummary: 'Exception: null' };
+        }
+        if (path === '/v3/sites') return { ok: true, status: 200, data: SITES };
+        if (path === '/v1/aps/query') return { ok: true, status: 200, data: [] };
+        return { ok: false, status: 404, data: null, errorSummary: 'not found' };
+      },
+    };
+    const tools = createDiagnosticTools({
+      session: failing,
+      scope: {},
+      capabilities: new CapabilityRegistry(),
+    });
+
+    const r = await tools.listSites.handler({});
+    expect(r.telemetryReadOk).toBe(false);
+    expect(r.sites.every((s) => s.hasTelemetry === null)).toBe(true);
+    expect(r.sites.every((s) => s.clientCount === null)).toBe(true);
+    expect(r.sites.every((s) => s.healthBasis === 'read_failed')).toBe(true);
+    // A "silent site" is one that reported nothing, not one nobody could ask.
+    expect(r.silentSites).toEqual([]);
+    expect(r.note).toMatch(/UNKNOWN, not zero and not false/i);
+    expect(r.note).toMatch(/claim about the sites/i);
+  });
+
+  it('still distinguishes a genuinely silent site when the read SUCCEEDS', async () => {
+    // The original behaviour has to survive: a configured site that reports no
+    // clients is real and valuable information.
+    const tools = make();
+    const r = await tools.listSites.handler({});
+    expect(r.telemetryReadOk).toBe(true);
+    const primary = r.sites.find((s) => s.name?.value === 'PrimarySite');
+    expect(primary.hasTelemetry).toBe(true);
+    expect(primary.clientCount).toBe(4);
+    expect(r.note).toMatch(/never as healthy/i);
+  });
+});
+
+describe('a failed site-level read names the route that still works', () => {
+  const failing = {
+    baseUrl: 'https://gw.test',
+    get: async (path) => {
+      if (path.startsWith('/v1/report/flex')) {
+        return { ok: false, status: 500, data: null, errorSummary: 'Exception: null' };
+      }
+      if (path === '/v3/sites') return { ok: true, status: 200, data: SITES };
+      if (path === '/v1/aps/query') return { ok: true, status: 200, data: [] };
+      return { ok: false, status: 404, data: null, errorSummary: 'not found' };
+    },
+  };
+  const tools = () =>
+    createDiagnosticTools({ session: failing, scope: {}, capabilities: new CapabilityRegistry() });
+
+  it('points getSiteOverview at getServiceLevels instead of dead-ending', async () => {
+    // The live answer concluded "I cannot tell you which sites have problem
+    // clients" while AURA's own service levels could have ranked them. A dead
+    // end and a detour are different answers.
+    const r = await tools().getSiteOverview.handler({});
+    expect(r.status).toBe('fetch_failed');
+    expect(r.instruction).toMatch(/getServiceLevels/);
+    expect(r.instruction).toMatch(/does NOT mean the question is unanswerable/i);
+  });
+
+  it('points correlateProblem the same way', async () => {
+    const r = await tools().correlateProblem.handler({});
+    expect(r.status).toBe('fetch_failed');
+    expect(r.instruction).toMatch(/getServiceLevels/);
+  });
+
+  it('does NOT offer a per-site ranking to a single-client question', async () => {
+    // diagnoseClient failing is not answerable by a site scoreboard, and
+    // suggesting one would send the model somewhere useless.
+    const r = await tools().diagnoseClient.handler({ mac: '58:9A:3E:E8:1D:00' });
+    expect(r.status).toBe('fetch_failed');
+    expect(r.instruction).not.toMatch(/getServiceLevels/);
+  });
+});

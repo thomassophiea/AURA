@@ -722,11 +722,15 @@ export async function runInvestigation({
         continue;
       }
       if (seen > lim.maxIdenticalCalls) {
-        pushToolResult(messages, call, {
-          error:
-            'You have already called this tool with these arguments. Use what you have, or ' +
-            'state that the data does not answer the question.',
-        });
+        // Wording matters more than it looks. The previous message — "Use what
+        // you have, or state that the data does not answer the question" — was
+        // read by the model as a verdict ON the earlier result: it described a
+        // successful, fully-detailed getServiceLevels response as "a stale
+        // cached verdict with the raw per-site detail already dropped" and
+        // discarded it. Nothing is cached, nothing is stale and nothing was
+        // dropped; the earlier result is still in this conversation verbatim.
+        // Say that instead of implying the data went bad.
+        pushToolResult(messages, call, duplicateCallNote(call.name));
         continue;
       }
 
@@ -885,6 +889,29 @@ export async function runInvestigation({
     // provider reads as "not priced" rather than "free".
     cost: usageByModel.summary(),
     redQueen,
+  };
+}
+
+/**
+ * What the loop guard tells the model when it repeats a call.
+ *
+ * Exported because the WORDING is the artifact. The previous message — "You
+ * have already called this tool with these arguments. Use what you have, or
+ * state that the data does not answer the question." — was read as a verdict on
+ * the earlier RESULT rather than on the repeated CALL. Observed live: a
+ * successful, fully-detailed getServiceLevels response was described in the
+ * answer as "a stale cached verdict with the raw per-site detail already
+ * dropped" and thrown away, while the evidence panel showed it as `ok
+ * observed`. Nothing is cached, nothing is stale and nothing is dropped.
+ */
+export function duplicateCallNote(toolName) {
+  return {
+    status: 'duplicate_call',
+    note:
+      `You already called ${toolName} with these exact arguments earlier in this conversation. ` +
+      'That result is UNCHANGED and still valid — scroll back and use it. This is a loop ' +
+      'guard, not a failed read and not a statement that the data is stale, incomplete or ' +
+      'untrustworthy. Call it again only with DIFFERENT arguments.',
   };
 }
 
