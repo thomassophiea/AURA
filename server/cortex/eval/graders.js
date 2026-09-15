@@ -268,6 +268,144 @@ export function gradeToolBudget(result, { max = 6, weight = 1 } = {}) {
 }
 
 /**
+ * Did the answer state the scope it covered?
+ *
+ * The defect being guarded: an operator on one site asked "do we have unhappy
+ * clients?" and received an estate-wide count with nothing saying so. The number
+ * was accurate and the reader's conclusion was wrong. A count with no scope
+ * attached is a wrong answer however right the arithmetic.
+ */
+export function gradeStatesScope(result, { weight = 2 } = {}) {
+  const text = result.answer ?? '';
+  const scope = result.scope ?? null;
+  const hasQuantity = /\b\d+\b/.test(text);
+  if (!hasQuantity) return ok('states-scope', weight, 'no count to attribute');
+
+  if (scope?.level === 'fleet') {
+    const saysFleet =
+      /\b(all|every|across|estate|fleet|network-wide|org(?:anization|anisation)?-wide|both sites|all sites)\b/i.test(
+        text
+      );
+    return saysFleet
+      ? ok('states-scope', weight, 'estate-wide count declared as estate-wide')
+      : bad('states-scope', weight, 'reported a count from every site without saying so');
+  }
+  if (scope?.level === 'site' && scope.siteNames?.length) {
+    const named = scope.siteNames.some((s) => text.toLowerCase().includes(String(s).toLowerCase()));
+    return named
+      ? ok('states-scope', weight, `named ${scope.siteNames.join(', ')}`)
+      : bad('states-scope', weight, `a site-scoped count never named ${scope.siteNames.join(', ')}`);
+  }
+  return ok('states-scope', weight, 'no site scope was applied');
+}
+
+/**
+ * Did it refuse to turn a scope mismatch into good news?
+ *
+ * The specific failure: a site name matching no telemetry filtered to zero rows,
+ * and zero rows read as "no problems here". This is the most dangerous shape in
+ * the product, because a false clean bill closes an investigation.
+ */
+export function gradeNoFalseCleanBill(result, { weight = 5 } = {}) {
+  const mismatched = (result.ledger ?? []).some(
+    (l) => l.digest?.status === 'scope_matched_nothing' || l.status === 'scope_matched_nothing'
+  );
+  if (!mismatched) return ok('no-false-clean-bill', weight, 'no scope mismatch occurred');
+
+  const text = result.answer ?? '';
+  const claimsHealthy =
+    /\b(no (problems|issues|unhappy|affected)|nothing (is )?wrong|all (clear|healthy|good)|zero (clients|problems|issues))\b/i.test(
+      text
+    );
+  const admitsMismatch =
+    /\b(did ?n'?t match|no site (by that name|called|named)|not (a |an )?(known|recognised|recognized) site|no such site|scope mismatch|could ?n'?t find (that|the) site)\b/i.test(
+      text
+    );
+
+  if (claimsHealthy && !admitsMismatch) {
+    return bad(
+      'no-false-clean-bill',
+      weight,
+      'a site filter matched nothing and the answer reported it as no problems'
+    );
+  }
+  return admitsMismatch
+    ? ok('no-false-clean-bill', weight, 'said the site name did not match')
+    : ok('no-false-clean-bill', weight, 'did not claim health from an empty filter');
+}
+
+/**
+ * Does the first line read for someone who does not work in wireless?
+ *
+ * Not a style preference. The product is used by people who are told "the wifi
+ * is broken" and have to act; "RFQI 17, RSS -83 dBm" is not an answer for them.
+ * Checks the FIRST sentence only — the technical vocabulary belongs below it.
+ */
+export const JARGON = [
+  'RFQI', 'SNR', 'RSSI', 'RSS ', 'dBm', 'MuTable', 'ApTable', '802.11', '802.1X',
+  'co-channel', 'DLLostPkts', 'airtime', 'VLAN', 'SSID', 'BSSID', 'DTIM', 'MTU',
+];
+
+export function gradePlainFirstLine(result, { weight = 2 } = {}) {
+  const text = (result.answer ?? '').trim();
+  if (!text) return bad('plain-first-line', weight, 'no answer');
+  const first = text.split(/(?<=[.!?])\s+/)[0] ?? text;
+  const hits = JARGON.filter((j) => first.toLowerCase().includes(j.toLowerCase().trim()));
+  return hits.length
+    ? bad('plain-first-line', weight, `opening sentence needs wireless knowledge: ${hits.join(', ')}`)
+    : ok('plain-first-line', weight, 'opening sentence is plain English');
+}
+
+/**
+ * Did it name the blast radius rather than describing one victim?
+ *
+ * "42 clients across 8 APs on one VLAN" is the answer. The original
+ * complainant's signal strength is not.
+ */
+export function gradeNamesBlastRadius(result, { weight = 2 } = {}) {
+  const impact = result.assessment?.impact ?? null;
+  if (!impact || impact.affected <= 1) {
+    return ok('names-blast-radius', weight, 'no population was measured; nothing to scope');
+  }
+  const text = result.answer ?? '';
+  const statesCount = new RegExp(`\\b${impact.affected}\\b`).test(text);
+  return statesCount
+    ? ok('names-blast-radius', weight, `stated the affected count (${impact.affected})`)
+    : bad(
+        'names-blast-radius',
+        weight,
+        `measured ${impact.affected} affected and the answer never says how many`
+      );
+}
+
+/**
+ * Did the answer respect the confidence the runtime computed?
+ *
+ * The model is told the level and told not to raise it. This catches the
+ * failure where a capped verdict is narrated as certainty anyway.
+ */
+export function gradeRespectsComputedConfidence(result, { weight = 3 } = {}) {
+  const computed = result.assessment?.confidence ?? '';
+  if (!computed) return ok('respects-confidence', weight, 'no confidence was computed');
+
+  const text = result.answer ?? '';
+  const capped = /INSUFFICIENT EVIDENCE|POSSIBLE/.test(computed);
+  if (!capped) return ok('respects-confidence', weight, 'computed level was not capped');
+
+  const overclaims =
+    /\b(confirmed|proven|definitely|certainly|the root cause is|this is caused by|high confidence)\b/i.test(
+      text
+    );
+  return overclaims
+    ? bad(
+        'respects-confidence',
+        weight,
+        `runtime computed a capped level and the answer claims certainty`
+      )
+    : ok('respects-confidence', weight, 'stayed within the computed level');
+}
+
+/**
  * Run a scenario's graders and produce a weighted score.
  *
  * `score` is the fraction of achievable weight earned, so a suite with

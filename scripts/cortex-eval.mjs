@@ -36,6 +36,7 @@ import { runGraders } from '../server/cortex/eval/graders.js';
 import { runInvestigation, auditAnswer } from '../server/cortex/investigationAgent.js';
 import { createLlmProviderForModel, createLlmProvider } from '../server/cortexLlmProvider.js';
 import { createDiagnosticTools } from '../server/cortex/diagnosticTools.js';
+import { resolveScope } from '../server/cortex/scopeResolver.js';
 import { getCapabilitiesFor } from '../server/cortex/capabilityRegistry.js';
 import { GatewayEvidence } from '../server/cortex/gatewayEvidence.js';
 import { ControllerSession } from '../server/monitoring/controllerClient.js';
@@ -292,7 +293,39 @@ for (const model of models) {
       ({ provider } = createLlmProvider({}));
     }
 
-    const tools = createDiagnosticTools({ session, scope, capabilities });
+    // RESOLVE SCOPE THE WAY THE ROUTE DOES.
+    //
+    // An eval that binds scope differently from production is measuring
+    // something the product does not do. The scope graders in particular are
+    // meaningless unless the tools are filtered here exactly as they are in
+    // /api/cortex/investigate.
+    //
+    // A clarification is NOT modelled as a skip: the scenarios that provoke one
+    // (an unmatched site, two sites sharing a prefix) are testing that Cortex
+    // does not answer confidently about the wrong building, and the route's
+    // behaviour after the operator picks is what the graders judge. The eval
+    // therefore proceeds with the resolver's own reading and lets
+    // `gradeNoFalseCleanBill` catch a false clean bill.
+    const inventoryTools = createDiagnosticTools({ session, scope: {}, capabilities });
+    let inventory = { sites: [], ssids: [], apNames: [] };
+    try {
+      const siteRes = await inventoryTools.listSites.handler({});
+      const unwrap = (v) => (v && typeof v === 'object' && '__untrusted__' in v ? v.value : v);
+      inventory = {
+        sites: (siteRes?.sites ?? []).map((s) => ({ name: unwrap(s.name) })),
+        ssids: [],
+        apNames: [],
+      };
+    } catch {
+      /* no catalogue: the resolver degrades to the estate */
+    }
+    const resolvedScope = resolveScope({ question: scenario.question, uiScope: scope, inventory });
+
+    const tools = createDiagnosticTools({
+      session,
+      scope: { ...scope, siteNames: resolvedScope.siteNames },
+      capabilities,
+    });
     const t0 = Date.now();
     let result;
     try {
@@ -303,6 +336,7 @@ for (const model of models) {
         capabilities,
         question: scenario.question,
         scope,
+        resolvedScope,
         effort: policy.effort,
       });
     } catch (err) {
@@ -310,9 +344,22 @@ for (const model of models) {
     }
     const latencyMs = Date.now() - t0;
 
-    // The graders read `audit`, so compute it the same way the route does.
+    // The graders read `audit`, `scope` and `assessment`, so compute all three
+    // the same way the route does. Omitting the last two would silently make
+    // every scope and confidence grader inert — passing on absence rather than
+    // on behaviour, which is the failure mode this harness exists to avoid.
     const graded = runGraders(
-      { ...result, audit: auditAnswer(result.answer, result.ledger) },
+      {
+        ...result,
+        audit: auditAnswer(result.answer, result.ledger),
+        scope: {
+          level: resolvedScope.level,
+          siteNames: resolvedScope.siteNames,
+          reason: resolvedScope.reason,
+          source: resolvedScope.source,
+        },
+        assessment: result.evidence ?? null,
+      },
       scenario.graders
     );
 
@@ -352,6 +399,17 @@ for (const model of models) {
       cost: result.cost ?? null,
       providerError: result.providerError ?? null,
       answer: result.answer ?? '',
+      // Recorded so a failure can be read without re-running: which sites the
+      // answer actually covered, and what the runtime concluded independently
+      // of the prose.
+      scope: {
+        level: resolvedScope.level,
+        siteNames: resolvedScope.siteNames,
+        source: resolvedScope.source,
+      },
+      computedConfidence: result.evidence?.confidence ?? null,
+      impact: result.evidence?.impact ?? null,
+      capabilityGapsHit: result.evidence?.capabilityGapsHit ?? [],
     });
   }
 

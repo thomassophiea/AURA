@@ -14,6 +14,8 @@
 import crypto from 'node:crypto';
 import { fetchXcc, requestXcc } from '../validationEngine/xccClient.js';
 import { verifyValidationToken } from './validationToken.js';
+import { assessVerification } from './verificationEngine.js';
+import { RECONCILE } from './stateReconciler.js';
 import { canonicalizeIntent } from '../validationEngine/wlanConfigValidator.js';
 import { computePlanHash } from './validationToken.js';
 
@@ -331,6 +333,41 @@ export async function provisionWlan({
   else if (!anyVerifiedBroadcasting) status = 'degraded';
   else status = 'completed';
 
+  // The same evidence, expressed as the explicit five-rung ladder.
+  //
+  // `status` above collapses five genuinely different outcomes into one word,
+  // and the word it picks cannot distinguish "the AP is carrying it" from "we
+  // never asked" — both land on `degraded`. The ladder keeps them apart, and
+  // makes rung 5 visible as NOT RUN rather than absent: nothing here re-measures
+  // whether the people who complained are better off, and a change is not
+  // finished until something does.
+  const ladder = assessVerification({
+    subject: `WLAN ${payload.ssid ?? payload.serviceName}`,
+    acceptance: { ok: true, status: created.status ?? 201 },
+    reconciliation: {
+      verdict: nameMismatch || anySilentDrop ? RECONCILE.NOT_APPLIED : RECONCILE.ALIGNED,
+      rows: [
+        ...(nameMismatch ? [{ attribute: 'ssid', verdict: RECONCILE.NOT_APPLIED }] : []),
+        ...(anySilentDrop ? [{ attribute: 'radioIndices', verdict: RECONCILE.NOT_APPLIED }] : []),
+      ],
+      // Neither has an operational read-back on this platform, so neither may
+      // be reported as verified however cleanly the write returned.
+      unverifiable: ['security', 'radioIndices'],
+    },
+    deviceState: {
+      carrying: verificationInconclusive ? null : anyVerifiedBroadcasting,
+      apsChecked: sampleAps.length,
+      // `waitFn(waitMs)` has already run, so a negative reading here is a real
+      // failure rather than an AP that has not pulled configuration yet.
+      settled: true,
+    },
+    // Rung 5 is deliberately left unmeasured rather than assumed: proving users
+    // improved needs a before/after population, which a create-WLAN flow does
+    // not have.
+    impactBefore: null,
+    impactAfter: null,
+  });
+
   return {
     status,
     serviceId: payload.id,
@@ -338,6 +375,8 @@ export async function provisionWlan({
     readBack: { nameMismatch, dot1dPortNumber: readBack.dot1dPortNumber },
     profileResults,
     verification,
+    /** REQUEST ACCEPTED -> ... -> USER EXPERIENCE, with the rung it stopped at. */
+    ladder,
     notes: [
       ...profileResults.flatMap((r) => (r.dropped ?? []).length
         ? [`${r.name}: 6 GHz radio(s) [${r.dropped.join(',')}] skipped — WPA2-PSK is not valid on 6 GHz (use WPA3-SAE or OWE).`]

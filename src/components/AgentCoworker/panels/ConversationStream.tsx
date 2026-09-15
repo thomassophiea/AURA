@@ -15,6 +15,8 @@ import type { AgentMessage } from '../agentTypes';
 import { CortexAnswerCard } from '@/cortex/components/CortexAnswerCard';
 import { CortexProgress } from '@/cortex/components/CortexProgress';
 import { CortexEvidencePanel } from './CortexEvidencePanel';
+import { CortexScopeBar } from '@/cortex/components/CortexScopeBar';
+import { CortexClarifyPrompt } from '@/cortex/components/CortexClarifyPrompt';
 
 interface ConversationStreamProps {
   messages: AgentMessage[];
@@ -32,6 +34,14 @@ interface ConversationStreamProps {
   suggestedPrompts?: string[];
   /** Live agent step label while an investigation runs. */
   cortexActivity?: string | null;
+  /**
+   * Re-ask a question at a scope the operator picked — from a clarification
+   * chip, or from the scope bar on an answer. Optional so the panel still
+   * renders in contexts that cannot re-run a question.
+   */
+  onRescope?: (question: string, override: { siteNames?: string[]; level?: 'fleet' }) => void;
+  /** Sites the operator can switch an answer to. */
+  knownSites?: string[];
 }
 
 const SUGGESTED = [
@@ -56,6 +66,8 @@ export function ConversationStream({
   wirelessStage,
   suggestedPrompts,
   cortexActivity,
+  onRescope,
+  knownSites = [],
 }: ConversationStreamProps) {
   const promptsToShow =
     suggestedPrompts && suggestedPrompts.length > 0 ? suggestedPrompts : SUGGESTED;
@@ -71,6 +83,23 @@ export function ConversationStream({
     navigator.clipboard.writeText(msg.content).catch(() => {});
     setCopiedId(msg.id);
     setTimeout(() => setCopiedId(null), 1500);
+  }
+
+  /**
+   * The question an answer was replying to — the nearest preceding user turn.
+   *
+   * Needed so "all sites" / "just this site" can re-ask the SAME question at a
+   * different scope instead of making the operator retype it. Returns '' when
+   * there is no preceding user turn, and the scope bar renders without the
+   * re-scope chips rather than re-asking an empty question.
+   */
+  function questionFor(msgId: string): string {
+    const idx = messages.findIndex((m) => m.id === msgId);
+    if (idx < 0) return '';
+    for (let i = idx - 1; i >= 0; i -= 1) {
+      if (messages[i].role === 'user') return messages[i].content;
+    }
+    return '';
   }
 
   return (
@@ -116,6 +145,34 @@ export function ConversationStream({
                 >
                   {msg.content}
                 </div>
+              )}
+
+              {/*
+                Scope is stated on every answer, never implied. An estate-wide
+                count read as one site's own is the defect this exists for: the
+                number was true and the reader's conclusion was wrong, with no
+                visible cue that the two did not match.
+              */}
+              {msg.role === 'agent' && msg.cortexEvidence?.scope && (
+                <CortexScopeBar
+                  scope={msg.cortexEvidence.scope}
+                  impact={msg.cortexEvidence.assessment?.impact ?? null}
+                  knownSites={knownSites}
+                  onRescope={
+                    onRescope && questionFor(msg.id)
+                      ? (override) => onRescope(questionFor(msg.id), override)
+                      : undefined
+                  }
+                />
+              )}
+
+              {msg.role === 'agent' && msg.cortexClarification && onRescope && (
+                <CortexClarifyPrompt
+                  clarification={msg.cortexClarification}
+                  onChoose={(override) =>
+                    onRescope(msg.cortexClarification!.originalQuestion, override)
+                  }
+                />
               )}
 
               {msg.role === 'agent' && msg.cortexEvidence && (

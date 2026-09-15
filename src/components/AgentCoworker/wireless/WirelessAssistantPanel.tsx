@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useCortexContext } from '@/contexts/CortexContext';
 import { useWirelessAssistant } from '@/hooks/useWirelessAssistant';
 import { useVoiceInput } from '@/hooks/useVoiceInput';
@@ -103,6 +103,23 @@ export function WirelessAssistantPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- voice.reset/voice.transcript intentionally tracked via voice.state
   }, [voice.state]);
 
+  /**
+   * Sites an answer can be re-scoped to, learned from answers already on
+   * screen rather than fetched.
+   *
+   * A dedicated round-trip for a list of chips would be a second source of
+   * truth about what sites exist, and it would be wrong whenever the
+   * investigation's own view disagreed with it.
+   */
+  const knownSites = useMemo(() => {
+    const names = new Set<string>();
+    for (const m of cortex.messages) {
+      for (const n of m.cortexEvidence?.scope?.siteNames ?? []) names.add(n);
+      for (const c of m.cortexClarification?.candidates ?? []) names.add(c.value);
+    }
+    return [...names];
+  }, [cortex.messages]);
+
   const inWorkflow = WORKFLOW_ACTIVE_STATES.has(assistant.workflowState);
   const isProvisioning = assistant.workflowState === 'provisioning';
   const canValidate = Boolean(assistant.parsedIntent && assistant.parsedIntent.missingFields.length === 0);
@@ -127,6 +144,11 @@ export function WirelessAssistantPanel() {
               wirelessStage={cortex.wirelessStage}
               suggestedPrompts={cortex.suggestedPrompts}
               cortexActivity={cortex.cortexActivity}
+              // Re-asking at a chosen scope goes straight to the investigation
+              // path and skips scope resolution — the operator has already said
+              // which site they meant, so asking again would loop.
+              onRescope={(question, override) => void cortex.answerAtScope(question, override)}
+              knownSites={knownSites}
             />
           </div>
           {assistant.error && !assistant.parsedIntent && (

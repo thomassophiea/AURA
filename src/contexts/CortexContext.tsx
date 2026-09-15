@@ -35,7 +35,7 @@ import {
   queryCortexWireless,
   investigateWithCortex,
 } from '../services/cortexApiClient';
-import type { CortexEvidence } from '../services/cortexApiClient';
+import type { CortexEvidence, CortexClarification } from '../services/cortexApiClient';
 import type { AgentMessage } from '../components/AgentCoworker/agentTypes';
 import { useCortexHistory, type CortexConversation } from '../hooks/useCortexHistory';
 import type { CortexAvailableAction, CortexInsight, CortexPageContext } from '../types/cortex';
@@ -127,6 +127,18 @@ export interface CortexContextValue {
 
   // Actions
   sendMessage: (message: string) => Promise<void>;
+  /**
+   * Re-run a question at a scope the operator chose — from a clarification
+   * chip, or from the "all sites" / "just this site" control on an answer.
+   *
+   * Separate from `sendMessage` because it must NOT re-resolve scope: the
+   * operator has already said which building they meant, and asking again is a
+   * loop.
+   */
+  answerAtScope: (
+    question: string,
+    override: { siteNames?: string[]; level?: 'fleet' }
+  ) => Promise<void>;
   confirmWirelessAction: (question: string, confirmationToken: string) => Promise<void>;
   refreshPageAnalysis: () => Promise<void>;
   /**
@@ -381,7 +393,16 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
    * falling back to a weaker pipeline that would answer without evidence.
    */
   const runCortexInvestigation = useCallback(
-    async (message: string, ctx: CortexPageContext | undefined): Promise<boolean> => {
+    async (
+      message: string,
+      ctx: CortexPageContext | undefined,
+      /**
+       * Set when the operator answered a clarification by clicking a site chip.
+       * It skips scope resolution server-side, so the same question cannot come
+       * back asking again.
+       */
+      scopeOverride?: { siteNames?: string[]; level?: 'fleet' }
+    ): Promise<boolean> => {
       const scope = {
         siteName: ctx?.siteName,
         ssid: ctx?.ssid,
@@ -398,11 +419,13 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
       let answer: string | null = null;
       let evidence: CortexEvidence | null = null;
       let hardError: string | null = null;
+      let clarification: CortexClarification | null = null;
       const activity: string[] = [];
 
       try {
         await investigateWithCortex(message, {
           scope,
+          scopeOverride,
           history,
           model: getSelectedCortexModel(),
           // An explicit adversarial review. The server ALSO escalates the model
@@ -430,6 +453,9 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
             const n = Number((e as { iterations?: number } | undefined)?.iterations);
             if (Number.isFinite(n)) lastIterationsRef.current = n;
           },
+          onClarify: (c) => {
+            clarification = c;
+          },
           onError: (msg) => {
             hardError = msg;
           },
@@ -440,6 +466,23 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
       } finally {
         setCortexActivity(null);
         setWirelessStage(null);
+      }
+
+      // A clarification is a complete, successful turn — it just asks instead of
+      // answering. Falling through to the legacy pipelines here would answer the
+      // ambiguous question anyway and defeat the whole point of asking.
+      if (clarification) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `agent-${Date.now()}`,
+            role: 'agent',
+            content: (clarification as CortexClarification).question,
+            timestamp: new Date(),
+            cortexClarification: clarification as CortexClarification,
+          } as AgentMessage,
+        ]);
+        return true;
       }
 
       if (answer) {
@@ -648,6 +691,33 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
     );
   }, []);
 
+  /**
+   * Re-run a question at a scope the operator chose.
+   *
+   * Goes straight to the investigation path with `scopeOverride`, bypassing
+   * resolution. The legacy fallbacks are deliberately NOT tried: they have no
+   * concept of scope at all, so falling through to them would answer at a scope
+   * the operator just took the trouble to specify.
+   */
+  const answerAtScope = useCallback(
+    async (question: string, override: { siteNames?: string[]; level?: 'fleet' }) => {
+      const label = override.siteNames?.length
+        ? `${question} (at ${override.siteNames.join(', ')})`
+        : `${question} (across all sites)`;
+      setMessages((prev) => [
+        ...prev,
+        { id: `user-${Date.now()}`, role: 'user', content: label, timestamp: new Date() },
+      ]);
+      setIsThinking(true);
+      try {
+        await runCortexInvestigation(question, cortexContextRef.current, override);
+      } finally {
+        setIsThinking(false);
+      }
+    },
+    [runCortexInvestigation]
+  );
+
   // ============================================
   // Workspace controls
   // ============================================
@@ -734,6 +804,7 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
       isThinking,
       wirelessStage,
       sendMessage,
+      answerAtScope,
       confirmWirelessAction,
       refreshPageAnalysis,
       clearConversation,
@@ -765,6 +836,7 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
       isThinking,
       wirelessStage,
       sendMessage,
+      answerAtScope,
       confirmWirelessAction,
       refreshPageAnalysis,
       clearConversation,

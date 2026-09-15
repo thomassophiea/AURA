@@ -10,7 +10,7 @@
 // wlanProvisioningEngine.js, typed in src/types/wirelessAssistant.ts.
 
 import type { CortexWirelessAnswer } from '@/cortex/types';
-import type { CortexEvidence } from '@/services/cortexApiClient';
+import type { CortexEvidence, CortexClarification } from '@/services/cortexApiClient';
 
 export type WorkspaceSize = 'compact' | 'standard' | 'expanded';
 // pixel widths:            480         640           860
@@ -47,6 +47,15 @@ export interface AgentMessage {
   cortexEvidence?: CortexEvidence;
   /** The human-readable steps taken, in order, for the activity trail. */
   cortexActivity?: string[];
+  /**
+   * Cortex needs one thing before it can answer.
+   *
+   * Carried on a message so the chips render in the transcript where the
+   * question was asked. Set only when a guess would have misled — an ambiguous
+   * site name, or a page scope matching no telemetry, where filtering would
+   * have produced an empty result that reads like good news.
+   */
+  cortexClarification?: CortexClarification;
 }
 
 export const WORKSPACE_WIDTHS: Record<WorkspaceSize, number> = {

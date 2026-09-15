@@ -157,6 +157,41 @@ export interface CortexLedgerEntry {
   suspiciousFields?: number;
 }
 
+/** What the tools were actually filtered to. */
+export interface CortexScope {
+  level: 'entity' | 'site' | 'fleet';
+  siteNames: string[] | null;
+  reason: string;
+  source: string;
+}
+
+/** Who is affected, measured — not parsed out of the prose. */
+export interface CortexImpact {
+  affected: number;
+  total: number | null;
+  unit: string;
+  basis: string;
+}
+
+/**
+ * The runtime's own verdict on the investigation.
+ *
+ * Rendered in preference to anything the answer text claims: confidence here is
+ * computed from the evidence ledger, so a fluent paragraph cannot outrank the
+ * calls that produced it.
+ */
+export interface CortexAssessment {
+  confidence: string | null;
+  primaryDomain: string | null;
+  impact: CortexImpact | null;
+  plumbingChecked: boolean;
+  plumbingClean: boolean | null;
+  independentSources: string[];
+  failedReads: string[];
+  capabilityGapsHit: string[];
+  standard: Record<string, { answered: boolean; reason?: string; detail?: string; value?: unknown }>;
+}
+
 export interface CortexEvidence {
   ledger: CortexLedgerEntry[];
   iterations: number;
@@ -167,6 +202,24 @@ export interface CortexEvidence {
   audit: Array<{ severity: string; detail: string }>;
   capabilityGaps: number;
   model: string;
+  assessment?: CortexAssessment | null;
+  scope?: CortexScope;
+}
+
+/**
+ * Cortex needs one thing from the operator before it can answer.
+ *
+ * Emitted BEFORE any provider call, so a clarification costs nothing. It only
+ * ever fires when guessing would mislead — an ambiguous site name, or a page
+ * scope that matches no telemetry and would otherwise filter to an empty
+ * result that reads like good news.
+ */
+export interface CortexClarification {
+  question: string;
+  originalQuestion: string;
+  candidates: Array<{ label: string; value: string }>;
+  allOption: { label: string; value: string };
+  unresolved: string[];
 }
 
 export interface CortexInvestigationHandlers {
@@ -174,6 +227,7 @@ export interface CortexInvestigationHandlers {
   onActivity?: (label: string, tool: string) => void;
   onAnswer?: (text: string) => void;
   onEvidence?: (evidence: CortexEvidence) => void;
+  onClarify?: (clarification: CortexClarification) => void;
   onError?: (message: string, recoverable: boolean) => void;
 }
 
@@ -195,6 +249,7 @@ export async function investigateWithCortex(
     signal,
     redQueen = false,
     priorIterations = 0,
+    scopeOverride,
     ...handlers
   }: CortexInvestigationHandlers & {
     scope?: Record<string, string | undefined>;
@@ -203,6 +258,12 @@ export async function investigateWithCortex(
     signal?: AbortSignal;
     /** Adversarial review of the diagnosis already on screen. */
     redQueen?: boolean;
+    /**
+     * The operator's answer to a clarification. Sent when they pick a site
+     * chip; it SKIPS scope resolution entirely, so the same question cannot
+     * come back asking again.
+     */
+    scopeOverride?: { siteNames?: string[]; level?: 'fleet' };
     /**
      * How many iterations the PREVIOUS investigation in this conversation
      * burned. The server escalates to the deep tier when a prior pass used most
@@ -215,7 +276,15 @@ export async function investigateWithCortex(
   const resp = await fetch('/api/cortex/investigate', {
     method: 'POST',
     headers: buildHeaders(),
-    body: JSON.stringify({ question, scope, history, model, redQueen, priorIterations }),
+    body: JSON.stringify({
+      question,
+      scope,
+      history,
+      model,
+      redQueen,
+      priorIterations,
+      scopeOverride,
+    }),
     signal,
   });
 
@@ -261,6 +330,7 @@ export async function investigateWithCortex(
     if (event === 'activity') handlers.onActivity?.(payload.label, payload.tool);
     else if (event === 'answer') handlers.onAnswer?.(payload.text);
     else if (event === 'evidence') handlers.onEvidence?.(payload as CortexEvidence);
+    else if (event === 'clarify') handlers.onClarify?.(payload as CortexClarification);
     else if (event === 'error') handlers.onError?.(payload.message, Boolean(payload.recoverable));
   };
 

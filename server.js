@@ -35,6 +35,8 @@ import { createDiagnosticTools, TOOL_ACTIVITY } from './server/cortex/diagnostic
 import { runInvestigation, auditAnswer } from './server/cortex/investigationAgent.js';
 import { selectModel, classifyInvestigationIntent } from './server/cortex/modelPolicy.js';
 import { proposeRemediation } from './server/cortex/remediationBridge.js';
+import { resolveScope, buildClarification } from './server/cortex/scopeResolver.js';
+import { recordGapsFromInvestigation, gapReport } from './server/cortex/apiGapCatalog.js';
 import { sessionFromRequest } from './server/cortex/requestScopedSession.js';
 import { requireRole } from './server/identity/identityRouter.js';
 import { audit } from './server/identity/identityStore.js';
@@ -2557,6 +2559,14 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
     // starting one, so "go deeper" can escalate on earned evidence (a prior
     // pass that burned its budget) rather than on wording alone.
     priorIterations = 0,
+    /**
+     * The operator's answer to a clarification, sent when they click a site
+     * chip. It SKIPS resolution entirely — they have told us the scope, so
+     * re-deriving it and possibly asking again would be a loop.
+     *
+     * `{siteNames: [...]}` for a site, `{level: 'fleet'}` for "check all".
+     */
+    scopeOverride = null,
   } = req.body ?? {};
 
   const send = (event, data) => {
@@ -2684,7 +2694,88 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
       console.log('[Cortex] capability probe refreshing in background for', sess.controllerUrl);
     }
 
-    const tools = createDiagnosticTools({ session: sess.session, scope, capabilities });
+    // ── Scope resolution, BEFORE any provider call. ─────────────────────────
+    //
+    // Deterministic and server-side, for the reason modelPolicy is: the model
+    // must not be the thing that decides which building an answer is about.
+    // Two defects this closes, both of which were silent:
+    //   - the UI's site never reached a tool, so a site-scoped question was
+    //     answered fleet-wide and presented as the site's own number;
+    //   - a site name that matched no telemetry filtered to zero rows, and
+    //     zero rows read as "no problems here".
+    let resolvedScope;
+    if (scopeOverride && typeof scopeOverride === 'object') {
+      resolvedScope = {
+        level: Array.isArray(scopeOverride.siteNames) && scopeOverride.siteNames.length ? 'site' : 'fleet',
+        siteNames: Array.isArray(scopeOverride.siteNames) ? scopeOverride.siteNames.slice(0, 20).map(String) : null,
+        entity: null,
+        candidates: [],
+        needsClarification: false,
+        reason: 'You chose this scope.',
+        unresolved: [],
+        source: 'operator-override',
+      };
+    } else {
+      // The inventory the resolver matches against. Read through the tool
+      // layer's own cache so it costs nothing extra once the investigation
+      // starts, and degrades to an empty catalogue rather than failing — with
+      // no site list the resolver falls back to the estate instead of asking a
+      // question the operator has no way to answer.
+      const inventoryTools = createDiagnosticTools({ session: sess.session, scope: {}, capabilities });
+      let inventory = { sites: [], ssids: [], apNames: [] };
+      try {
+        const [siteRes, wlanRes] = await Promise.all([
+          inventoryTools.listSites.handler({}),
+          inventoryTools.getWlanConfig
+            ? inventoryTools.getWlanConfig.handler({}).catch(() => null)
+            : Promise.resolve(null),
+        ]);
+        const unwrap = (v) => (v && typeof v === 'object' && '__untrusted__' in v ? v.value : v);
+        inventory = {
+          sites: (siteRes?.sites ?? []).map((s) => ({
+            name: unwrap(s.name),
+            hasTelemetry: s.hasTelemetry,
+            apCount: s.apCount,
+            clientCount: s.clientCount,
+          })),
+          ssids: (wlanRes?.wlans ?? wlanRes?.services ?? [])
+            .map((w) => unwrap(w?.ssid))
+            .filter(Boolean),
+          apNames: [],
+        };
+      } catch (err) {
+        console.warn('[Cortex] site inventory unavailable for scope resolution:', err.message);
+      }
+
+      resolvedScope = resolveScope({ question, uiScope: scope, inventory });
+
+      // A genuinely ambiguous scope is ASKED about, not guessed — and the ask
+      // costs no tokens, because it happens before the model is involved.
+      const clarification = buildClarification(resolvedScope, { question });
+      if (clarification) {
+        send('clarify', clarification);
+        audit('cortex.clarify', {
+          actor: req.auraActor,
+          source: req.auraActorSource,
+          target: scope.siteName ?? 'gateway',
+          detail: {
+            question: question.slice(0, 200),
+            reason: resolvedScope.source,
+            unresolved: resolvedScope.unresolved,
+            candidates: clarification.candidates.length,
+          },
+        });
+        return; // `finally` ends the stream.
+      }
+    }
+
+    const tools = createDiagnosticTools({
+      session: sess.session,
+      // The tools are now genuinely bound to the resolved scope. `scope` still
+      // carries the UI's mac/ssid/apSerial for client resolution.
+      scope: { ...scope, siteNames: resolvedScope.siteNames },
+      capabilities,
+    });
 
     // A single rate-limited or retired model must not end the investigation.
     // The free Groq tier is 8,000 TPM and has already exhausted mid-run, and
@@ -2701,6 +2792,7 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
       history: Array.isArray(history) ? history.slice(-12) : [],
       question,
       scope,
+      resolvedScope,
       redQueen,
       effort: chosenEffort,
       activityLabels: TOOL_ACTIVITY,
@@ -2746,7 +2838,33 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
       // implements that action. An unbacked diagnosis returns a refusal rather
       // than a plan.
       remediation: proposeRemediation({ diagnosis: result.answer, ledger: result.ledger }),
+      // What the RUNTIME established, independent of the prose: computed
+      // confidence, measured blast radius, which of the Cortex Standard
+      // questions were answered and why the rest were not. The UI renders
+      // from this, so a confident paragraph cannot outrank its own evidence.
+      assessment: result.evidence ?? null,
+      // What the tools were actually filtered to, so the operator can see it
+      // and change it rather than inferring it from a number.
+      scope: {
+        level: resolvedScope.level,
+        siteNames: resolvedScope.siteNames,
+        reason: resolvedScope.reason,
+        source: resolvedScope.source,
+      },
     });
+
+    // Record what this Gateway could not answer. A refusal is correct behaviour
+    // and completely invisible — no error is raised and nothing upstream counts
+    // it — so "what are customers asking that we cannot answer" has no data
+    // source unless refusals are deliberately written down. Best-effort by
+    // contract: never allowed to fail the answer the operator already has.
+    recordGapsFromInvestigation({
+      question,
+      ledger: result.ledger,
+      controllerKey: sess.controllerUrl,
+      capabilities,
+      entityNames: [scope.siteName, scope.ssid, scope.apName].filter(Boolean),
+    }).catch((err) => console.warn('[Cortex] gap catalogue write failed:', err.message));
 
     audit('cortex.investigate', {
       actor: req.auraActor,
@@ -2771,6 +2889,14 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
         // Record the audit verdict too: a claim the evidence did not support
         // is worth being able to find again after the fact.
         auditFindings: auditAnswer(result.answer, result.ledger).length,
+        // Which sites the answer actually covered. Without this, an audit
+        // entry cannot distinguish "no problems at Site B" from "no problems
+        // anywhere", which is the whole defect this work started from.
+        scopeLevel: resolvedScope.level,
+        scopeSites: resolvedScope.siteNames,
+        scopeSource: resolvedScope.source,
+        computedConfidence: result.evidence?.confidence ?? null,
+        capabilityGapsHit: result.evidence?.capabilityGapsHit ?? [],
       },
     });
   } catch (err) {
@@ -2787,6 +2913,31 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
 
 app.post('/api/cortex/tool-call', requireAuth, jsonParser, (_req, res) => {
   res.status(501).json({ error: 'Generic tool calling is not exposed to the LLM — see /wireless/intent' });
+});
+
+/**
+ * What customers are asking that this platform cannot answer.
+ *
+ * Product feedback for Ascend / OS ONE, and the only source for it: Cortex
+ * refusing to answer is CORRECT behaviour that raises no error, so nothing else
+ * in the stack counts it. Question text is normalised to a shape before storage
+ * — no MACs, IPs, hostnames or site names — because this is read by product
+ * management, not operations.
+ */
+app.get('/api/cortex/api-gaps', requireAuth, async (req, res) => {
+  try {
+    const sess = sessionFromRequest(req, { defaultControllerUrl: DEFAULT_CONTROLLER_URL ?? '' });
+    const report = await gapReport({
+      limit: Number(req.query.limit) || 50,
+      // Capability varies by firmware, so the same gap can be real on one
+      // Gateway and closed on another. Default to the caller's own.
+      controllerKey: req.query.all === 'true' ? null : (sess.ok ? sess.controllerUrl : null),
+    });
+    res.json(report);
+  } catch (err) {
+    console.error('[Cortex] api gap report failed:', err.message);
+    res.status(500).json({ error: 'Could not read the API gap catalogue.' });
+  }
 });
 
 // ==================== Push-to-talk speech-to-text ====================

@@ -44,6 +44,9 @@ import {
   findVanishedDevices as findVanished,
   CLIENT_HISTORY_UNAVAILABLE,
 } from './historyEvidence.js';
+import { normaliseSiteKey } from './scopeResolver.js';
+import { expandBlastRadius, counterfactual, describeBlastRadius } from './correlationEngine.js';
+import { reconcileWlan, expectationFromPeer, configuredWlanState } from './stateReconciler.js';
 
 /** Per-AP state reads in one backend check. A fleet sweep is not free. */
 const MAX_AP_STATE_READS = 40;
@@ -90,6 +93,9 @@ export const TOOL_ACTIVITY = {
   getMetricHistory: 'Comparing against stored history…',
   getClientHistory: 'Reading this client\'s stored history…',
   findVanishedDevices: 'Checking for devices that have dropped out of inventory…',
+  listSites: 'Reading the site catalogue…',
+  correlateProblem: 'Working out how far this spreads…',
+  reconcileConfiguration: 'Comparing intended, configured and running state…',
 };
 
 /**
@@ -245,6 +251,148 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
       'Do not report zero, none, or healthy.',
   });
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // SITE SCOPE
+  //
+  // `scope` was accepted by this factory and reached exactly two places: client
+  // resolution, and the history source lookup. `scope.siteName` reached NO tool
+  // at all, so a site-scoped question was answered fleet-wide without anyone
+  // being told. The resolver now supplies `scope.siteNames` (canonical,
+  // telemetry-matched names) and the helpers below are how they take effect.
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /** The canonical site names this request is bound to, or null for the estate. */
+  const boundSites = Array.isArray(scope.siteNames) && scope.siteNames.length
+    ? scope.siteNames
+    : scope.siteName
+      ? [scope.siteName]
+      : null;
+
+  const siteKeySet = boundSites ? new Set(boundSites.map(normaliseSiteKey)) : null;
+
+  /**
+   * Filter rows to the bound sites.
+   *
+   * Two departures from the old `r.SiteName === siteName`, and both were
+   * live defects:
+   *
+   * 1. MATCHING IS NORMALISED. `src/App.tsx` fills the UI site name from
+   *    `displayName || name || siteName`, so a label like "Aura Lab" was
+   *    compared against a telemetry value of "AURA_LAB" and matched nothing.
+   *
+   * 2. AN EMPTY RESULT FROM A NON-EMPTY SOURCE IS A FAILURE, NOT A CLEAN BILL.
+   *    Zero rows flowed onward as `clientsWithFindings: 0` and were reported,
+   *    in good faith, as "no problems at that site". The doctrine already says
+   *    an empty poll table means UNCONFIGURED rather than healthy; an empty
+   *    FILTER deserves the same suspicion and nothing was enforcing it.
+   *
+   * @returns {{rows: object[], scoped: boolean, matchedNothing: boolean, available: string[]}}
+   */
+  const applySiteScope = (rows, getSite, { explicit = null } = {}) => {
+    const keys = explicit
+      ? new Set([normaliseSiteKey(explicit)])
+      : siteKeySet;
+    const names = explicit ? [explicit] : boundSites;
+    if (!keys || !names) {
+      return { rows, scoped: false, matchedNothing: false, available: [] };
+    }
+    const available = [...new Set(rows.map((r) => getSite(r)).filter(Boolean))].map(String);
+    const filtered = rows.filter((r) => keys.has(normaliseSiteKey(getSite(r))));
+    return {
+      rows: filtered,
+      scoped: true,
+      matchedNothing: filtered.length === 0 && rows.length > 0,
+      available,
+      names,
+    };
+  };
+
+  /** The payload a scope that matched nothing must return instead of zero. */
+  const scopeMatchedNothing = (what, result) => ({
+    basis: 'unknown',
+    unavailable: true,
+    status: 'scope_matched_nothing',
+    reason:
+      `The site filter "${result.names.join(', ')}" matched none of the ${what} the Gateway ` +
+      `returned. The sites actually present are: ${result.available.slice(0, 20).join(', ') || '(none)'}.`,
+    availableSites: result.available.slice(0, 40),
+    instruction:
+      'This is a SCOPE MISMATCH, not an empty result and not good news. Do NOT report zero ' +
+      'problems, zero clients or a healthy site. Tell the operator the site name did not match ' +
+      'and list the sites that exist.',
+  });
+
+  /** Echoed by every scope-aware tool so the answer can state what it covered. */
+  const scopeApplied = (result) => ({
+    level: result.scoped ? 'site' : 'fleet',
+    siteNames: result.scoped ? result.names : null,
+    describedAs: result.scoped ? result.names.join(', ') : 'all sites',
+  });
+
+  /**
+   * The site catalogue: configuration joined to telemetry.
+   *
+   * `/v3/sites` is the only authoritative list. Everything else in this file
+   * derived sites from client rows, which makes a site with no clients
+   * invisible — and a site with no clients is either idle or entirely broken.
+   */
+  const siteInventory = () =>
+    once('siteinv', async () => {
+      const [cfg, clients, aps] = await Promise.all([
+        evidence.sites().catch(() => ({ ok: false, rows: [], error: 'read threw' })),
+        clientData(),
+        apData(),
+      ]);
+
+      const telemetryNames = clients.ok
+        ? [...new Set(clients.rows.map((r) => r.SiteName).filter(Boolean))]
+        : [];
+      const apNames = aps.ok
+        ? [...new Set(aps.rows.map((a) => a.siteName ?? a.hostSite).filter(Boolean))]
+        : [];
+
+      const byKey = new Map();
+      const add = (name, patch) => {
+        if (!name) return;
+        const key = normaliseSiteKey(name);
+        if (!key) return;
+        const existing = byKey.get(key) ?? {
+          name,
+          key,
+          configured: false,
+          hasTelemetry: false,
+          clientCount: 0,
+          apCount: 0,
+        };
+        byKey.set(key, { ...existing, ...patch, name: existing.configured ? existing.name : patch.name ?? existing.name });
+      };
+
+      for (const s of cfg.rows ?? []) {
+        const name = s?.siteName ?? s?.name;
+        if (name) add(name, { name, configured: true });
+      }
+      for (const name of telemetryNames) {
+        add(name, {
+          name,
+          hasTelemetry: true,
+          clientCount: clients.rows.filter((r) => r.SiteName === name).length,
+        });
+      }
+      for (const name of apNames) {
+        add(name, {
+          name,
+          apCount: aps.rows.filter((a) => (a.siteName ?? a.hostSite) === name).length,
+        });
+      }
+
+      return {
+        ok: cfg.ok || clients.ok || aps.ok,
+        configuredListAvailable: cfg.ok,
+        error: cfg.ok ? null : cfg.error,
+        sites: [...byKey.values()],
+      };
+    });
+
   async function configFor(row) {
     const [svcs, topos] = await Promise.all([services(), topologies()]);
     const service =
@@ -258,6 +406,10 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
   const gap = (capabilityKey) => ({
     basis: 'unknown',
     unavailable: true,
+    // Carried so the API gap catalogue can record WHICH capability an
+    // investigation reached for. Without the key a gap is just a sentence, and
+    // "what can customers ask that we cannot answer" stays unanswerable.
+    capabilityKey,
     reason: capabilities.explainGap(capabilityKey) ?? 'not available on this Gateway',
   });
 
@@ -986,12 +1138,18 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
         const rows = clients.rows;
         const aps = apsRes.rows;
         const unique = dedupeByMac(rows);
-        const scoped = siteName ? unique.filter((r) => r.SiteName === siteName) : unique;
+
+        // The resolved scope is the DEFAULT. A `siteName` argument from the
+        // model is an explicit override and is honoured, but it no longer has
+        // to be supplied for a site-scoped question to be answered as one.
+        const clientScope = applySiteScope(unique, (r) => r.SiteName, { explicit: siteName });
+        if (clientScope.matchedNothing) return scopeMatchedNothing('client telemetry rows', clientScope);
+        const scoped = clientScope.rows;
         const scorable = scoped.filter(isScorableClientRow);
 
+        const apScope = applySiteScope(aps, (a) => a.siteName ?? a.hostSite, { explicit: siteName });
         const byStatus = {};
-        for (const a of aps) {
-          if (siteName && (a.siteName ?? a.hostSite) !== siteName) continue;
+        for (const a of apScope.rows) {
           byStatus[a.status ?? 'unknown'] = (byStatus[a.status ?? 'unknown'] ?? 0) + 1;
         }
 
@@ -1018,7 +1176,10 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
         return observed(
           {
             sitesInTelemetry: [...new Set(unique.map((r) => r.SiteName))].filter(Boolean),
-            scope: siteName ?? 'all sites',
+            scope: clientScope.scoped ? clientScope.names.join(', ') : 'all sites',
+            // Machine-readable, so the answer and the audit can both state what
+            // was actually covered instead of implying it.
+            scopeApplied: scopeApplied(clientScope),
             clientCount: scoped.length,
             scorableClients: scorable.length,
             unscorableRows: scoped.length - scorable.length,
@@ -1048,9 +1209,271 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
               'unscorableRows are telemetry rows with placeholder signal values (idle or stale). ' +
               'They are excluded from scoring rather than reported as broken clients. ' +
               'clientsWithFindings is the authoritative count of clients with a problem — use it ' +
-              'rather than judging the raw numbers yourself.',
+              'rather than judging the raw numbers yourself. Every count here covers ' +
+              `${clientScope.scoped ? clientScope.names.join(', ') : 'ALL SITES on this Gateway'} — say which when you report it.`,
           },
           'flex(MuTable) + /v1/aps/query'
+        );
+      },
+    },
+
+    // ────────────────────────────────────────────────────────────────────
+    listSites: {
+      risk: RISK.READ,
+      spec: {
+        name: 'listSites',
+        description:
+          'The site catalogue: configured sites joined to live telemetry, with AP and client counts. Use to answer "which sites are there", to pick a site, or before saying a site has no problems — a site with no telemetry is not a healthy site.',
+        parameters: {
+          type: 'object',
+          properties: {
+            reason: { type: 'string', description: 'Optional: why you need the catalogue' },
+          },
+          additionalProperties: false,
+        },
+      },
+      handler: async () => {
+        const inv = await siteInventory();
+        if (!inv.ok) return fetchFailed('the site catalogue', { error: inv.error ?? 'no source responded' });
+
+        const sites = inv.sites.map((s) => ({
+          name: untrusted(s.name),
+          configured: s.configured,
+          hasTelemetry: s.hasTelemetry,
+          apCount: s.apCount,
+          clientCount: s.clientCount,
+          // The distinction the old telemetry-derived list could not make.
+          healthBasis: s.hasTelemetry ? 'observed' : 'unknown',
+        }));
+
+        const silent = sites.filter((s) => s.configured && !s.hasTelemetry);
+
+        return observed(
+          {
+            siteCount: sites.length,
+            sites,
+            configuredListAvailable: inv.configuredListAvailable,
+            silentSites: silent.map((s) => s.name),
+            note:
+              (inv.configuredListAvailable
+                ? 'Configured sites come from /v3/sites; counts come from live telemetry. '
+                : 'The configured site list could not be read, so this covers only sites that appear in telemetry — a site with no clients may be missing entirely. ') +
+              'A site with hasTelemetry=false has NO measurements at all. Report it as "no data", ' +
+              'never as healthy: an idle site and a completely broken one look identical from here.',
+          },
+          '/v3/sites + flex(MuTable) + /v1/aps/query'
+        );
+      },
+    },
+
+    // ────────────────────────────────────────────────────────────────────
+    correlateProblem: {
+      risk: RISK.DIAGNOSTIC,
+      spec: {
+        name: 'correlateProblem',
+        description:
+          'Find the failure boundary: which access point, WLAN, VLAN, band, site or device type the affected clients share, and what separates them from the healthy ones. Use this INSTEAD of describing one client — "42 clients on one VLAN at one site" is the answer, the original complainant is not.',
+        parameters: {
+          type: 'object',
+          properties: {
+            siteName: { type: 'string', description: 'Optional: restrict to one site' },
+            severity: {
+              type: 'string',
+              description: 'Minimum severity to count as affected: critical | warning (default warning)',
+            },
+          },
+          additionalProperties: false,
+        },
+      },
+      handler: async ({ siteName, severity = 'warning' } = {}) => {
+        const clients = await clientData();
+        if (!clients.ok) return fetchFailed('client telemetry', clients);
+        const unique = dedupeByMac(clients.rows);
+        const scopeResult = applySiteScope(unique, (r) => r.SiteName, { explicit: siteName });
+        if (scopeResult.matchedNothing) return scopeMatchedNothing('client telemetry rows', scopeResult);
+
+        const population = scopeResult.rows.filter(isScorableClientRow);
+        const rank = { critical: 3, warning: 2, info: 1 };
+        const floor = rank[severity] ?? 2;
+
+        const scored = population.map((r) => ({
+          row: r,
+          findings: scoreClient(r, { rssSeries: rowsForMac(clients.rows, r.MAC) }),
+        }));
+        const affected = scored
+          .filter((c) => c.findings.some((f) => (rank[f.severity] ?? 0) >= floor))
+          .map((c) => c.row);
+        const healthy = scored.filter((c) => c.findings.length === 0).map((c) => c.row);
+
+        const radius = expandBlastRadius({ affected, population });
+        const diff = counterfactual({ broken: affected, healthy });
+
+        // Which fault classes the affected population carries, so the boundary
+        // is attributed rather than merely located.
+        const taxonomies = {};
+        for (const c of scored) {
+          for (const f of c.findings) {
+            if ((rank[f.severity] ?? 0) < floor) continue;
+            taxonomies[f.taxonomy] = (taxonomies[f.taxonomy] ?? 0) + 1;
+          }
+        }
+
+        return observed(
+          {
+            scopeApplied: scopeApplied(scopeResult),
+            affectedCount: affected.length,
+            populationCount: population.length,
+            healthyCount: healthy.length,
+            blastRadius: {
+              verdict: radius.verdict,
+              boundary: radius.boundary
+                ? { ...radius.boundary, value: untrusted(radius.boundary.value) }
+                : null,
+              candidates: radius.candidates.map((c) => ({ ...c, value: untrusted(c.value) })),
+              note: radius.note,
+            },
+            counterfactual: {
+              comparable: diff.comparable,
+              differences: diff.differences.map((d) => ({ ...d, value: untrusted(d.value) })),
+              note: diff.note,
+            },
+            taxonomies,
+            headline: describeBlastRadius(radius),
+            note:
+              'A shared attribute counts only when it is common among the affected AND rare among ' +
+              'the healthy. An attribute every client already has (one SSID on the whole Gateway) ' +
+              'is discarded however complete its coverage. Fewer than three affected clients ' +
+              'returns no verdict at all.',
+          },
+          'flex(MuTable) + findingsEngine'
+        );
+      },
+    },
+
+    // ────────────────────────────────────────────────────────────────────
+    reconcileConfiguration: {
+      risk: RISK.DIAGNOSTIC,
+      spec: {
+        name: 'reconcileConfiguration',
+        description:
+          'Compare a WLAN across EXPECTED, CONFIGURED and OBSERVED state. Answers "is this configured the way we think, and is it actually running that way" — and catches the dominant failure of this Gateway, where a write is accepted, returns success, and is silently discarded. Optionally compares against the same WLAN at a working site.',
+        parameters: {
+          type: 'object',
+          properties: {
+            ssid: { type: 'string', description: 'The SSID to reconcile' },
+            expectedVlan: { type: ['integer', 'null'], description: 'Optional: the VLAN it SHOULD be on' },
+            compareToSite: {
+              type: ['string', 'null'],
+              description: 'Optional: a site where this WLAN works, used as the expectation',
+            },
+          },
+          required: ['ssid'],
+          additionalProperties: false,
+        },
+      },
+      handler: async ({ ssid, expectedVlan = null, compareToSite = null } = {}) => {
+        const [svcRes, topoRes, profRes, apsRes, clients] = await Promise.all([
+          serviceData(),
+          topologyData(),
+          profileData(),
+          apData(),
+          clientData(),
+        ]);
+        if (!svcRes.ok) return fetchFailed('the WLAN list', svcRes);
+        if (!topoRes.ok) return fetchFailed('the topology list', topoRes);
+
+        const matching = svcRes.rows.filter((s) => String(s.ssid) === String(ssid));
+        if (!matching.length) {
+          return {
+            basis: 'observed',
+            status: 'not_found',
+            reason: `No WLAN on this Gateway broadcasts the SSID "${ssid}".`,
+            knownSsids: [...new Set(svcRes.rows.map((s) => untrusted(s.ssid)).filter(Boolean))].slice(0, 40),
+          };
+        }
+        // Several WLANs may share one SSID — never resolve this silently.
+        if (matching.length > 1) {
+          return {
+            basis: 'observed',
+            status: 'ambiguous',
+            reason:
+              `${matching.length} separate WLAN configuration objects broadcast the SSID "${ssid}". ` +
+              'A WLAN is a configuration object and an SSID is a broadcast name; resolve WHICH WLAN ' +
+              'before reporting or changing anything.',
+            candidates: matching.map((s) => ({
+              id: s.id,
+              serviceName: untrusted(s.serviceName ?? s.name),
+              topologyId: s.defaultTopology,
+            })),
+          };
+        }
+
+        const service = matching[0];
+
+        // Expectation, in descending strength: an explicit intent, then a
+        // working peer, then none — and "none" is stated rather than filled in
+        // from the configuration, which would make the comparison self-confirming.
+        let expected = {};
+        let expectedSource = null;
+        if (Number.isFinite(expectedVlan)) {
+          expected = { vlan: expectedVlan };
+          expectedSource = 'the VLAN you stated';
+        } else if (compareToSite) {
+          const peerClients = clients.ok
+            ? dedupeByMac(clients.rows).filter(
+                (r) => normaliseSiteKey(r.SiteName) === normaliseSiteKey(compareToSite)
+              )
+            : [];
+          const peerVlans = [...new Set(peerClients.filter((r) => String(r.SSID) === String(ssid)).map((r) => r.Vlan).filter((v) => v != null))];
+          if (peerVlans.length === 1) {
+            ({ expected, expectedSource } = expectationFromPeer(
+              { ...configuredWlanState(service, { topologies: topoRes.rows }), vlan: peerVlans[0] },
+              { peerLabel: `${ssid} as it runs at ${compareToSite}` }
+            ));
+          } else {
+            expectedSource = null;
+          }
+        }
+
+        const apRows = apsRes.ok ? apsRes.rows : [];
+        const result = reconcileWlan({
+          ssid,
+          service,
+          topologies: topoRes.rows,
+          profiles: profRes.ok ? profRes.rows : [],
+          apRows,
+          clientRows: clients.ok ? dedupeByMac(clients.rows) : [],
+          expected,
+          expectedSource,
+        });
+
+        return observed(
+          {
+            subject: untrusted(result.subject),
+            verdict: result.verdict,
+            summary: result.summary,
+            hasExpectation: result.hasExpectation,
+            expectedSource,
+            rows: result.rows.map((r) => ({
+              attribute: r.attribute,
+              verdict: r.verdict,
+              expected: r.expected ?? null,
+              configured: r.configured ?? null,
+              observed: r.observed ?? null,
+              detail: r.detail,
+              note: r.note,
+            })),
+            unverifiable: result.unverifiable,
+            note:
+              'Three columns, and the differences between them mean different things. ' +
+              'expected != configured is drift — the configuration itself changed. ' +
+              'configured != observed is a write that was accepted and silently dropped, which ' +
+              'is this Gateway\'s dominant failure mode. All three agreeing is also a result: ' +
+              'if users are still suffering, stop rewriting this configuration. ' +
+              'Attributes listed in `unverifiable` have NO operational read-back on this ' +
+              'platform, so a change to them cannot be proven to have landed.',
+          },
+          '/v1/services + /v1/topologies + /v3/profiles + /v1/aps/query + flex(MuTable)'
         );
       },
     },

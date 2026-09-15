@@ -489,6 +489,29 @@ export class GatewayEvidence {
     return { ok: true, baselines, error: null };
   }
 
+  /**
+   * The configured site list.
+   *
+   * The ONLY authoritative answer to "what sites exist". Every other source in
+   * this codebase derives sites from telemetry — `getSiteOverview` builds
+   * `sitesInTelemetry` from client rows — which makes a site with no clients
+   * invisible. That is exactly backwards: a site with no clients is either idle
+   * or completely broken, and the broken case is the one worth finding.
+   *
+   * Capability `config.sites` records this route as available; it is read
+   * defensively anyway, because an empty site list must degrade to "we could
+   * not enumerate sites" rather than "there are no sites".
+   */
+  async sites() {
+    const result = await this.#session.get('/v3/sites');
+    if (!result.ok) {
+      return { ok: false, rows: [], error: result.errorSummary ?? `HTTP ${result.status}` };
+    }
+    const data = result.data;
+    const rows = Array.isArray(data) ? data : Array.isArray(data?.sites) ? data.sites : [];
+    return { ok: true, rows, error: null };
+  }
+
   /** Configuration audit log over a window, with the params it actually needs. */
   async auditLogs(options = {}) {
     const result = await this.#session.get(auditLogPath(options));
