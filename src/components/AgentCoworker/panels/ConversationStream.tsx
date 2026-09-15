@@ -44,7 +44,16 @@ interface ConversationStreamProps {
   knownSites?: string[];
 }
 
-const SUGGESTED = [
+/**
+ * Fallback suggestions for a page type Cortex could not classify.
+ *
+ * Held to the same promise as `CORTEX_SUGGESTED_PROMPTS`: each one must be
+ * answerable by `server/cortex/diagnosticTools.js`. getApHealth covers the
+ * first, getSiteOverview the next two, getRfHealth the last. Exported so
+ * `src/types/cortex.prompts.test.ts` guards this list as well — it is the copy
+ * operators see most often on an unrecognised page.
+ */
+export const SUGGESTED = [
   'How many APs are online?',
   "What's the client count right now?",
   'Show me sites with issues',

@@ -299,65 +299,99 @@ export const CORTEX_PAGE_TYPES: Record<string, CortexPageType> = {
 /**
  * Suggested prompts shown in the empty conversation state.
  *
- * RULES (see memory: "Cortex suggestion discipline"):
- * - Every prompt here must be answerable by the read-only tool catalog in
- *   server/cortex/toolCatalog.js (sites, APs, clients, services, smart RF,
- *   audit logs, client events).
- * - Do not advertise capabilities that don't exist yet: reboot/locate/capture,
- *   AAA/role/profile/drift introspection, multi-window time-series compare,
- *   change-plan generation.
+ * A suggestion is a PROMISE. Clicking one must produce an answer, not a refusal
+ * and not an invented number — so every prompt below is pinned to a tool that
+ * exists on the path the panel actually uses.
+ *
+ * RULES:
+ * - The backing surface is `server/cortex/diagnosticTools.js` (17 read-only
+ *   tools, enumerated by its `TOOL_ACTIVITY` export). That is the PRIMARY path:
+ *   `CortexContext.sendMessage` calls `/api/cortex/investigate` first and only
+ *   falls back to the older `server/cortex/toolCatalog.js` loop when the
+ *   investigation agent is unavailable. Writing prompts against the fallback is
+ *   what put SLE thresholds, Smart RF history and drift alerts on this list —
+ *   none of which the primary path can read.
+ * - Do not advertise what no tool returns: SLE thresholds or SLE categories,
+ *   Smart RF / DFS history, drift alerts, per-SSID client counts, AP downtime
+ *   duration, per-client data rate, roam duration, or the REASON for a deauth,
+ *   an AP reboot or a RADIUS reject. Those are documented absences, not gaps
+ *   waiting to be filled.
+ * - Airtime is measured PER RADIO, not per AP, and `getRfHealth` returns a
+ *   four-way split (own clients / co-channel / non-Wi-Fi / available) rather
+ *   than one "utilization" figure. Ask for the thing the tool returns.
+ * - Vocabulary: Gateway (never controller), WLAN for the configuration object,
+ *   SSID only for the broadcast name.
+ *
+ * Guarded by `src/types/cortex.prompts.test.ts`, which fails if a prompt names
+ * a concept the tool surface cannot answer.
  */
 export const CORTEX_SUGGESTED_PROMPTS: Record<CortexPageType, string[]> = {
+  // getSiteOverview (fleet findings) · getMetricHistory(metricFamily:'sle')
+  // · getRecentChanges(hours:1)
   'service-levels': [
-    'Which sites are below SLE threshold right now? Rank them worst to best.',
-    'Which AP in this network has the highest channel utilization? Show me the top 5.',
-    'What changed in the last hour? Cross-reference audit logs with any site degradation.',
+    'Which sites have clients with problems right now? Rank them worst first, and flag any site with no telemetry at all.',
+    'How does this site compare with the same window yesterday?',
+    'What configuration changed in the last hour, and did anything degrade with it?',
   ],
+  // getSiteOverview (scored worst clients) · getRfHealth (clients per radio,
+  // with band) · getApHealth + getRfHealth
   clients: [
-    'Which clients have RSSI below -75 dBm? Name the AP they are on and the signal.',
-    'Break down clients by band -- how many on 2.4GHz vs 5GHz vs 6GHz?',
-    'Which AP is carrying the most clients right now, and is it overloaded?',
+    'Which clients have the worst signal right now? Name the AP, the WLAN and the RSSI.',
+    'How many clients are on each band -- 2.4, 5 and 6 GHz?',
+    'Which AP is carrying the most clients, and how much airtime is left on its radios?',
   ],
+  // getClientTimeline · diagnoseClient (lifecycle ladder) ·
+  // compareClientToPeers
   'client-detail': [
-    "Walk me through this client's last 10 connection events including any auth failures.",
-    "What is this client's current signal strength, data rate, and which radio it is on?",
-    'Has this client roamed in the last hour? Show me which APs it hit.',
+    "Walk me through this client's timeline -- associations, roams and any authentication failures.",
+    'Where does this client actually fail -- association, authentication, addressing or forwarding?',
+    'Is this just this client, or are its neighbours on the same AP and WLAN affected too?',
   ],
+  // getApHealth (statusCounts) · getRfHealth (airtime + named offenders) ·
+  // findVanishedDevices
   devices: [
-    'Which APs are offline right now? Show serial, site, and how long they have been down.',
-    'Rank APs by channel utilization -- show the top 10 with site and radio stats.',
-    'Which APs triggered smart RF channel changes in the last 24 hours and why?',
+    'Which APs are offline right now? Show serial and site.',
+    'Rank radios by least available airtime -- top 10, and name the co-channel offenders.',
+    'Have any APs dropped out of inventory recently?',
   ],
+  // getRfHealth(apSerial) (radioOff flag) · getApHealth(apSerial) (tunnel
+  // state, channel, power) · getMetricHistory(deviceId, 'ap_report')
   'ap-detail': [
-    'What is the channel utilization on each radio right now? Compare to typical thresholds.',
-    'List every client connected to this AP -- signal strength, band, and data rate.',
-    "Show this AP's smart RF history -- channel changes, power adjustments, DFS events.",
+    'What is the airtime split on each radio right now, and are any radios off the air?',
+    'Is this AP healthy -- status, tunnel state, and what channel and power each radio is on?',
+    "How does this AP's airtime compare with the same window yesterday?",
   ],
+  // getSiteOverview + correlateProblem · listSites (silent sites) ·
+  // getRecentChanges
   insights: [
-    'Which site has the worst SLE performance over the last 7 days? Break down by category.',
-    'Find the top RF trouble spots across all sites -- high utilization, DFS events, noise.',
-    'Correlate config changes from the last 24 hours with any site or client degradation.',
+    'What is wrong on the network right now? Give me the failure boundary, not one client.',
+    'Which sites have no telemetry at all? Those are unknown, not healthy.',
+    'What changed in the last 24 hours, and who made the change?',
   ],
+  // getWlanConfig (security, VLAN, topologyResolves) · getRecentChanges
   configuration: [
-    'List all SSIDs with their security mode, band, and current client count.',
-    'Are any SSIDs running open or WPA2-Personal auth? Flag them as security risks.',
-    'What config changes happened in the last 24 hours and who made them?',
+    'List every WLAN with its security mode, VLAN, and whether its topology resolves.',
+    'Are any WLANs open or WPA2-Personal? Flag them.',
+    'What configuration changed in the last 24 hours, and who made it?',
   ],
+  // getSiteOverview · getSiteOverview + correlateProblem · getRecentChanges
   dashboard: [
-    'Give me a full health brief: site status, AP counts, client counts, any alerts.',
-    'Which site needs my attention most right now and what is wrong with it?',
-    'Are there any active drift alerts or config changes I should know about?',
+    'Give me a health brief: sites, AP status counts, client counts, and which clients have problems.',
+    'Which site needs attention most right now, and what exactly is wrong there?',
+    'What configuration changed in the last 24 hours?',
   ],
+  // getWlanConfig · getWlanConfig · getWlanConfig (topologyResolves)
   wlans: [
-    'Which SSIDs are live right now and how many clients are on each?',
-    'Show me the security config for every SSID -- flag anything weaker than WPA3.',
-    'Which SSID has the highest client load and is the AP carrying it overloaded?',
+    'Which WLANs are enabled, and what security is each one running?',
+    'Flag any WLAN weaker than WPA3.',
+    'Which WLANs have a topology that does not resolve? Those pass no traffic.',
   ],
   roles: [],
   profiles: [],
+  // getSiteOverview · listSites · getCapabilities
   unknown: [
-    'Give me a full health brief: site status, AP counts, client counts, any alerts.',
-    'Which site needs my attention most right now and what is wrong with it?',
-    'Are there any active drift alerts or config changes I should know about?',
+    'Give me a health brief: sites, AP status counts, client counts, and which clients have problems.',
+    'Which sites have no telemetry at all? Those are unknown, not healthy.',
+    'What can this Gateway actually report, and what can it not?',
   ],
 };
