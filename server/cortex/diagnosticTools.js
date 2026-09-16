@@ -923,6 +923,20 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
 
         let snr = sig.snr;
         let snrBasis = snr === null ? null : 'measured';
+        // FIRST: the Gateway's own SNR. It does compute one — as an AP-scoped
+        // leaderboard (topClientsBySnr / worstClientsBySnr), never as a
+        // per-client trend, which is why every client-endpoint probe missed it.
+        // A server-computed figure beats arithmetic of mine every time.
+        if (snr === null && row.ApSerial && row.MAC) {
+          const ranked = await evidence.apClientSnr(row.ApSerial).catch(() => null);
+          const mine = ranked?.ok ? ranked.byMac[String(row.MAC).toUpperCase()] : undefined;
+          if (Number.isFinite(mine)) {
+            snr = mine;
+            snrBasis = 'measured: the Gateway\'s own SNR for this client on this AP (topClientsBySnr, dB)';
+          }
+        }
+
+        // ONLY THEN derive it, for a client the leaderboard does not rank.
         if (snr === null && sig.rss !== null && row.ApSerial && row.RadioID) {
           const noise = await evidence.apNoisePerRadio(row.ApSerial).catch(() => null);
           const floor = noise?.ok ? noise.byRadio[String(row.RadioID)] : null;
@@ -985,6 +999,12 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
             // The flex DLRetryAttempts column is 0 for every client on this
             // build; baseliningRetries is a series that actually reports.
             retriesMedian: perf?.retries ?? null,
+            // The retry counter is inert on this build — every point zero,
+            // corroborated by the AP-side ranking. Zero here would read as
+            // "no retries"; it means nothing is counting them.
+            retriesNote: perf?.retriesInert
+              ? 'the retry counter reports zero for every client on this build — not measured, not healthy'
+              : null,
             note: 'null means not measured by the Gateway, not zero and not healthy',
           },
           throughput: {

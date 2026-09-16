@@ -748,3 +748,74 @@ describe('clientPerformance — latency and retries without flex', () => {
     expect(out.error).toBe('boom');
   });
 });
+
+describe('apClientSnr — SNR exists, as an AP leaderboard', () => {
+  // Nine widget-name probes against /report/stations came back empty because
+  // SNR is not on the client resource at all. The Gateway DOES join RSS and
+  // the noise floor — ranked across the clients on one AP, never as a trend.
+  const ranked = {
+    topClientsBySnr: [
+      {
+        reportName: 'Top Clients by SNR',
+        reportType: 'Distribution',
+        unit: 'dB',
+        distributionStats: [
+          { id: 'B8:F7:75:35:20:D7', value: 59.8 },
+          { id: '5A:DA:D9:17:55:71', value: 40.7 },
+        ],
+      },
+    ],
+    worstClientsBySnr: [
+      { distributionStats: [{ id: '40:A3:CC:60:09:19', value: 26.2 }] },
+    ],
+  };
+  const evidenceFor = (result) => new GatewayEvidence({ get: async () => result });
+
+  it('indexes both ends of the ranking by MAC', async () => {
+    const out = await evidenceFor({ ok: true, data: ranked }).apClientSnr('CV012408S-C0078');
+    expect(out.byMac['B8:F7:75:35:20:D7']).toBe(59.8);
+    // The bottom list matters most: asking only for the top would make a
+    // struggling client invisible.
+    expect(out.byMac['40:A3:CC:60:09:19']).toBe(26.2);
+  });
+
+  it('upper-cases the MAC so a lookup cannot miss on case', async () => {
+    const out = await evidenceFor({
+      ok: true,
+      data: { topClientsBySnr: [{ distributionStats: [{ id: 'aa:bb:cc:dd:ee:ff', value: 30 }] }] },
+    }).apClientSnr('S');
+    expect(out.byMac['AA:BB:CC:DD:EE:FF']).toBe(30);
+  });
+
+  it('reports a failed read rather than an empty ranking', async () => {
+    const out = await evidenceFor({ ok: false, status: 500, errorSummary: 'boom' }).apClientSnr('S');
+    expect(out.ok).toBe(false);
+    expect(out.byMac).toEqual({});
+  });
+});
+
+describe('an inert counter is not a healthy reading', () => {
+  it('reports all-zero retries as unmeasured, never as zero', async () => {
+    // 88 points, every one zero, corroborated by the AP-side ranking. The
+    // counter is not running. Zero here would score as "no retries".
+    const data = {
+      baseliningRetries: [
+        { statistics: [{ statName: 'Retries', values: Array.from({ length: 88 }, () => ({ value: '0' })) }] },
+      ],
+    };
+    const out = await new GatewayEvidence({ get: async () => ({ ok: true, data }) }).clientPerformance('M');
+    expect(out.retries).toBeNull();
+    expect(out.retriesInert).toBe(true);
+  });
+
+  it('still reports a genuine retry figure where one exists', async () => {
+    const data = {
+      baseliningRetries: [
+        { statistics: [{ statName: 'Retries', values: [{ value: '0' }, { value: '4' }, { value: '8' }] }] },
+      ],
+    };
+    const out = await new GatewayEvidence({ get: async () => ({ ok: true, data }) }).clientPerformance('M');
+    expect(out.retriesInert).toBe(false);
+    expect(out.retries).toBe(4);
+  });
+});

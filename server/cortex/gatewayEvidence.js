@@ -605,10 +605,16 @@ export class GatewayEvidence {
    *   the flex service is down every latency reading came back "not measured",
    *   which is honest but needlessly blind — this route answers.
    *
-   * - `baseliningRetries` returns a Retries series with its confidence band.
-   *   The standing rule was "DLRetryAttempts is 0 for every client on this
-   *   build, base retry findings on loss". That is true of the flex column and
-   *   not of this widget, which returned 88 points.
+   * - `baseliningRetries` returns a Retries series — and on this build EVERY
+   *   POINT IS ZERO. 88 points, none non-zero, and the AP-side
+   *   `topClientsByRetries` agrees across every client. The counter is INERT,
+   *   not healthy, which confirms the standing "DLRetryAttempts is 0 on this
+   *   build" rule rather than retiring it.
+   *
+   *   So an all-zero window is reported as `null` with `retriesInert: true`,
+   *   never as "0 retries". A dead counter rendered as a good reading is the
+   *   same failure as a null rendered as 0 dB: the number is not the point,
+   *   whether anything measured it is.
    *
    * One call for both, because they are the same request.
    */
@@ -624,15 +630,57 @@ export class GatewayEvidence {
       return values.length ? percentile(values, 50) : null;
     };
 
+    // An all-zero window means the counter is not running, not that the client
+    // had no retries. Reported as unmeasured so nothing scores it as healthy.
+    const { values: retrySeries } = widgetSeries(res.data, 'baseliningRetries', 'Retries');
+    const retriesInert = retrySeries.length > 0 && retrySeries.every((v) => v === 0);
+
     return {
       ok: true,
       wirelessRttMs: pick('averageTcpRoundTripTime', 'Wireless'),
       networkRttMs: pick('averageTcpRoundTripTime', 'Network'),
-      retries: pick('baseliningRetries', 'Retries'),
+      retries: retriesInert ? null : pick('baseliningRetries', 'Retries'),
+      retriesInert,
       // Named so a caller can attribute these rather than implying flex.
       source: 'report(station,[averageTcpRoundTripTime,baseliningRetries])',
       error: null,
     };
+  }
+
+  /**
+   * SNR for every client on one AP — the server-computed value, at last.
+   *
+   * SNR DOES EXIST. It is not a per-client timeseries and it is not on the
+   * client resource at all, which is why nine widget-name probes against
+   * /report/stations came back empty. It is an AP-scoped LEADERBOARD:
+   *
+   *   /v1/report/aps/{serial}?widgetList=topClientsBySnr|all,worstClientsBySnr|all
+   *   -> distributionStats[] of { id: <client MAC>, value: <dB> }
+   *
+   * The Gateway does join RSS and the noise floor — just only here, ranked
+   * across the clients currently on that radio, never exposed as a trend.
+   *
+   * Measured 2026-09-16 on CV012408S-C0078: top 59.8 dB, bottom 26.2 dB.
+   *
+   * Both halves are read because they are two ends of ONE ranking: a client in
+   * neither list is simply mid-table, and asking only for the top would make a
+   * struggling client invisible.
+   */
+  async apClientSnr(serial) {
+    const res = await this.report('ap', serial, ['topClientsBySnr|all', 'worstClientsBySnr|all']);
+    if (!res.ok) return { ok: false, byMac: {}, error: res.error };
+
+    const byMac = {};
+    for (const widget of ['topClientsBySnr', 'worstClientsBySnr']) {
+      const blocks = res.data?.[widget];
+      const block = Array.isArray(blocks) ? blocks[0] : blocks;
+      for (const row of block?.distributionStats ?? []) {
+        const mac = String(row?.id ?? '').toUpperCase();
+        const value = Number(row?.value);
+        if (mac && Number.isFinite(value)) byMac[mac] = value;
+      }
+    }
+    return { ok: true, byMac, unit: 'dB', error: null };
   }
 
   /**
