@@ -709,8 +709,33 @@ export async function runInvestigation({
       })),
     });
 
+    // ── TOOL CALLS IN ONE TURN RUN CONCURRENTLY. ────────────────────────────
+    //
+    // They used to run in a plain sequential loop, each awaiting the last. A
+    // single flex read takes 12-30 s against the lab Gateway, so a turn asking
+    // for four independent reads spent two minutes queueing them and ran out of
+    // wall clock before it ran out of questions — which is exactly what "how is
+    // PrimarySite" did: 15 sources, then `investigation stopped early`.
+    //
+    // Nothing about the BUDGET changes: the same number of calls is admitted,
+    // the same evidence is gathered, the same ledger is written in the same
+    // order. Only the waiting is shared.
+    //
+    // Three phases, because the order of each matters:
+    //   1. ADMIT   sequentially and WITHOUT I/O — budget, authorisation and the
+    //              duplicate guard all depend on the order calls arrive in.
+    //   2. EXECUTE concurrently — the only slow part, and the only part with no
+    //              cross-call dependencies.
+    //   3. RECORD  in the ORIGINAL order — `pushToolResult` pairs each result to
+    //              its tool_call_id, and a provider rejects a turn whose tool
+    //              results do not line up with the calls it made.
+
+    /** @type {{call: object, tool?: object, immediate?: object, label?: string}[]} */
+    const planned = [];
+    let admitted = 0;
+
     for (const call of toolCalls) {
-      if (usage.toolCalls >= lim.maxToolCalls) {
+      if (usage.toolCalls + admitted >= lim.maxToolCalls) {
         stoppedBecause = 'tool_budget_exceeded';
         break;
       }
@@ -723,22 +748,28 @@ export async function runInvestigation({
       //    permission to run it.
       const tool = tools[call.name];
       if (!tool) {
-        pushToolResult(messages, call, {
-          error: `No such tool: ${call.name}. Use only the tools listed in your instructions.`,
+        planned.push({
+          call,
+          immediate: {
+            error: `No such tool: ${call.name}. Use only the tools listed in your instructions.`,
+          },
+          ledgerEntry: { tool: call.name, args: call.arguments, ok: false, error: 'unknown tool' },
         });
-        ledger.push({ tool: call.name, args: call.arguments, ok: false, error: 'unknown tool' });
         continue;
       }
       if (tool.risk !== 'read' && tool.risk !== 'diagnostic') {
         // Belt and braces: nothing in the catalog should be a write, but if one
         // ever is added, the loop refuses it rather than trusting the catalog.
-        pushToolResult(messages, call, {
-          error:
-            'That operation changes configuration and cannot be run from an investigation. ' +
-            'Describe the change instead; it goes through AURA approval.',
+        planned.push({
+          call,
+          immediate: {
+            error:
+              'That operation changes configuration and cannot be run from an investigation. ' +
+              'Describe the change instead; it goes through AURA approval.',
+          },
+          ledgerEntry: { tool: call.name, args: call.arguments, ok: false, error: 'write refused' },
+          warning: `Refused a non-read tool requested by the model: ${call.name}`,
         });
-        ledger.push({ tool: call.name, args: call.arguments, ok: false, error: 'write refused' });
-        warnings.push(`Refused a non-read tool requested by the model: ${call.name}`);
         continue;
       }
       if (seen > lim.maxIdenticalCalls) {
@@ -750,26 +781,55 @@ export async function runInvestigation({
         // discarded it. Nothing is cached, nothing is stale and nothing was
         // dropped; the earlier result is still in this conversation verbatim.
         // Say that instead of implying the data went bad.
-        pushToolResult(messages, call, duplicateCallNote(call.name));
+        planned.push({ call, immediate: duplicateCallNote(call.name) });
         continue;
       }
 
-      const label = activityLabels[call.name] ?? `Running ${call.name}…`;
-      onActivity(label, { tool: call.name });
+      planned.push({ call, tool, label: activityLabels[call.name] ?? `Running ${call.name}…` });
+      admitted += 1;
+    }
 
-      const t0 = Date.now();
-      let result;
-      try {
-        result = await withTimeout(tool.handler(stripNullArgs(call.arguments)), lim.maxToolMs);
-      } catch (err) {
-        result = {
-          basis: 'unknown',
-          status: 'fetch_failed',
-          reason: `The ${call.name} call failed: ${err?.message ?? err}`,
-          instruction: 'This is a failure, not an empty result. Do not report zero or healthy.',
-        };
+    // ── Phase 2: run them together. ─────────────────────────────────────────
+    // Every label is emitted BEFORE the work starts, so the operator sees all
+    // of what is happening at once rather than a queue revealing itself.
+    for (const entry of planned) {
+      if (entry.tool) onActivity(entry.label, { tool: entry.call.name });
+    }
+
+    await Promise.all(
+      planned
+        .filter((entry) => entry.tool)
+        .map(async (entry) => {
+          const t0 = Date.now();
+          try {
+            entry.result = await withTimeout(
+              entry.tool.handler(stripNullArgs(entry.call.arguments)),
+              lim.maxToolMs
+            );
+          } catch (err) {
+            entry.result = {
+              basis: 'unknown',
+              status: 'fetch_failed',
+              reason: `The ${entry.call.name} call failed: ${err?.message ?? err}`,
+              instruction: 'This is a failure, not an empty result. Do not report zero or healthy.',
+            };
+          }
+          entry.durationMs = Date.now() - t0;
+        })
+    );
+
+    // ── Phase 3: record in the order the model asked. ───────────────────────
+    for (const entry of planned) {
+      const { call } = entry;
+
+      if (entry.immediate) {
+        pushToolResult(messages, call, entry.immediate);
+        if (entry.ledgerEntry) ledger.push(entry.ledgerEntry);
+        if (entry.warning) warnings.push(entry.warning);
+        continue;
       }
-      const durationMs = Date.now() - t0;
+
+      const result = entry.result;
       usage.toolCalls += 1;
 
       // Fence anything network-sourced before the model sees it.
@@ -793,7 +853,7 @@ export async function runInvestigation({
         // unmatched site name becomes "no problems found".
         ok: result?.status !== 'fetch_failed' && result?.status !== 'scope_matched_nothing',
         basis: result?.basis ?? null,
-        durationMs,
+        durationMs: entry.durationMs,
         untrustedFieldCount: fenced.length,
         suspiciousFields: hostile.length,
         // A small, structural summary of WHAT came back — findings, lifecycle

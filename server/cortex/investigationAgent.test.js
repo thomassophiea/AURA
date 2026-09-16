@@ -597,3 +597,110 @@ describe('auditAnswer: "not measured" is a report of absence, not a claim', () =
     expect(auditAnswer('The RADIUS server is reachable.', withProbe)).toEqual([]);
   });
 });
+
+describe('tool calls within one turn run concurrently', () => {
+  /** A provider that asks for `calls` on turn one, then answers. */
+  function providerAsking(calls) {
+    let turn = 0;
+    return {
+      generateResponse: async () => {
+        turn += 1;
+        if (turn === 1) {
+          return {
+            toolCalls: calls.map((c, i) => ({ id: `c${i}`, name: c.name, arguments: c.args ?? {} })),
+          };
+        }
+        return { message: 'done' };
+      },
+    };
+  }
+
+  const slowTool = (ms, name) => ({
+    risk: 'read',
+    spec: { name, description: name, parameters: { type: 'object', properties: {}, additionalProperties: false } },
+    handler: async () => {
+      await new Promise((r) => setTimeout(r, ms));
+      return { basis: 'observed', name };
+    },
+  });
+
+  it('takes about as long as the SLOWEST call, not the sum', async () => {
+    // Three 120ms reads: ~120ms concurrently, ~360ms sequentially. This is the
+    // whole point — a site question was spending its wall clock queueing.
+    const tools = { a: slowTool(120, 'a'), b: slowTool(120, 'b'), c: slowTool(120, 'c') };
+    const t0 = Date.now();
+    await runInvestigation({
+      provider: providerAsking([{ name: 'a' }, { name: 'b' }, { name: 'c' }]),
+      model: 'm',
+      tools,
+      capabilities: new CapabilityRegistry(),
+      question: 'q',
+    });
+    const elapsed = Date.now() - t0;
+    expect(elapsed).toBeLessThan(300);
+  });
+
+  it('records results in the order ASKED, not the order they finished', async () => {
+    // The provider pairs each result to its tool_call_id; out-of-order results
+    // are rejected by the API. Slow-first proves ordering is not completion order.
+    const tools = { slow: slowTool(120, 'slow'), fast: slowTool(5, 'fast') };
+    const r = await runInvestigation({
+      provider: providerAsking([{ name: 'slow' }, { name: 'fast' }]),
+      model: 'm',
+      tools,
+      capabilities: new CapabilityRegistry(),
+      question: 'q',
+    });
+    expect(r.ledger.map((e) => e.tool)).toEqual(['slow', 'fast']);
+  });
+
+  it('still refuses a non-read tool without running it', async () => {
+    let ran = false;
+    const tools = {
+      writer: {
+        risk: 'write',
+        spec: { name: 'writer', description: 'w', parameters: { type: 'object', properties: {}, additionalProperties: false } },
+        handler: async () => {
+          ran = true;
+          return {};
+        },
+      },
+    };
+    const r = await runInvestigation({
+      provider: providerAsking([{ name: 'writer' }]),
+      model: 'm',
+      tools,
+      capabilities: new CapabilityRegistry(),
+      question: 'q',
+    });
+    expect(ran).toBe(false);
+    expect(r.ledger[0]).toMatchObject({ tool: 'writer', ok: false, error: 'write refused' });
+  });
+
+  it('still caps the total number of calls', async () => {
+    const tools = Object.fromEntries(
+      ['a', 'b', 'c', 'd'].map((n) => [n, slowTool(1, n)])
+    );
+    const r = await runInvestigation({
+      provider: providerAsking([{ name: 'a' }, { name: 'b' }, { name: 'c' }, { name: 'd' }]),
+      model: 'm',
+      tools,
+      capabilities: new CapabilityRegistry(),
+      question: 'q',
+      limits: { maxToolCalls: 2 },
+    });
+    // Only the admitted ones execute; the rest are not run at all.
+    expect(r.ledger.filter((e) => e.ok).length).toBeLessThanOrEqual(2);
+  });
+
+  it('still reports an unknown tool without failing the turn', async () => {
+    const r = await runInvestigation({
+      provider: providerAsking([{ name: 'nope' }]),
+      model: 'm',
+      tools: { a: slowTool(1, 'a') },
+      capabilities: new CapabilityRegistry(),
+      question: 'q',
+    });
+    expect(r.ledger[0]).toMatchObject({ tool: 'nope', ok: false, error: 'unknown tool' });
+  });
+});
