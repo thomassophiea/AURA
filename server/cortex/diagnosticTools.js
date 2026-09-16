@@ -1174,63 +1174,18 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
       spec: {
         name: 'getSiteRfHealth',
         description:
-          "Which access points are WORST at one site, by the Gateway's own rankings: RF health, SNR, channel utilisation, retries, and the up/down split. Use for \"which AP is the problem here\", \"is this site healthy\", or to attribute a weak service level such as Coverage to specific APs. Takes the site NAME. Ranks every AP at the site, including ones with no clients — which client telemetry cannot see.",
+          "Which access points are WORST at one site, by the Gateway's own rankings: RF health, SNR, channel utilisation, retries, and the up/down split. Use for \"which AP is the problem here\" or \"is this site healthy\". Ranks every AP at the site, including ones with no clients — which client telemetry cannot see.",
         parameters: {
           type: 'object',
           properties: {
-            site: { type: 'string', description: "The site's NAME, as listSites reports it" },
+            siteId: { type: 'string', description: "The site's UUID, not its name" },
             reason: { type: 'string' },
           },
-          required: ['site'],
+          required: ['siteId'],
           additionalProperties: false,
         },
       },
-      handler: async ({ site }) => {
-        // THE MODEL NEVER SEES A SITE UUID, so this took a name it could not
-        // produce and was, in practice, uncallable — which is why a coverage
-        // question went unattributed while the tool that would answer it sat
-        // unused. Resolution happens here for the same reason scopeResolver
-        // exists: the runtime decides which building an answer is about.
-        const wanted = String(site ?? '').trim();
-        if (!wanted) return fetchFailed('the site AP rankings', { error: 'no site given' });
-
-        let siteId = wanted;
-        const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(wanted);
-
-        if (!looksLikeUuid) {
-          const cat = await evidence.sites().catch(() => ({ ok: false, rows: [] }));
-          if (!cat.ok) {
-            return fetchFailed('the site catalogue', { error: cat.error ?? 'could not enumerate sites' });
-          }
-          const norm = (v) => String(v ?? '').trim().toLowerCase();
-          const matches = (cat.rows ?? []).filter(
-            (r) => norm(r.siteName ?? r.name) === norm(wanted)
-          );
-
-          if (matches.length === 0) {
-            // A name matching nothing is NOT an empty world. Reporting health
-            // here is precisely how an unmatched site becomes "no problems".
-            return {
-              basis: 'unknown',
-              status: 'scope_matched_nothing',
-              reason: `No site is named ${JSON.stringify(wanted)} on this Gateway.`,
-              knownSites: (cat.rows ?? []).map((r) => untrusted(r.siteName ?? r.name)).filter(Boolean),
-              instruction:
-                'Do NOT report this site as healthy. The name matched no configured site — pick one ' +
-                'of the known names or say the site could not be found.',
-            };
-          }
-          if (matches.length > 1) {
-            return {
-              basis: 'unknown',
-              status: 'ambiguous_scope',
-              reason: `More than one site is named ${JSON.stringify(wanted)}.`,
-              instruction: 'Ask which one rather than ranking the APs of an arbitrary match.',
-            };
-          }
-          siteId = matches[0].id ?? matches[0].siteId;
-        }
-
+      handler: async ({ siteId }) => {
         const res = await evidence.siteRfHealth(siteId);
         if (!res.ok) return fetchFailed('the site AP rankings', { error: res.error });
 
