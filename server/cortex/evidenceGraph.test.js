@@ -362,3 +362,50 @@ describe('stored state caps confidence', () => {
     expect(classifyConfidence(graph).ceilings.join(' ')).not.toMatch(/stored state/i);
   });
 });
+
+describe('keyReadings — absent is null, never 0', () => {
+  // Observed live 2026-09-16: a client read through the /v1/stations fallback
+  // rendered "SNR 0 dB" and "RFQI 0 / 5" as MEASURED tiles, directly above an
+  // answer that correctly said neither was measured.
+  const readingsFor = (radio, latency = {}, loss = {}) =>
+    digestToolResult('diagnoseClient', { radio, latency, loss }).keyReadings;
+
+  it('keeps an explicitly null reading absent', () => {
+    const r = readingsFor({ rss: -64, snr: null, rfqi: null });
+    expect(r.rss).toBe(-64);
+    expect(r.snr).toBeNull();
+    expect(r.rfqi).toBeNull();
+  });
+
+  it('keeps an empty string absent rather than reading it as zero', () => {
+    expect(readingsFor({ rss: -64, snr: '' }).snr).toBeNull();
+  });
+
+  it('keeps a missing field absent', () => {
+    // /v1/stations carries no SNR or RFQI fields at all.
+    const r = readingsFor({ rss: -64 });
+    expect(r.snr).toBeNull();
+    expect(r.rfqi).toBeNull();
+  });
+
+  it('still reports a genuine zero RFQI, because that is a real worst case', () => {
+    expect(readingsFor({ rss: -86, rfqi: 0 }).rfqi).toBe(0);
+  });
+
+  it('treats the idle-client SNR sentinel as not measured', () => {
+    expect(readingsFor({ rss: -64, snr: -10000 }).snr).toBeNull();
+    expect(readingsFor({ rss: -64, snr: -100 }).snr).toBeNull();
+  });
+
+  it('treats 65535 in any RTT column as not measured, not 65 seconds', () => {
+    const r = readingsFor({ rss: -64 }, { wirelessRttMs: 65535, networkRttMs: 4, dnsRttMs: 65535 });
+    expect(r.wirelessRttMs).toBeNull();
+    expect(r.networkRttMs).toBe(4);
+    expect(r.dnsRttMs).toBeNull();
+  });
+
+  it('still carries real measurements through', () => {
+    const r = readingsFor({ rss: -61, snr: 31, rfqi: 4 }, { networkRttMs: 12 });
+    expect(r).toMatchObject({ rss: -61, snr: 31, rfqi: 4, networkRttMs: 12 });
+  });
+});

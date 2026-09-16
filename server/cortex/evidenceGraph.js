@@ -270,15 +270,45 @@ export function digestToolResult(tool, payload) {
   // Numbers only. No hostname, no SSID, no AP name: the digest is unfenced by
   // design and must never carry network-sourced text.
   if (payload.radio || payload.latency || payload.loss) {
-    const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : null);
+    // ABSENT IS null, NEVER 0.
+    //
+    // `Number(null) === 0` and `Number('') === 0`, both of which are finite, so
+    // a coercion-only check turns a reading the Gateway never made into a
+    // confident "0 dB". Observed live on 2026-09-16: a client read through the
+    // /v1/stations fallback (which carries no SNR or RFQI at all) rendered
+    // "SNR 0 dB" and "RFQI 0 / 5" as MEASURED tiles, directly above an answer
+    // that correctly said neither was measured. The prose was right and the
+    // numbers were invented.
+    //
+    // RFQI 0 is a legitimate worst-case reading, so it is NOT treated as
+    // absent — only genuinely missing values are.
+    const num = (v) => {
+      if (v === null || v === undefined || v === '') return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+
+    // 65535 in any RTT column means NOT MEASURED, not 65 seconds. It is the
+    // most common value in all three.
+    const rtt = (v) => {
+      const n = num(v);
+      return n === null || n === 65535 ? null : n;
+    };
+
+    // An idle client keeps a row with SNR -10000; a radio with no associated
+    // clients reports -100. Neither is a measurement of anything.
+    const snrOf = (v) => {
+      const n = num(v);
+      return n === null || n <= -100 ? null : n;
+    };
     d.keyReadings = {
       rss: num(payload.radio?.rss),
-      snr: num(payload.radio?.snr),
+      snr: snrOf(payload.radio?.snr),
       rfqi: num(payload.radio?.rfqi),
       downlinkLossRatio: num(payload.loss?.downlinkLossRatio),
-      wirelessRttMs: num(payload.latency?.wirelessRttMs ?? payload.latency?.wirelessRTT),
-      networkRttMs: num(payload.latency?.networkRttMs ?? payload.latency?.networkRTT),
-      dnsRttMs: num(payload.latency?.dnsRttMs ?? payload.latency?.dnsRTT),
+      wirelessRttMs: rtt(payload.latency?.wirelessRttMs ?? payload.latency?.wirelessRTT),
+      networkRttMs: rtt(payload.latency?.networkRttMs ?? payload.latency?.networkRTT),
+      dnsRttMs: rtt(payload.latency?.dnsRttMs ?? payload.latency?.dnsRTT),
       hasIpv4: typeof payload.identity?.ipv4 === 'string' ? true : payload.identity?.hasIpv4 ?? null,
     };
   }
