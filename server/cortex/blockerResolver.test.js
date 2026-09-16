@@ -224,3 +224,57 @@ describe('resolveAll', () => {
     expect(needHuman).toHaveLength(1);
   });
 });
+
+describe('against the real lab Gateway shape', () => {
+  // Measured 2026-09-16 against 192.168.100.12: seven sites, four APs at
+  // PrimarySite joined by hostSite, and a GUEST_2026 topology on VLAN 3.
+  // The single-site fixtures above are a simplification; this is the truth.
+  const LAB = {
+    listSites: async () => [
+      { siteName: 'PrimarySite' },
+      { siteName: 'AFC LAB' },
+      { siteName: 'CLONE' },
+      { siteName: 'EAL' },
+      { siteName: 'AURA_LAB' },
+      { siteName: 'EAL-PT-S' },
+      { siteName: 'EAL-PT-N' },
+    ],
+    listAps: async () => [
+      { serialNumber: 'CV012408S-C0102' },
+      { serialNumber: 'CV012408S-C0044' },
+      { serialNumber: 'CV012408S-C0078' },
+      { serialNumber: 'WF022448S-C0023' },
+    ],
+    listTopologies: async () => [
+      { name: 'Bridged at AP untagged', vlanid: 1 },
+      { name: 'v3', vlanid: 3 },
+      { name: 'GUEST_2026', vlanid: 3 },
+      { name: 'v10', vlanid: 10 },
+    ],
+  };
+
+  it('offers the seven real sites rather than guessing one', async () => {
+    const out = await resolveBlockerAutomatically(blockerFor('siteId'), { sources: LAB });
+    expect(out.status).not.toBe('RESOLVED');
+    expect(out.candidateValues).toHaveLength(7);
+    expect(out.candidateValues).toContain('PrimarySite');
+  });
+
+  it('reuses GUEST_2026 rather than inventing a VLAN', async () => {
+    const out = await resolveBlockerAutomatically(blockerFor('vlanId'), {
+      requestedState: { siteName: 'PrimarySite' },
+      sources: LAB,
+    });
+    expect(out.resolution.value).toBe(3);
+    expect(out.resolution.note).toMatch(/GUEST_2026/);
+  });
+
+  it('asks exactly two questions on this Gateway: which site, and how', async () => {
+    const { resolved, needHuman } = await resolveAll(
+      blockersFromMissingFields(['wlanName', 'siteId', 'security.mode']),
+      { workflowType: 'create_wlan', userIntent: 'create a guest network', sources: LAB }
+    );
+    expect(resolved.map((b) => b.requiredInformation)).toEqual(['wlanName']);
+    expect(needHuman.map((b) => b.requiredInformation)).toEqual(['siteId', 'security.mode']);
+  });
+});
