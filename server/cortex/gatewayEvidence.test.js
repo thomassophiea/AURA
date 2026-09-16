@@ -570,3 +570,51 @@ describe('clientRfQuality — RFQI without the flex table', () => {
     expect(out.rfqi).toBe(2);
   });
 });
+
+describe('apNoisePerRadio — the other half of SNR', () => {
+  // There is no SNR field anywhere on this platform. RSS is a CLIENT reading
+  // and the noise floor is a RADIO reading, never joined server-side, which is
+  // why the Gateway's own UI shows no labelled SNR on the client page.
+  const noiseReport = (stats) => ({
+    noisePerRadio: [{ reportName: 'Noise Per Radio', statistics: stats }],
+  });
+  const evidenceFor = (result) => new GatewayEvidence({ get: async () => result });
+
+  it('maps R1/R2/R3 to radio indices with their medians', async () => {
+    const out = await evidenceFor({
+      ok: true,
+      data: noiseReport([
+        { statName: 'R1', unit: 'dBm', values: [{ value: '-100.0' }, { value: '-99.0' }, { value: '-100.0' }] },
+        { statName: 'R2', unit: 'dBm', values: [{ value: '-100.0' }] },
+        { statName: 'R3', unit: 'dBm', values: [{ value: '-96.0' }] },
+      ]),
+    }).apNoisePerRadio('CV012408S-C0078');
+
+    expect(out.ok).toBe(true);
+    expect(out.byRadio['1'].median).toBe(-100);
+    expect(out.byRadio['3'].median).toBe(-96);
+    expect(out.byRadio['1'].samples).toBe(3);
+  });
+
+  it('ignores a statistic that is not a radio', async () => {
+    const out = await evidenceFor({
+      ok: true,
+      data: noiseReport([
+        { statName: 'R1', values: [{ value: '-100' }] },
+        { statName: 'Average', values: [{ value: '-98' }] },
+      ]),
+    }).apNoisePerRadio('S');
+    expect(Object.keys(out.byRadio)).toEqual(['1']);
+  });
+
+  it('reports a failed read rather than an empty noise floor', async () => {
+    const out = await evidenceFor({ ok: false, status: 500, errorSummary: 'boom' }).apNoisePerRadio('S');
+    expect(out.ok).toBe(false);
+    expect(out.byRadio).toEqual({});
+  });
+
+  it('derives the SNR the lab actually measured', () => {
+    // Client at -62 dBm on R2, whose noise floor is -100 dBm.
+    expect(-62 - -100).toBe(38);
+  });
+});

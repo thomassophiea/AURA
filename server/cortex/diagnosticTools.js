@@ -901,6 +901,32 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
           }
         }
 
+        // SNR, DERIVED — because the platform has no SNR field at all.
+        //
+        // This is not a missing widget. SNR's two halves live on two different
+        // resources and are never joined server-side: RSS is a CLIENT reading,
+        // the noise floor is a RADIO reading on the AP's report. The Gateway's
+        // own UI shows no labelled SNR on the client page for the same reason.
+        //
+        // So it is computed, and reported as COMPUTED. A derived figure
+        // presented as a measurement is the sort of quiet overclaim the whole
+        // evidence contract exists to prevent — and the two series have
+        // different time bases, so this is an estimate over the window, not a
+        // reading at an instant.
+        let snr = sig.snr;
+        let snrBasis = snr === null ? null : 'measured';
+        if (snr === null && sig.rss !== null && row.ApSerial && row.RadioID) {
+          const noise = await evidence.apNoisePerRadio(row.ApSerial).catch(() => null);
+          const floor = noise?.ok ? noise.byRadio[String(row.RadioID)] : null;
+          if (floor && Number.isFinite(floor.median)) {
+            snr = Math.round((sig.rss - floor.median) * 10) / 10;
+            snrBasis =
+              `computed: client RSS ${sig.rss} dBm minus the R${row.RadioID} noise floor ` +
+              `${floor.median} dBm (median of ${floor.samples} samples over the window). ` +
+              'The Gateway exposes no SNR field; this is an estimate, not a reading.';
+          }
+        }
+
         return {
           basis: 'observed',
           source: 'flex(MuTable) + report(station,[muEvent,baselining*]) + /v1/services + /v1/topologies',
@@ -927,7 +953,10 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
           },
           radio: {
             rss: sig.rss,
-            snr: sig.snr,
+            snr,
+            // 'measured' when the Gateway supplied it; otherwise the arithmetic
+            // that produced it, so nothing reads a derived figure as a reading.
+            snrBasis,
             rfqi,
             // Set only when RFQI came from the report widget rather than the
             // flex table, so the answer never implies flex produced it.

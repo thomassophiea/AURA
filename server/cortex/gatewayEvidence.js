@@ -597,6 +597,46 @@ export class GatewayEvidence {
   }
 
   /**
+   * The per-radio noise floor for one AP — the other half of SNR.
+   *
+   * THERE IS NO SNR FIELD ANYWHERE ON THIS PLATFORM, and that is not a missing
+   * widget name. SNR is structurally absent because its two halves live on two
+   * different resources and are never joined server-side:
+   *
+   *   RSS   is a CLIENT reading  — /v1/stations/{mac} and baseliningRss
+   *   noise is a RADIO reading   — /v1/report/aps/{serial}, noisePerRadio
+   *
+   * The Gateway's own UI never displays a labelled SNR on the client page for
+   * exactly this reason. An integrator has to correlate the two series.
+   *
+   * `statName` is R1/R2/R3, matching the AP's radio indices (measured
+   * 2026-09-16 on CV012408S-C0078: R1 2.4 GHz -100 dBm, R2 5 GHz -100 dBm,
+   * R3 6 GHz -96 dBm, 89 points each over 3H).
+   */
+  async apNoisePerRadio(serial) {
+    const res = await this.report('ap', serial, ['noisePerRadio|all']);
+    if (!res.ok) return { ok: false, byRadio: {}, error: res.error };
+
+    const byRadio = {};
+    const blocks = res.data?.noisePerRadio;
+    const block = Array.isArray(blocks) ? blocks[0] : blocks;
+    for (const stat of block?.statistics ?? []) {
+      const name = String(stat.statName ?? '');
+      const match = name.match(/^R(\d+)$/i);
+      if (!match) continue;
+      const { values } = widgetSeries(res.data, 'noisePerRadio', stat.statName);
+      if (!values.length) continue;
+      byRadio[match[1]] = {
+        // The median, not the latest: a noise floor is a sustained property,
+        // and one spike should not move an SNR figure.
+        median: percentile(values, 50),
+        samples: values.length,
+      };
+    }
+    return { ok: true, byRadio, error: null };
+  }
+
+  /**
    * The Gateway's own learned baseline envelope for a client. A value outside
    * its own band is the Gateway saying "this is not normal *here*", which is a
    * better anomaly signal than any global threshold we could invent.
