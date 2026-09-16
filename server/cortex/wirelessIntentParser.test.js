@@ -149,3 +149,59 @@ describe('parseWirelessIntent — create_vlan slot fill', () => {
     expect(r.intent.vlanId).toBe(40);
   });
 });
+
+describe('a WLAN name stops at the end of the name', () => {
+  const name = (q) => parseWirelessIntent(q)?.intent?.wlanName;
+  const site = (q) => parseWirelessIntent(q)?.intent?.siteName;
+
+  it('does not take a relative pronoun as the name', () => {
+    // Reported from the plan preview: WLAN name "that", SSID "that".
+    const q = "Add a guest network that's owe to primary site.";
+    expect(name(q)).toBeUndefined();
+    expect(parseWirelessIntent(q).missingFields).toContain('wlanName');
+  });
+
+  it('does not take a prepositional phrase as the name', () => {
+    expect(name('Add a guest network to primary site')).toBeUndefined();
+  });
+
+  it('stops at "at" instead of swallowing the site', () => {
+    expect(name('create an OWE guest wlan called Lobby at PrimarySite')).toBe('Lobby');
+  });
+
+  it('still keeps a legitimate multi-word name', () => {
+    // The character class allows spaces for exactly this, and the fix must not
+    // truncate a real name at its first space.
+    expect(name('create a wlan named "Guest WiFi" at Boston Office with wpa3')).toBe('Guest WiFi');
+    expect(name('create wlan called Guest-WiFi at Boston Office')).toBe('Guest-WiFi');
+  });
+
+  it('asks rather than inventing a name from the word "guest"', () => {
+    // Inferring a name for an object about to be created is worse than asking.
+    const r = parseWirelessIntent('Add a guest network to primary site');
+    expect(r.missingFields).toContain('wlanName');
+  });
+});
+
+describe('site extraction accepts the way operators actually phrase it', () => {
+  const site = (q) => parseWirelessIntent(q)?.intent?.siteName;
+
+  it('reads a site after "to", not only after at/for/in', () => {
+    // Previously unmatched, so the plan preview showed no site while the
+    // operator had named one in the sentence.
+    expect(site('Add a guest network to primary site')).toMatch(/primary/i);
+  });
+
+  it('accepts a lowercase site name when "site" anchors it', () => {
+    expect(site('add an owe wlan to primary site')).toMatch(/primary/i);
+  });
+
+  it('does NOT invent a site from an unanchored lowercase phrase', () => {
+    // "for the guest network" must not yield a site called "guest network".
+    expect(site('create a wlan for the guest network')).toBeUndefined();
+  });
+
+  it('still reads a capitalised site with no "site" suffix', () => {
+    expect(site('create a wlan named "X" at Boston Office')).toBe('Boston Office');
+  });
+});

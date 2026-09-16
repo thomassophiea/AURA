@@ -227,7 +227,16 @@ async function resolveSubjectMac() {
   try {
     const tools = createDiagnosticTools({ session, scope: {}, capabilities });
     const res = await tools.getSiteOverview.handler({});
-    const mac = res?.clients?.[0]?.mac ?? res?.worstClients?.[0]?.mac ?? null;
+    // `worstSignal` matters when the flex report service is down: the tool then
+    // serves clients from /v1/stations, which yields no SNR, so nothing is
+    // SCORABLE and `worstClients` is empty — while 34 clients are associated.
+    // Three client scenarios skipped with "no connected client to diagnose" on
+    // a Gateway full of clients.
+    const mac =
+      res?.clients?.[0]?.mac ??
+      res?.worstClients?.[0]?.mac ??
+      res?.worstSignal?.[0]?.mac ??
+      null;
     if (mac) console.log(`Subject client resolved live: ${mac}\n`);
     else console.log('No connected client found — client-scoped scenarios will run unscoped.\n');
     return mac;

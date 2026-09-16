@@ -392,15 +392,49 @@ export function gradeRespectsComputedConfidence(result, { weight = 3 } = {}) {
   const capped = /INSUFFICIENT EVIDENCE|POSSIBLE/.test(computed);
   if (!capped) return ok('respects-confidence', weight, 'computed level was not capped');
 
-  const overclaims =
-    /\b(confirmed|proven|definitely|certainly|the root cause is|this is caused by|high confidence)\b/i.test(
-      text
-    );
-  return overclaims
+  // SENTENCE-SCOPED, WITH A NEGATION GUARD.
+  //
+  // The first version tested the whole answer for the word "confirmed", which
+  // made a hedge indistinguishable from a claim. Measured on a live run of 29
+  // scenarios: six of the seven hits were negations or wishes —
+  //
+  //   "not confirmed root cause beyond that"
+  //   "No confirmed unhappy APs"
+  //   "cannot be confirmed as applied"
+  //   "what I'd want confirmed before approval"
+  //   "not confirmed — I cannot state clock health"
+  //   "no client is flagged with a confirmed problem"
+  //
+  // — i.e. the grader was penalising exactly the epistemic care it exists to
+  // enforce. Only one was real: "HIGH confidence that the WLAN is not currently
+  // active" against a capped level. An audit that cries wolf stops being read;
+  // this codebase has learned that three times, and a GRADER that cries wolf is
+  // worse, because it makes a green report meaningless.
+  const CLAIM =
+    /\b(confirmed|proven|definitely|certainly|the root cause is|this is caused by|high confidence)\b/i;
+  const HEDGE = new RegExp(
+    [
+      // negated: "not confirmed", "no confirmed X", "cannot be proven", "never proven"
+      String.raw`\b(not|no|never|cannot|can'?t|without|unable to|nor)\b[^.!?]{0,60}\b(confirmed|proven|certainly|definitely)\b`,
+      // wished-for rather than asserted: "want confirmed", "to be confirmed"
+      String.raw`\b(want|wants|wanted|need|needs|needed|require|requires|requiring|awaiting|pending|to be)\b[^.!?]{0,30}\bconfirmed\b`,
+      // hedged adverbials that merely contain the trigger word
+      String.raw`\b(almost|not entirely|far from|hardly|barely)\s+certainly\b`,
+      // reporting the ladder rather than asserting a level
+      String.raw`\b(cannot|can'?t|never)\b[^.!?]{0,40}\bhigh confidence\b`,
+    ].join('|'),
+    'i'
+  );
+
+  const offending = text
+    .split(/(?<=[.!?])\s+/)
+    .filter((s) => CLAIM.test(s) && !HEDGE.test(s));
+
+  return offending.length
     ? bad(
         'respects-confidence',
         weight,
-        `runtime computed a capped level and the answer claims certainty`
+        `runtime computed ${computed} and the answer claims certainty: "${offending[0].trim().slice(0, 90)}"`
       )
     : ok('respects-confidence', weight, 'stayed within the computed level');
 }

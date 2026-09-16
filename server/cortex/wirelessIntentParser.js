@@ -72,11 +72,50 @@ function extractQuoted(input) {
   return matches.map((m) => m.replace(/["“”]/g, '').trim()).filter(Boolean);
 }
 
+/**
+ * Words that end a name rather than belong to one.
+ *
+ * A WLAN name contains no preposition and no relative pronoun, so the first one
+ * encountered ends the capture. Without this the character class — which allows
+ * spaces, for "Guest WiFi" — ran straight on into the rest of the sentence:
+ *
+ *   "add a guest network that's owe to primary site"  -> name "that"
+ *   "add a guest network to primary site"             -> name "to primary site"
+ *   "create a wlan called Lobby at PrimarySite"       -> name "Lobby at PrimarySite"
+ *
+ * All three shipped, and the first is what an operator saw in the plan preview:
+ * WLAN name "that", SSID "that".
+ */
+const NAME_STOPWORDS = new Set([
+  'that', 'which', 'this', 'these', 'those', 'it', 'its',
+  'to', 'at', 'for', 'in', 'on', 'with', 'from', 'by', 'of', 'and', 'or',
+  'the', 'a', 'an', 'using', 'via', 'please', 'called', 'named',
+]);
+
+/**
+ * Keep the leading run of name-ish tokens; reject what is left if it names
+ * nothing.
+ *
+ * Returning null is the right outcome for "add a guest network" — the operator
+ * did not supply a name, `wlanName` joins `missingFields`, and the flow asks.
+ * Inferring "guest" would be inventing a name for an object about to be
+ * created, which is worse than asking.
+ */
+function cleanWlanName(raw) {
+  const kept = [];
+  for (const token of String(raw ?? '').trim().split(/\s+/).filter(Boolean)) {
+    if (NAME_STOPWORDS.has(token.toLowerCase())) break;
+    kept.push(token);
+  }
+  const name = kept.join(' ').trim();
+  return name.length >= 2 ? name : null;
+}
+
 function extractNamedField(input, keywords) {
   // "called Guest", "named Guest-WiFi", "the Guest network"
   const re = new RegExp(`(?:${keywords.join('|')})\\s+(?:called|named)?\\s*["“]?([A-Za-z0-9][A-Za-z0-9 _-]{0,31})["”]?`, 'i');
   const m = input.match(re);
-  return m ? m[1].trim() : null;
+  return m ? cleanWlanName(m[1]) : null;
 }
 
 function extractVlan(input) {
@@ -88,7 +127,18 @@ function extractVlan(input) {
 
 function extractSite(input) {
   // "at Boston Office", "at the Boston site", "for Site Alpha"
-  const m = input.match(/\b(?:at|for|in)\s+(?:the\s+)?([A-Z][A-Za-z0-9][\w'&-]*(?:\s+[A-Z][\w'&-]*){0,3})(?:\s+site)?\b/);
+  // Two forms, and "to" belongs in both: "add a guest network TO primary site"
+  // is how operators phrase it, and omitting the preposition meant the site was
+  // never extracted at all — the plan preview then showed no site while the
+  // operator had named one in the sentence.
+  //
+  // A capitalised name is taken on its own ("at Boston Office"). A lowercase one
+  // is taken ONLY when the word "site" follows it ("to primary site"), because
+  // without that anchor "for the guest network" would yield a site called
+  // "guest network".
+  const m =
+    input.match(/\b(?:at|for|in|to)\s+(?:the\s+)?([A-Z][A-Za-z0-9][\w'&-]*(?:\s+[A-Z][\w'&-]*){0,3})(?:\s+site)?\b/) ??
+    input.match(/\b(?:at|for|in|to)\s+(?:the\s+)?([A-Za-z][\w'&-]*(?:\s+[A-Za-z][\w'&-]*){0,2})\s+site\b/i);
   if (!m) return null;
   return m[1]
     .replace(SITE_TRAILING_NOISE, '') // strip a security/VLAN clause the operator ran on with no separator

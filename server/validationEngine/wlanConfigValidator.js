@@ -18,6 +18,9 @@ import { validateDhcp } from './dhcpValidator.js';
 import { analyzeRfCapacity } from './rfCapacityAnalyzer.js';
 import { aggregateConfidence } from './confidenceAggregator.js';
 import { computePlanHash, signValidationToken } from '../cortex/validationToken.js';
+// Reused rather than re-implemented: one definition of "these two strings name
+// the same site" across the resolver, the tools and this validator.
+import { normaliseSiteKey } from '../cortex/scopeResolver.js';
 
 function toArray(val) {
   return Array.isArray(val?.data) ? val.data : Array.isArray(val) ? val : [];
@@ -143,12 +146,51 @@ export async function validateWlanIntent(intent, opts) {
   // --- Check: ap_scope (block provisioning into a site with zero APs) ---
   if (resolvedSite) {
     try {
-      const aps = toArray(await fetchXcc('/v1/aps', opts));
-      const siteAps = aps.filter((ap) => ap.siteId === resolvedSite.id || ap.siteName === siteName(resolvedSite));
+      // AN AP ROW IDENTIFIES ITS SITE BY `hostSite`, AND BY NOTHING ELSE.
+      //
+      // This filter was `ap.siteId === resolvedSite.id || ap.siteName === …`.
+      // Measured against the live Gateway: `/v1/aps` and `/v1/aps/query` both
+      // return 8 rows, and NEITHER carries `siteId` or `siteName` — the field
+      // is `hostSite`, holding the site NAME. So the filter matched zero rows
+      // on every site on every build, `ap_model_support` could never pass, and
+      // every WLAN creation was blocked with "No APs found — nothing to deploy
+      // to" against a site with eight healthy APs.
+      //
+      // `/v1/aps/query` rather than `/v1/aps` because it also carries `status`,
+      // which lets a site whose APs are all offline be distinguished from a
+      // site that has none — a different problem with a different fix.
+      const aps = toArray(await fetchXcc('/v1/aps/query', opts));
+      const wanted = normaliseSiteKey(siteName(resolvedSite));
+      const siteAps = aps.filter((ap) => {
+        const host = ap.hostSite ?? ap.siteName ?? null;
+        // Normalised: a display label of "Aura Lab" must match a telemetry
+        // value of "AURA_LAB". The scope resolver learned this the same way.
+        if (host && normaliseSiteKey(host) === wanted) return true;
+        return Boolean(resolvedSite.id) && ap.siteId === resolvedSite.id;
+      });
+      const inService = siteAps.filter((ap) => ap.status === 'InService').length;
+
       checks.push(
-        siteAps.length > 0
-          ? { name: 'ap_model_support', result: 'pass', evidence: `${siteAps.length} AP(s) found at '${siteName(resolvedSite)}'.` }
-          : { name: 'ap_model_support', result: 'block', evidence: `No APs found at '${siteName(resolvedSite)}' — nothing to deploy to.` }
+        siteAps.length === 0
+          ? {
+              name: 'ap_model_support',
+              result: 'block',
+              evidence: `GET /v1/aps/query → no AP reports hostSite '${siteName(resolvedSite)}' — nothing to deploy to.`,
+            }
+          : inService === 0
+            ? {
+                // Not a block: the WLAN is still correct to create, and it will
+                // take effect when an AP comes back. Saying "deployed" while
+                // every radio is down would be the dishonest outcome.
+                name: 'ap_model_support',
+                result: 'warn',
+                evidence: `${siteAps.length} AP(s) at '${siteName(resolvedSite)}', but NONE are InService — the WLAN will not go on air until one returns.`,
+              }
+            : {
+                name: 'ap_model_support',
+                result: 'pass',
+                evidence: `${siteAps.length} AP(s) found at '${siteName(resolvedSite)}', ${inService} InService.`,
+              }
       );
     } catch (err) {
       checks.push({ name: 'ap_model_support', result: 'warn', evidence: `Could not enumerate APs: ${err.message}` });
