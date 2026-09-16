@@ -874,6 +874,33 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
           radios.find((r) => r.ApSerial === row.ApSerial && String(r.RadioIndex) === String(row.RadioID)) ?? null;
         const findings = scoreClient(row, { events: timeline.events ?? [], rssSeries, apRadio });
 
+        // RFQI FROM A DIFFERENT SUBSYSTEM WHEN THE FLEX TABLE HAS NONE.
+        //
+        // RFQI decides coverage versus contention, and those have opposite
+        // remedies — so an answer missing it cannot make that call at all. It
+        // was believed to live only in flex, which meant that while the flex
+        // service is down it was reported as simply unobtainable.
+        //
+        // It is not. The Gateway's own client page reads it from the rfQuality
+        // report widget, which answers in under a second WHILE FLEX IS DOWN
+        // (measured 2026-09-16: 90 points over 3H). Only one of the two
+        // subsystems is broken.
+        //
+        // One extra call, and only for a single named client whose RFQI is
+        // genuinely missing — never on the fleet path, which would be one HTTP
+        // request per client.
+        let rfqi = Number.isFinite(Number(row.RFQI)) ? Number(row.RFQI) : null;
+        let rfqiSource = null;
+        if (rfqi === null && row.MAC) {
+          const live = await evidence.clientRfQuality(row.MAC).catch(() => null);
+          if (live?.ok && live.rfqi !== null) {
+            rfqi = live.rfqi;
+            // Named so the answer can say where it came from, and so a reader
+            // is never left thinking flex produced it.
+            rfqiSource = 'report(station,[rfQuality])';
+          }
+        }
+
         return {
           basis: 'observed',
           source: 'flex(MuTable) + report(station,[muEvent,baselining*]) + /v1/services + /v1/topologies',
@@ -901,7 +928,10 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
           radio: {
             rss: sig.rss,
             snr: sig.snr,
-            rfqi: Number.isFinite(Number(row.RFQI)) ? Number(row.RFQI) : null,
+            rfqi,
+            // Set only when RFQI came from the report widget rather than the
+            // flex table, so the answer never implies flex produced it.
+            rfqiSource,
             sustainedRssMedian: percentile(rssSeries, 50),
             sampleCount: rssSeries.length,
           },

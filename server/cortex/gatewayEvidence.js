@@ -547,6 +547,56 @@ export class GatewayEvidence {
   }
 
   /**
+   * LIVE RFQI for one client, from the report widget rather than the flex table.
+   *
+   * WHY THIS EXISTS
+   * ---------------
+   * RFQI was believed to live only in the flex MuTable, so while the flex
+   * service is down (`500 "Exception: null"` at 31 s — a fault that survives a
+   * full appliance reboot) it was reported as unobtainable. That was wrong: the
+   * Gateway's own client page reads it from
+   *
+   *   /v1/stations/{mac}/report?widgetList=rfQuality|all
+   *
+   * which answers in under a second WHILE FLEX IS DOWN — measured 2026-09-16,
+   * 90 points over a 3H window. The two are independent subsystems, and only
+   * one of them is broken.
+   *
+   * This matters more than the other missing readings: RFQI is the
+   * discriminator between coverage and contention, and those have opposite
+   * remedies. An answer without it has hidden its most decisive number.
+   *
+   * `baseliningRFQI` (see clientBaselines) is the Gateway's learned ENVELOPE,
+   * not the live value — the two answer different questions and neither
+   * substitutes for the other.
+   */
+  async clientRfQuality(mac) {
+    const res = await this.report('station', mac, ['rfQuality']);
+    if (!res.ok) return { ok: false, rfqi: null, values: [], error: res.error };
+
+    // 'Unique RFQI' is the statName the Gateway uses; fall back to the first
+    // statistic so a firmware that renames it still reports something.
+    const named = widgetSeries(res.data, 'rfQuality', 'Unique RFQI');
+    const { values, meta } = named.values.length ? named : widgetSeries(res.data, 'rfQuality');
+
+    if (!values.length) {
+      // The widget answered and carried no points. That is "not measured for
+      // this client in this window", which is NOT the same as a failed read.
+      return { ok: true, rfqi: null, values: [], meta, error: null };
+    }
+    return {
+      ok: true,
+      // The most recent point is the live reading; the median is what the
+      // client has actually been living with.
+      rfqi: values[values.length - 1],
+      median: percentile(values, 50),
+      values,
+      meta,
+      error: null,
+    };
+  }
+
+  /**
    * The Gateway's own learned baseline envelope for a client. A value outside
    * its own band is the Gateway saying "this is not normal *here*", which is a
    * better anomaly signal than any global threshold we could invent.

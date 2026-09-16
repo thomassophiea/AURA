@@ -503,3 +503,70 @@ describe('stations() — the live fallback when flex is down', () => {
     expect(res.error).toMatch(/Exception: null/);
   });
 });
+
+describe('clientRfQuality — RFQI without the flex table', () => {
+  // RFQI was believed flex-only, so it was reported unobtainable while the flex
+  // service was down. The Gateway's own client page reads it from the report
+  // widget, which answers in under a second WHILE FLEX IS DOWN.
+  const report = (values) => ({
+    rfQuality: [
+      {
+        reportName: 'RF Quality',
+        reportType: 'Timeseries',
+        statistics: [{ statName: 'Unique RFQI', values }],
+      },
+    ],
+  });
+
+  const evidenceFor = (result) =>
+    new GatewayEvidence({ get: async () => result });
+
+  it('reads the live RFQI and the median from the widget', async () => {
+    const out = await evidenceFor({
+      ok: true,
+      data: report([
+        { timestamp: 1, value: '3.0' },
+        { timestamp: 2, value: '4.0' },
+        { timestamp: 3, value: '5.0' },
+      ]),
+    }).clientRfQuality('AA:BB:CC:DD:EE:FF');
+
+    expect(out.ok).toBe(true);
+    expect(out.rfqi).toBe(5); // most recent
+    expect(out.median).toBe(4);
+    expect(out.values).toHaveLength(3);
+  });
+
+  it('skips the string "null" the Gateway sends for a gap', async () => {
+    const out = await evidenceFor({
+      ok: true,
+      data: report([
+        { timestamp: 1, value: '4.0' },
+        { timestamp: 2, value: 'null' },
+        { timestamp: 3, value: '' },
+      ]),
+    }).clientRfQuality('AA:BB:CC:DD:EE:FF');
+    expect(out.values).toEqual([4]);
+  });
+
+  it('separates "no points" from "the read failed"', async () => {
+    // A widget that answers with an empty series means not measured for this
+    // client in this window. It is not a failed read, and must not be one.
+    const empty = await evidenceFor({ ok: true, data: report([]) }).clientRfQuality('M');
+    expect(empty.ok).toBe(true);
+    expect(empty.rfqi).toBeNull();
+
+    const failed = await evidenceFor({ ok: false, status: 500, errorSummary: 'boom' }).clientRfQuality('M');
+    expect(failed.ok).toBe(false);
+    expect(failed.error).toBe('boom');
+    expect(failed.rfqi).toBeNull();
+  });
+
+  it('falls back to the first statistic if the statName is renamed', async () => {
+    const renamed = {
+      rfQuality: [{ statistics: [{ statName: 'RFQI', values: [{ timestamp: 1, value: '2.0' }] }] }],
+    };
+    const out = await evidenceFor({ ok: true, data: renamed }).clientRfQuality('M');
+    expect(out.rfqi).toBe(2);
+  });
+});
