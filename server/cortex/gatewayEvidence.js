@@ -597,6 +597,99 @@ export class GatewayEvidence {
   }
 
   /**
+   * The per-client event log, with detail `muEvent` does not carry.
+   *
+   * WHY THIS IS NOT `muEvent`
+   * -------------------------
+   * `muEvent` returns four counters — Association, Disassociation, Roaming,
+   * Auth Problem — and nothing about any individual event. This endpoint
+   * returns the events themselves, and their `details` string carries what the
+   * counters never could:
+   *
+   *   "Inside XIQC from AP/Radio[2] to AP/Radio[1] Network[Skynet] FT[None]"
+   *
+   * — the roam's SOURCE and DESTINATION radio, and the Fast Transition state.
+   * `FT[None]` on every roam is the difference between "this client roams a
+   * lot" and "this client pays a full re-authentication on every handoff",
+   * which are different problems with different fixes.
+   *
+   * IT ALSO BREAKS THE 3-HOUR WINDOW
+   * --------------------------------
+   * The flex tables serve `duration=3H` and nothing else, and that limit has
+   * been treated as the platform's. It is not the platform's, it is flex's:
+   * this route ignores the window entirely and returned **10 days** of history
+   * when asked for three hours (measured 2026-09-16). "What changed last week"
+   * is answerable for events even though it is not for telemetry.
+   *
+   * Also carries `smartRfEvents` — SmartRF's own power and channel changes,
+   * with the AP that made them. That is configuration-change evidence for a
+   * radio nobody edited by hand.
+   */
+  async clientEventLog(mac, { hours = 72, now = Date.now() } = {}) {
+    const start = now - Math.round(hours * 3600 * 1000);
+    const path =
+      `/platformmanager/v2/logging/stations/events/query` +
+      `?query=${encodeURIComponent(mac)}&startTime=${start}&endTime=${now}`;
+
+    const result = await this.#session.get(path);
+    if (!result.ok) {
+      return { ok: false, events: [], smartRf: [], error: result.errorSummary ?? `HTTP ${result.status}` };
+    }
+
+    const raw = Array.isArray(result.data?.stationEvents) ? result.data.stationEvents : [];
+    const events = raw
+      .map((e) => {
+        const details = typeof e.details === 'string' ? e.details : '';
+        // Timestamps arrive as STRINGS here, unlike every other route.
+        const ts = Number(e.timestamp);
+        return {
+          timestamp: Number.isFinite(ts) ? ts : null,
+          eventType: e.eventType ?? null,
+          level: e.level ?? null,
+          apName: e.apName ?? null,
+          apSerial: e.apSerial ?? null,
+          ssid: e.ssid ?? null,
+          details,
+          // Parsed out of the detail string so a caller never has to regex it.
+          fastTransition: /FT\[([^\]]*)\]/.exec(details)?.[1] ?? null,
+          fromRadio: /from AP\/Radio\[(\d+)\]/.exec(details)?.[1] ?? null,
+          toRadio: /to AP\/Radio\[(\d+)\]/.exec(details)?.[1] ?? null,
+        };
+      })
+      .sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+
+    // SmartRF alarms arrive nested three deep: alarmTypes[].alarms[].
+    const smartRf = [];
+    for (const group of result.data?.smartRfEvents ?? []) {
+      for (const type of group.alarmTypes ?? []) {
+        for (const alarm of type.alarms ?? []) {
+          smartRf.push({
+            id: type.id ?? null,
+            severity: type.severity ?? null,
+            log: alarm.log ?? null,
+            timestamp: Number(alarm.ts) || null,
+            apName: alarm.apName ?? null,
+            apSerial: alarm.apSerial ?? null,
+          });
+        }
+      }
+    }
+
+    return {
+      ok: true,
+      events,
+      smartRf,
+      // Stated so a caller can say what it actually looked at, rather than
+      // assuming the window it asked for is the window it got.
+      spanHours: events.length
+        ? Math.round(((events[events.length - 1].timestamp - events[0].timestamp) / 3600000) * 10) / 10
+        : 0,
+      requestedHours: hours,
+      error: null,
+    };
+  }
+
+  /**
    * The per-radio noise floor for one AP — the other half of SNR.
    *
    * THERE IS NO SNR FIELD ANYWHERE ON THIS PLATFORM, and that is not a missing

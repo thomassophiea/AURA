@@ -618,3 +618,86 @@ describe('apNoisePerRadio — the other half of SNR', () => {
     expect(-62 - -100).toBe(38);
   });
 });
+
+describe('clientEventLog — the detail muEvent cannot carry', () => {
+  // muEvent returns four counters. This returns the events, and their details
+  // string carries the roam trail and the Fast Transition state.
+  const payload = {
+    stationEvents: [
+      {
+        timestamp: '1788713137087',
+        eventType: 'Roam',
+        level: 'Info',
+        apName: 'AP5020-PVT-03_MESH_ROOT',
+        ssid: 'Skynet',
+        details: 'Inside XIQC from AP/Radio[2] to AP/Radio[1] Network[Skynet] FT[None]',
+      },
+      {
+        timestamp: '1787849137087',
+        eventType: 'Registration',
+        apName: 'AP5020-PVT-02',
+        ssid: 'Skynet',
+        details: 'Radio[2] FT[None]',
+      },
+    ],
+    smartRfEvents: [
+      {
+        alarmTypes: [
+          {
+            id: 'PowerChange',
+            severity: 'Info',
+            alarms: [
+              {
+                log: 'Smart RF Band 6 GHz Radio 3 power changed from 10dBm to 12dBm',
+                ts: 1789405901588,
+                apName: 'AP5020-PVT-02',
+                apSerial: 'CV012408S-C0044',
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+
+  const evidenceFor = (result) => new GatewayEvidence({ get: async () => result });
+
+  it('parses the roam trail and the Fast Transition state out of details', async () => {
+    const out = await evidenceFor({ ok: true, data: payload }).clientEventLog('AA:BB');
+    const roam = out.events.find((e) => e.eventType === 'Roam');
+
+    // FT[None] on every roam is the difference between "roams a lot" and "pays
+    // a full re-auth on every handoff" — different problems, different fixes.
+    expect(roam.fastTransition).toBe('None');
+    expect(roam.fromRadio).toBe('2');
+    expect(roam.toRadio).toBe('1');
+  });
+
+  it('coerces the string timestamps this route uses, and sorts oldest first', async () => {
+    const out = await evidenceFor({ ok: true, data: payload }).clientEventLog('AA:BB');
+    expect(typeof out.events[0].timestamp).toBe('number');
+    expect(out.events[0].timestamp).toBeLessThan(out.events[1].timestamp);
+  });
+
+  it('flattens the three-deep SmartRF alarm nesting', async () => {
+    const out = await evidenceFor({ ok: true, data: payload }).clientEventLog('AA:BB');
+    expect(out.smartRf).toHaveLength(1);
+    expect(out.smartRf[0].id).toBe('PowerChange');
+    expect(out.smartRf[0].log).toMatch(/power changed from 10dBm to 12dBm/);
+  });
+
+  it('reports the span it ACTUALLY got, not the one it asked for', async () => {
+    // This route ignores the window: it returned 10 days when asked for 3 hours.
+    const out = await evidenceFor({ ok: true, data: payload }).clientEventLog('AA:BB', { hours: 3 });
+    expect(out.requestedHours).toBe(3);
+    // Ten days of history for a three-hour request — measured, not hypothetical.
+    expect(out.spanHours).toBeCloseTo(240, 0);
+    expect(out.spanHours).toBeGreaterThan(out.requestedHours);
+  });
+
+  it('reports a failed read rather than an empty event history', async () => {
+    const out = await evidenceFor({ ok: false, status: 500, errorSummary: 'boom' }).clientEventLog('AA:BB');
+    expect(out.ok).toBe(false);
+    expect(out.events).toEqual([]);
+  });
+});

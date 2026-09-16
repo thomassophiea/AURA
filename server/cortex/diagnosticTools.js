@@ -1069,8 +1069,48 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
         },
       },
       handler: async ({ mac }) => {
+        // The platformmanager log is the RICHER source and is tried first.
+        // `muEvent` gives four counters; this gives the events themselves, and
+        // their details carry the roam's source and destination radio plus the
+        // Fast Transition state. It also ignores the 3-hour window — measured
+        // returning 10 days of history for a 3-hour request.
+        const log = await evidence.clientEventLog(mac).catch(() => null);
+        if (log?.ok && log.events.length) {
+          return observed(
+            {
+              eventCount: log.events.length,
+              spanHours: log.spanHours,
+              events: log.events.map((e) => ({
+                at: e.timestamp ? new Date(e.timestamp).toISOString() : null,
+                type: e.eventType,
+                apName: untrusted(e.apName),
+                ssid: untrusted(e.ssid),
+                fastTransition: e.fastTransition,
+                fromRadio: e.fromRadio,
+                toRadio: e.toRadio,
+                details: untrusted(e.details),
+              })),
+              // SmartRF's own power and channel changes: configuration-change
+              // evidence for a radio nobody edited by hand.
+              smartRfChanges: log.smartRf.map((a) => ({
+                at: a.timestamp ? new Date(a.timestamp).toISOString() : null,
+                kind: a.id,
+                severity: a.severity,
+                apName: untrusted(a.apName),
+                log: untrusted(a.log),
+              })),
+              note:
+                'Every roam carries its source and destination radio and its FT state. FT[None] on every ' +
+                'roam means a full re-authentication per handoff, which is a different problem from roaming ' +
+                'often. This source is NOT capped at 3 hours — read spanHours before describing the period.',
+            },
+            '/platformmanager/v2/logging/stations/events/query'
+          );
+        }
+
+        // Fall back to the counters, and say that is what they are.
         const res = await evidence.clientTimeline(mac);
-        if (!res.ok) return { ...gap('client.timeline'), error: res.error };
+        if (!res.ok) return { ...gap('client.timeline'), error: res.error ?? log?.error };
         return observed(
           {
             eventCount: res.events.length,
@@ -1083,8 +1123,8 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
               details: untrusted(e.details),
             })),
             note:
-              'muEvent is the only client event source on this build; the REST events route is disabled. ' +
-              'It returns whatever history the Gateway holds, which can exceed 3 hours — read the timestamps.',
+              'Fallback source: the richer event log did not answer, so these are muEvent counters only — ' +
+              'no roam trail and no per-event detail. Do not describe a roam path from this.',
           },
           'report(station, mac, ["muEvent"])'
         );
