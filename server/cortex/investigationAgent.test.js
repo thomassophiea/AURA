@@ -704,3 +704,55 @@ describe('tool calls within one turn run concurrently', () => {
     expect(r.ledger[0]).toMatchObject({ tool: 'nope', ok: false, error: 'unknown tool' });
   });
 });
+
+describe('auditAnswer: the model may not raise its own confidence', () => {
+  // The contract's first rule is that confidence is computed, never written,
+  // and the runtime tells the model so in as many words. Observed live
+  // 2026-09-16: computed INSUFFICIENT EVIDENCE, prose said "Confidence: HIGH",
+  // and the audit was empty because no rule existed for it.
+  const ledger = [{ tool: 'getServiceLevels', ok: true }];
+  const computed =
+    'COMPUTED CONFIDENCE: INSUFFICIENT EVIDENCE. This was derived from the evidence ledger ' +
+    'by the runtime, not by you. Use this level; do not raise it.';
+  const audit = (text) => auditAnswer(text, ledger, { computedConfidence: computed });
+
+  it.each([
+    'The RADIUS outage is active. Confidence: HIGH that it is unresolved.',
+    'Confidence: CONFIRMED on the coverage attribution.',
+    'I am highly confident — confidence LIKELY at minimum here.',
+  ])('flags an upgrade: %s', (text) => {
+    const f = audit(text);
+    expect(f.length).toBeGreaterThan(0);
+    expect(f[0].detail).toMatch(/confidence the evidence does not carry/i);
+  });
+
+  it.each([
+    'Confidence: LOW on cause until that is run.',
+    'Confidence: INSUFFICIENT EVIDENCE — no classifier fired.',
+  ])('does not flag a restatement or a downgrade: %s', (text) => {
+    // Reporting LOWER than computed is caution, not a violation. Flagging it
+    // would train exactly the wrong instinct.
+    expect(audit(text)).toEqual([]);
+  });
+
+  it('does not flag a statistical confidence band', () => {
+    expect(audit('The baseline shows a confidence band of 3 to 5.')).toEqual([]);
+  });
+
+  it('does not flag the answer quoting the runtime line back', () => {
+    expect(audit(computed)).toEqual([]);
+  });
+
+  it('allows a high level when the runtime actually computed one', () => {
+    const high = 'COMPUTED CONFIDENCE: CONFIRMED. Use this level; do not raise it.';
+    const f = auditAnswer('Confidence: CONFIRMED on session stability.', ledger, {
+      computedConfidence: high,
+    });
+    expect(f).toEqual([]);
+  });
+
+  it('stays silent when no computed level is supplied', () => {
+    // Back-compatible: callers without the level still get every other rule.
+    expect(auditAnswer('Confidence: HIGH.', ledger)).toEqual([]);
+  });
+});

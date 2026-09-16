@@ -3055,7 +3055,12 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
       warnings: result.warnings,
       // The hallucination audit travels with the answer so the UI can surface
       // a claim the evidence does not support instead of hiding it.
-      audit: auditAnswer(result.answer, result.ledger),
+      // The runtime's own computed level is passed in so the audit can catch
+      // the answer asserting a HIGHER one. Observed live: computed
+      // INSUFFICIENT EVIDENCE, prose said "Confidence: HIGH", audit empty.
+      audit: auditAnswer(result.answer, result.ledger, {
+        computedConfidence: result.evidence?.confidence ?? null,
+      }),
       capabilityGaps: capabilities.unusableKeys().length,
       // The model that actually answered, which may not be the one requested.
       model: result.model ?? model,
