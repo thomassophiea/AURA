@@ -258,6 +258,31 @@ export function digestToolResult(tool, payload) {
     };
   }
 
+  // The readings a client answer turns on, so the UI can show them as VALUES
+  // rather than leaving them buried in prose.
+  //
+  // RFQI is first-class here deliberately. It is half of every
+  // coverage-versus-contention call — healthy signal with low RFQI is
+  // contention, weak signal with low RFQI is coverage, and the remedies are
+  // opposites — so an answer about a client that does not put RFQI in front of
+  // the reader has hidden the most decisive number it has.
+  //
+  // Numbers only. No hostname, no SSID, no AP name: the digest is unfenced by
+  // design and must never carry network-sourced text.
+  if (payload.radio || payload.latency || payload.loss) {
+    const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : null);
+    d.keyReadings = {
+      rss: num(payload.radio?.rss),
+      snr: num(payload.radio?.snr),
+      rfqi: num(payload.radio?.rfqi),
+      downlinkLossRatio: num(payload.loss?.downlinkLossRatio),
+      wirelessRttMs: num(payload.latency?.wirelessRttMs ?? payload.latency?.wirelessRTT),
+      networkRttMs: num(payload.latency?.networkRttMs ?? payload.latency?.networkRTT),
+      dnsRttMs: num(payload.latency?.dnsRttMs ?? payload.latency?.dnsRTT),
+      hasIpv4: typeof payload.identity?.ipv4 === 'string' ? true : payload.identity?.hasIpv4 ?? null,
+    };
+  }
+
   // Cohort size, which caps any claim about a population.
   if (Number.isFinite(payload.peerCount)) d.peerCount = payload.peerCount;
   if (Number.isFinite(payload.cohortSize)) d.peerCount = payload.cohortSize;

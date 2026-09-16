@@ -17,6 +17,9 @@ import { CortexProgress } from '@/cortex/components/CortexProgress';
 import { CortexEvidencePanel } from './CortexEvidencePanel';
 import { CortexScopeBar } from '@/cortex/components/CortexScopeBar';
 import { CortexClarifyPrompt } from '@/cortex/components/CortexClarifyPrompt';
+import { CortexAnswerBody } from '@/cortex/components/CortexAnswerBody';
+import { CortexReadings } from '@/cortex/components/CortexReadings';
+import { keyReadingsFromLedger } from '@/cortex/readings';
 
 interface ConversationStreamProps {
   messages: AgentMessage[];
@@ -146,13 +149,28 @@ export function ConversationStream({
               ) : (
                 <div
                   className={cn(
-                    'text-sm leading-relaxed',
                     msg.role === 'user'
-                      ? 'bg-primary/90 text-primary-foreground rounded-2xl rounded-br-sm px-4 py-2.5'
-                      : 'text-white/85'
+                      ? 'text-sm leading-relaxed bg-primary/90 text-primary-foreground rounded-2xl rounded-br-sm px-4 py-2.5'
+                      : 'space-y-3'
                   )}
                 >
-                  {msg.content}
+                  {msg.role === 'user' ? (
+                    msg.content
+                  ) : (
+                    <>
+                      {/*
+                        Measured values BEFORE the prose. The readings are what
+                        the operator came for, and RFQI in particular decides
+                        contention versus coverage — leaving it inside a
+                        sentence buried the most decisive number in the answer.
+                      */}
+                      {(() => {
+                        const readings = keyReadingsFromLedger(msg.cortexEvidence?.ledger);
+                        return readings ? <CortexReadings readings={readings} /> : null;
+                      })()}
+                      <CortexAnswerBody text={msg.content} />
+                    </>
+                  )}
                 </div>
               )}
 

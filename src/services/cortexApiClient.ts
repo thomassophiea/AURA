@@ -155,6 +155,25 @@ export interface CortexLedgerEntry {
   durationMs?: number;
   untrustedFieldCount?: number;
   suspiciousFields?: number;
+  /**
+   * The runtime's structural summary of what came back (`digestToolResult`).
+   * Numbers and verdicts only — never network-sourced text — which is why the
+   * UI can render from it directly. `keyReadings` is what the readings strip
+   * uses, so a measurement reaches the operator even when the prose omits it.
+   */
+  digest?: {
+    keyReadings?: {
+      rss?: number | null;
+      snr?: number | null;
+      rfqi?: number | null;
+      downlinkLossRatio?: number | null;
+      wirelessRttMs?: number | null;
+      networkRttMs?: number | null;
+      dnsRttMs?: number | null;
+      hasIpv4?: boolean | null;
+    };
+    [key: string]: unknown;
+  };
 }
 
 /** What the tools were actually filtered to. */
