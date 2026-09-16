@@ -10,7 +10,11 @@
 // wlanProvisioningEngine.js, typed in src/types/wirelessAssistant.ts.
 
 import type { CortexWirelessAnswer } from '@/cortex/types';
-import type { CortexEvidence, CortexClarification } from '@/services/cortexApiClient';
+import type {
+  CortexEvidence,
+  CortexClarification,
+  CortexWorkflowEvent,
+} from '@/services/cortexApiClient';
 
 export type WorkspaceSize = 'compact' | 'standard' | 'expanded';
 // pixel widths:            480         640           860
@@ -56,6 +60,16 @@ export interface AgentMessage {
    * have produced an empty result that reads like good news.
    */
   cortexClarification?: CortexClarification;
+
+  /**
+   * A turn in a configuration task — a grouped question, the plan awaiting
+   * confirmation, or the task closing.
+   *
+   * Carried on the message so the decision renders where it was asked, and so
+   * the operator's next reply is read against THIS task rather than parsed as
+   * a brand-new request.
+   */
+  cortexWorkflow?: CortexWorkflowEvent;
 }
 
 export const WORKSPACE_WIDTHS: Record<WorkspaceSize, number> = {

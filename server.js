@@ -40,7 +40,13 @@ import { recordGapsFromInvestigation, gapReport } from './server/cortex/apiGapCa
 import { sessionFromRequest } from './server/cortex/requestScopedSession.js';
 import * as workflowStore from './server/cortex/workflowStore.js';
 import { routeUtterance } from './server/cortex/workflowRouter.js';
-import { handleRoutedTurn } from './server/cortex/workflowEngine.js';
+import {
+  handleRoutedTurn,
+  begin as beginWorkflow,
+  advance as advanceWorkflow,
+  seedFromIntent,
+  buildPreview as buildWorkflowPreview,
+} from './server/cortex/workflowEngine.js';
 import { buildWorkflowSources } from './server/cortex/workflowSources.js';
 import { requireRole } from './server/identity/identityRouter.js';
 import { audit } from './server/identity/identityStore.js';
@@ -2642,6 +2648,88 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
       } catch (err) {
         console.error('[Cortex] workflow turn failed:', err);
         emit('error', { message: 'That answer could not be applied to the current task.' });
+      }
+      return res.end();
+    }
+  }
+
+  // ── A NEW configuration intent starts a task, rather than an answer. ──────
+  //
+  // Diagnosis is a question; configuration is a job of work that may need
+  // several turns and a human decision. Parsing is deterministic and
+  // conservative — only an explicitly mutating intent for an action that is
+  // actually implemented starts a workflow, so "why is AP-12 offline?" and
+  // "how many APs are at PrimarySite?" fall straight through to the
+  // investigation path exactly as before.
+  if (!activeWorkflow) {
+    let parsed = null;
+    try {
+      parsed = parseWirelessIntent(question, {
+        requestedBy: req.auraActor,
+        source: 'text',
+      });
+    } catch (err) {
+      console.warn('[Cortex] intent parse failed, treating as a question:', err.message);
+    }
+
+    const action = parsed?.intent?.action;
+    const startsWork =
+      parsed?.classification === 'mutating' && (action === 'create_wlan' || action === 'create_vlan');
+
+    if (startsWork) {
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache, no-transform',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      });
+      const emit = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+
+      try {
+        // The passphrase is deliberately NOT carried into requestedState; the
+        // engine scrubs it anyway, but it should not travel this far.
+        const { _ephemeralPassword, ...intentFields } = parsed.intent ?? {};
+        void _ephemeralPassword;
+
+        const { workflow, store: backing } = await beginWorkflow({
+          sessionId: workflowSessionId,
+          userIntent: question,
+          workflowType: action,
+          requestedState: intentFields,
+        });
+
+        await seedFromIntent(workflow.id, parsed);
+
+        const outcome = await advanceWorkflow(workflow.id, {
+          sources: buildWorkflowSources(sess.session),
+          pageContext: { siteName: scope?.siteName, pageName: scope?.pageName },
+        });
+
+        emit('workflow', {
+          rule: 'new-configuration-intent',
+          emit: outcome?.question
+            ? 'question'
+            : outcome?.deadEnds?.length
+              ? 'blocked'
+              : 'preview',
+          workflow: outcome?.workflow ?? workflow,
+          question: outcome?.question ?? null,
+          deadEnds: outcome?.deadEnds ?? [],
+          preview: outcome?.question ? null : await buildWorkflowPreview(workflow.id),
+          // Said out loud: a memory-backed workflow does not survive a restart,
+          // and the operator is about to be asked to confirm a network change.
+          durable: backing === 'db',
+        });
+
+        audit('cortex.workflow.start', {
+          actor: req.auraActor,
+          source: req.auraActorSource,
+          target: action,
+          detail: { store: backing, blockers: outcome?.question?.decisions?.length ?? 0 },
+        });
+      } catch (err) {
+        console.error('[Cortex] could not start the configuration task:', err);
+        emit('error', { message: 'That configuration request could not be started.' });
       }
       return res.end();
     }

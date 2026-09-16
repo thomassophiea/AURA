@@ -1736,9 +1736,20 @@ export default function App() {
                 {renderDetailPanel()}
               </div>
 
-              {/* Floating shell bar + slideout — Dev theme only, regardless of
-                  whether an administrator has enabled AURA Cortex org-wide. */}
-              {theme === 'dev' && networkAssistantEnabled && (
+              {/* Floating shell bar + slideout.
+
+                  Gated on the ADMIN TOGGLE ONLY. It used to also require
+                  `theme === 'dev'`, which coupled a feature to a colour scheme:
+                  the dev theme is itself behind a hidden unlock, so an ordinary
+                  operator could not reach Cortex at all — not diagnosis, not
+                  configuration — no matter what an administrator had enabled.
+                  Every "Ask Cortex" entry point elsewhere in the app degraded
+                  silently as a result, because `markCortexAvailable` is only
+                  called when this mounts.
+
+                  Theme is a preference; availability is an entitlement. They
+                  are separate concerns and are now separately controlled. */}
+              {networkAssistantEnabled && (
                 <AgentCoworker
                   onShowClientDetail={handleShowClientDetail}
                   onShowAccessPointDetail={handleShowAccessPointDetail}

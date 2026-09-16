@@ -35,7 +35,12 @@ import {
   queryCortexWireless,
   investigateWithCortex,
 } from '../services/cortexApiClient';
-import type { CortexEvidence, CortexClarification } from '../services/cortexApiClient';
+import type {
+  CortexEvidence,
+  CortexClarification,
+  CortexWorkflowEvent,
+} from '../services/cortexApiClient';
+import { renderWorkflowMessage } from '../lib/cortexWorkflowMessage';
 import type { AgentMessage } from '../components/AgentCoworker/agentTypes';
 import { useCortexHistory, type CortexConversation } from '../hooks/useCortexHistory';
 import type { CortexAvailableAction, CortexInsight, CortexPageContext } from '../types/cortex';
@@ -420,6 +425,7 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
       let evidence: CortexEvidence | null = null;
       let hardError: string | null = null;
       let clarification: CortexClarification | null = null;
+      let workflowTurn: CortexWorkflowEvent | null = null;
       const activity: string[] = [];
 
       try {
@@ -456,6 +462,9 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
           onClarify: (c) => {
             clarification = c;
           },
+          onWorkflow: (w) => {
+            workflowTurn = w;
+          },
           onError: (msg) => {
             hardError = msg;
           },
@@ -466,6 +475,27 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
       } finally {
         setCortexActivity(null);
         setWirelessStage(null);
+      }
+
+      // A configuration turn is also a complete turn. It may ask, preview,
+      // explain or close the task — and in every case falling through to the
+      // legacy wireless pipeline would start the job again from scratch, which
+      // is exactly the restart this workflow layer exists to remove.
+      if (workflowTurn) {
+        const body = renderWorkflowMessage(workflowTurn as CortexWorkflowEvent);
+        if (body) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: `agent-${Date.now()}`,
+              role: 'agent',
+              content: body,
+              timestamp: new Date(),
+              cortexWorkflow: workflowTurn as CortexWorkflowEvent,
+            } as AgentMessage,
+          ]);
+          return true;
+        }
       }
 
       // A clarification is a complete, successful turn — it just asks instead of

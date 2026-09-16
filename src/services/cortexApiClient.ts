@@ -241,12 +241,80 @@ export interface CortexClarification {
   unresolved: string[];
 }
 
+/** One decision Cortex still needs before it can act. */
+export interface CortexDecision {
+  blockerId: string;
+  field: string | null;
+  /** The question as an operator reads it, not a field name. */
+  ask: string;
+  options: (string | number)[];
+  recommended: string | number | null;
+  /** The evidence behind the options, so the ask can be argued with. */
+  why: string[];
+}
+
+/** A field in the plan, with who decided it. */
+export interface CortexPlanField {
+  field: string;
+  value: unknown;
+  /** 'stated' by the operator, 'system' looked up, 'default' chosen by Cortex. */
+  source: 'stated' | 'system' | 'default';
+  note: string | null;
+}
+
+/**
+ * A turn in a configuration task.
+ *
+ * `emit` says what the operator should be shown: a grouped question, the plan
+ * to confirm, an explanation that changed nothing, a recommendation, a
+ * technical dead end, or the task closing.
+ */
+export interface CortexWorkflowEvent {
+  rule: string;
+  emit:
+    | 'question'
+    | 'preview'
+    | 'explanation'
+    | 'recommendation'
+    | 'confirmed'
+    | 'cancelled'
+    | 'blocked'
+    | 'passthrough'
+    | 'error';
+  workflow?: { id: string; status: string; workflowType: string };
+  question?: { decisions: CortexDecision[]; style: 'single' | 'grouped' } | null;
+  preview?: {
+    workflowId: string;
+    intent: string;
+    fields: CortexPlanField[];
+    /** Anything Cortex chose rather than the operator — theirs to veto. */
+    assumptions: CortexPlanField[];
+    warnings: string[];
+  } | null;
+  decisions?: Pick<CortexDecision, 'field' | 'ask' | 'why'>[];
+  recommendations?: {
+    field: string | null;
+    recommended: string | number | null;
+    options: (string | number)[];
+    why: string[];
+    hasDefault: boolean;
+  }[];
+  deadEnds?: { reason: string }[];
+  /**
+   * False when the task is held only in memory. It will not survive a restart,
+   * and the operator is about to be asked to confirm a network change.
+   */
+  durable?: boolean;
+}
+
 export interface CortexInvestigationHandlers {
   /** A human-readable step, e.g. "Looking up client…" — never a function name. */
   onActivity?: (label: string, tool: string) => void;
   onAnswer?: (text: string) => void;
   onEvidence?: (evidence: CortexEvidence) => void;
   onClarify?: (clarification: CortexClarification) => void;
+  /** A configuration task started, advanced, or closed. */
+  onWorkflow?: (event: CortexWorkflowEvent) => void;
   onError?: (message: string, recoverable: boolean) => void;
 }
 
@@ -350,6 +418,7 @@ export async function investigateWithCortex(
     else if (event === 'answer') handlers.onAnswer?.(payload.text);
     else if (event === 'evidence') handlers.onEvidence?.(payload as CortexEvidence);
     else if (event === 'clarify') handlers.onClarify?.(payload as CortexClarification);
+    else if (event === 'workflow') handlers.onWorkflow?.(payload as CortexWorkflowEvent);
     else if (event === 'error') handlers.onError?.(payload.message, Boolean(payload.recoverable));
   };
 
