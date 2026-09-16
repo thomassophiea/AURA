@@ -323,3 +323,42 @@ describe('SOURCE_FAMILY covers every tool', () => {
     expect(SOURCE_FAMILY.getInfrastructureAlerts).not.toBe(SOURCE_FAMILY.getSiteOverview);
   });
 });
+
+describe('stored state caps confidence', () => {
+  const digest = (tool, extra = {}) => ({ tool, ok: true, digest: { tool, family: SOURCE_FAMILY[tool] ?? `tool:${tool}`, basis: 'observed', ...extra } });
+
+  it('exposes which reads came from stored state, with their age', () => {
+    const graph = buildEvidenceGraph([
+      digest('getApHealth', { servedFrom: 'stored', ageSeconds: 300 }),
+      digest('getInfrastructureAlerts'),
+    ]);
+    expect(graph.storedReads).toEqual([{ tool: 'getApHealth', ageSeconds: 300 }]);
+  });
+
+  it('caps a verdict built on stored state at LIKELY', () => {
+    // An AP that went offline after the last collection still reads InService.
+    // A conclusion about "now" from a sample minutes old cannot be CERTAIN,
+    // however internally consistent it looks.
+    //
+    // Findings are required to reach the ceiling logic at all: with none,
+    // classifyConfidence returns INSUFFICIENT from an earlier branch, which is
+    // already the floor and needs no capping.
+    const infraFinding = { findings: [{ severity: 'critical', taxonomy: 'ap tunnel down', domain: 'infra' }] };
+    const graph = buildEvidenceGraph([
+      digest('getApHealth', { servedFrom: 'stored', ageSeconds: 300, ...infraFinding }),
+      digest('getInfrastructureAlerts', infraFinding),
+      digest('getServiceLevels', infraFinding),
+    ]);
+    const c = classifyConfidence(graph);
+    expect(c.ceilings.join(' ')).toMatch(/stored state/i);
+    expect(c.ceilings.join(' ')).toMatch(/300s old/);
+    expect([CONFIDENCE.INSUFFICIENT, CONFIDENCE.POSSIBLE, CONFIDENCE.LIKELY]).toContain(c.level);
+  });
+
+  it('does not mention stored state when every read was live', () => {
+    // The ceiling must not fire on a healthy investigation.
+    const graph = buildEvidenceGraph([digest('getApHealth'), digest('getInfrastructureAlerts')]);
+    expect(graph.storedReads).toEqual([]);
+    expect(classifyConfidence(graph).ceilings.join(' ')).not.toMatch(/stored state/i);
+  });
+});

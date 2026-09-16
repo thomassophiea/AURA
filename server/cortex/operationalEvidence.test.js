@@ -30,6 +30,7 @@ vi.mock('../sentinel/sentinelRepository.js', () => ({
 
 const {
   serviceLevels,
+  storedFleetState,
   infrastructureAlerts,
   infrastructureAnalytics,
   sleStatus,
@@ -250,5 +251,89 @@ describe('infrastructureAnalytics', () => {
     expect(res.ok).toBe(true);
     expect(res.analytics.total).toBe(7);
     expect(res.analytics.noisiestChecks[0].check_name).toBe('radius_reachability');
+  });
+});
+
+describe('storedFleetState — the fallback when the Gateway will not answer', () => {
+  /** One energy_ap_state row as sampleRepository maps it. */
+  function apRow(serial, metricName, value, extra = {}) {
+    return {
+      siteId: 'site-primary',
+      deviceExternalId: serial,
+      radioExternalId: null,
+      metricFamily: 'energy_ap_state',
+      metricName,
+      numericValue: value,
+      unit: null,
+      dimensions: { model: 'AP4000', siteName: 'PrimarySite', source: 'measured', ...extra },
+      qualityState: 'collection_timestamped',
+      observedAt: new Date(NOW - 120_000).toISOString(),
+      collectedAt: new Date(NOW - 120_000).toISOString(),
+    };
+  }
+  function radioRow(serial, radio, metricName, value) {
+    return { ...apRow(serial, metricName, value), radioExternalId: radio };
+  }
+
+  it('rebuilds per-AP status, site, model and client count', async () => {
+    queryLatest.mockResolvedValue([
+      apRow('CV01-0001', 'ap.client_count', 12, { status: 'InService' }),
+      apRow('CV01-0001', 'ap.power_watts', 14.2, { status: 'InService' }),
+      radioRow('CV01-0001', 'CV01-0001:2', 'radio.channel_occupancy', 71),
+      radioRow('CV01-0001', 'CV01-0001:2', 'radio.clients', 12),
+      radioRow('CV01-0001', 'CV01-0001:2', 'radio.admin_enabled', 1),
+    ]);
+
+    const res = await storedFleetState({ sourceIds: ['s1'], now: NOW });
+    expect(res.ok).toBe(true);
+    expect(res.aps).toHaveLength(1);
+    expect(res.aps[0]).toMatchObject({
+      serial: 'CV01-0001',
+      siteName: 'PrimarySite',
+      model: 'AP4000',
+      status: 'InService',
+      clientCount: 12,
+    });
+    expect(res.aps[0].radios[0]).toMatchObject({
+      radio: 'CV01-0001:2',
+      channelOccupancy: 71,
+      clients: 12,
+      adminEnabled: true,
+    });
+    // Age is the whole point: this is the past, and the caller must say so.
+    expect(res.aps[0].ageSeconds).toBe(120);
+    expect(res.meta.ageSeconds).toBe(120);
+  });
+
+  it('takes status only from AP-level rows, never from a radio row', async () => {
+    queryLatest.mockResolvedValue([
+      radioRow('CV01-0002', 'CV01-0002:1', 'radio.tx_power', 17),
+      apRow('CV01-0002', 'ap.client_count', 0, { status: 'Offline' }),
+    ]);
+    const res = await storedFleetState({ sourceIds: ['s1'], now: NOW });
+    expect(res.aps[0].status).toBe('Offline');
+    expect(res.meta.statusCounts).toEqual({ Offline: 1 });
+  });
+
+  it('leaves an unsampled radio admin state null, not disabled', async () => {
+    // A radio nobody measured is not a radio that is switched off.
+    queryLatest.mockResolvedValue([
+      radioRow('CV01-0003', 'CV01-0003:3', 'radio.clients', 4),
+    ]);
+    const res = await storedFleetState({ sourceIds: ['s1'], now: NOW });
+    expect(res.aps[0].radios[0].adminEnabled).toBeNull();
+  });
+
+  it('is a failed read, not an empty fleet, with no monitoring source', async () => {
+    const res = await storedFleetState({ sourceIds: [], now: NOW });
+    expect(res.ok).toBe(false);
+    expect(queryLatest).not.toHaveBeenCalled();
+  });
+
+  it('does not throw into the tool layer when the query fails', async () => {
+    queryLatest.mockRejectedValue(new Error('pool exhausted'));
+    const res = await storedFleetState({ sourceIds: ['s1'], now: NOW });
+    expect(res.ok).toBe(false);
+    expect(res.error).toMatch(/pool exhausted/);
   });
 });

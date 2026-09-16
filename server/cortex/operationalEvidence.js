@@ -213,6 +213,121 @@ export async function serviceLevels({ sourceIds, siteId = null, now = Date.now()
 }
 
 /**
+ * AP and radio state from AURA's database, for when the Gateway will not answer.
+ *
+ * WHAT THIS CAN AND CANNOT REPLACE
+ * -------------------------------
+ * The `energy_ap_state` family is collected from `/v1/aps/query` and carries,
+ * per AP: serial, site (id and name), model, operational status, client count,
+ * and per radio the tx power, admin state, client count and channel occupancy.
+ * That is enough to answer AP-level and radio-level questions when the live
+ * read is failing.
+ *
+ * It replaces NOTHING at client or configuration level, and the tools that use
+ * it must not pretend otherwise:
+ *   - No WLAN, topology, profile, role or AAA configuration is stored anywhere
+ *     in Postgres. getWlanConfig and reconcileConfiguration have no fallback.
+ *   - Per-client state is pseudonymised, opt-in and forward-only, so no stored
+ *     row can be resolved back to "this laptop".
+ *   - The neighbour table, and therefore named co-channel offenders, is not
+ *     stored.
+ *
+ * AND IT IS ALWAYS IN THE PAST. Every row is `collection_timestamped` — the
+ * source supplies no per-field time, so the collector's own clock is the
+ * timestamp. A caller must report the age and must never say "right now".
+ */
+export async function storedFleetState({ sourceIds, siteId = null, now = Date.now() }) {
+  if (!Array.isArray(sourceIds) || sourceIds.length === 0) {
+    return {
+      ok: false,
+      aps: [],
+      meta: {},
+      error: 'No monitoring source matches this Gateway, so nothing has been stored for it.',
+    };
+  }
+
+  let rows;
+  try {
+    rows = await queryLatest({
+      sourceIds,
+      siteId,
+      metricFamily: METRIC_FAMILIES.ENERGY_AP_STATE,
+    });
+  } catch (err) {
+    return { ok: false, aps: [], meta: {}, error: err?.message ?? 'stored state query failed' };
+  }
+
+  const byAp = new Map();
+  let newestObservedAt = null;
+
+  for (const row of rows) {
+    const serial = row.deviceExternalId;
+    if (!serial) continue;
+    if (!byAp.has(serial)) {
+      byAp.set(serial, { serial, siteId: row.siteId ?? null, siteName: null, model: null, status: null, clientCount: null, radios: new Map(), observedAt: null });
+    }
+    const ap = byAp.get(serial);
+    const dims = row.dimensions ?? {};
+    if (dims.siteName) ap.siteName = dims.siteName;
+    if (dims.model) ap.model = dims.model;
+    // `status` rides on the AP-level samples only, never the per-radio ones.
+    if (dims.status && !row.radioExternalId) ap.status = dims.status;
+
+    const observed = row.observedAt ? new Date(row.observedAt).getTime() : null;
+    if (observed && (ap.observedAt === null || observed > ap.observedAt)) ap.observedAt = observed;
+    if (observed && (newestObservedAt === null || observed > newestObservedAt)) {
+      newestObservedAt = observed;
+    }
+
+    const value = Number(row.numericValue);
+    const num = Number.isFinite(value) ? value : null;
+
+    if (!row.radioExternalId) {
+      if (row.metricName === 'ap.client_count') ap.clientCount = num;
+      continue;
+    }
+
+    const key = row.radioExternalId;
+    if (!ap.radios.has(key)) {
+      ap.radios.set(key, { radio: key, txPower: null, adminEnabled: null, clients: null, channelOccupancy: null });
+    }
+    const radio = ap.radios.get(key);
+    if (row.metricName === 'radio.tx_power') radio.txPower = num;
+    // Stored as 1/0. Null stays null: a radio whose admin state was never
+    // sampled is not a disabled radio.
+    if (row.metricName === 'radio.admin_enabled') radio.adminEnabled = num === null ? null : num === 1;
+    if (row.metricName === 'radio.clients') radio.clients = num;
+    if (row.metricName === 'radio.channel_occupancy') radio.channelOccupancy = num;
+  }
+
+  const aps = [...byAp.values()].map((ap) => ({
+    ...ap,
+    radios: [...ap.radios.values()],
+    ageSeconds: ap.observedAt === null ? null : Math.max(0, Math.round((now - ap.observedAt) / 1000)),
+  }));
+
+  const statusCounts = {};
+  for (const ap of aps) {
+    const key = ap.status ?? 'unknown';
+    statusCounts[key] = (statusCounts[key] ?? 0) + 1;
+  }
+
+  return {
+    ok: true,
+    aps,
+    meta: {
+      apCount: aps.length,
+      statusCounts,
+      newestObservedAt: newestObservedAt ? new Date(newestObservedAt).toISOString() : null,
+      ageSeconds:
+        newestObservedAt === null ? null : Math.max(0, Math.round((now - newestObservedAt) / 1000)),
+      sampleCount: rows.length,
+    },
+    error: null,
+  };
+}
+
+/**
  * Current infrastructure probe state and alerts.
  *
  * Synchronous: the engine holds these in memory (Postgres is its write-through

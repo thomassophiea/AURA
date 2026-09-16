@@ -47,6 +47,7 @@ import {
 import { normaliseSiteKey } from './scopeResolver.js';
 import {
   serviceLevels,
+  storedFleetState,
   infrastructureAlerts,
   infrastructureAnalytics,
   SLE_METRIC_ORDER,
@@ -308,6 +309,16 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
    * Service levels come from AURA's own collector via its database, so they are
    * unaffected by a fault in the Gateway's reporting service.
    */
+  /**
+   * When the Gateway is down AND nothing useful is stored. Says which of the
+   * two failed, because "we never collected this" and "the collector is not
+   * running" lead to different fixes.
+   */
+  const NO_STORED_FALLBACK =
+    "AURA's stored fleet state could not serve this either — either the collector has never " +
+    'run against this Gateway or its database is unreachable. Both the live and the stored ' +
+    'path are unavailable; say so rather than reporting an empty or healthy fleet.';
+
   const CLIENT_TELEMETRY_ALTERNATIVE =
     'This endpoint being down does NOT mean the question is unanswerable: AURA collects ' +
     'service levels into its own database, independently of this Gateway endpoint. Call ' +
@@ -470,6 +481,154 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
     const topology = service ? topos.find((t) => t.id === service.defaultTopology) ?? null : null;
     return { service, topology };
   }
+
+  /**
+   * Serve AP/radio state from AURA's database when the Gateway will not answer.
+   *
+   * The honesty rules this has to hold, because a stale answer passed off as a
+   * current one is worse than no answer at all:
+   *
+   *  - `servedFrom: 'stored'` and an explicit `asOf` / `ageSeconds`, with an
+   *    instruction to say when it was measured. Never "right now".
+   *  - The Gateway read failure is REPORTED, not hidden. The operator needs to
+   *    know the live path is down even when the question got answered.
+   *  - If nothing is stored either, this is a plain failed read again — a
+   *    fallback that invents an empty fleet would be the original sin.
+   */
+  const storedApFallback = async (liveRes, apSerial = null) => {
+    const src = await historySources();
+    if (!src.ok || !src.sourceIds.length) {
+      return fetchFailed('the AP inventory', liveRes, NO_STORED_FALLBACK);
+    }
+    const stored = await storedFleetState({ sourceIds: src.sourceIds });
+    if (!stored.ok || !stored.aps.length) {
+      return fetchFailed('the AP inventory', liveRes, NO_STORED_FALLBACK);
+    }
+
+    const scoped = apSerial ? stored.aps.filter((a) => a.serial === apSerial) : stored.aps;
+    if (apSerial && !scoped.length) {
+      return {
+        basis: 'unknown',
+        status: 'not_found',
+        servedFrom: 'stored',
+        reason:
+          `The Gateway did not answer (${liveRes.error}), and AURA's stored fleet state holds ` +
+          `no AP with serial ${apSerial}.`,
+        instruction:
+          'Do not conclude the AP does not exist: the live read failed and the stored set may ' +
+          'be incomplete. Say both.',
+      };
+    }
+
+    const siteScope = applySiteScope(scoped, (a) => a.siteName);
+    if (siteScope.matchedNothing) return scopeMatchedNothing('stored APs', siteScope);
+
+    return {
+      basis: 'observed',
+      source: 'AURA monitoring DB (metricFamily=energy_ap_state)',
+      // The two fields that stop a stale answer becoming a current claim.
+      servedFrom: 'stored',
+      asOf: stored.meta.newestObservedAt,
+      ageSeconds: stored.meta.ageSeconds,
+      liveReadFailed: liveRes.error,
+      scopeApplied: scopeApplied(siteScope),
+      apCount: siteScope.rows.length,
+      statusCounts: siteScope.rows.reduce((acc, a) => {
+        const k = a.status ?? 'unknown';
+        acc[k] = (acc[k] ?? 0) + 1;
+        return acc;
+      }, {}),
+      aps: siteScope.rows.map((a) => ({
+        serial: a.serial,
+        site: untrusted(a.siteName),
+        platform: untrusted(a.model),
+        status: a.status,
+        clientCount: a.clientCount,
+        ageSeconds: a.ageSeconds,
+        radios: a.radios.map((r) => ({
+          radio: r.radio,
+          txPower: r.txPower,
+          adminEnabled: r.adminEnabled,
+          clients: r.clients,
+          channelOccupancy: r.channelOccupancy,
+        })),
+      })),
+      note:
+        `THE GATEWAY DID NOT ANSWER (${liveRes.error}). This is AURA's own stored fleet state ` +
+        'instead, measured ' +
+        (stored.meta.ageSeconds === null ? 'at an unknown time' : `${stored.meta.ageSeconds} seconds ago`) +
+        '. Report it AS OF that time — never as the current state — and tell the operator the ' +
+        "Gateway's live read is failing. An AP that has since gone offline still appears here " +
+        'with its last known status, and one adopted since does not appear at all. No WLAN, ' +
+        'topology, profile or role configuration is stored, and no client can be resolved from ' +
+        'stored data, so configuration and per-client questions remain unanswerable.',
+    };
+  };
+
+  /**
+   * Per-radio state from the database when live radio telemetry is unavailable.
+   *
+   * Deliberately narrower than what `getRfHealth` normally returns. Stored rows
+   * carry channel occupancy but NOT the four-way airtime split, so the
+   * coverage-versus-contention discriminator the doctrine turns on cannot be
+   * applied — and the payload says that rather than letting occupancy stand in
+   * for it.
+   */
+  const storedRadioFallback = async (liveRes, apSerial = null) => {
+    const src = await historySources();
+    if (!src.ok || !src.sourceIds.length) {
+      return fetchFailed('per-radio RF telemetry', liveRes, NO_STORED_FALLBACK);
+    }
+    const stored = await storedFleetState({ sourceIds: src.sourceIds });
+    if (!stored.ok || !stored.aps.length) {
+      return fetchFailed('per-radio RF telemetry', liveRes, NO_STORED_FALLBACK);
+    }
+
+    const scoped = apSerial ? stored.aps.filter((a) => a.serial === apSerial) : stored.aps;
+    const siteScope = applySiteScope(scoped, (a) => a.siteName);
+    if (siteScope.matchedNothing) return scopeMatchedNothing('stored APs', siteScope);
+
+    const radios = siteScope.rows.flatMap((a) =>
+      a.radios.map((r) => ({
+        apSerial: a.serial,
+        site: untrusted(a.siteName),
+        radio: r.radio,
+        channelOccupancy: r.channelOccupancy,
+        clients: r.clients,
+        txPower: r.txPower,
+        adminEnabled: r.adminEnabled,
+        ageSeconds: a.ageSeconds,
+      }))
+    );
+    if (!radios.length) {
+      return fetchFailed('per-radio RF telemetry', liveRes, NO_STORED_FALLBACK);
+    }
+
+    // Busiest first: the ranking is the useful shape, and it is the one thing
+    // occupancy alone can honestly support.
+    radios.sort((a, b) => (b.channelOccupancy ?? -1) - (a.channelOccupancy ?? -1));
+
+    return {
+      basis: 'observed',
+      source: 'AURA monitoring DB (metricFamily=energy_ap_state)',
+      servedFrom: 'stored',
+      asOf: stored.meta.newestObservedAt,
+      ageSeconds: stored.meta.ageSeconds,
+      liveReadFailed: liveRes.error,
+      scopeApplied: scopeApplied(siteScope),
+      radioCount: radios.length,
+      radios,
+      note:
+        `THE GATEWAY DID NOT ANSWER (${liveRes.error}). This is AURA's stored radio state, ` +
+        'measured ' +
+        (stored.meta.ageSeconds === null ? 'at an unknown time' : `${stored.meta.ageSeconds} seconds ago`) +
+        ' — report it AS OF then, not as current. IMPORTANT LIMIT: occupancy here is a single ' +
+        'number, NOT the four-way airtime split, so you CANNOT separate co-channel contention ' +
+        'from this AP\'s own clients or from non-Wi-Fi interference, and the neighbour table is ' +
+        'not stored so no co-channel offender can be named. Say a radio was busy; do not say ' +
+        'why it was busy, and do not recommend a channel-plan change on this evidence.',
+    };
+  };
 
   /** Shared shape so the model always sees where a claim came from. */
   const observed = (data, source) => ({ basis: 'observed', source, ...data });
@@ -830,7 +989,12 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
       },
       handler: async ({ apSerial } = {}) => {
         const radioRes = await radioData();
-        if (!radioRes.ok) return fetchFailed('per-radio RF telemetry', radioRes);
+        // Stored radio state carries channel occupancy, tx power, admin state
+        // and client count per radio — enough to say which radios are busy
+        // when the live read is down. It does NOT carry the four-way airtime
+        // split or the neighbour table, so contention cannot be separated from
+        // demand and no offender can be named; the fallback says that itself.
+        if (!radioRes.ok) return storedRadioFallback(radioRes, apSerial);
         const rows = radioRes.rows;
         if (!rows.length) return gap('rf.airtime_split');
         const filtered = apSerial ? rows.filter((r) => r.ApSerial === apSerial) : rows;
@@ -897,7 +1061,14 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
       },
       handler: async ({ apSerial } = {}) => {
         const apsRes = await apData();
-        if (!apsRes.ok) return fetchFailed('the AP inventory', apsRes);
+        // FALL BACK TO WHAT WAS STORED rather than returning nothing.
+        //
+        // The Gateway's reporting service being unwell is not a reason to have
+        // no answer about the fleet: AURA's collector writes per-AP status,
+        // site, model, client count and per-radio state into its own database.
+        // Stale and labelled beats absent — provided it is never passed off as
+        // current, which `servedFrom` and `asOf` are there to prevent.
+        if (!apsRes.ok) return storedApFallback(apsRes, apSerial);
         const aps = apsRes.rows;
         if (!apSerial) {
           return observed(

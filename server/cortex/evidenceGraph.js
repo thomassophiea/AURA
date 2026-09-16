@@ -156,6 +156,11 @@ export function digestToolResult(tool, payload) {
   if (payload.status) d.status = payload.status;
   if (payload.unavailable) d.unavailable = true;
   if (payload.scopeApplied) d.scopeApplied = payload.scopeApplied;
+  // Provenance. A tool that fell back to AURA's database answered a question
+  // the Gateway would not, and that answer describes the PAST — so it must not
+  // carry the same weight as a live read. Confidence reads this below.
+  if (payload.servedFrom) d.servedFrom = payload.servedFrom;
+  if (Number.isFinite(payload.ageSeconds)) d.ageSeconds = payload.ageSeconds;
 
   // Classifier verdicts — severity and taxonomy only. The evidence strings stay
   // in the transcript where they are already fenced.
@@ -344,6 +349,15 @@ export function buildEvidenceGraph(ledger = []) {
     toolCalls: entries.length,
     successful: ok.length,
     failedReads: failed.map((f) => f.tool),
+    // Tools that answered from stored state instead of the live Gateway.
+    // Read off the DIGESTS, not the ledger entries — `servedFrom` is a digest
+    // field, and filtering the entries silently matched nothing.
+    storedReads: digests
+      .filter((d) => d.servedFrom === 'stored')
+      .map((d) => ({
+        tool: d.tool,
+        ageSeconds: Number.isFinite(d.ageSeconds) ? d.ageSeconds : null,
+      })),
     families,
     domains,
     primaryDomain: domains[0]?.domain ?? null,
@@ -453,6 +467,23 @@ export function classifyConfidence(graph) {
   if (graph.failedReads.length) {
     ceilings.push(
       `${graph.failedReads.length} read(s) failed (${[...new Set(graph.failedReads)].join(', ')}), so part of the picture is missing rather than clear.`
+    );
+    level = atMost(level, CONFIDENCE.LIKELY);
+  }
+  // STORED STATE IS EVIDENCE ABOUT THE PAST.
+  //
+  // When the Gateway will not answer, a tool may serve AURA's stored fleet
+  // state instead — which is the difference between an answer and none. But an
+  // AP that went offline after the last collection still reads as InService,
+  // and a conclusion about "now" drawn from a sample minutes old cannot be
+  // CERTAIN however internally consistent it looks.
+  if (graph.storedReads?.length) {
+    const ages = graph.storedReads.map((s) => s.ageSeconds).filter((n) => Number.isFinite(n));
+    const oldest = ages.length ? Math.max(...ages) : null;
+    ceilings.push(
+      `${graph.storedReads.length} read(s) were served from AURA's stored state because the ` +
+        `Gateway did not answer${oldest === null ? '' : `, the oldest ${oldest}s old`} — this ` +
+        'describes the network as it was, not as it is.'
     );
     level = atMost(level, CONFIDENCE.LIKELY);
   }

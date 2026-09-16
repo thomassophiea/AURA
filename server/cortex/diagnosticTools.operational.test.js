@@ -16,6 +16,7 @@ const frame = (obj) => [
 ];
 
 const serviceLevels = vi.fn();
+const storedFleetState = vi.fn();
 const infrastructureAlerts = vi.fn();
 const infrastructureAnalytics = vi.fn();
 const resolveSourceIds = vi.fn();
@@ -25,6 +26,7 @@ vi.mock('./operationalEvidence.js', async (importOriginal) => {
   return {
     ...actual,
     serviceLevels: (...a) => serviceLevels(...a),
+    storedFleetState: (...a) => storedFleetState(...a),
     infrastructureAlerts: (...a) => infrastructureAlerts(...a),
     infrastructureAnalytics: (...a) => infrastructureAnalytics(...a),
   };
@@ -539,5 +541,100 @@ describe('a failed site-level read names the route that still works', () => {
     const r = await tools().diagnoseClient.handler({ mac: '58:9A:3E:E8:1D:00' });
     expect(r.status).toBe('fetch_failed');
     expect(r.instruction).not.toMatch(/getServiceLevels/);
+  });
+});
+
+describe('AP and radio tools fall back to stored state', () => {
+  const GATEWAY_DOWN = {
+    baseUrl: 'https://gw.test',
+    get: async (path) => {
+      if (path.startsWith('/v1/report/flex')) {
+        return { ok: false, status: 500, data: null, errorSummary: 'Exception: null' };
+      }
+      if (path === '/v1/aps/query') {
+        return { ok: false, status: 500, data: null, errorSummary: 'Exception: null' };
+      }
+      if (path === '/v3/sites') return { ok: true, status: 200, data: SITES };
+      return { ok: false, status: 404, data: null, errorSummary: 'not found' };
+    },
+  };
+  const down = (scope = {}) =>
+    createDiagnosticTools({ session: GATEWAY_DOWN, scope, capabilities: new CapabilityRegistry() });
+
+  const STORED = {
+    ok: true,
+    aps: [
+      {
+        serial: 'CV01-0001',
+        siteId: 'site-primary',
+        siteName: 'PrimarySite',
+        model: 'AP4000',
+        status: 'InService',
+        clientCount: 12,
+        ageSeconds: 120,
+        radios: [
+          { radio: 'CV01-0001:2', txPower: 17, adminEnabled: true, clients: 12, channelOccupancy: 71 },
+          { radio: 'CV01-0001:1', txPower: 14, adminEnabled: true, clients: 3, channelOccupancy: 22 },
+        ],
+      },
+    ],
+    meta: { apCount: 1, statusCounts: { InService: 1 }, newestObservedAt: '2026-09-16T12:00:00Z', ageSeconds: 120 },
+    error: null,
+  };
+
+  beforeEach(() => {
+    storedFleetState.mockResolvedValue(STORED);
+  });
+
+  it('getApHealth answers from the database and labels it as the past', async () => {
+    const r = await down().getApHealth.handler({});
+    expect(r.basis).toBe('observed');
+    expect(r.servedFrom).toBe('stored');
+    expect(r.apCount).toBe(1);
+    expect(r.statusCounts).toEqual({ InService: 1 });
+    expect(r.ageSeconds).toBe(120);
+    expect(r.asOf).toBe('2026-09-16T12:00:00Z');
+    // The live failure is reported, not hidden — the operator needs to know the
+    // Gateway path is down even though the question got answered.
+    expect(r.liveReadFailed).toMatch(/Exception: null/);
+    expect(r.note).toMatch(/AS OF that time — never as the current state/i);
+    expect(r.note).toMatch(/no client can be resolved from/i);
+  });
+
+  it('getRfHealth ranks radios by occupancy but refuses to explain why', async () => {
+    // Stored occupancy is ONE number. Without the four-way split, contention
+    // cannot be told from this AP's own demand, and the doctrine's remedy for
+    // each is the opposite of the other.
+    const r = await down().getRfHealth.handler({});
+    expect(r.servedFrom).toBe('stored');
+    expect(r.radios.map((x) => x.channelOccupancy)).toEqual([71, 22]);
+    expect(r.note).toMatch(/NOT the four-way airtime split/i);
+    expect(r.note).toMatch(/do not recommend a channel-plan change/i);
+  });
+
+  it('says BOTH paths are down when nothing is stored either', async () => {
+    storedFleetState.mockResolvedValue({ ok: true, aps: [], meta: {}, error: null });
+    const r = await down().getApHealth.handler({});
+    expect(r.status).toBe('fetch_failed');
+    expect(r.instruction).toMatch(/Both the live and the stored path are unavailable/i);
+    expect(r.instruction).not.toMatch(/getServiceLevels/);
+  });
+
+  it('does not claim an AP is missing when the live read failed', async () => {
+    const r = await down().getApHealth.handler({ apSerial: 'NOT-STORED-1' });
+    expect(r.status).toBe('not_found');
+    expect(r.instruction).toMatch(/Do not conclude the AP does not exist/i);
+  });
+
+  it('honours the bound site scope on stored data too', async () => {
+    const r = await down({ siteNames: ['Nowhere'] }).getApHealth.handler({});
+    expect(r.status).toBe('scope_matched_nothing');
+  });
+
+  it('prefers the live read when the Gateway IS answering', async () => {
+    // The fallback must never pre-empt a working live path.
+    const r = await make().getApHealth.handler({});
+    expect(r.servedFrom).toBeUndefined();
+    expect(storedFleetState).not.toHaveBeenCalled();
   });
 });
