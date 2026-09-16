@@ -55,6 +55,7 @@ import {
 } from './operationalEvidence.js';
 import { expandBlastRadius, counterfactual, describeBlastRadius } from './correlationEngine.js';
 import { reconcileWlan, expectationFromPeer, configuredWlanState } from './stateReconciler.js';
+import { resolveWritableSurface } from './writableSurface.js';
 
 /** Per-AP state reads in one backend check. A fleet sweep is not free. */
 const MAX_AP_STATE_READS = 40;
@@ -115,6 +116,7 @@ export const TOOL_ACTIVITY = {
   getClientHistory: 'Reading this client\'s stored history…',
   findVanishedDevices: 'Checking for devices that have dropped out of inventory…',
   listSites: 'Reading the site catalogue…',
+  listAvailableChanges: 'Checking what can be changed here…',
   correlateProblem: 'Working out how far this spreads…',
   reconcileConfiguration: 'Comparing intended, configured and running state…',
 };
@@ -1770,6 +1772,88 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
     },
 
     // ────────────────────────────────────────────────────────────────────
+    /**
+     * What Cortex can actually change here — the discovery half of the
+     * configuration loop, and a READ, so the investigation agent may call it
+     * without going anywhere near a write path.
+     *
+     * It exists because a change request was once drafted to enable 802.11r on
+     * a WLAN whose Gateway has no such field: well argued, impossible, and
+     * nothing in the system was positioned to notice. Asking this first turns
+     * "what should we change?" into a question with a bounded, truthful answer.
+     */
+    listAvailableChanges: {
+      risk: RISK.READ,
+      spec: {
+        name: 'listAvailableChanges',
+        description:
+          'What Cortex can actually change on a named WLAN ON THIS GATEWAY. Call this ' +
+          'BEFORE proposing any configuration change. A setting absent from `available` ' +
+          'cannot be changed, previewed or verified — proposing it anyway produces a change ' +
+          'request for a field that does not exist.',
+        parameters: {
+          type: 'object',
+          properties: {
+            wlanName: { type: 'string', description: 'The WLAN (service) name, e.g. "Skynet"' },
+          },
+          required: ['wlanName'],
+          additionalProperties: false,
+        },
+      },
+      handler: async ({ wlanName }) => {
+        const res = await session.get('/v1/services');
+        if (!res.ok) {
+          return fetchFailed('the WLAN catalogue', {
+            error: res.errorSummary ?? `HTTP ${res.status}`,
+          });
+        }
+
+        const rows = Array.isArray(res.data) ? res.data : (res.data?.services ?? []);
+        const wanted = String(wlanName ?? '').trim().toLowerCase();
+        const match = rows.find(
+          (s) =>
+            String(s?.serviceName ?? '').toLowerCase() === wanted ||
+            String(s?.ssid ?? '').toLowerCase() === wanted
+        );
+
+        // A name matching nothing is not an empty world — and it is certainly
+        // not "there is nothing to change here".
+        if (!match) {
+          const known = rows.map((s) => s?.serviceName ?? s?.ssid).filter(Boolean);
+          return {
+            basis: 'unknown',
+            unavailable: true,
+            status: 'scope_matched_nothing',
+            reason:
+              `No WLAN called "${wlanName}" exists on this Gateway. The WLANs that do: ` +
+              `${known.join(', ') || '(none)'}.`,
+            available: [],
+            unavailable_changes: [],
+            knownWlans: known.slice(0, 40).map((n) => untrusted(n)),
+            instruction:
+              'This is a NAME MISMATCH, not an empty result. Do NOT report that the WLAN has ' +
+              'nothing to change or that it is fine. Say the name did not match and list the ' +
+              'WLANs that exist.',
+          };
+        }
+
+        const { available, unavailable } = resolveWritableSurface(match);
+        return observed(
+          {
+            wlan: untrusted(match.serviceName ?? match.ssid),
+            serviceId: match.id,
+            available,
+            unavailable,
+            note:
+              '`available` is the COMPLETE set of changes Cortex can make to this WLAN. ' +
+              'Anything listed in `unavailable` is not exposed by this Gateway and cannot be ' +
+              'changed, previewed or verified — say so plainly rather than proposing it.',
+          },
+          'GET /v1/services'
+        );
+      },
+    },
+
     listSites: {
       risk: RISK.READ,
       spec: {

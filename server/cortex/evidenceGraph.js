@@ -126,6 +126,10 @@ export const SOURCE_FAMILY = {
   getWlanHealth: 'site-inventory',
   getApHealth: 'ap-inventory',
   getWlanConfig: 'configuration',
+  // Same table as getWlanConfig — both read GET /v1/services, so they are ONE
+  // source. Giving it its own family would let a WLAN's configuration appear to
+  // corroborate itself and inflate the verdict.
+  listAvailableChanges: 'configuration',
   listSites: 'site-inventory',
   getClientTimeline: 'events',
   getRecentChanges: 'audit-log',
