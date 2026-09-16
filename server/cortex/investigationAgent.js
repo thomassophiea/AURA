@@ -1006,6 +1006,7 @@ export function auditAnswer(answer, ledger) {
           // absence of the data itself
           String.raw`\bno\b[^.!?]{0,60}\b(view|visibility|data|insight|record|detail|reason|decision|widget|endpoint|route)\b`,
           String.raw`\b(not|never)\s+(configured|available|exposed|surfaced|reported|present)\b`,
+          String.raw`\b(not|never)\s+(measured|assessed|evaluated|tested|sampled|collected|established)\b`,
           String.raw`\bno per-client RADIUS\b`,
           String.raw`\bdoes ?n'?t (expose|report|surface)\b`,
           // discussing the shape of the evidence rather than an event
@@ -1071,6 +1072,12 @@ export function auditAnswer(answer, ledger) {
           String.raw`\b(can'?t|cannot|won'?t|unable to|never|not)\b[^.!?]{0,80}\b(tell|state|say|report|determine|know|confirm|verify|check)\b`,
           String.raw`\b(no|not)\b[^.!?]{0,60}\b(probe|monitor|check|visibility|data|view)\b`,
           String.raw`\b(not|never)\s+(configured|available|exposed|run|polled)\b`,
+          // "…were not measured on this read" is a REPORT OF ABSENT DATA, which
+          // is the honest answer, not a reachability claim. It was being
+          // flagged: a real client answer that correctly said DNS and gateway
+          // reachability were not measured came back "1 claim not backed by the
+          // evidence". Flagging careful answers is how an audit stops being read.
+          String.raw`\b(not|never)\s+(measured|assessed|evaluated|tested|sampled|collected|established)\b`,
         ].join('|'),
         'i'
       ),

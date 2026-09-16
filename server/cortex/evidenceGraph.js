@@ -314,9 +314,24 @@ export function digestToolResult(tool, payload) {
       snr: snrOf(payload.radio?.snr),
       rfqi: num(payload.radio?.rfqi),
       downlinkLossRatio: num(payload.loss?.downlinkLossRatio),
-      wirelessRttMs: rtt(payload.latency?.wirelessRttMs ?? payload.latency?.wirelessRTT),
-      networkRttMs: rtt(payload.latency?.networkRttMs ?? payload.latency?.networkRTT),
-      dnsRttMs: rtt(payload.latency?.dnsRttMs ?? payload.latency?.dnsRTT),
+      // THREE SPELLINGS, BECAUSE THE PAYLOAD USES A FOURTH.
+      //
+      // `diagnoseClient` emits `wirelessMs`/`networkMs`/`dnsMs`; this read only
+      // `wirelessRttMs`/`wirelessRTT`. They never matched, so the readings tiles
+      // said "not measured" for latency on every client answer while the model
+      // — reading the raw payload — correctly reported the real figures in the
+      // prose directly underneath. The answer contradicted its own tiles.
+      //
+      // Accepting every spelling here is deliberate: renaming the payload would
+      // silently break any other consumer reading the old key, and a digest that
+      // cannot see a measurement is worse than one that is generous about names.
+      wirelessRttMs: rtt(
+        payload.latency?.wirelessMs ?? payload.latency?.wirelessRttMs ?? payload.latency?.wirelessRTT
+      ),
+      networkRttMs: rtt(
+        payload.latency?.networkMs ?? payload.latency?.networkRttMs ?? payload.latency?.networkRTT
+      ),
+      dnsRttMs: rtt(payload.latency?.dnsMs ?? payload.latency?.dnsRttMs ?? payload.latency?.dnsRTT),
       hasIpv4: typeof payload.identity?.ipv4 === 'string' ? true : payload.identity?.hasIpv4 ?? null,
     };
   }

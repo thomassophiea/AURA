@@ -552,3 +552,48 @@ describe('the repeat-call guard does not discredit the earlier result', () => {
     expect(payload).not.toHaveProperty('error');
   });
 });
+
+describe('auditAnswer: "not measured" is a report of absence, not a claim', () => {
+  // A real client answer said "DNS, gateway/application reachability ... were
+  // not measured on this read" and came back "1 claim not backed by the
+  // evidence". The negation vocabulary knew "did not check" and "is unknown"
+  // but not "were not measured". An audit that flags careful answers stops
+  // being read — which this codebase has now learned four times.
+  const ledger = [
+    { tool: 'diagnoseClient', ok: true },
+    { tool: 'getClientTimeline', ok: true },
+  ];
+
+  it.each([
+    'DNS and gateway reachability were not measured on this read.',
+    'Note: gateway/application reachability was not measured on this read.',
+    'RADIUS reachability was not established during this investigation.',
+    'Backend reachability was not assessed.',
+  ])('does not flag: %s', (text) => {
+    expect(auditAnswer(text, ledger)).toEqual([]);
+  });
+
+  // The other half, which the skill requires alongside every audit change:
+  // the claims that MUST still be caught.
+  it.each([
+    'The RADIUS server is reachable.',
+    'DHCP is reachable and responding normally.',
+  ])('still flags: %s', (text) => {
+    const flagged = auditAnswer(text, ledger);
+    expect(flagged.length).toBeGreaterThan(0);
+    expect(flagged[0].detail).toMatch(/reachable/i);
+  });
+
+  it('still flags a reachability claim even alongside an honest disclaimer', () => {
+    // The disclaimer must not become a blanket exemption for the sentence
+    // after it.
+    const mixed =
+      'DNS was not measured on this read. The RADIUS server is reachable.';
+    expect(auditAnswer(mixed, ledger).length).toBeGreaterThan(0);
+  });
+
+  it('accepts a real reachability claim when the probe actually ran', () => {
+    const withProbe = [...ledger, { tool: 'getInfrastructureAlerts', ok: true }];
+    expect(auditAnswer('The RADIUS server is reachable.', withProbe)).toEqual([]);
+  });
+});

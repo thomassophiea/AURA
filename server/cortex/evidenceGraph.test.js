@@ -409,3 +409,45 @@ describe('keyReadings — absent is null, never 0', () => {
     expect(r).toMatchObject({ rss: -61, snr: 31, rfqi: 4, networkRttMs: 12 });
   });
 });
+
+describe('the readings must not contradict the prose', () => {
+  // Observed live 2026-09-16: the tiles said "Not measured on this read: Air
+  // latency, Network latency" while the evidence section of the SAME answer
+  // read "wireless 4 ms, network 29 ms". The payload and the digest had never
+  // agreed on a field name.
+  it('reads the field names diagnoseClient actually emits', () => {
+    const r = digestToolResult('diagnoseClient', {
+      radio: { rss: -64 },
+      latency: { wirelessMs: 4, networkMs: 29, dnsMs: null },
+    }).keyReadings;
+
+    expect(r.wirelessRttMs).toBe(4);
+    expect(r.networkRttMs).toBe(29);
+    expect(r.dnsRttMs).toBeNull();
+  });
+
+  it('still reads the older spellings', () => {
+    const a = digestToolResult('diagnoseClient', {
+      radio: {},
+      latency: { wirelessRttMs: 7, networkRttMs: 12 },
+    }).keyReadings;
+    expect(a.wirelessRttMs).toBe(7);
+    expect(a.networkRttMs).toBe(12);
+
+    const b = digestToolResult('diagnoseClient', {
+      radio: {},
+      latency: { wirelessRTT: 9, networkRTT: 14 },
+    }).keyReadings;
+    expect(b.wirelessRttMs).toBe(9);
+    expect(b.networkRttMs).toBe(14);
+  });
+
+  it('still treats the 65535 sentinel as not measured under the new spelling', () => {
+    const r = digestToolResult('diagnoseClient', {
+      radio: {},
+      latency: { wirelessMs: 65535, networkMs: 29 },
+    }).keyReadings;
+    expect(r.wirelessRttMs).toBeNull();
+    expect(r.networkRttMs).toBe(29);
+  });
+});
