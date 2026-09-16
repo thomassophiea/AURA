@@ -49,6 +49,8 @@ import {
   execute as executeWorkflow,
 } from './server/cortex/workflowEngine.js';
 import { buildWorkflowSources } from './server/cortex/workflowSources.js';
+import { openSseStream } from './server/cortex/sseStream.js';
+import { readScopeInventory } from './server/cortex/scopeInventory.js';
 import { requireRole } from './server/identity/identityRouter.js';
 import { audit } from './server/identity/identityStore.js';
 import { sentinelEngine } from './server/sentinel/sentinelEngine.js';
@@ -2586,10 +2588,10 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
     sessionId = null,
   } = req.body ?? {};
 
-  const send = (event, data) => {
-    if (res.writableEnded) return;
-    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
-  };
+  // Assigned by openSseStream() once the stream is actually open. It cannot be
+  // defined here: the checks below still answer with a JSON status code, and a
+  // route that has written SSE headers can no longer do that.
+  let send = () => {};
 
   if (!question || typeof question !== 'string') {
     return res.status(400).json({ error: 'question is required' });
@@ -2630,13 +2632,10 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
     const route = routeUtterance(question, activeWorkflow);
 
     if (route.kind !== 'new_intent') {
-      res.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache, no-transform',
-        Connection: 'keep-alive',
-        'X-Accel-Buffering': 'no',
-      });
-      const emit = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      // Open the stream for real before the first await. A continuation turn
+      // reads the Gateway through workflowSources, and a stalled Gateway must
+      // not be able to strand this response before it has produced a byte.
+      const emit = openSseStream(res);
 
       try {
         let turn = await handleRoutedTurn(route, {
@@ -2764,13 +2763,9 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
           .close(activeWorkflow.id, 'CANCELLED')
           .catch((err) => console.warn('[Cortex] could not close superseded workflow:', err.message));
       }
-      res.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache, no-transform',
-        Connection: 'keep-alive',
-        'X-Accel-Buffering': 'no',
-      });
-      const emit = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+      // Same rule on the configuration path: validation and provisioning both
+      // reach the Gateway, so the stream has to exist before they are asked to.
+      const emit = openSseStream(res);
 
       try {
         // The passphrase is deliberately NOT carried into requestedState; the
@@ -2903,12 +2898,12 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
     return sendCortexError(res, err, 'Cortex could not select an AI provider.');
   }
 
-  res.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache, no-transform',
-    Connection: 'keep-alive',
-    'X-Accel-Buffering': 'no',
-  });
+  // The stream becomes real HERE, before the capability registry and before
+  // scope resolution reads the Gateway's inventory. Writing the head alone put
+  // no byte on the wire, so a stalled Gateway used to strand the whole response
+  // and the edge proxy answered the operator with `upstream error` instead.
+  // See server/cortex/sseStream.js for the measurement.
+  send = openSseStream(res);
 
   let aborted = false;
   req.on('close', () => {
@@ -2958,31 +2953,15 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
       // starts, and degrades to an empty catalogue rather than failing — with
       // no site list the resolver falls back to the estate instead of asking a
       // question the operator has no way to answer.
+      //
+      // Bounded, because that degradation used to be unreachable: a Gateway
+      // that stalls never rejects, so there was nothing to catch and the whole
+      // answer waited on it. See server/cortex/scopeInventory.js.
       const inventoryTools = createDiagnosticTools({ session: sess.session, scope: {}, capabilities });
-      let inventory = { sites: [], ssids: [], apNames: [] };
-      try {
-        const [siteRes, wlanRes] = await Promise.all([
-          inventoryTools.listSites.handler({}),
-          inventoryTools.getWlanConfig
-            ? inventoryTools.getWlanConfig.handler({}).catch(() => null)
-            : Promise.resolve(null),
-        ]);
-        const unwrap = (v) => (v && typeof v === 'object' && '__untrusted__' in v ? v.value : v);
-        inventory = {
-          sites: (siteRes?.sites ?? []).map((s) => ({
-            name: unwrap(s.name),
-            hasTelemetry: s.hasTelemetry,
-            apCount: s.apCount,
-            clientCount: s.clientCount,
-          })),
-          ssids: (wlanRes?.wlans ?? wlanRes?.services ?? [])
-            .map((w) => unwrap(w?.ssid))
-            .filter(Boolean),
-          apNames: [],
-        };
-      } catch (err) {
-        console.warn('[Cortex] site inventory unavailable for scope resolution:', err.message);
-      }
+      const inventory = await readScopeInventory(inventoryTools, {
+        onDegraded: (why) =>
+          console.warn('[Cortex] site inventory unavailable for scope resolution:', why),
+      });
 
       resolvedScope = resolveScope({ question, uiScope: scope, inventory });
 
