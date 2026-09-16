@@ -447,6 +447,85 @@ export class GatewayEvidence {
     return this.flex('MuTable', options);
   }
 
+  /**
+   * LIVE client rows from `/v1/stations`, for when the flex subsystem is down.
+   *
+   * Measured on the lab Gateway 2026-09-16: every flex table — MuTable, ApTable,
+   * SmartRfNeighborTable — returned `500 "Exception: null"` after exactly 31.0 s
+   * regardless of the window requested, while `/v3/sites`, `/v1/aps/query`,
+   * `/v1/services` and `/v1/auditlogs` all answered in under a tenth of a
+   * second and `/v1/stations` returned all 34 associated clients in 3.7 s. The
+   * fault is the flex report service, not the appliance — so a client question
+   * was unanswerable only because this reader did not exist.
+   *
+   * WHAT IT CARRIES, AND WHAT IT DOES NOT
+   * -------------------------------------
+   * Present and real: identity (MAC, IP, DHCP hostname, username), AP name and
+   * serial, site id, RSS, channel, radio, protocol, role, service id, byte and
+   * packet counters including downlink lost retries, and a last-seen time.
+   *
+   * ABSENT, and left ABSENT rather than defaulted: SNR, RFQI, and the
+   * WirelessRTT / NetworkRTT / DNSRTT split. Those are the discriminating
+   * readings — without SNR and RFQI, coverage cannot be told from contention,
+   * and the doctrine's remedies for those two work against each other. A caller
+   * must report signal and loss and then say the cause cannot be attributed.
+   * Writing a zero into any of them would manufacture exactly the false verdict
+   * the sentinel rules exist to prevent.
+   *
+   * Field names are mapped to the MuTable spellings the tool layer already
+   * reads, so a fallback row flows through `signal()`, `dedupeByMac()` and the
+   * scope filters unchanged.
+   */
+  async stations() {
+    const result = await this.#session.get('/v1/stations');
+    if (!result.ok) {
+      return { ok: false, rows: [], error: result.errorSummary ?? `HTTP ${result.status}` };
+    }
+    const data = result.data;
+    const raw = Array.isArray(data) ? data : Array.isArray(data?.stations) ? data.stations : [];
+    const rows = raw.map((s) => ({
+      MAC: s.macAddress ?? null,
+      IP: s.ipAddress ?? null,
+      HostName: s.dhcpHostName ?? null,
+      UserName: s.userName || null,
+      Manufacturer: s.manufacturer || null,
+      ApName: s.accessPointName ?? null,
+      ApSerial: s.accessPointSerialNumber ?? null,
+      SiteId: s.siteId ?? null,
+      RFSUUID: s.serviceId ?? null,
+      RoleName: s.role ?? null,
+      Rss: Number.isFinite(Number(s.rss)) ? Number(s.rss) : null,
+      Channel: s.channel ?? null,
+      RadioID: s.radioId ?? null,
+      Protocol: s.protocol ?? null,
+      // DIRECTION MATTERS, AND MIXING IT INVENTS A NUMBER.
+      //
+      // `lossFor()` computes DLLostPkts / (RxPkts + DLLostPkts). Mapping
+      // RxPkts from `inPackets` — traffic received FROM the client, i.e.
+      // uplink — divided downlink losses by an uplink count and produced
+      // "99.99% loss" for a client that was working. Measured on the lab
+      // Gateway: one client reported 0.9999965 by that formula.
+      //
+      // So the flex-spelling counters are deliberately NOT populated here:
+      // `lossFor()` then returns null, "not measurable for this client", which
+      // is true of this endpoint. The downlink figures are carried under their
+      // own names for a caller that wants to compute the real ratio.
+      DlPktsSent: Number(s.outPackets) || 0,
+      DlLostRetries: Number(s.dlLostRetriesPackets) || 0,
+      UlPktsReceived: Number(s.inPackets) || 0,
+      InBytes: Number(s.inBytes) || 0,
+      OutBytes: Number(s.outBytes) || 0,
+      ReceivedRate: Number(s.receivedRate) || null,
+      TransmittedRate: Number(s.transmittedRate) || null,
+      Status: s.status ?? null,
+      LastUpdate: s.lastSeen ? Math.round(Number(s.lastSeen) / 1000) : null,
+      // Deliberately absent: SNR, RFQI, WirelessRTT, NetworkRTT, DNSRTT.
+      // `signal()` reads SNR and correctly returns null, which makes every row
+      // unscorable by `isScorableClientRow` — the honest outcome, not a bug.
+    }));
+    return { ok: true, rows, error: null };
+  }
+
   /** Per-radio RF rows (ApTable) — the working replacement for ifstats. */
   async radios(options = {}) {
     return this.flex('ApTable', options);

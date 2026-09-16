@@ -161,7 +161,67 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
   const historySources = () =>
     once('histsrc', () => resolveSourceIds(session.baseUrl ?? scope.controllerUrl ?? ''));
 
-  const clientData = () => once('mu', () => evidence.clients());
+  /**
+   * Client rows, from flex if it works and from `/v1/stations` if it does not.
+   *
+   * The flex report service on this appliance fails as a unit: when it is down,
+   * every table 500s after 31 s while the plain REST endpoints stay healthy. A
+   * client question is then answerable from `/v1/stations` — LIVE, not stored —
+   * but only partly, because that endpoint carries no SNR, no RFQI and no
+   * latency split. The `degraded` block travels with the rows so a tool can say
+   * which readings it is missing instead of quietly scoring without them.
+   */
+  const clientData = () =>
+    once('mu', async () => {
+      const flex = await evidence.clients();
+      if (flex.ok) return flex;
+
+      const fallback = await evidence.stations();
+      if (!fallback.ok) {
+        // Both paths dead. Return the ORIGINAL flex error: it is the one that
+        // describes the primary fault, and a reader chasing "/v1/stations
+        // failed" would be looking in the wrong place.
+        return flex;
+      }
+      // `/v1/stations` identifies a site by ID and a WLAN by service ID, while
+      // every filter and summary downstream reads SiteName and SSID. Join them
+      // here so a fallback row is indistinguishable in shape from a flex row —
+      // otherwise site scoping silently matches nothing, which is the failure
+      // mode this whole layer was built to stop.
+      const [siteCat, svcRes] = await Promise.all([
+        evidence.sites().catch(() => ({ ok: false, rows: [] })),
+        serviceData().catch(() => ({ ok: false, rows: [] })),
+      ]);
+      const siteNameById = new Map(
+        (siteCat.rows ?? [])
+          .map((s) => [String(s?.id ?? s?.siteId ?? ''), s?.siteName ?? s?.name])
+          .filter(([id, name]) => id && name)
+      );
+      const ssidByServiceId = new Map(
+        (svcRes.rows ?? []).map((s) => [String(s?.id ?? ''), s?.ssid]).filter(([id, ssid]) => id && ssid)
+      );
+      const rows = fallback.rows.map((r) => ({
+        ...r,
+        SiteName: r.SiteId ? siteNameById.get(String(r.SiteId)) ?? null : null,
+        SSID: r.RFSUUID ? ssidByServiceId.get(String(r.RFSUUID)) ?? null : null,
+      }));
+
+      return {
+        ...fallback,
+        rows,
+        degraded: {
+          source: '/v1/stations',
+          instead_of: 'flex(MuTable)',
+          flexError: flex.error,
+          missing: ['SNR', 'RFQI', 'WirelessRTT', 'NetworkRTT', 'DNSRTT'],
+          consequence:
+            'Signal (RSS) and packet loss are real and usable. SNR, RFQI and the latency split ' +
+            'are NOT AVAILABLE from this endpoint, so coverage cannot be told from contention ' +
+            'and no latency attribution is possible. Report what is measured, name the missing ' +
+            'readings, and do not attribute a cause that needs them.',
+        },
+      };
+    });
   const radioData = () => once('ap', () => evidence.radios());
   const serviceData = () => fetchList('svc', '/v1/services');
   const topologyData = () => fetchList('topo', '/v1/topologies');
@@ -1446,12 +1506,51 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
                 evidence: f.evidence,
               })),
             })),
+            // When flex is down these rows came from /v1/stations, which has no
+            // SNR — so isScorableClientRow rejects every one of them and
+            // `clientsWithFindings: 0` would read as a clean bill. It is not: it
+            // is the absence of the reading that scoring needs.
+            degraded: clients.degraded ?? null,
+            worstSignal: clients.degraded
+              ? scoped
+                  .filter((r) => signal(r).rss !== null)
+                  .sort((a, b) => signal(a).rss - signal(b).rss)
+                  .slice(0, Math.min(worst, 25))
+                  .map((r) => {
+                    const s = summariseCandidate(r);
+                    // Computed from downlink-only counters. `lossFor()` is not
+                    // used here: its RxPkts input is an UPLINK count on this
+                    // endpoint, and dividing downlink losses by it reported a
+                    // working client at 99.99% loss.
+                    const sent = Number(r.DlPktsSent) || 0;
+                    const lost = Number(r.DlLostRetries) || 0;
+                    return {
+                      mac: s.mac,
+                      hostname: untrusted(s.hostname),
+                      apName: untrusted(s.apName),
+                      ssid: untrusted(s.ssid),
+                      rss: s.rss,
+                      downlinkLostRetries: lost,
+                      downlinkRetryLossRatio:
+                        sent + lost > 0 ? Number((lost / (sent + lost)).toFixed(5)) : null,
+                    };
+                  })
+              : null,
             note:
               'unscorableRows are telemetry rows with placeholder signal values (idle or stale). ' +
               'They are excluded from scoring rather than reported as broken clients. ' +
               'clientsWithFindings is the authoritative count of clients with a problem — use it ' +
               'rather than judging the raw numbers yourself. Every count here covers ' +
-              `${clientScope.scoped ? clientScope.names.join(', ') : 'ALL SITES on this Gateway'} — say which when you report it.`,
+              `${clientScope.scoped ? clientScope.names.join(', ') : 'ALL SITES on this Gateway'} — say which when you report it.` +
+              (clients.degraded
+                ? ' DEGRADED SOURCE: the flex report service is failing on this Gateway ' +
+                  `(${clients.degraded.flexError}), so these rows came from ` +
+                  `${clients.degraded.source} instead. ${clients.degraded.consequence} ` +
+                  'clientsWithFindings is 0 here because SNR is missing and scoring needs it — ' +
+                  'that is NOT a clean bill of health. Use clientCount and worstSignal, say the ' +
+                  'signal figures are real, and say plainly that you cannot classify the cause ' +
+                  'without SNR and RFQI.'
+                : ''),
           },
           'flex(MuTable) + /v1/aps/query'
         );

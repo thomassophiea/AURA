@@ -423,3 +423,83 @@ describe('tunnel MTU mismatch', () => {
     expect(mtuMismatchReason({})).toBeNull();
   });
 });
+
+describe('stations() — the live fallback when flex is down', () => {
+  const STATION = {
+    macAddress: '1C:93:C4:13:25:05',
+    ipAddress: '192.168.100.212',
+    dhcpHostName: 'iPad',
+    userName: '',
+    accessPointName: 'AP4020-PVT-05_MESH_RELAY',
+    accessPointSerialNumber: 'CV012408S-C0078',
+    siteId: '84b3642f-a5d7-4dc9-b162-a6156c97b8f0',
+    serviceId: 'c8d4880b-2a54-424e-9459-46c02425f587',
+    role: 'Enterprise User',
+    rss: -81,
+    channel: '149/40',
+    radioId: 2,
+    protocol: '802.11ax',
+    inPackets: 193891,
+    outPackets: 10234,
+    dlLostRetriesPackets: 30,
+    inBytes: 47611521,
+    outBytes: 1033525298,
+    status: 'ACTIVE',
+    lastSeen: 1789563963000,
+  };
+  const session = (rows) => ({ get: async () => ({ ok: true, status: 200, data: rows }) });
+
+  it('maps identity, AP, signal and site into the shapes the tools read', async () => {
+    const ev = new GatewayEvidence(session([STATION]));
+    const res = await ev.stations();
+    expect(res.ok).toBe(true);
+    expect(res.rows[0]).toMatchObject({
+      MAC: '1C:93:C4:13:25:05',
+      IP: '192.168.100.212',
+      HostName: 'iPad',
+      ApName: 'AP4020-PVT-05_MESH_RELAY',
+      Rss: -81,
+      RadioID: 2,
+    });
+  });
+
+  it('leaves SNR, RFQI and the latency split ABSENT rather than zero', async () => {
+    // These are the discriminating readings. A zero in any of them would make a
+    // working client look like a critical coverage failure, and would let the
+    // coverage-versus-contention call be made on evidence that does not exist.
+    const ev = new GatewayEvidence(session([STATION]));
+    const [row] = (await ev.stations()).rows;
+    for (const k of ['SNR', 'RFQI', 'WirelessRTT', 'NetworkRTT', 'DNSRTT']) {
+      expect(row[k]).toBeUndefined();
+    }
+    // signal() therefore reports a usable RSS and no SNR, which makes the row
+    // correctly unscorable rather than scored on half the evidence.
+    expect(signal(row)).toEqual({ rss: -81, snr: null });
+    expect(isScorableClientRow(row)).toBe(false);
+  });
+
+  it('does not populate the flex loss counters, because direction would be mixed', async () => {
+    // lossFor() computes DLLostPkts / (RxPkts + DLLostPkts). Mapping RxPkts
+    // from inPackets — UPLINK — divided downlink losses by an uplink count and
+    // reported a working client at 99.99% loss. Measured live: 0.9999965.
+    const ev = new GatewayEvidence(session([STATION]));
+    const [row] = (await ev.stations()).rows;
+    expect(row.RxPkts).toBeUndefined();
+    expect(row.DLLostPkts).toBeUndefined();
+    // The downlink figures are carried under their own names so a real ratio
+    // can be computed from same-direction counters.
+    expect(row.DlPktsSent).toBe(10234);
+    expect(row.DlLostRetries).toBe(30);
+    expect(row.UlPktsReceived).toBe(193891);
+    const honest = row.DlLostRetries / (row.DlPktsSent + row.DlLostRetries);
+    expect(honest).toBeCloseTo(0.00292, 4);
+  });
+
+  it('is a failed read, not an empty client list, when the endpoint fails', async () => {
+    const ev = new GatewayEvidence({ get: async () => ({ ok: false, status: 500, errorSummary: 'Exception: null' }) });
+    const res = await ev.stations();
+    expect(res.ok).toBe(false);
+    expect(res.rows).toEqual([]);
+    expect(res.error).toMatch(/Exception: null/);
+  });
+});

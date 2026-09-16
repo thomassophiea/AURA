@@ -114,13 +114,25 @@ function makePreAuthedSession(baseUrl, token) {
         ok: resp.status >= 200 && resp.status < 300,
         status: resp.status,
         data,
+        // BOTH spellings. GatewayEvidence and every tool read `errorSummary`;
+        // this helper only ever set `errorText`, so a failed read reached the
+        // model as "Could not read X from the Gateway: undefined" — the fault
+        // was reported, its cause was not.
+        errorSummary: resp.status >= 400 ? String(resp.text).slice(0, 400) : undefined,
         errorText: resp.status >= 400 ? String(resp.text).slice(0, 400) : undefined,
       };
     } catch (err) {
-      return { ok: false, status: 0, data: null, errorText: err.message };
+      return { ok: false, status: 0, data: null, errorSummary: err.message, errorText: err.message };
     }
   };
   return {
+    // `historySources()` resolves AURA's monitoring source by
+    // `session.baseUrl`. Without it every database-backed tool —
+    // getServiceLevels, getMetricHistory, getClientHistory, the stored
+    // fallbacks — resolved zero sources and reported "no monitoring source
+    // matches this Gateway", so an eval run could not have exercised any of
+    // them however healthy the database was.
+    baseUrl,
     get: (path) => call(path),
     write: (path, opts) => call(path, opts),
     invalidate() {},
