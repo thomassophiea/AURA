@@ -116,6 +116,14 @@ export const SOURCE_FAMILY = {
   reconcileConfiguration: 'configuration',
   checkBackendServices: 'plumbing',
   getRfHealth: 'radio-telemetry',
+  // Server-computed AP rankings for one site. A DIFFERENT family from
+  // client-telemetry on purpose: these are the Gateway's own leaderboards over
+  // its APs, not MuTable read again, so agreement with a client-derived finding
+  // is genuine corroboration rather than one table counted twice.
+  getSiteRfHealth: 'radio-telemetry',
+  // Per-WLAN rollups from the service resource — again server-computed, and
+  // independent of the client table.
+  getWlanHealth: 'site-inventory',
   getApHealth: 'ap-inventory',
   getWlanConfig: 'configuration',
   listSites: 'site-inventory',

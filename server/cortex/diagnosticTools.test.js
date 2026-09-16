@@ -319,3 +319,32 @@ describe('history window schemas accept sub-hour windows', () => {
   });
 });
 
+
+describe('the site and WLAN tools are actually reachable', () => {
+  // Both existed as evidence methods for a while with no tool exposing them —
+  // dead code the model could never call. This is the test that catches that.
+  it('registers getSiteRfHealth and getWlanHealth as callable read tools', () => {
+    const tools = createDiagnosticTools({ session: { get: async () => ({ ok: false }) } });
+    for (const name of ['getSiteRfHealth', 'getWlanHealth']) {
+      expect(tools[name], `${name} is not registered`).toBeTruthy();
+      expect(tools[name].spec.name).toBe(name);
+      // Never a write: the model must not reach a mutating path.
+      expect(['read', 'diagnostic']).toContain(tools[name].risk);
+    }
+  });
+
+  it('gives every tool an activity label, so the UI never shows a function name', () => {
+    const tools = createDiagnosticTools({ session: { get: async () => ({ ok: false }) } });
+    for (const name of Object.keys(tools)) {
+      expect(TOOL_ACTIVITY[name], `${name} has no activity label`).toBeTruthy();
+    }
+  });
+
+  it('reports a failed read rather than an empty site', async () => {
+    const tools = createDiagnosticTools({
+      session: { get: async () => ({ ok: false, status: 500, errorSummary: 'boom' }) },
+    });
+    const out = await tools.getSiteRfHealth.handler({ siteId: 'site-1' });
+    expect(out.basis).not.toBe('observed');
+  });
+});

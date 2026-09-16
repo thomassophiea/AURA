@@ -105,6 +105,8 @@ export const TOOL_ACTIVITY = {
   compareClientToPeers: 'Comparing against other clients on the same AP and WLAN…',
   checkBackendServices: 'Checking DHCP, DNS and VLAN plumbing…',
   getSiteOverview: 'Summarising site health…',
+  getSiteRfHealth: 'Ranking the access points at this site…',
+  getWlanHealth: 'Checking this WLAN across every AP carrying it…',
   getServiceLevels: 'Reading service levels by site…',
   getInfrastructureAlerts: 'Checking infrastructure probes — RADIUS, DHCP, DNS, VLAN…',
   getRecentChanges: 'Looking for recent configuration changes…',
@@ -1162,6 +1164,82 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
               'no roam trail and no per-event detail. Do not describe a roam path from this.',
           },
           'report(station, mac, ["muEvent"])'
+        );
+      },
+    },
+
+    // ────────────────────────────────────────────────────────────────────
+    getSiteRfHealth: {
+      risk: RISK.DIAGNOSTIC,
+      spec: {
+        name: 'getSiteRfHealth',
+        description:
+          "Which access points are WORST at one site, by the Gateway's own rankings: RF health, SNR, channel utilisation, retries, and the up/down split. Use for \"which AP is the problem here\" or \"is this site healthy\". Ranks every AP at the site, including ones with no clients — which client telemetry cannot see.",
+        parameters: {
+          type: 'object',
+          properties: {
+            siteId: { type: 'string', description: "The site's UUID, not its name" },
+            reason: { type: 'string' },
+          },
+          required: ['siteId'],
+          additionalProperties: false,
+        },
+      },
+      handler: async ({ siteId }) => {
+        const res = await evidence.siteRfHealth(siteId);
+        if (!res.ok) return fetchFailed('the site AP rankings', { error: res.error });
+
+        const rank = (rows) =>
+          rows.map((r) => ({ ap: untrusted(r.id), value: r.value }));
+
+        return observed(
+          {
+            worstByRfHealth: rank(res.rankings.worstByRfHealth ?? []),
+            worstBySnr: rank(res.rankings.worstBySnr ?? []),
+            worstByChannelUtil: rank(res.rankings.worstByChannelUtil ?? []),
+            apUpDown: res.apUpDown.map((r) => ({ state: untrusted(r.id), count: r.value })),
+            instruction:
+              'These are the WORST performers, so a low position is not itself a fault — compare the ' +
+              'values. An AP appearing in several rankings at once is the strongest signal here. ' +
+              'Retries are deliberately omitted: that counter reports zero for every AP on this build.',
+          },
+          'report(site,[worstApsBy*, apCurrentUpDownReport])'
+        );
+      },
+    },
+
+    // ────────────────────────────────────────────────────────────────────
+    getWlanHealth: {
+      risk: RISK.DIAGNOSTIC,
+      spec: {
+        name: 'getWlanHealth',
+        description:
+          'Health of ONE WLAN across every AP and site carrying it: throughput, unique clients, and the busiest APs. Use for "is Skynet healthy" or "is this SSID working". Needs the WLAN\'s service UUID from getWlanConfig — several WLANs can share an SSID, so the SSID string will not do.',
+        parameters: {
+          type: 'object',
+          properties: {
+            serviceId: { type: 'string', description: "The WLAN's service UUID" },
+            reason: { type: 'string' },
+          },
+          required: ['serviceId'],
+          additionalProperties: false,
+        },
+      },
+      handler: async ({ serviceId }) => {
+        const res = await evidence.wlanHealth(serviceId);
+        if (!res.ok) return fetchFailed('the WLAN report', { error: res.error });
+
+        return observed(
+          {
+            throughput: res.throughput,
+            uniqueClients: res.uniqueClients,
+            busiestAps: res.busiestAps.map((a) => ({ ap: untrusted(a.id), clients: a.clients })),
+            instruction:
+              'A null figure means the Gateway measured nothing for this WLAN in the window — which is ' +
+              'NOT the same as zero traffic, and NOT evidence the WLAN is broken. A WLAN nobody is ' +
+              'using and a WLAN nobody can join look identical here; say which you can support.',
+          },
+          'report(service,[throughputReport,countOfUniqueUsersReport,topAccessPointsByConcurrentUserCount])'
         );
       },
     },
