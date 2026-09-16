@@ -49,10 +49,44 @@ export function pickTemplate(services, mode) {
     const match = services.find((s) => s.privacy?.[keyFor]);
     if (match) return match;
   }
+
+  // A portal service must mirror another PORTAL service. Falling back to
+  // services[0] inherits whatever happens to be first — on the lab a PSK
+  // network — and with it the wrong authenticated role and AAA policy, which
+  // the Gateway then rejects as "Policy not found" while pointing nowhere near
+  // the cause.
+  if (mode === 'portal') {
+    const portal = services.find((s) => s.enableCaptivePortal);
+    if (portal) return portal;
+  }
+
+  // OWE and open want a service with no privacy element rather than one whose
+  // PSK block would be cloned and then contradicted.
+  if (mode === 'owe' || mode === 'open') {
+    const openish = services.find((s) => !s.privacy);
+    if (openish) return openish;
+  }
+
   return services[0] ?? null;
 }
 
-/** Build the privacy block for the requested security mode (payload-templates.md). */
+/**
+ * Build the privacy block for the requested security mode (payload-templates.md).
+ *
+ * `{}` IS NOT AN OPEN NETWORK. An empty object is rejected by the Gateway with
+ *
+ *   400 ... need JSON String that contains type id (PrivacyElement)
+ *
+ * — a 400, not the 422 the rest of the API uses, and it was returned live on
+ * 2026-09-16 for a portal WLAN whose mode fell through to the default branch.
+ * A genuinely open service carries `privacy: null`, confirmed by reading the
+ * working AURA-CWP service off the lab Gateway. OWE is different again: it is
+ * encrypted-open and carries an OweElement plus `oweAutogen`.
+ *
+ * An unknown mode THROWS rather than returning a shape the Gateway will
+ * reject. Failing while building the payload names the real problem; failing at
+ * the Gateway names a Jackson deserialiser.
+ */
 function buildPrivacy(mode, password) {
   switch (mode) {
     case 'wpa2_personal':
@@ -69,14 +103,21 @@ function buildPrivacy(mode, password) {
         },
       };
     case 'owe':
-      return {}; // oweAutogen flag carries OWE, set alongside
+      // Encrypted open. The element must be present; `oweAutogen` is set
+      // alongside it in buildServicePayload.
+      return { OweElement: {} };
     case 'open':
-      return {};
+    case 'portal':
+      // Genuinely open at layer 2 — a captive portal authenticates above it.
+      // null, never {}.
+      return null;
     case 'wpa2_enterprise':
     case 'wpa3_enterprise':
       return { WpaEnterpriseElement: { mode: 'aesOnly', pmfMode: 'capable', fastTransitionEnabled: false, fastTransitionMdId: 0 } };
     default:
-      return {};
+      throw new Error(
+        `unsupported security mode '${mode}' — no privacy element is defined for it, and sending an empty one is rejected by the Gateway`
+      );
   }
 }
 
@@ -105,9 +146,13 @@ export function buildServicePayload(intent, template, password, port) {
   delete base.deviceids;
   delete base.siteids;
 
+  // Generated once and reused: for a portal service this same id must also be
+  // the unregistered role's id, so it cannot be minted inline below.
+  const serviceId = crypto.randomUUID();
+
   return {
     ...base,
-    id: crypto.randomUUID(),
+    id: serviceId,
     serviceName: intent.wlanName.slice(0, 64),
     ssid: (intent.ssid ?? intent.wlanName).slice(0, 32),
     status: 'enabled',
@@ -120,6 +165,34 @@ export function buildServicePayload(intent, template, password, port) {
     oweAutogen: intent.security?.mode === 'owe' ? true : (base.oweAutogen ?? false),
     hotspotType: base.hotspotType ?? 'Disabled',
     privacy: buildPrivacy(intent.security?.mode, password),
+    ...buildCaptivePortal(intent, base, serviceId),
+  };
+}
+
+/**
+ * The External Captive Portal block.
+ *
+ * An ECP service cannot be built as a normal WLAN and patched afterwards:
+ * `aaaPolicyId` silently drops on a PUT to a service that was not born with a
+ * portal. The distinguishing rule, confirmed by reading the working AURA-CWP
+ * service off the lab Gateway, is that **the unregistered role's id must equal
+ * the service's own id** — the Gateway will not create that role for you, and
+ * every other failure surfaces as a misleading 422 "Policy not found".
+ *
+ * Returns nothing for non-portal modes, so the payload is unchanged for them.
+ */
+function buildCaptivePortal(intent, base, serviceId) {
+  if (intent.security?.mode !== 'portal') return {};
+
+  return {
+    enableCaptivePortal: true,
+    captivePortalType: 'External',
+    // The whole ECP contract in one line.
+    unAuthenticatedUserDefaultRoleID: serviceId,
+    // Inherited from the mirrored portal service rather than invented: these
+    // are the Gateway's own conventions for who a guest becomes after login.
+    authenticatedUserDefaultRoleID: base.authenticatedUserDefaultRoleID ?? null,
+    aaaPolicyId: base.aaaPolicyId ?? null,
   };
 }
 
@@ -271,6 +344,33 @@ export async function provisionWlan({
   const template = pickTemplate(services, intent.security?.mode);
   const port = nextServicePort(services);
   const payload = buildServicePayload(intent, template, ephemeralPassword, port);
+
+  // A portal service needs its unregistered role to EXIST FIRST, carrying the
+  // service's own id. Creating the service first produces a 422 "Policy not
+  // found" that points at everything except the real cause.
+  if (intent.security?.mode === 'portal') {
+    const role = await requestXcc('/v3/roles', {
+      ...opts,
+      method: 'POST',
+      body: {
+        id: payload.id,
+        // Names beginning "Unregistered role for " are reserved by the Gateway
+        // and rejected, while per-service unregistered roles stay hidden from
+        // GET /v3/roles and still block the name.
+        name: `${payload.serviceName} guest access`.slice(0, 64),
+      },
+    });
+    if (!role.ok) {
+      return {
+        status: 'failed',
+        stage: 'create_unregistered_role',
+        httpStatus: role.status,
+        error: role.errorText,
+        // Said plainly, because this failure is the one that misleads.
+        note: 'The captive-portal role could not be created, so the WLAN was not attempted. Nothing was changed.',
+      };
+    }
+  }
 
   const created = await requestXcc('/v1/services', { ...opts, method: 'POST', body: payload });
   if (!created.ok) {

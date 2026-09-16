@@ -379,3 +379,100 @@ describe('buildServicePayload', () => {
     expect(payload.preAuthenticatedIdleTimeout).toBe(300);
   });
 });
+
+describe('the privacy element — the live 400', () => {
+  // On 2026-09-16 a portal WLAN reached the lab Gateway with `privacy: {}` and
+  // came back 400 "need JSON String that contains type id (PrivacyElement)".
+  // Every case below exists to stop that shape being built again.
+  const intentFor = (mode) => ({ wlanName: 'Guest', ssid: 'Guest', security: { mode } });
+
+  it('sends null for an open network, never an empty object', () => {
+    const payload = buildServicePayload(intentFor('open'), null, undefined, 101);
+    expect(payload.privacy).toBeNull();
+    expect(payload.privacy).not.toEqual({});
+  });
+
+  it('sends null for a captive-portal network', () => {
+    const payload = buildServicePayload(intentFor('portal'), null, undefined, 101);
+    expect(payload.privacy).toBeNull();
+  });
+
+  it('sends an OweElement for OWE, and sets oweAutogen alongside it', () => {
+    const payload = buildServicePayload(intentFor('owe'), null, undefined, 101);
+    expect(payload.privacy).toEqual({ OweElement: {} });
+    expect(payload.oweAutogen).toBe(true);
+  });
+
+  it('throws on an unknown mode rather than building a payload the Gateway rejects', () => {
+    // Failing here names the real problem; failing at the Gateway names a
+    // Jackson deserialiser.
+    expect(() => buildServicePayload(intentFor('wep'), null, undefined, 101)).toThrow(
+      /unsupported security mode/
+    );
+  });
+
+  it('still builds a PSK block', () => {
+    const payload = buildServicePayload(intentFor('wpa2_personal'), null, 'secret123', 101);
+    expect(payload.privacy.WpaPskElement.presharedKey).toBe('secret123');
+  });
+});
+
+describe('the captive-portal contract', () => {
+  const portalIntent = { wlanName: 'Guest', ssid: 'Guest', security: { mode: 'portal' } };
+
+  it('makes the unregistered role id EQUAL the service id', () => {
+    // The whole ECP contract. Every other failure surfaces as a misleading
+    // 422 "Policy not found".
+    const payload = buildServicePayload(portalIntent, null, undefined, 101);
+    expect(payload.unAuthenticatedUserDefaultRoleID).toBe(payload.id);
+  });
+
+  it('is born with the portal enabled, not patched afterwards', () => {
+    const payload = buildServicePayload(portalIntent, null, undefined, 101);
+    expect(payload.enableCaptivePortal).toBe(true);
+    expect(payload.captivePortalType).toBe('External');
+  });
+
+  it('inherits the authenticated role and AAA policy from the mirrored portal', () => {
+    const template = {
+      id: 'old',
+      enableCaptivePortal: true,
+      authenticatedUserDefaultRoleID: 'auth-role',
+      aaaPolicyId: 'aaa-1',
+    };
+    const payload = buildServicePayload(portalIntent, template, undefined, 101);
+    expect(payload.authenticatedUserDefaultRoleID).toBe('auth-role');
+    expect(payload.aaaPolicyId).toBe('aaa-1');
+  });
+
+  it('adds nothing to a non-portal payload', () => {
+    const payload = buildServicePayload(
+      { wlanName: 'Corp', ssid: 'Corp', security: { mode: 'wpa2_personal' } },
+      null,
+      'secret123',
+      101
+    );
+    expect(payload.enableCaptivePortal).toBeUndefined();
+    expect(payload.captivePortalType).toBeUndefined();
+  });
+});
+
+describe('pickTemplate mirrors like for like', () => {
+  const services = [
+    { id: 'psk', serviceName: 'Skynet', privacy: { WpaPskElement: {} } },
+    { id: 'cwp', serviceName: 'AURA-CWP', privacy: null, enableCaptivePortal: true },
+  ];
+
+  it('mirrors a portal service for a portal, not whatever is first', () => {
+    expect(pickTemplate(services, 'portal').id).toBe('cwp');
+  });
+
+  it('mirrors a service with no privacy element for open and OWE', () => {
+    expect(pickTemplate(services, 'open').id).toBe('cwp');
+    expect(pickTemplate(services, 'owe').id).toBe('cwp');
+  });
+
+  it('still mirrors a PSK service for PSK', () => {
+    expect(pickTemplate(services, 'wpa2_personal').id).toBe('psk');
+  });
+});
