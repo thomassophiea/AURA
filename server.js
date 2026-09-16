@@ -38,6 +38,10 @@ import { proposeRemediation } from './server/cortex/remediationBridge.js';
 import { resolveScope, buildClarification } from './server/cortex/scopeResolver.js';
 import { recordGapsFromInvestigation, gapReport } from './server/cortex/apiGapCatalog.js';
 import { sessionFromRequest } from './server/cortex/requestScopedSession.js';
+import * as workflowStore from './server/cortex/workflowStore.js';
+import { routeUtterance } from './server/cortex/workflowRouter.js';
+import { handleRoutedTurn } from './server/cortex/workflowEngine.js';
+import { buildWorkflowSources } from './server/cortex/workflowSources.js';
 import { requireRole } from './server/identity/identityRouter.js';
 import { audit } from './server/identity/identityStore.js';
 import { sentinelEngine } from './server/sentinel/sentinelEngine.js';
@@ -2567,6 +2571,12 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
      * `{siteNames: [...]}` for a site, `{level: 'fleet'}` for "check all".
      */
     scopeOverride = null,
+    /**
+     * Groups this turn to a durable task. Optional: when the client does not
+     * send one, the authenticated actor is used, which gives an operator one
+     * task at a time — the same constraint the store enforces anyway.
+     */
+    sessionId = null,
   } = req.body ?? {};
 
   const send = (event, data) => {
@@ -2583,6 +2593,58 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
   const sess = sessionFromRequest(req, { defaultControllerUrl: DEFAULT_CONTROLLER_URL ?? '' });
   if (!sess.ok) {
     return res.status(sess.status).json({ error: sess.error });
+  }
+
+  // ── Workflow continuation, BEFORE a provider is chosen. ───────────────────
+  //
+  // "PrimarySite", "Portal", "do it", "why?" are answers to a question Cortex
+  // already asked. Re-parsing them as brand-new questions is precisely what
+  // made every configuration task restart at the first missing field.
+  //
+  // Routing is deterministic, so it costs no tokens and happens before any
+  // provider is selected. It also releases anything that reads as a genuine new
+  // question, so an operator can abandon a half-built task to ask something
+  // else without being trapped in it.
+  const workflowSessionId =
+    (typeof sessionId === 'string' && sessionId.trim()) || `actor:${req.auraActor ?? 'anonymous'}`;
+
+  let activeWorkflow = null;
+  try {
+    activeWorkflow = (await workflowStore.findActive(workflowSessionId)).workflow;
+  } catch (err) {
+    // A workflow lookup failure must never cost the operator their question.
+    console.warn('[Cortex] workflow lookup failed, treating as a new question:', err.message);
+  }
+
+  if (activeWorkflow) {
+    const route = routeUtterance(question, activeWorkflow);
+
+    if (route.kind !== 'new_intent') {
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache, no-transform',
+        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      });
+      const emit = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+
+      try {
+        const turn = await handleRoutedTurn(route, {
+          sources: buildWorkflowSources(sess.session),
+        });
+        emit('workflow', { rule: route.rule, ...turn });
+        audit('cortex.workflow', {
+          actor: req.auraActor,
+          source: req.auraActorSource,
+          target: activeWorkflow.workflowType,
+          detail: { kind: route.kind, rule: route.rule, emit: turn.emit },
+        });
+      } catch (err) {
+        console.error('[Cortex] workflow turn failed:', err);
+        emit('error', { message: 'That answer could not be applied to the current task.' });
+      }
+      return res.end();
+    }
   }
 
   let llmProvider;
