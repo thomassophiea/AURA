@@ -7,7 +7,6 @@
  * carry the data it claimed. Probed against the lab Gateway (VE6120,
  * 10.20.1.0-020R, 2026-09-10):
  *
- *   /v1/stations/events/{mac}   500 "This feature is disabled."  <- hard dead
  *   /v1/auditlogs               422 unless startTime+endTime (epoch ms)
  *   /v1/aps/ifstats             partial: 200 fleet-wide, 500 for some APs
  *   /v3/sites/{id}/report/impact 404 despite being in the spec
@@ -22,6 +21,19 @@
  *
  * Flex frames arrive base64(zlib(json)). The report API accepts ONE duration
  * on this build — '3H'; every other value 500s after ~31s.
+ *
+ * CORRECTED 2026-09-16, twice, both by probing rather than reasoning:
+ *
+ *   /v1/stations/events/{mac}  is NOT "disabled". It answers 422 "Invalid end
+ *                     time" — it wants the window parameters. The richer source
+ *                     is /platformmanager/v2/logging/stations/events/query,
+ *                     which carries the roam trail and FT state per event.
+ *   THE 3-HOUR CAP IS FLEX'S, NOT THE PLATFORM'S. That event route ignores the
+ *                     window entirely and returned TEN DAYS for a 3H request.
+ *   SNR EXISTS, server-computed, as an AP-scoped leaderboard
+ *                     (topClientsBySnr / worstClientsBySnr, in dB). It is
+ *                     absent from the client resource in every form, which is
+ *                     why nine widget-name probes there found nothing.
  *
  * SENTINELS
  * ---------
@@ -151,6 +163,9 @@ export function reportPath(kind, ident, widgets) {
     ap: `/v1/aps/${encodeURIComponent(ident)}/report`,
     station: `/v1/stations/${encodeURIComponent(ident)}/report`,
     site: `/v1/report/sites/${encodeURIComponent(ident)}`,
+    // "service" is the API's own word for a WLAN. The SSID string will not
+    // work here — several WLANs can share one SSID, so it must be the UUID.
+    service: `/v1/report/services/${encodeURIComponent(ident)}`,
   }[kind];
   if (!base) throw new Error(`Unknown report kind: ${kind}`);
   return `${base}?duration=${REPORT_DURATION}&widgetList=${widgets.map(encodeURIComponent).join(',')}`;
@@ -643,6 +658,97 @@ export class GatewayEvidence {
       retriesInert,
       // Named so a caller can attribute these rather than implying flex.
       source: 'report(station,[averageTcpRoundTripTime,baseliningRetries])',
+      error: null,
+    };
+  }
+
+  /**
+   * Which APs are worst at one site, by the Gateway's own rankings.
+   *
+   * This is the answer to "which AP is the problem here", and it was previously
+   * derived from client telemetry — which makes an AP with no clients invisible
+   * exactly when it is most broken. These are server-computed leaderboards over
+   * the site's own APs.
+   *
+   * `siteQoE` is deliberately NOT requested: it returns `enable: false` with an
+   * empty series on this build, the same dark QoE layer as `apQoE`. Asking for
+   * a disabled composite and reporting its absence as a finding would be noise.
+   *
+   * Every distribution is read from the WORST end. A top-N list cannot show a
+   * struggling AP, and "which is worst" is the operator's actual question.
+   */
+  async siteRfHealth(siteId) {
+    const widgets = [
+      'worstApsByRfHealth|all',
+      'worstApsBySnr|all',
+      'worstApsByChannelUtil|all',
+      'worstApsByRetries|all',
+      'apCurrentUpDownReport',
+    ];
+    const res = await this.report('site', siteId, widgets);
+    if (!res.ok) return { ok: false, rankings: {}, error: res.error };
+
+    const dist = (widget) => {
+      const blocks = res.data?.[widget];
+      const block = Array.isArray(blocks) ? blocks[0] : blocks;
+      return (block?.distributionStats ?? [])
+        .map((r) => ({ id: r?.id ?? null, value: Number(r?.value) }))
+        .filter((r) => r.id !== null && Number.isFinite(r.value));
+    };
+
+    return {
+      ok: true,
+      rankings: {
+        worstByRfHealth: dist('worstApsByRfHealth'),
+        worstBySnr: dist('worstApsBySnr'),
+        worstByChannelUtil: dist('worstApsByChannelUtil'),
+        // Retries are inert on this build; carried anyway so the caller can
+        // see that for itself rather than trusting a note.
+        worstByRetries: dist('worstApsByRetries'),
+      },
+      apUpDown: dist('apCurrentUpDownReport'),
+      error: null,
+    };
+  }
+
+  /**
+   * One WLAN's own health, across every AP and site it is deployed on.
+   *
+   * "Is Skynet healthy" had no resource before this. It was answerable only by
+   * filtering client telemetry by SSID, which cannot distinguish "this WLAN is
+   * fine and nobody is on it" from "this WLAN is broken and nobody can join".
+   *
+   * `serviceId` is the WLAN's UUID — "service" is the API's own word for a
+   * WLAN, and the SSID string will NOT work here. Several WLANs can share one
+   * SSID, so resolving the id is the caller's job and not a detail to guess.
+   */
+  async wlanHealth(serviceId) {
+    const widgets = [
+      'throughputReport|all',
+      'countOfUniqueUsersReport|all',
+      'topAccessPointsByConcurrentUserCount|all',
+    ];
+    const res = await this.report('service', serviceId, widgets);
+    if (!res.ok) return { ok: false, error: res.error };
+
+    const stat = (widget, statName) => {
+      const { values } = widgetSeries(res.data, widget, statName);
+      return values.length ? { median: percentile(values, 50), samples: values.length } : null;
+    };
+    const blocks = res.data?.topAccessPointsByConcurrentUserCount;
+    const block = Array.isArray(blocks) ? blocks[0] : blocks;
+
+    return {
+      ok: true,
+      throughput: {
+        total: stat('throughputReport', 'Total'),
+        download: stat('throughputReport', 'Download'),
+        upload: stat('throughputReport', 'Upload'),
+      },
+      uniqueClients: stat('countOfUniqueUsersReport', 'tntUniqueUsers'),
+      busiestAps: (block?.distributionStats ?? [])
+        .map((r) => ({ id: r?.id ?? null, clients: Number(r?.value) }))
+        .filter((r) => r.id !== null && Number.isFinite(r.clients)),
       error: null,
     };
   }

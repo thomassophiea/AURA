@@ -819,3 +819,73 @@ describe('an inert counter is not a healthy reading', () => {
     expect(out.retries).toBe(4);
   });
 });
+
+describe('siteRfHealth — which AP is worst here', () => {
+  const data = {
+    worstApsByRfHealth: [{ distributionStats: [{ id: 'AP-1', value: 2.1 }, { id: 'AP-2', value: 3.4 }] }],
+    worstApsBySnr: [{ distributionStats: [{ id: 'AP-1', value: 18 }] }],
+    worstApsByChannelUtil: [{ distributionStats: [{ id: 'AP-3', value: 91 }] }],
+    worstApsByRetries: [{ distributionStats: [{ id: 'AP-1', value: 0 }] }],
+    apCurrentUpDownReport: [{ distributionStats: [{ id: 'Up', value: 7 }, { id: 'Down', value: 1 }] }],
+  };
+  const evidenceFor = (r) => new GatewayEvidence({ get: async () => r });
+
+  it('reads the WORST end of every ranking', async () => {
+    // A top-N list cannot show a struggling AP, and "which is worst" is the
+    // operator's actual question.
+    const out = await evidenceFor({ ok: true, data }).siteRfHealth('site-1');
+    expect(out.rankings.worstByRfHealth[0]).toEqual({ id: 'AP-1', value: 2.1 });
+    expect(out.rankings.worstByChannelUtil[0].id).toBe('AP-3');
+  });
+
+  it('carries the up/down split so an AP with no clients is still visible', async () => {
+    const out = await evidenceFor({ ok: true, data }).siteRfHealth('site-1');
+    expect(out.apUpDown).toEqual([
+      { id: 'Up', value: 7 },
+      { id: 'Down', value: 1 },
+    ]);
+  });
+
+  it('reports a failed read rather than an empty site', async () => {
+    const out = await evidenceFor({ ok: false, status: 500, errorSummary: 'boom' }).siteRfHealth('s');
+    expect(out.ok).toBe(false);
+    expect(out.rankings).toEqual({});
+  });
+});
+
+describe('wlanHealth — is this WLAN healthy', () => {
+  const data = {
+    throughputReport: [
+      {
+        statistics: [
+          { statName: 'Total', values: [{ value: '10' }, { value: '20' }, { value: '30' }] },
+          { statName: 'Download', values: [{ value: '8' }] },
+        ],
+      },
+    ],
+    countOfUniqueUsersReport: [{ statistics: [{ statName: 'tntUniqueUsers', values: [{ value: '12' }] }] }],
+    topAccessPointsByConcurrentUserCount: [{ distributionStats: [{ id: 'AP-1', value: 9 }] }],
+  };
+  const evidenceFor = (r) => new GatewayEvidence({ get: async () => r });
+
+  it('summarises throughput and client count for the WLAN itself', async () => {
+    const out = await evidenceFor({ ok: true, data }).wlanHealth('svc-uuid');
+    expect(out.throughput.total.median).toBe(20);
+    expect(out.uniqueClients.median).toBe(12);
+    expect(out.busiestAps[0]).toEqual({ id: 'AP-1', clients: 9 });
+  });
+
+  it('distinguishes "no data" from zero', async () => {
+    const out = await evidenceFor({ ok: true, data: {} }).wlanHealth('svc-uuid');
+    expect(out.throughput.total).toBeNull();
+    expect(out.uniqueClients).toBeNull();
+  });
+});
+
+describe('reportPath knows the service resource', () => {
+  it('builds the WLAN report path', () => {
+    expect(reportPath('service', 'svc-uuid', ['throughputReport'])).toContain(
+      '/v1/report/services/svc-uuid'
+    );
+  });
+});
