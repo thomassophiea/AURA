@@ -348,3 +348,83 @@ describe('the site and WLAN tools are actually reachable', () => {
     expect(out.basis).not.toBe('observed');
   });
 });
+
+describe('getSiteRfHealth takes a name the model can actually produce', () => {
+  // It required a site UUID. No tool anywhere hands the model one, so it was
+  // structurally uncallable — which is why a Coverage dip went unattributed
+  // while the tool that would attribute it sat unused.
+  const sites = [
+    { id: '84b3642f-a5d7-4dc9-b162-a6156c97b8f0', siteName: 'PrimarySite' },
+    { id: 'bbbb', siteName: 'Branch' },
+  ];
+  const rankings = {
+    worstApsByRfHealth: [{ distributionStats: [{ id: 'AP-1', value: 2.1 }] }],
+    apCurrentUpDownReport: [{ distributionStats: [{ id: 'Up', value: 4 }] }],
+  };
+
+  const toolsFor = (handler) => createDiagnosticTools({ session: { get: handler } });
+
+  it('resolves a site NAME to its id and ranks the APs', async () => {
+    const tools = toolsFor(async (path) => {
+      if (path.startsWith('/v3/sites')) return { ok: true, data: sites };
+      return { ok: true, data: rankings };
+    });
+    const out = await tools.getSiteRfHealth.handler({ site: 'PrimarySite' });
+    expect(out.basis).toBe('observed');
+    expect(out.worstByRfHealth[0].value).toBe(2.1);
+  });
+
+  it('matches the name case-insensitively', async () => {
+    const tools = toolsFor(async (path) =>
+      path.startsWith('/v3/sites') ? { ok: true, data: sites } : { ok: true, data: rankings }
+    );
+    expect((await tools.getSiteRfHealth.handler({ site: 'primarysite' })).basis).toBe('observed');
+  });
+
+  it('accepts a UUID directly without a catalogue lookup', async () => {
+    let listed = false;
+    const tools = toolsFor(async (path) => {
+      if (path.startsWith('/v3/sites')) {
+        listed = true;
+        return { ok: true, data: sites };
+      }
+      return { ok: true, data: rankings };
+    });
+    await tools.getSiteRfHealth.handler({ site: '84b3642f-a5d7-4dc9-b162-a6156c97b8f0' });
+    expect(listed).toBe(false);
+  });
+
+  it('REFUSES to report health for a name that matches nothing', async () => {
+    // The whole reason this guard exists: an unmatched name reading as
+    // "no problems found" is the failure the scope layer was built to stop.
+    const tools = toolsFor(async (path) =>
+      path.startsWith('/v3/sites') ? { ok: true, data: sites } : { ok: true, data: rankings }
+    );
+    const out = await tools.getSiteRfHealth.handler({ site: 'Nowhere' });
+    expect(out.status).toBe('scope_matched_nothing');
+    expect(out.basis).not.toBe('observed');
+    // Site names are network-sourced, so they arrive fenced by untrusted().
+    // Asserting on the wrapper is the point: it must still be fenced here.
+    expect(JSON.stringify(out.knownSites)).toContain('PrimarySite');
+    expect(out.instruction).toMatch(/do NOT report this site as healthy/i);
+  });
+
+  it('asks rather than picking one when two sites share a name', async () => {
+    const dupes = [
+      { id: 'a', siteName: 'Same' },
+      { id: 'b', siteName: 'Same' },
+    ];
+    const tools = toolsFor(async (path) =>
+      path.startsWith('/v3/sites') ? { ok: true, data: dupes } : { ok: true, data: rankings }
+    );
+    const out = await tools.getSiteRfHealth.handler({ site: 'Same' });
+    expect(out.status).toBe('ambiguous_scope');
+  });
+
+  it('reports a failed catalogue read rather than an empty site list', async () => {
+    const tools = toolsFor(async () => ({ ok: false, status: 500, errorSummary: 'boom' }));
+    const out = await tools.getSiteRfHealth.handler({ site: 'PrimarySite' });
+    expect(out.basis).not.toBe('observed');
+    expect(out.status).not.toBe('scope_matched_nothing');
+  });
+});
