@@ -2616,8 +2616,11 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
     (typeof sessionId === 'string' && sessionId.trim()) || `actor:${req.auraActor ?? 'anonymous'}`;
 
   let activeWorkflow = null;
+  let activeStore = 'none';
   try {
-    activeWorkflow = (await workflowStore.findActive(workflowSessionId)).workflow;
+    const found = await workflowStore.findActive(workflowSessionId);
+    activeWorkflow = found.workflow;
+    activeStore = found.store;
   } catch (err) {
     // A workflow lookup failure must never cost the operator their question.
     console.warn('[Cortex] workflow lookup failed, treating as a new question:', err.message);
@@ -2696,7 +2699,9 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
           turn = { ...turn, emit: result.ok ? 'applied' : 'failed', result: result.result ?? null };
         }
 
-        emit('workflow', { rule: route.rule, ...turn });
+        // Reported on every turn, not just the first: whether the task will
+        // survive a restart is most relevant at the confirmation gate.
+        emit('workflow', { rule: route.rule, durable: activeStore === 'db', ...turn });
         audit('cortex.workflow', {
           actor: req.auraActor,
           source: req.auraActorSource,
@@ -2719,7 +2724,14 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
   // actually implemented starts a workflow, so "why is AP-12 offline?" and
   // "how many APs are at PrimarySite?" fall straight through to the
   // investigation path exactly as before.
-  if (!activeWorkflow) {
+  //
+  // This runs whether or not a workflow is already open. If one is, the router
+  // has already decided this utterance is NOT an answer to it — and a new
+  // configuration request must then start a new task rather than fall through
+  // to the diagnosis path, which would silently answer a question the operator
+  // never asked. The previous task is closed explicitly, so the session's one
+  // active slot is freed rather than blocking the new one.
+  {
     let parsed = null;
     try {
       parsed = parseWirelessIntent(question, {
@@ -2735,6 +2747,14 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
       parsed?.classification === 'mutating' && (action === 'create_wlan' || action === 'create_vlan');
 
     if (startsWork) {
+      if (activeWorkflow) {
+        // Superseded, not silently abandoned: the operator asked for something
+        // different, and two half-built WLANs in one conversation is the exact
+        // failure the single-active-workflow rule exists to prevent.
+        await workflowStore
+          .close(activeWorkflow.id, 'CANCELLED')
+          .catch((err) => console.warn('[Cortex] could not close superseded workflow:', err.message));
+      }
       res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache, no-transform',
