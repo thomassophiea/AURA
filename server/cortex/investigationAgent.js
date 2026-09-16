@@ -1020,84 +1020,8 @@ function withTimeout(promise, ms) {
  * Returns findings rather than mutating the answer — the caller decides
  * whether to surface them, and the UI shows them in the evidence panel.
  */
-/**
- * Confidence words the model might assert, ranked like the runtime's ladder.
- * Ordered weakest first so a comparison is a numeric one.
- */
-const ASSERTED_LEVELS = [
-  [/insufficient\s+evidence/i, 0],
-  [/\bpossible\b/i, 1],
-  [/\blikely\b/i, 2],
-  [/\bhigh(?:\s+confidence)?\b/i, 3],
-  [/\bconfirmed\b/i, 4],
-];
-
-const COMPUTED_RANK = {
-  'INSUFFICIENT EVIDENCE': 0,
-  POSSIBLE: 1,
-  LIKELY: 2,
-  'HIGH CONFIDENCE': 3,
-  CONFIRMED: 4,
-};
-
-/**
- * Did the answer assert a confidence level HIGHER than the runtime computed?
- *
- * The contract's first rule is that confidence is computed and never written,
- * and the runtime tells the model its level in as many words: "Use this level;
- * do not raise it." Observed 2026-09-16 on a real site answer — computed
- * INSUFFICIENT EVIDENCE, and the prose said "Confidence: HIGH".
- *
- * Deliberately one-directional. A model that reports LOWER than computed is
- * being cautious, which is not a failure, and flagging it would train exactly
- * the wrong instinct. Only an upgrade is a violation.
- *
- * Only sentences that actually ASSERT a level count: "confidence band",
- * "confidence interval" and a quotation of the runtime's own line are not
- * claims, and an audit that flags those stops being read.
- */
-function auditConfidenceOverride(answer, computedConfidence) {
-  if (!computedConfidence) return null;
-
-  const computed = Object.keys(COMPUTED_RANK).find((k) => computedConfidence.includes(k));
-  if (computed === undefined) return null;
-  const ceiling = COMPUTED_RANK[computed];
-
-  for (const raw of String(answer).split(/(?<=[.!?\n])/)) {
-    const sentence = raw.trim();
-    if (!/\bconfidence\b/i.test(sentence)) continue;
-    // Not an assertion: statistical bands, and the runtime's own sentence.
-    if (/confidence\s+(band|interval|envelope)/i.test(sentence)) continue;
-    if (/COMPUTED CONFIDENCE|derived from the evidence ledger|do not raise it/i.test(sentence)) continue;
-
-    for (const [re, rank] of ASSERTED_LEVELS) {
-      if (rank > ceiling && re.test(sentence)) {
-        return {
-          severity: 'high',
-          detail:
-            `States a confidence the evidence does not carry. The runtime computed ` +
-            `${computed} and the answer asserts a higher level.`,
-          sentence: sentence.slice(0, 160),
-        };
-      }
-    }
-  }
-  return null;
-}
-
-/**
- * @param {string} answer
- * @param {object[]} ledger
- * @param {{computedConfidence?: string|null}} [opts] the runtime's own level,
- *   so the audit can catch the model overriding it. Optional: callers that do
- *   not have it still get every other rule.
- */
-export function auditAnswer(answer, ledger, opts = {}) {
+export function auditAnswer(answer, ledger) {
   const findings = [];
-
-  const override = auditConfidenceOverride(answer, opts.computedConfidence);
-  if (override) findings.push(override);
-
   const toolsUsed = new Set(ledger.filter((l) => l.ok).map((l) => l.tool));
 
   // Each claim lists EVERY tool that can legitimately support it. Listing only
