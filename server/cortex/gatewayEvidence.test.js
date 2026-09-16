@@ -701,3 +701,50 @@ describe('clientEventLog — the detail muEvent cannot carry', () => {
     expect(out.events).toEqual([]);
   });
 });
+
+describe('clientPerformance — latency and retries without flex', () => {
+  const series = (widget, stats) => ({
+    [widget]: [{ statistics: stats }],
+  });
+  const payload = {
+    ...series('averageTcpRoundTripTime', [
+      { statName: 'Wireless', values: [{ value: '4' }, { value: '6' }, { value: '8' }] },
+      { statName: 'Network', values: [{ value: '20' }, { value: '30' }, { value: '40' }] },
+    ]),
+    ...series('baseliningRetries', [
+      { statName: 'Retries', values: [{ value: '1' }, { value: '3' }, { value: '5' }] },
+      { statName: 'Retries Lower', values: [{ value: '0' }] },
+    ]),
+  };
+  const evidenceFor = (result) => new GatewayEvidence({ get: async () => result });
+
+  it('reports the median, not the latest — one spike is not an experience', async () => {
+    const out = await evidenceFor({ ok: true, data: payload }).clientPerformance('AA:BB');
+    expect(out.wirelessRttMs).toBe(6);
+    expect(out.networkRttMs).toBe(30);
+    expect(out.retries).toBe(3);
+  });
+
+  it('picks the Retries statistic, not its confidence band', async () => {
+    const out = await evidenceFor({ ok: true, data: payload }).clientPerformance('AA:BB');
+    expect(out.retries).not.toBe(0);
+  });
+
+  it('names its source so nothing attributes it to flex', async () => {
+    const out = await evidenceFor({ ok: true, data: payload }).clientPerformance('AA:BB');
+    expect(out.source).toMatch(/averageTcpRoundTripTime/);
+  });
+
+  it('returns nulls, not zeros, when the widgets carry no points', async () => {
+    const empty = { averageTcpRoundTripTime: [{ statistics: [{ statName: 'Wireless', values: [] }] }] };
+    const out = await evidenceFor({ ok: true, data: empty }).clientPerformance('AA:BB');
+    expect(out.wirelessRttMs).toBeNull();
+    expect(out.retries).toBeNull();
+  });
+
+  it('reports a failed read rather than absent measurements', async () => {
+    const out = await evidenceFor({ ok: false, status: 500, errorSummary: 'boom' }).clientPerformance('M');
+    expect(out.ok).toBe(false);
+    expect(out.error).toBe('boom');
+  });
+});

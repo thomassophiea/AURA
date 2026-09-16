@@ -913,6 +913,14 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
         // evidence contract exists to prevent — and the two series have
         // different time bases, so this is an estimate over the window, not a
         // reading at an instant.
+        // Latency and retries from the report widgets when flex has none.
+        // Both were believed unavailable and both answer; see clientPerformance.
+        const needsPerf =
+          rtt(row.WirelessRTT) === null || rtt(row.NetworkRTT) === null;
+        const perf = needsPerf && row.MAC
+          ? await evidence.clientPerformance(row.MAC).catch(() => null)
+          : null;
+
         let snr = sig.snr;
         let snrBasis = snr === null ? null : 'measured';
         if (snr === null && sig.rss !== null && row.ApSerial && row.RadioID) {
@@ -967,9 +975,16 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
           latency: {
             // A null here means the Gateway did not measure it. It is NOT zero
             // and NOT healthy — say "not measured".
-            wirelessMs: rtt(row.WirelessRTT),
-            networkMs: rtt(row.NetworkRTT),
+            wirelessMs: rtt(row.WirelessRTT) ?? perf?.wirelessRttMs ?? null,
+            networkMs: rtt(row.NetworkRTT) ?? perf?.networkRttMs ?? null,
             dnsMs: rtt(row.DNSRTT),
+            // Set when a figure came from the report widget rather than flex,
+            // so nothing reads a median-over-the-window as a spot reading.
+            latencySource:
+              rtt(row.WirelessRTT) === null && perf?.wirelessRttMs != null ? perf.source : null,
+            // The flex DLRetryAttempts column is 0 for every client on this
+            // build; baseliningRetries is a series that actually reports.
+            retriesMedian: perf?.retries ?? null,
             note: 'null means not measured by the Gateway, not zero and not healthy',
           },
           throughput: {

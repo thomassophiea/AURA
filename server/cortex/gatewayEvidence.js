@@ -597,6 +597,45 @@ export class GatewayEvidence {
   }
 
   /**
+   * Latency and retries for one client, independent of the flex tables.
+   *
+   * Both of these were believed unavailable, and both were wrong:
+   *
+   * - `averageTcpRoundTripTime` returns real Wireless and Network RTT. While
+   *   the flex service is down every latency reading came back "not measured",
+   *   which is honest but needlessly blind — this route answers.
+   *
+   * - `baseliningRetries` returns a Retries series with its confidence band.
+   *   The standing rule was "DLRetryAttempts is 0 for every client on this
+   *   build, base retry findings on loss". That is true of the flex column and
+   *   not of this widget, which returned 88 points.
+   *
+   * One call for both, because they are the same request.
+   */
+  async clientPerformance(mac) {
+    const res = await this.report('station', mac, ['averageTcpRoundTripTime', 'baseliningRetries']);
+    if (!res.ok) {
+      return { ok: false, wirelessRttMs: null, networkRttMs: null, retries: null, error: res.error };
+    }
+
+    const pick = (widget, statName) => {
+      const { values } = widgetSeries(res.data, widget, statName);
+      // The median, not the latest: one spike is not a client's experience.
+      return values.length ? percentile(values, 50) : null;
+    };
+
+    return {
+      ok: true,
+      wirelessRttMs: pick('averageTcpRoundTripTime', 'Wireless'),
+      networkRttMs: pick('averageTcpRoundTripTime', 'Network'),
+      retries: pick('baseliningRetries', 'Retries'),
+      // Named so a caller can attribute these rather than implying flex.
+      source: 'report(station,[averageTcpRoundTripTime,baseliningRetries])',
+      error: null,
+    };
+  }
+
+  /**
    * The per-client event log, with detail `muEvent` does not carry.
    *
    * WHY THIS IS NOT `muEvent`
