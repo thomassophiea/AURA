@@ -60,14 +60,14 @@ export function pickTemplate(services, mode) {
     if (portal) return portal;
   }
 
-  // OWE and open want a service with no privacy element rather than one whose
-  // PSK block would be cloned and then contradicted.
-  if (mode === 'owe' || mode === 'open') {
-    const openish = services.find((s) => !s.privacy);
-    if (openish) return openish;
-  }
-
-  return services[0] ?? null;
+  // Everything else must mirror a NON-portal service. Preferring "has no
+  // privacy element" looked right and was wrong: on the lab the only such
+  // service is the captive portal, so an open network inherited
+  // `enableCaptivePortal` and an unregistered-role id belonging to a different
+  // service — which the Gateway rejects as 422 "Policy not found", an error
+  // that names neither. Measured live on 2026-09-16.
+  const nonPortal = services.find((s) => !s.enableCaptivePortal);
+  return nonPortal ?? services[0] ?? null;
 }
 
 /**
@@ -182,7 +182,21 @@ export function buildServicePayload(intent, template, password, port) {
  * Returns nothing for non-portal modes, so the payload is unchanged for them.
  */
 function buildCaptivePortal(intent, base, serviceId) {
-  if (intent.security?.mode !== 'portal') return {};
+  if (intent.security?.mode !== 'portal') {
+    // Belt and braces. If the mirrored template happened to BE a portal, its
+    // portal fields must not ride along: an unregistered-role id belonging to
+    // another service is the 422 "Policy not found" that names nothing useful.
+    // The non-auth role is still required when the portal is off, so it is
+    // cleared to the template's own default rather than to null.
+    if (base.enableCaptivePortal) {
+      return {
+        enableCaptivePortal: false,
+        captivePortalType: null,
+        unAuthenticatedUserDefaultRoleID: base.authenticatedUserDefaultRoleID ?? null,
+      };
+    }
+    return {};
+  }
 
   return {
     enableCaptivePortal: true,

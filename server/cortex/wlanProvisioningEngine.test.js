@@ -467,9 +467,22 @@ describe('pickTemplate mirrors like for like', () => {
     expect(pickTemplate(services, 'portal').id).toBe('cwp');
   });
 
-  it('mirrors a service with no privacy element for open and OWE', () => {
-    expect(pickTemplate(services, 'open').id).toBe('cwp');
-    expect(pickTemplate(services, 'owe').id).toBe('cwp');
+  it('mirrors a NON-portal service for open and OWE', () => {
+    // Preferring "no privacy element" picked the captive portal, and the open
+    // network inherited its enableCaptivePortal and a role id belonging to
+    // another service -> 422 "Policy not found". Measured live 2026-09-16.
+    expect(pickTemplate(services, 'open').id).toBe('psk');
+    expect(pickTemplate(services, 'owe').id).toBe('psk');
+  });
+
+  it('strips portal fields when a portal template is all there is', () => {
+    const onlyPortal = [{ id: 'cwp', enableCaptivePortal: true, captivePortalType: 'External',
+                          unAuthenticatedUserDefaultRoleID: 'cwp', authenticatedUserDefaultRoleID: 'auth' }];
+    const template = pickTemplate(onlyPortal, 'open');
+    const payload = buildServicePayload(
+      { wlanName: 'Open1', ssid: 'Open1', security: { mode: 'open' } }, template, undefined, 101);
+    expect(payload.enableCaptivePortal).toBe(false);
+    expect(payload.unAuthenticatedUserDefaultRoleID).not.toBe('cwp');
   });
 
   it('still mirrors a PSK service for PSK', () => {

@@ -2696,7 +2696,16 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
             },
           });
 
-          turn = { ...turn, emit: result.ok ? 'applied' : 'failed', result: result.result ?? null };
+          // Carry the reason, not just the verdict. A bare "failed" sends the
+          // operator to the logs for something the Gateway already explained.
+          turn = {
+            ...turn,
+            emit: result.ok ? 'applied' : 'failed',
+            result: result.result ?? null,
+            reason: result.reason ?? result.result?.stage ?? null,
+            error: result.error ?? result.result?.error ?? null,
+            httpStatus: result.result?.httpStatus ?? null,
+          };
         }
 
         // Reported on every turn, not just the first: whether the task will
