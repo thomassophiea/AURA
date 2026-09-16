@@ -2954,14 +2954,20 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
       // no site list the resolver falls back to the estate instead of asking a
       // question the operator has no way to answer.
       //
-      // Bounded, because that degradation used to be unreachable: a Gateway
-      // that stalls never rejects, so there was nothing to catch and the whole
-      // answer waited on it. See server/cortex/scopeInventory.js.
+      // Names come from the CONFIGURED catalogue, not from a telemetry join:
+      // the resolver reads one field off these rows, and reading it through
+      // listSites made a site question depend on the health of the subsystem it
+      // was asking about. Bounded too, because that degradation used to be
+      // unreachable — a Gateway that stalls never rejects, so there was nothing
+      // to catch. See server/cortex/scopeInventory.js for the measurements.
       const inventoryTools = createDiagnosticTools({ session: sess.session, scope: {}, capabilities });
-      const inventory = await readScopeInventory(inventoryTools, {
-        onDegraded: (why) =>
-          console.warn('[Cortex] site inventory unavailable for scope resolution:', why),
-      });
+      const inventory = await readScopeInventory(
+        { evidence, tools: inventoryTools },
+        {
+          onDegraded: (why) =>
+            console.warn('[Cortex] site inventory unavailable for scope resolution:', why),
+        }
+      );
 
       resolvedScope = resolveScope({ question, uiScope: scope, inventory });
 

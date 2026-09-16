@@ -400,3 +400,80 @@ describe('scope resolution — a common word that happens to be a name', () => {
     expect(findNamedEntity('is EAL up?', inv)).toMatchObject({ kind: 'wlan', value: 'EAL' });
   });
 });
+
+describe('an unreadable site catalogue', () => {
+  const LAB = ['PrimarySite', 'AFC LAB', 'CLONE', 'EAL', 'AURA_LAB', 'EAL-PT-S', 'EAL-PT-N'].map(
+    (name) => ({ name })
+  );
+
+  it('resolves a named site from the catalogue without asking anything', () => {
+    // The reported question. With the catalogue present this is rule 2 and
+    // there is nothing to clarify.
+    const r = resolveScope({
+      question: 'How is Primary site overall?',
+      uiScope: {},
+      inventory: { sites: LAB, ssids: [], apNames: [] },
+    });
+
+    expect(r.level).toBe('site');
+    expect(r.siteNames).toEqual(['PrimarySite']);
+    expect(r.needsClarification).toBe(false);
+  });
+
+  it('never claims a site does not exist when it could not read the catalogue', () => {
+    // Observed live: `No site is called "How is Primary"` — a statement about
+    // the estate, produced by a read that failed. Same error as treating an
+    // empty filter as an empty world.
+    const r = resolveScope({
+      question: 'How is Primary site overall?',
+      uiScope: {},
+      inventory: { sites: [], ssids: [], apNames: [] },
+    });
+
+    expect(r.reason).not.toMatch(/No site is called/i);
+    expect(r.reason).toMatch(/catalogue could not be read/i);
+    expect(r.source).toBe('rule4-catalogue-unavailable');
+  });
+
+  it('does not ask a question the operator has no way to answer', () => {
+    // A clarification with zero candidates is a dead end.
+    const r = resolveScope({
+      question: 'How is Primary site overall?',
+      uiScope: {},
+      inventory: { sites: [], ssids: [], apNames: [] },
+    });
+
+    expect(r.needsClarification).toBe(false);
+    expect(r.candidates ?? []).toHaveLength(0);
+  });
+
+  it('says plainly that an estate-wide answer is not the site’s own', () => {
+    const r = resolveScope({
+      question: 'How is Primary site overall?',
+      uiScope: {},
+      inventory: { sites: [], ssids: [], apNames: [] },
+    });
+
+    expect(r.level).toBe('fleet');
+    // The phrase extractor is greedy here ("How is Primary" rather than
+    // "Primary"), which only ever surfaces on this degraded path — with a
+    // readable catalogue the name matches at rule 2 long before extraction.
+    // Asserted as-is so a later tightening of the patterns is a visible change
+    // rather than a silent one.
+    expect(r.unresolved).toEqual(['How is Primary']);
+    expect(r.reason).toMatch(/NOT attributable/i);
+  });
+
+  it('still asks when there IS a catalogue and the name matches nothing', () => {
+    // The guard must not swallow the real silent-zero case it was built for.
+    const r = resolveScope({
+      question: 'How is Warehouse site overall?',
+      uiScope: {},
+      inventory: { sites: LAB, ssids: [], apNames: [] },
+    });
+
+    expect(r.needsClarification).toBe(true);
+    expect(r.candidates.length).toBeGreaterThan(0);
+    expect(r.reason).toMatch(/No site is called/i);
+  });
+});

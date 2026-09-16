@@ -500,9 +500,32 @@ export function resolveScope({ question, uiScope = {}, inventory = {} } = {}) {
         source: 'rule2-fuzzy-site',
       };
     }
+    // WITH NO CATALOGUE WE KNOW NOTHING — including whether this site exists.
+    //
+    // "No site is called X" is a claim about the estate, and deriving it from a
+    // catalogue we failed to read is the same error as reading an empty filter
+    // as an empty world. It also produced a clarification with no candidates:
+    // the operator was asked which site they meant and offered nothing to pick.
+    // Rule 6 below has always guarded this with `sites.length > 0`; this rule
+    // did not.
+    if (!sites.length) {
+      return {
+        ...base,
+        level: 'fleet',
+        siteNames: null,
+        needsClarification: false,
+        unresolved: [phrase],
+        reason:
+          `You asked about "${phrase}", but the site catalogue could not be read, so I cannot ` +
+          'confirm that site exists or scope to it. Anything below is estate-wide and is NOT ' +
+          `attributable to ${phrase}.`,
+        source: 'rule4-catalogue-unavailable',
+      };
+    }
+
     return {
       ...base,
-      level: sites.length ? 'site' : 'fleet',
+      level: 'site',
       siteNames: null,
       candidates: (ranked.length ? ranked.map((r) => r.site) : sites)
         .slice(0, 6)

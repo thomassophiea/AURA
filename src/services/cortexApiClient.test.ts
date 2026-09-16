@@ -7,6 +7,7 @@ import {
   validateWirelessIntent,
   provisionWirelessIntent,
   queryCortexWireless,
+  describeInfrastructureFailure,
 } from './cortexApiClient';
 
 vi.mock('./api', () => ({
@@ -158,5 +159,48 @@ describe('queryCortexWireless', () => {
     vi.stubGlobal('fetch', mockFetch(answer));
     const result = await queryCortexWireless('how many clients?', {} as never);
     expect(result).toEqual(answer);
+  });
+});
+
+describe('describeInfrastructureFailure', () => {
+  it('replaces the edge proxy’s two words with what actually happened', () => {
+    // The reported defect: "How is Primary site overall?" answered `upstream
+    // error`, which is Envoy talking to whoever runs Envoy, rendered as though
+    // it were Cortex's verdict on the site.
+    const msg = describeInfrastructureFailure(502, 'upstream error');
+
+    expect(msg).toMatch(/did not answer in time/i);
+    expect(msg).toMatch(/Nothing was changed on the Gateway/i);
+    // The raw body is kept as evidence, not hidden.
+    expect(msg).toContain('upstream error');
+    expect(msg.startsWith('upstream error')).toBe(false);
+  });
+
+  it('covers every gateway-timeout status the edge can answer with', () => {
+    for (const status of [502, 503, 504]) {
+      expect(describeInfrastructureFailure(status, '')).toMatch(/did not answer in time/i);
+    }
+  });
+
+  it('flattens an HTML error page instead of pasting it into the transcript', () => {
+    const html = '<html><head><title>504 Gateway Time-out</title></head><body><h1>504</h1></body></html>';
+    const msg = describeInfrastructureFailure(504, html);
+
+    expect(msg).not.toContain('<');
+    expect(msg).toContain('504 Gateway Time-out');
+    expect(msg.length).toBeLessThan(300);
+  });
+
+  it('names the rate limit and the size limit rather than a bare number', () => {
+    expect(describeInfrastructureFailure(429, '')).toMatch(/too many questions/i);
+    expect(describeInfrastructureFailure(413, '')).toMatch(/too large/i);
+  });
+
+  it('falls back to the status code when nothing else is known', () => {
+    expect(describeInfrastructureFailure(418, '')).toBe('Cortex could not be reached (HTTP 418).');
+  });
+
+  it('adds no empty parenthetical when the body is blank', () => {
+    expect(describeInfrastructureFailure(502, '   ')).not.toContain('()');
   });
 });

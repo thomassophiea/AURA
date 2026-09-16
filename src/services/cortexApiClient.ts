@@ -319,6 +319,33 @@ export interface CortexInvestigationHandlers {
 }
 
 /**
+ * Say what happened when the failure did not come from Cortex.
+ *
+ * The raw body is kept as a parenthetical rather than dropped — it is the only
+ * clue to which hop failed, and hiding it makes the next report unfalsifiable.
+ * It is trimmed hard because an intermediary may answer with a whole HTML
+ * error page.
+ */
+export function describeInfrastructureFailure(status: number, raw: string): string {
+  const detail = raw
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 120);
+  const suffix = detail ? ` (${detail})` : '';
+
+  if (status === 502 || status === 503 || status === 504) {
+    return (
+      'Cortex did not answer in time and the connection was closed before the ' +
+      `investigation could report anything. Nothing was changed on the Gateway.${suffix}`
+    );
+  }
+  if (status === 413) return `That question was too large to send.${suffix}`;
+  if (status === 429) return `Too many questions at once — wait a moment and ask again.${suffix}`;
+  return `Cortex could not be reached (HTTP ${status}).${suffix}`;
+}
+
+/**
  * Run a Cortex investigation, consuming the server's SSE stream.
  *
  * Uses fetch + a ReadableStream reader rather than EventSource: EventSource
@@ -376,16 +403,27 @@ export async function investigateWithCortex(
   });
 
   if (!resp.ok) {
-    // A non-2xx here is a setup or authorisation problem (Cortex disabled, no
-    // Gateway selected, no provider configured) and the body carries a message
-    // written for a person. Surface it verbatim rather than a status code.
+    // A non-2xx here is USUALLY a setup or authorisation problem (Cortex
+    // disabled, no Gateway selected, no provider configured) and the body
+    // carries a message written for a person. Surface that verbatim rather than
+    // a status code.
+    //
+    // But the response does not always come from our server. When the edge
+    // proxy gives up on the upstream it answers the browser itself, and its
+    // body is written for whoever operates the proxy — "upstream error", two
+    // words, which an operator asking about a site read as Cortex's answer.
+    // Anything that is not our `{error}` shape is infrastructure talking, and
+    // the honest thing to say is what actually happened.
     const raw = await resp.text().catch(() => resp.statusText);
-    let message = raw;
+    let message = '';
     try {
       const parsed = JSON.parse(raw);
       if (typeof parsed?.error === 'string') message = parsed.error;
     } catch {
-      /* not JSON */
+      /* not JSON — see below */
+    }
+    if (!message) {
+      message = describeInfrastructureFailure(resp.status, raw);
     }
     handlers.onError?.(message, resp.status < 500);
     return;
