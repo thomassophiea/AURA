@@ -46,6 +46,7 @@ import {
   advance as advanceWorkflow,
   seedFromIntent,
   buildPreview as buildWorkflowPreview,
+  execute as executeWorkflow,
 } from './server/cortex/workflowEngine.js';
 import { buildWorkflowSources } from './server/cortex/workflowSources.js';
 import { requireRole } from './server/identity/identityRouter.js';
@@ -2635,9 +2636,66 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
       const emit = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 
       try {
-        const turn = await handleRoutedTurn(route, {
+        let turn = await handleRoutedTurn(route, {
           sources: buildWorkflowSources(sess.session),
         });
+
+        // Consent granted — now actually do the work.
+        //
+        // Execution lives here rather than in the engine because it needs the
+        // caller's Gateway token, which the engine deliberately knows nothing
+        // about. The engine still owns the gate: execute() re-reads the
+        // persisted confirmation itself and refuses if it is not 'granted'.
+        if (turn.emit === 'confirmed') {
+          // The caller's own Gateway token, read the same way the session reads
+          // it — `sessionFromRequest` keeps it inside the session object, so it
+          // is taken from the request rather than reached for through `sess`.
+          const callerToken = req.headers['x-controller-auth'] || req.headers['authorization'];
+
+          const result = await executeWorkflow(turn.workflow.id, {
+            ephemeralPassword: undefined,
+            provision: async ({ requestedState, derivedState }) => {
+              const merged = { ...derivedState, ...requestedState };
+              const intent = {
+                action: 'create_wlan',
+                wlanName: merged.wlanName,
+                ssid: merged.ssid ?? merged.wlanName,
+                siteName: merged.siteId ?? merged.siteName,
+                vlanId: merged.vlanId,
+                security: merged['security.mode']
+                  ? { mode: merged['security.mode'] }
+                  : merged.security,
+              };
+
+              const report = await validateWlanIntent(intent, {
+                authToken: callerToken,
+                controllerUrl: sess.controllerUrl,
+              });
+
+              // A validation that blocks at this point is not a crash — it is
+              // the Gateway refusing, and the operator is told which check.
+              if (!report?.validationToken) {
+                return {
+                  status: 'failed',
+                  reason: 'validation_blocked',
+                  checks: (report?.checks ?? []).filter((c) => c.result === 'block'),
+                };
+              }
+
+              return provisionWlan({
+                intent,
+                planHash: report.planHash,
+                validationToken: report.validationToken,
+                profileIds: merged.apScope,
+                authToken: callerToken,
+                controllerUrl: sess.controllerUrl,
+              });
+            },
+          });
+
+          turn = { ...turn, emit: result.ok ? 'applied' : 'failed', result: result.result ?? null };
+        }
+
         emit('workflow', { rule: route.rule, ...turn });
         audit('cortex.workflow', {
           actor: req.auraActor,
