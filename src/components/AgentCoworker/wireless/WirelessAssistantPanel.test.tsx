@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { WirelessAssistantPanel } from './WirelessAssistantPanel';
 import * as cortexApiClient from '@/services/cortexApiClient';
+import type { ParsedWirelessIntent } from '@/types/wirelessAssistant';
 
 vi.mock('@/services/cortexApiClient', () => ({
   parseWirelessInstruction: vi.fn(),
@@ -131,5 +132,101 @@ describe('WirelessAssistantPanel', () => {
     await waitFor(() => expect(screen.getByText(/Role Configuration/i)).toBeDefined());
     expect(sendMessage).not.toHaveBeenCalled();
     expect(screen.queryByText(/AURA interpreted/i)).toBeNull();
+  });
+});
+
+describe('the configuration review never flashes on a read-only question', () => {
+  const readOnly = (text: string): ParsedWirelessIntent => ({
+    intent: { action: 'validate_only', requestedBy: 'tester', source: 'text', rawInstruction: text },
+    missingFields: [],
+    ambiguities: [],
+    riskLevel: 'low',
+    humanReadable: text,
+    classification: 'read_only',
+  });
+
+  const ask = (text: string) => {
+    const input = screen.getByPlaceholderText(/ask me anything/i);
+    fireEvent.change(input, { target: { value: text } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+  };
+
+  it('stays out of the workflow view WHILE the parse is still in flight', async () => {
+    // The reported glitch: the review panel appeared for a split second on a
+    // read-only question. Every existing test asserted only the settled state,
+    // so none of them could see it. This holds the parse open and asserts on
+    // the intermediate frame, which is where the bug actually lived.
+    let release!: (v: ParsedWirelessIntent) => void;
+    vi.mocked(cortexApiClient.parseWirelessInstruction).mockReturnValue(
+      new Promise<ParsedWirelessIntent>((resolve) => { release = resolve; })
+    );
+
+    render(<WirelessAssistantPanel />);
+    ask('how is EAL-PT-S-5th-Floor');
+
+    // Mid-parse: the chat view must still be the thing on screen.
+    await waitFor(() => expect(screen.getByPlaceholderText(/ask me anything/i)).toBeDefined());
+    expect(screen.queryByText(/AURA interpreted/i)).toBeNull();
+    expect(screen.queryByText(/What you said/i)).toBeNull();
+    expect(screen.queryByText(/Live validation/i)).toBeNull();
+
+    release(readOnly('how is EAL-PT-S-5th-Floor'));
+    await waitFor(() => expect(sendMessage).toHaveBeenCalledWith('how is EAL-PT-S-5th-Floor'));
+    expect(screen.queryByText(/AURA interpreted/i)).toBeNull();
+  });
+
+  it('does not render the PREVIOUS question\'s intent while the next one parses', async () => {
+    // The precise mechanism: `parsedIntent` was never cleared, so the second
+    // read-only question rendered the first one's intent against the new
+    // transcript until its own parse returned.
+    vi.mocked(cortexApiClient.parseWirelessInstruction).mockResolvedValueOnce(readOnly('first'));
+    render(<WirelessAssistantPanel />);
+    ask('how is EAL-PT-N-5th-Floor');
+    await waitFor(() => expect(sendMessage).toHaveBeenCalledTimes(1));
+
+    let release!: (v: ParsedWirelessIntent) => void;
+    vi.mocked(cortexApiClient.parseWirelessInstruction).mockReturnValue(
+      new Promise<ParsedWirelessIntent>((resolve) => { release = resolve; })
+    );
+    ask('how is EAL-PT-S-5th-Floor');
+
+    await waitFor(() => expect(screen.getByPlaceholderText(/ask me anything/i)).toBeDefined());
+    expect(screen.queryByText(/AURA interpreted/i)).toBeNull();
+
+    release(readOnly('second'));
+    await waitFor(() => expect(sendMessage).toHaveBeenCalledTimes(2));
+  });
+
+  it('still shows the review for a mutating instruction, but only once parsed', async () => {
+    // The guard must not suppress the panel where it belongs.
+    let release!: (v: ParsedWirelessIntent) => void;
+    vi.mocked(cortexApiClient.parseWirelessInstruction).mockReturnValue(
+      new Promise<ParsedWirelessIntent>((resolve) => { release = resolve; })
+    );
+
+    render(<WirelessAssistantPanel />);
+    ask('create a guest wlan at boston office wpa2 password guestwifi1');
+
+    await waitFor(() => expect(screen.getByPlaceholderText(/ask me anything/i)).toBeDefined());
+    expect(screen.queryByText(/AURA interpreted/i)).toBeNull();
+
+    release({
+      intent: {
+        action: 'create_wlan',
+        siteId: 'site-1',
+        siteName: 'boston office',
+        wlanName: 'guest',
+        requestedBy: 'tester',
+        source: 'text',
+        rawInstruction: 'create a guest wlan at boston office wpa2 password guestwifi1',
+      },
+      missingFields: [],
+      ambiguities: [],
+      riskLevel: 'medium',
+      humanReadable: 'create guest',
+      classification: 'mutating',
+    });
+    await waitFor(() => expect(screen.getByText(/AURA interpreted/i)).toBeDefined());
+    expect(sendMessage).not.toHaveBeenCalled();
   });
 });

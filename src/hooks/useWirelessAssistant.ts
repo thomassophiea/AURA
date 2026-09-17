@@ -65,7 +65,24 @@ export function useWirelessAssistant(): UseWirelessAssistantResult {
       setError(null);
       setNotice(null);
       setTranscript(text);
-      setWorkflowState(source === 'voice' ? 'transcribing' : 'entering_text');
+      // CLEAR THE PREVIOUS INTENT BEFORE PARSING, AND DO NOT ENTER THE WORKFLOW
+      // UNTIL THE INSTRUCTION IS KNOWN TO BE A CONFIGURATION REQUEST.
+      //
+      // Both halves of this caused a visible glitch. The state was set to an
+      // active workflow state here, before `parseWirelessInstruction` had said
+      // what kind of instruction it was — and `parsedIntent` still held the
+      // PREVIOUS one. So asking a second read-only question flashed the
+      // "AURA interpreted" review panel for the duration of the parse, showing
+      // the new transcript against the old intent, before snapping back to the
+      // chat. Nothing about that panel applies to a read-only question.
+      //
+      // Staying idle here costs nothing: the "Transcribing…" label comes from
+      // `useVoiceInput`'s own state via `voice.state`, not from this one, so no
+      // indicator depends on the pre-parse write.
+      setParsedIntent(null);
+      setValidationReport(null);
+      setProvisioning(null);
+      setWorkflowState('idle');
       try {
         const result = await parseWirelessInstruction(text, source);
 
@@ -79,15 +96,16 @@ export function useWirelessAssistant(): UseWirelessAssistantResult {
           return 'unimplemented';
         }
 
-        ephemeralPasswordRef.current = result._ephemeralPassword;
-        setParsedIntent(result);
-        setValidationReport(null);
-        setProvisioning(null);
-
+        // A read-only question never enters the workflow, so it has no use for
+        // a parsed intent — storing one only leaves a stale object for the next
+        // instruction to render before its own parse returns.
         if (result.classification === 'read_only') {
           setWorkflowState('idle');
           return 'read_only';
         }
+
+        ephemeralPasswordRef.current = result._ephemeralPassword;
+        setParsedIntent(result);
         setWorkflowState(result.missingFields.length > 0 ? 'missing_information' : 'entering_text');
         return 'mutating';
       } catch (err) {
