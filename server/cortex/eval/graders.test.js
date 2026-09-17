@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   gradeToolsUsed,
+  gradeOffersOnlyWritableChanges,
   gradePlumbingFirst,
   gradeNamesEntity,
   gradeNoForbiddenClaims,
@@ -414,5 +415,40 @@ describe('respects-confidence separates a hedge from a claim (measured live)', (
         assessment: { confidence: 'HIGH CONFIDENCE' },
       }).passed
     ).toBe(true);
+  });
+});
+
+describe('gradeOffersOnlyWritableChanges', () => {
+  const grade = (answer) => gradeOffersOnlyWritableChanges({ answer, ledger: [] });
+
+  it('passes an answer that offers only real changes', () => {
+    expect(
+      grade('I can change 802.11k neighbour reports, MBO, and the two idle timeouts.').passed
+    ).toBe(true);
+  });
+
+  it('FAILS an answer that offers a setting this Gateway does not expose', () => {
+    // The exact shape of the change request that started this work.
+    expect(grade('I can enable 802.11r Fast Transition on Skynet for you.').passed).toBe(false);
+  });
+
+  it('passes an answer that names the setting in order to rule it out', () => {
+    // Saying "11r is not available here" is a correct, useful answer — the
+    // grader must not punish honesty about a gap.
+    expect(
+      grade('802.11r Fast Transition is not exposed on this Gateway, so I cannot change it.').passed
+    ).toBe(true);
+  });
+
+  it('passes the contracted form of that disclaimer', () => {
+    expect(grade("Fast transition? There's no such field here — can't change it.").passed).toBe(
+      true
+    );
+  });
+
+  it('does not fire on an answer that never raises the subject', () => {
+    const r = grade('PrimarySite looks healthy; coverage is the weakest metric at 80.6%.');
+    expect(r.passed).toBe(true);
+    expect(r.detail).toMatch(/did not raise/i);
   });
 });

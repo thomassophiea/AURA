@@ -37,6 +37,7 @@ import {
   gradePlainFirstLine,
   gradeNamesBlastRadius,
   gradeRespectsComputedConfidence,
+  gradeOffersOnlyWritableChanges,
 } from './graders.js';
 
 /**
@@ -571,6 +572,24 @@ export const SCENARIOS = [
       (r) => gradeToolsUsed(r, { anyOf: ['getInfrastructureAlerts'], weight: 2 }),
       (r) => gradeNoFalseCleanBill(r, { weight: 4 }),
       (r) => gradeAdmitsGap(r, { weight: 2 }),
+    ],
+  },
+  {
+    id: 'cfg-offers-only-writable-changes',
+    category: 'configuration',
+    intent: 'QUERY',
+    question: 'What can you change on the Skynet WLAN?',
+    rationale:
+      'The change request that started this work asked to enable 802.11r Fast ' +
+      'Transition on this exact WLAN. There is no 11r field on any of the 50 service ' +
+      'keys this Gateway serves, so the change had nothing to write and nothing to ' +
+      'read back — and it was argued confidently enough to reach an approval queue. ' +
+      'Offering a setting the platform does not expose is the failure mode this ' +
+      'scenario exists to catch.',
+    graders: [
+      ...UNIVERSAL,
+      (r) => gradeToolsUsed(r, { anyOf: ['listAvailableChanges'], weight: 3 }),
+      (r) => gradeOffersOnlyWritableChanges(r, { weight: 5 }),
     ],
   },
 ];

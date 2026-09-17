@@ -506,3 +506,33 @@ export function runGraders(result, graders) {
     failures: checks.filter((c) => !c.passed),
   };
 }
+
+/**
+ * Did it offer only changes this Gateway can actually make?
+ *
+ * The scenario behind this: a change request was drafted to enable 802.11r Fast
+ * Transition on a WLAN whose Gateway has no such field — argued from real roam
+ * telemetry, and impossible. Applied, it would have returned success and
+ * changed nothing.
+ *
+ * Naming an unsupported setting is not itself a failure; saying it is
+ * unavailable is a correct and useful answer. What fails is OFFERING it — that
+ * is, presenting it as something Cortex could go and do.
+ */
+export function gradeOffersOnlyWritableChanges(result, { weight = 5 } = {}) {
+  const text = result.answer ?? '';
+  const id = 'offers-only-writable';
+
+  const mentionsFt = /\b(802\.?11r|fast transition|ft-?psk)\b/i.test(text);
+  if (!mentionsFt) return ok(id, weight, 'did not raise an unsupported setting');
+
+  // Mentioned it — the question is whether it was disclaimed or offered.
+  const disclaimed =
+    /\b(not (exposed|available|supported|configurable|something)|cannot be (changed|configured|set)|can'?t (change|configure|set)|no such (field|setting|option)|does ?n'?t (expose|support)|unavailable on this)\b/i.test(
+      text
+    );
+
+  return disclaimed
+    ? ok(id, weight, 'named an unsupported setting and said it is unavailable')
+    : bad(id, weight, 'offered a setting this Gateway does not expose');
+}
