@@ -46,8 +46,20 @@ import {
   advance as advanceWorkflow,
   seedFromIntent,
   buildPreview as buildWorkflowPreview,
+  buildModifyDiff,
   execute as executeWorkflow,
+  grantConfirmation,
+  declineConfirmation,
 } from './server/cortex/workflowEngine.js';
+import { applyWlanChange, toWorkflowResult } from './server/cortex/wlanModifyEngine.js';
+import { requestXcc } from './server/validationEngine/xccClient.js';
+import { planSiteDeployment } from './server/cortex/siteDeploymentPlanner.js';
+import { deployWlanToSite } from './server/cortex/siteDeploymentEngine.js';
+import {
+  computePlanHash,
+  signValidationToken,
+  verifyValidationToken,
+} from './server/cortex/validationToken.js';
 import { buildWorkflowSources } from './server/cortex/workflowSources.js';
 import { openSseStream } from './server/cortex/sseStream.js';
 import { readScopeInventory } from './server/cortex/scopeInventory.js';
@@ -2558,6 +2570,212 @@ app.post(
  * the existing auth/rate-limit middleware instead of a second transport with
  * its own authorisation story.
  */
+/**
+ * The identity of a previewed change.
+ *
+ * Only the things an operator actually read: which workflow, which field, and
+ * both values. Hashing the whole preview would invalidate consent on cosmetic
+ * churn; hashing less than this would let the change drift under a valid token.
+ */
+function modifyPlanIdentity(preview) {
+  return {
+    workflowId: preview.workflowId,
+    path: preview.diff.path,
+    from: preview.diff.from,
+    to: preview.diff.to,
+  };
+}
+
+/** Sign whichever kind of plan this preview carries. */
+function signPreviewPlan(preview) {
+  const identity = preview.deployment
+    ? deploymentPlanIdentity(preview.deployment)
+    : modifyPlanIdentity(preview);
+  return signValidationToken(computePlanHash(identity));
+}
+
+/**
+ * Read the estate and work out what deploying this WLAN to this site would do.
+ *
+ * Three reads, all of which the planner needs together: the service (its
+ * security type decides whether 6 GHz is legal), every AP (to find the site's
+ * APs AND to discover which other sites share their profiles), and every
+ * profile (for the radios). The second is the one that is easy to get wrong —
+ * scoping the AP read to the target site would hide exactly the cross-site
+ * membership the fork rule exists to catch.
+ */
+async function planDeploymentFor({ session, controllerUrl, authToken, wlanName, siteName }) {
+  const opts = { authToken, controllerUrl, method: 'GET' };
+  const [svcRes, apRes, profRes] = await Promise.all([
+    requestXcc('/v1/services', opts),
+    requestXcc('/v1/aps/query', opts),
+    requestXcc('/v3/profiles', opts),
+  ]);
+
+  const failed = [svcRes, apRes, profRes].find((r) => !r.ok);
+  if (failed) {
+    return {
+      status: 'read_failed',
+      warnings: [
+        `The Gateway could not be read (${failed.errorText ?? `HTTP ${failed.status}`}), so this ` +
+          'deployment cannot be planned. Nothing was changed.',
+      ],
+    };
+  }
+
+  const list = (r, key) => (Array.isArray(r.data) ? r.data : (r.data?.[key] ?? []));
+  const services = list(svcRes, 'services');
+  const service = services.find(
+    (s) =>
+      String(s.serviceName ?? '').toLowerCase() === String(wlanName ?? '').toLowerCase() ||
+      String(s.ssid ?? '').toLowerCase() === String(wlanName ?? '').toLowerCase()
+  );
+
+  if (!service) {
+    return {
+      status: 'wlan_matched_nothing',
+      warnings: [
+        `No WLAN called "${wlanName}" exists on this Gateway. The WLANs that do: ` +
+          `${services.map((s) => s.serviceName).filter(Boolean).join(', ') || '(none)'}.`,
+      ],
+    };
+  }
+
+  return planSiteDeployment({
+    siteName,
+    service,
+    aps: list(apRes, 'aps'),
+    profiles: list(profRes, 'profiles'),
+  });
+}
+
+/** The identity of a previewed DEPLOYMENT — what the operator actually read. */
+function deploymentPlanIdentity(plan) {
+  return {
+    site: plan.site,
+    serviceId: plan.serviceId,
+    targets: (plan.targets ?? []).map((t) => ({
+      profile: t.profileName,
+      action: t.action,
+      fork: t.forkName,
+      radios: t.radios.map((r) => r.index),
+    })),
+  };
+}
+
+/**
+ * Apply a change the operator approved by clicking, rather than by typing.
+ *
+ * Two independent gates, and both are required. The persisted
+ * `confirmation_state` is the record that consent happened at all; the plan
+ * hash is the record of WHAT was consented to. A plan that changed between the
+ * preview and the click is a different plan, and the earlier approval does not
+ * cover it.
+ */
+app.post('/api/cortex/workflow/confirm', requireAuth, cortexRateLimit, jsonParser, async (req, res) => {
+  const { workflowId, validationToken, decision = 'approve' } = req.body ?? {};
+  if (!workflowId || typeof workflowId !== 'string') {
+    return res.status(400).json({ error: 'workflowId is required' });
+  }
+
+  const sess = sessionFromRequest(req, { defaultControllerUrl: DEFAULT_CONTROLLER_URL ?? '' });
+  if (!sess.ok) return res.status(sess.status).json({ error: sess.error });
+
+  if (decision === 'decline') {
+    await declineConfirmation(workflowId);
+    return res.json({ ok: true, status: 'DECLINED' });
+  }
+
+  const preview = await buildWorkflowPreview(workflowId);
+  if (!preview?.diff && !preview?.deployment) {
+    return res.status(409).json({ error: 'That task is not a configuration change awaiting approval.' });
+  }
+
+  const identity = preview.deployment
+    ? deploymentPlanIdentity(preview.deployment)
+    : modifyPlanIdentity(preview);
+
+  const verified = verifyValidationToken(validationToken);
+  if (!verified) {
+    return res.status(409).json({
+      error: 'That approval has expired. Here is the change again — review it and approve once more.',
+      preview,
+    });
+  }
+  if (verified.planHash !== computePlanHash(identity)) {
+    return res.status(409).json({
+      error:
+        'This change is not the one you reviewed — it changed in between. Here is the current ' +
+        'version; approve it again if it is still what you want.',
+      preview,
+    });
+  }
+
+  await grantConfirmation(workflowId);
+
+  const callerToken = req.headers['x-controller-auth'] || req.headers['authorization'];
+  const result = await executeWorkflow(workflowId, {
+    provision: async ({ requestedState, derivedState }) => {
+      const merged = { ...derivedState, ...requestedState };
+
+      // A deployment re-plans nothing: it executes the plan that was approved.
+      // Re-planning here would mean applying something the operator never saw,
+      // and the plan hash exists precisely to make that impossible.
+      if (merged.deploymentPlan) {
+        const outcome = await deployWlanToSite({
+          plan: merged.deploymentPlan,
+          authToken: callerToken,
+          controllerUrl: sess.controllerUrl,
+        });
+        return {
+          status:
+            outcome.status === 'applied'
+              ? 'completed'
+              : outcome.status === 'partial'
+                ? 'partial'
+                : outcome.status === 'noop'
+                  ? 'completed'
+                  : 'failed',
+          reason: outcome.summary,
+          outcome,
+        };
+      }
+
+      const outcome = await applyWlanChange({
+        serviceId: merged.serviceId,
+        changeId: merged.changeId,
+        desired: merged.desired,
+        authToken: callerToken,
+        controllerUrl: sess.controllerUrl,
+      });
+      // Carry the raw outcome alongside the mapped status so the transcript can
+      // say what the Gateway actually did, not just whether it worked.
+      return { ...toWorkflowResult(outcome), outcome };
+    },
+  });
+
+  audit('cortex.workflow.confirm', {
+    actor: req.auraActor,
+    source: req.auraActorSource,
+    target: preview.diff.path,
+    detail: {
+      workflowId,
+      from: preview.diff.from,
+      to: preview.diff.to,
+      status: result.status,
+      applied: result.result?.status ?? null,
+    },
+  });
+
+  return res.json({
+    ok: result.ok,
+    status: result.status,
+    diff: preview.diff,
+    outcome: result.result?.outcome ?? null,
+    reason: result.result?.reason ?? null,
+  });
+});
+
 app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, async (req, res) => {
   const {
     question,
@@ -2707,6 +2925,14 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
           };
         }
 
+        // A previewed CHANGE is signed, so the approval that comes back can be
+        // checked against the plan that was actually shown. Without this, a
+        // click means "yes to whatever is current", which is not what the
+        // operator read.
+        if (turn.emit === 'preview' && (turn.preview?.diff || turn.preview?.deployment)) {
+          turn = { ...turn, validationToken: signPreviewPlan(turn.preview).token };
+        }
+
         // Reported on every turn, not just the first: whether the task will
         // survive a restart is most relevant at the confirmation gate.
         emit('workflow', { rule: route.rule, durable: activeStore === 'db', ...turn });
@@ -2752,7 +2978,11 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
 
     const action = parsed?.intent?.action;
     const startsWork =
-      parsed?.classification === 'mutating' && (action === 'create_wlan' || action === 'create_vlan');
+      parsed?.classification === 'mutating' &&
+      (action === 'create_wlan' ||
+        action === 'create_vlan' ||
+        action === 'modify_wlan' ||
+        action === 'deploy_wlan');
 
     if (startsWork) {
       if (activeWorkflow) {
@@ -2773,6 +3003,74 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
         const { _ephemeralPassword, ...intentFields } = parsed.intent ?? {};
         void _ephemeralPassword;
 
+        // A change to an EXISTING WLAN needs its "before" from the Gateway:
+        // which service, and what the field currently reads. Resolved here, as
+        // a read, so the preview can show a real diff rather than only what was
+        // asked for — and so a field this Gateway does not expose is refused
+        // now, instead of becoming a 200 that changes nothing.
+        if (action === 'modify_wlan') {
+          const tools = createDiagnosticTools({
+            session: sess.session,
+            scope: {},
+            capabilities: getCapabilitiesFor({
+              key: sess.controllerUrl,
+              evidence: new GatewayEvidence(sess.session),
+              session: sess.session,
+            }).registry,
+          });
+          const surface = await tools.listAvailableChanges.handler({
+            wlanName: intentFields.wlanName,
+          });
+
+          const offered = (surface?.available ?? []).find((a) => a.id === intentFields.changeId);
+          if (!offered) {
+            emit('workflow', {
+              rule: 'new-configuration-intent',
+              emit: 'blocked',
+              deadEnds: [
+                {
+                  reason:
+                    surface?.status === 'scope_matched_nothing'
+                      ? surface.reason
+                      : `This Gateway does not expose ${intentFields.changeId} on ` +
+                        `${intentFields.wlanName}, so it cannot be changed, previewed or verified.`,
+                },
+              ],
+            });
+            return res.end();
+          }
+
+          intentFields.serviceId = surface.serviceId;
+          intentFields.currentValue = offered.current;
+        }
+
+        // A site deployment is PLANNED before it is previewed, because the
+        // interesting part is not what was asked for — it is what the estate
+        // makes of it. Which profiles the site's APs share with other sites,
+        // which radios the security type may legally reach, and whether there
+        // is anything left to do at all.
+        if (action === 'deploy_wlan') {
+          const plan = await planDeploymentFor({
+            session: sess.session,
+            controllerUrl: sess.controllerUrl,
+            authToken: req.headers['x-controller-auth'] || req.headers['authorization'],
+            wlanName: intentFields.wlanName,
+            siteName: intentFields.siteName,
+          });
+
+          if (plan.status !== 'ok') {
+            emit('workflow', {
+              rule: 'new-configuration-intent',
+              emit: 'blocked',
+              deadEnds: [{ reason: plan.warnings?.[0] ?? 'That deployment could not be planned.' }],
+            });
+            return res.end();
+          }
+
+          intentFields.deploymentPlan = plan;
+          intentFields.serviceId = plan.serviceId;
+        }
+
         const { workflow, store: backing } = await beginWorkflow({
           sessionId: workflowSessionId,
           userIntent: question,
@@ -2787,6 +3085,8 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
           pageContext: { siteName: scope?.siteName, pageName: scope?.pageName },
         });
 
+        const startPreview = outcome?.question ? null : await buildWorkflowPreview(workflow.id);
+
         emit('workflow', {
           rule: 'new-configuration-intent',
           emit: outcome?.question
@@ -2797,7 +3097,13 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
           workflow: outcome?.workflow ?? workflow,
           question: outcome?.question ?? null,
           deadEnds: outcome?.deadEnds ?? [],
-          preview: outcome?.question ? null : await buildWorkflowPreview(workflow.id),
+          preview: startPreview,
+          // Signed here too, not only on the continuation path: a change most
+          // often reaches preview on the very first turn, and an unsigned
+          // preview cannot be approved by clicking.
+          ...(startPreview?.diff || startPreview?.deployment
+            ? { validationToken: signPreviewPlan(startPreview).token }
+            : {}),
           // Said out loud: a memory-backed workflow does not survive a restart,
           // and the operator is about to be asked to confirm a network change.
           durable: backing === 'db',

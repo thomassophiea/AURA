@@ -55,6 +55,34 @@ async function cortexFetch<T>(path: string, body: unknown): Promise<T> {
   return resp.json() as Promise<T>;
 }
 
+export interface CortexConfirmResult {
+  ok: boolean;
+  /** COMPLETED | COMPLETED_WITH_WARNINGS | FAILED */
+  status: string;
+  diff?: { path: string; label: string; from: unknown; to: unknown } | null;
+  outcome?: { status: string; before?: unknown; after?: unknown } | null;
+  reason?: string | null;
+}
+
+/**
+ * Apply — or decline — a configuration change the operator reviewed.
+ *
+ * The token is what binds this approval to the plan that was previewed. The
+ * server refuses it if the change has moved on, and hands back the current
+ * version to review instead.
+ */
+export async function confirmCortexWorkflow(
+  workflowId: string,
+  validationToken: string,
+  decision: 'approve' | 'decline' = 'approve'
+): Promise<CortexConfirmResult> {
+  return cortexFetch<CortexConfirmResult>('/api/cortex/workflow/confirm', {
+    workflowId,
+    validationToken,
+    decision,
+  });
+}
+
 /** Create a new Cortex conversation session on the backend. */
 export async function createCortexSession(
   context: CortexPageContext
@@ -287,10 +315,28 @@ export interface CortexWorkflowEvent {
     workflowId: string;
     intent: string;
     fields: CortexPlanField[];
+    /**
+     * A field-level diff, present only for a change to an EXISTING WLAN. A
+     * creation has fields and no diff, because there is no "before".
+     */
+    diff?: {
+      path: string;
+      label: string;
+      from: unknown;
+      to: unknown;
+      risk: string;
+      rationale?: string;
+      postCondition: string;
+    } | null;
     /** Anything Cortex chose rather than the operator — theirs to veto. */
     assumptions: CortexPlanField[];
     warnings: string[];
   } | null;
+  /**
+   * Signs the previewed plan. Sent back with an approval so the server can
+   * refuse consent to a plan that changed after it was read.
+   */
+  validationToken?: string;
   decisions?: Pick<CortexDecision, 'field' | 'ask' | 'why'>[];
   recommendations?: {
     field: string | null;

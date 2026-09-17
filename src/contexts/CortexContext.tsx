@@ -34,6 +34,7 @@ import {
   sendCortexMessage,
   queryCortexWireless,
   investigateWithCortex,
+  confirmCortexWorkflow,
 } from '../services/cortexApiClient';
 import type {
   CortexEvidence,
@@ -153,6 +154,18 @@ export interface CortexContextValue {
    * `clearHistory`.
    */
   clearConversation: () => void;
+  /**
+   * Apply or decline a configuration change the operator reviewed in the
+   * transcript. The token binds the decision to the plan that was shown.
+   */
+  decideWorkflow: (
+    workflowId: string,
+    validationToken: string,
+    decision: 'approve' | 'decline'
+  ) => Promise<void>;
+  /** Workflow ids already decided in this conversation, so a change cannot be
+   *  applied twice by clicking twice. */
+  decidedWorkflows: string[];
   /** Past conversations, newest first, from this browser. */
   conversations: CortexConversation[];
   /** Reopen a past conversation in place of the current one. */
@@ -219,6 +232,8 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
     sessionIdRef.current = sessionId;
   }, [sessionId]);
   const [messages, setMessages] = useState<AgentMessage[]>([]);
+  // A change already decided must not be applied again by a second click.
+  const [decidedWorkflows, setDecidedWorkflows] = useState<string[]>([]);
   // Identity of the live conversation, so autosave upserts rather than
   // appending a new history entry on every message.
   const [conversationId, setConversationId] = useState<string>(() => `conv-${Date.now()}`);
@@ -661,6 +676,57 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
   // clearConversation
   // ============================================
 
+  /**
+   * Carry out the operator's decision on a previewed change.
+   *
+   * The result is appended to the transcript in the operator's own words rather
+   * than as a status code, and a silent drop is reported as a failure — the
+   * Gateway returning 200 and changing nothing is the case this whole path
+   * exists to make visible.
+   */
+  const decideWorkflow = useCallback(
+    async (workflowId: string, validationToken: string, decision: 'approve' | 'decline') => {
+      setDecidedWorkflows((prev) => (prev.includes(workflowId) ? prev : [...prev, workflowId]));
+      try {
+        const result = await confirmCortexWorkflow(workflowId, validationToken, decision);
+
+        const body =
+          decision === 'decline'
+            ? 'Cancelled — nothing was changed on the Gateway.'
+            : result.status === 'COMPLETED'
+              ? `Applied and verified: \`${result.diff?.path}\` is now ` +
+                `\`${JSON.stringify(result.outcome?.after)}\`. I re-read the service to confirm it.`
+              : result.status === 'COMPLETED_WITH_WARNINGS'
+                ? `The change was sent, but I could not confirm it. ${result.reason ?? ''}`
+                : `That did not apply. ${result.reason ?? ''}`;
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `agent-${Date.now()}`,
+            role: 'agent',
+            content: body,
+            timestamp: new Date(),
+          } as AgentMessage,
+        ]);
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : String(err);
+        // A refused approval is recoverable: let them try again.
+        setDecidedWorkflows((prev) => prev.filter((id) => id !== workflowId));
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `agent-${Date.now()}`,
+            role: 'agent',
+            content: `That change was not applied: ${detail}`,
+            timestamp: new Date(),
+          } as AgentMessage,
+        ]);
+      }
+    },
+    []
+  );
+
   const clearConversation = useCallback(() => {
     // Archive before clearing. The autosave effect has already written the
     // current transcript, so this only needs to start a new one — which means
@@ -838,6 +904,8 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
       confirmWirelessAction,
       refreshPageAnalysis,
       clearConversation,
+      decideWorkflow,
+      decidedWorkflows,
       conversations: history.conversations,
       restoreConversation,
       deleteConversation,
@@ -870,6 +938,11 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
       confirmWirelessAction,
       refreshPageAnalysis,
       clearConversation,
+      decideWorkflow,
+      // Required, not cosmetic: without it the memoized value keeps the first
+      // empty array and an approval card never disables after a decision — so
+      // a second click would write to the Gateway again.
+      decidedWorkflows,
       history.conversations,
       restoreConversation,
       deleteConversation,

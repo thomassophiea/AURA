@@ -8,7 +8,9 @@
  * which an LLM free-text parse cannot guarantee. The LLM layer (cortexOrchestrator)
  * is used only to narrate the result back to the operator, never to invent intent.
  *
- * Supported actions today: `create_wlan` and `create_vlan`. Other actions in
+ * Supported actions today: `create_wlan`, `create_vlan`, `modify_wlan` (a
+ * catalogued field change on an existing WLAN) and `deploy_wlan` (binding an
+ * existing WLAN across a site's device profiles). Other actions in
  * the WirelessConfigurationIntent union are recognized (so the operator gets
  * an honest "not yet supported" message) but do not produce a mutating plan —
  * see the migration matrix's deferred scope and
@@ -52,6 +54,8 @@ const SECURITY_PATTERNS = [
 
 const SUPPORTED_ACTIONS = new Set([
   'create_wlan',
+  'modify_wlan',
+  'deploy_wlan',
   'update_wlan',
   'delete_wlan',
   'assign_wlan',
@@ -60,7 +64,13 @@ const SUPPORTED_ACTIONS = new Set([
   'validate_only',
 ]);
 
-const IMPLEMENTED_ACTIONS = new Set(['create_wlan', 'create_vlan', 'validate_only']);
+const IMPLEMENTED_ACTIONS = new Set([
+  'create_wlan',
+  'create_vlan',
+  'modify_wlan',
+  'deploy_wlan',
+  'validate_only',
+]);
 
 // The 30 non-WLAN configuration domains from the Ascend IQC Skills Catalog
 // audit — recognized honestly (name + real Local API it would use), never
@@ -187,6 +197,136 @@ function extractTagged(input) {
 
 // Single source of truth for "which mutating action is this" — classify()
 // delegates here rather than keeping a separate, easy-to-desync verb check.
+/**
+ * Phrases that name a catalogued change.
+ *
+ * Deliberately a fixed map rather than fuzzy matching. A setting Cortex cannot
+ * change must fall through untouched — approximating "fast transition" to the
+ * nearest field it CAN write would be worse than declining, because the
+ * operator would get a confident change to something they did not ask for.
+ */
+const MODIFY_PHRASES = [
+  [/\b(802\.?11k|11k|neighbou?r reports?)\b/i, 'wlan.11k'],
+  [/\bbeacon reports?\b/i, 'wlan.11k.beaconReport'],
+  [/\bquiet ie\b/i, 'wlan.11k.quietIe'],
+  [/\bmbo\b|\bagile multiband\b/i, 'wlan.mbo'],
+  [/\bclient[- ]?to[- ]?client\b/i, 'wlan.clientToClient'],
+  [/\bu-?apsd\b|\bpower ?save\b/i, 'wlan.uapsd'],
+  [/\b(hide|unhide|suppress)\b.*\bssid\b|\bssid suppress/i, 'wlan.suppressSsid'],
+  [/\bpre-?auth\w*\s+idle timeout\b/i, 'wlan.idleTimeout.preAuth'],
+  [/\bpost-?auth\w*\s+idle timeout\b/i, 'wlan.idleTimeout.postAuth'],
+];
+
+// `hide` turns SUPPRESSION on, which is why it sits with the enabling verbs.
+// `show` is deliberately absent from the off list: "show the ssid on Skynet"
+// is far more likely to be a question than an instruction, and guessing wrong
+// there changes a network.
+const MODIFY_ON = /\b(enable|enabled|turn on|switch on|activate|hide)\b/i;
+const MODIFY_OFF = /\b(disable|disabled|turn off|switch off|deactivate|unhide)\b/i;
+const MODIFY_SET = /\bset\b[\s\S]*\bto\s+(\d+)\b/i;
+
+/** The WLAN is the LAST "on <name>" — the first one often belongs to a phrasal
+ *  verb ("turn on mbo on Skynet"). */
+function lastNamedWlan(input) {
+  const matches = [...input.matchAll(/\bon\s+([A-Za-z0-9_][A-Za-z0-9_\-]*)/gi)];
+  return matches.length ? matches[matches.length - 1][1] : null;
+}
+
+/**
+ * A change to an existing WLAN, drawn only from the catalogue.
+ *
+ * Runs BEFORE detectAction so that a catalogued change beats the generic
+ * update_wlan path: "hide the ssid on Skynet" matches both, and the catalogued
+ * reading is the one that can be previewed, applied and verified.
+ */
+function parseModifyIntent(trimmed, meta) {
+  const hit = MODIFY_PHRASES.find(([re]) => re.test(trimmed));
+  if (!hit) return null;
+
+  const wlanName = lastNamedWlan(trimmed);
+  if (!wlanName) return null;
+
+  const numeric = trimmed.match(MODIFY_SET);
+  const on = MODIFY_ON.test(trimmed);
+  const off = MODIFY_OFF.test(trimmed);
+
+  let desired;
+  if (numeric) desired = Number(numeric[1]);
+  else if (on && !off) desired = true;
+  else if (off && !on) desired = false;
+  // Ambiguous or absent direction falls through to the parser's safe default
+  // rather than picking one.
+  else return null;
+
+  return {
+    intent: {
+      action: 'modify_wlan',
+      wlanName,
+      changeId: hit[1],
+      desired,
+      requestedBy: meta.requestedBy ?? 'unknown',
+      source: meta.source ?? 'text',
+      rawInstruction: trimmed,
+    },
+    missingFields: [],
+    ambiguities: [],
+    riskLevel: 'low',
+    humanReadable: `Change ${hit[1]} on ${wlanName} to ${JSON.stringify(desired)}.`,
+    classification: 'mutating',
+  };
+}
+
+/**
+ * Deploying an EXISTING WLAN across a site.
+ *
+ * Runs before detectAction for the same reason the modify check does:
+ * "deploy X to Y" also matches ASSIGN_VERBS, and the generic assign path has no
+ * concept of a site — it cannot work out which APs are involved, which profiles
+ * they share with other buildings, or which radios the security type allows.
+ * The site reading is the one that can be planned, previewed and verified.
+ *
+ * A question is deliberately excluded: "where is Skynet deployed?" is an
+ * investigation, and turning it into a configuration task would answer a
+ * question nobody asked by changing the network.
+ */
+const DEPLOY_VERBS = /\b(deploy|roll ?out|push)\b/i;
+const DEPLOY_TARGET =
+  /\b(?:to|across|at|on)\s+(?:every\s+ap\s+(?:at|in)\s+|all\s+aps?\s+(?:at|in)\s+|the\s+)?([A-Za-z0-9_][A-Za-z0-9_\- ]*?)\s*$/i;
+
+function parseDeployIntent(trimmed, meta) {
+  if (!DEPLOY_VERBS.test(trimmed)) return null;
+  if (READ_ONLY_LEAD.test(trimmed) || trimmed.trim().endsWith('?')) return null;
+
+  // The WLAN is what sits between the verb and the destination.
+  const m = trimmed.match(
+    /\b(?:deploy|roll ?out|push)\s+(?:the\s+)?([A-Za-z0-9_][A-Za-z0-9_\-]*)\b([\s\S]*)$/i
+  );
+  if (!m) return null;
+
+  const wlanName = m[1];
+  const target = (m[2] ?? '').match(DEPLOY_TARGET);
+  if (!target) return null;
+
+  const siteName = target[1].trim();
+  if (!siteName || siteName.toLowerCase() === wlanName.toLowerCase()) return null;
+
+  return {
+    intent: {
+      action: 'deploy_wlan',
+      wlanName,
+      siteName,
+      requestedBy: meta.requestedBy ?? 'unknown',
+      source: meta.source ?? 'text',
+      rawInstruction: trimmed,
+    },
+    missingFields: [],
+    ambiguities: [],
+    riskLevel: 'medium',
+    humanReadable: `Deploy ${wlanName} across ${siteName}.`,
+    classification: 'mutating',
+  };
+}
+
 function detectAction(input) {
   if (DELETE_VERBS.test(input)) return 'delete_wlan';
   if (UPDATE_VERBS.test(input)) return 'update_wlan';
@@ -220,6 +360,18 @@ function classify(input) {
  */
 export function parseWirelessIntent(input, meta = {}) {
   const trimmed = (input ?? '').trim();
+
+  // A catalogued change is checked first: it is the only configuration request
+  // that can be previewed as a diff, applied and then proven by read-back, so
+  // it outranks the generic update path when both match.
+  const modify = parseModifyIntent(trimmed, meta);
+  if (modify) return modify;
+
+  // Deploying an existing WLAN across a site, which the generic assign path
+  // cannot express.
+  const deploy = parseDeployIntent(trimmed, meta);
+  if (deploy) return deploy;
+
   const classification = classify(trimmed);
   const action = classification === 'read_only' ? 'validate_only' : detectAction(trimmed);
 
@@ -277,7 +429,10 @@ export function parseWirelessIntent(input, meta = {}) {
     return {
       intent: { action, requestedBy: meta.requestedBy ?? 'unknown', source: meta.source ?? 'text', rawInstruction: trimmed },
       missingFields: ['action'],
-      ambiguities: [`"${action}" is recognized but not yet implemented — only creating a new WLAN is supported today.`],
+      ambiguities: [
+        `"${action}" is recognized but not yet implemented. Today AURA can create a WLAN or ` +
+          'VLAN, change a catalogued setting on an existing WLAN, and deploy a WLAN across a site.',
+      ],
       riskLevel: 'medium',
       humanReadable: `Detected a "${action}" request, which AURA cannot provision yet.`,
       classification: 'mutating',

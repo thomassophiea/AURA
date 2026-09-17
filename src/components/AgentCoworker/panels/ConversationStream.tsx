@@ -20,6 +20,8 @@ import { CortexClarifyPrompt } from '@/cortex/components/CortexClarifyPrompt';
 import { CortexAnswerBody } from '@/cortex/components/CortexAnswerBody';
 import { CortexReadings } from '@/cortex/components/CortexReadings';
 import { keyReadingsFromLedger } from '@/cortex/readings';
+import { CortexApprovalCard } from '@/cortex/components/CortexApprovalCard';
+import { useCortexContext } from '@/contexts/CortexContext';
 
 interface ConversationStreamProps {
   messages: AgentMessage[];
@@ -86,6 +88,10 @@ export function ConversationStream({
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  // Taken from context rather than threaded through props: approving a change
+  // is a conversation-level action, and every caller of this panel already
+  // sits inside the provider.
+  const { decideWorkflow, decidedWorkflows } = useCortexContext();
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -169,6 +175,22 @@ export function ConversationStream({
                         return readings ? <CortexReadings readings={readings} /> : null;
                       })()}
                       <CortexAnswerBody text={msg.content} />
+                      {/*
+                        A configuration change is approved here, against the
+                        diff — not by typing "do it". The text body stays as the
+                        readable fallback; the card is what binds consent to the
+                        exact plan on screen.
+                      */}
+                      {msg.cortexWorkflow && (
+                        <CortexApprovalCard
+                          event={msg.cortexWorkflow}
+                          decided={decidedWorkflows.includes(msg.cortexWorkflow.preview?.workflowId ?? '')}
+                          onApprove={(workflowId, token) =>
+                            void decideWorkflow(workflowId, token, 'approve')
+                          }
+                          onDecline={(workflowId) => void decideWorkflow(workflowId, '', 'decline')}
+                        />
+                      )}
                     </>
                   )}
                 </div>
