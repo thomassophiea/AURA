@@ -24,6 +24,64 @@ import { requestXcc } from '../validationEngine/xccClient.js';
 import { getCatalogEntry } from './changeCatalog.js';
 import { validateDesiredValue } from './writableSurface.js';
 
+/**
+ * Translate an outcome into the three buckets `workflowEngine.execute()`
+ * understands, without rounding anything up.
+ *
+ * `silently_dropped` must land in `failed`. It is the one mapping that decides
+ * whether a change that did nothing gets announced as a fix.
+ *
+ * `read_failed` maps to `degraded` rather than to either extreme: calling it
+ * completed would claim a change we never confirmed, and calling it failed
+ * would claim a change we never disproved. The write may well have applied —
+ * we simply could not look.
+ */
+export function toWorkflowResult(outcome) {
+  switch (outcome?.status) {
+    case 'applied':
+      return {
+        status: 'completed',
+        reason: null,
+        before: outcome.before,
+        after: outcome.after,
+      };
+    case 'silently_dropped':
+      return {
+        status: 'failed',
+        reason:
+          outcome.error ??
+          'The Gateway accepted the write and discarded it — the setting is unchanged.',
+        before: outcome.before,
+        after: outcome.after,
+      };
+    case 'rejected':
+      return {
+        status: 'failed',
+        reason: `The Gateway refused the change: ${outcome.error ?? 'no reason given'}`,
+        before: outcome.before ?? null,
+        after: null,
+      };
+    case 'read_failed':
+      return {
+        status: 'degraded',
+        reason:
+          `The change was sent, but the read-back failed, so whether it applied is unknown: ` +
+          `${outcome.error ?? 'the Gateway could not be re-read'}. Check the WLAN before ` +
+          'sending it again.',
+        before: outcome.before ?? null,
+        after: null,
+      };
+    case 'invalid':
+    default:
+      return {
+        status: 'failed',
+        reason: outcome?.error ?? 'The change could not be made.',
+        before: null,
+        after: null,
+      };
+  }
+}
+
 export async function applyWlanChange({
   serviceId,
   changeId,

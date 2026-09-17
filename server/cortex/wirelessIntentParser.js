@@ -52,6 +52,7 @@ const SECURITY_PATTERNS = [
 
 const SUPPORTED_ACTIONS = new Set([
   'create_wlan',
+  'modify_wlan',
   'update_wlan',
   'delete_wlan',
   'assign_wlan',
@@ -187,6 +188,85 @@ function extractTagged(input) {
 
 // Single source of truth for "which mutating action is this" — classify()
 // delegates here rather than keeping a separate, easy-to-desync verb check.
+/**
+ * Phrases that name a catalogued change.
+ *
+ * Deliberately a fixed map rather than fuzzy matching. A setting Cortex cannot
+ * change must fall through untouched — approximating "fast transition" to the
+ * nearest field it CAN write would be worse than declining, because the
+ * operator would get a confident change to something they did not ask for.
+ */
+const MODIFY_PHRASES = [
+  [/\b(802\.?11k|11k|neighbou?r reports?)\b/i, 'wlan.11k'],
+  [/\bbeacon reports?\b/i, 'wlan.11k.beaconReport'],
+  [/\bquiet ie\b/i, 'wlan.11k.quietIe'],
+  [/\bmbo\b|\bagile multiband\b/i, 'wlan.mbo'],
+  [/\bclient[- ]?to[- ]?client\b/i, 'wlan.clientToClient'],
+  [/\bu-?apsd\b|\bpower ?save\b/i, 'wlan.uapsd'],
+  [/\b(hide|unhide|suppress)\b.*\bssid\b|\bssid suppress/i, 'wlan.suppressSsid'],
+  [/\bpre-?auth\w*\s+idle timeout\b/i, 'wlan.idleTimeout.preAuth'],
+  [/\bpost-?auth\w*\s+idle timeout\b/i, 'wlan.idleTimeout.postAuth'],
+];
+
+// `hide` turns SUPPRESSION on, which is why it sits with the enabling verbs.
+// `show` is deliberately absent from the off list: "show the ssid on Skynet"
+// is far more likely to be a question than an instruction, and guessing wrong
+// there changes a network.
+const MODIFY_ON = /\b(enable|enabled|turn on|switch on|activate|hide)\b/i;
+const MODIFY_OFF = /\b(disable|disabled|turn off|switch off|deactivate|unhide)\b/i;
+const MODIFY_SET = /\bset\b[\s\S]*\bto\s+(\d+)\b/i;
+
+/** The WLAN is the LAST "on <name>" — the first one often belongs to a phrasal
+ *  verb ("turn on mbo on Skynet"). */
+function lastNamedWlan(input) {
+  const matches = [...input.matchAll(/\bon\s+([A-Za-z0-9_][A-Za-z0-9_\-]*)/gi)];
+  return matches.length ? matches[matches.length - 1][1] : null;
+}
+
+/**
+ * A change to an existing WLAN, drawn only from the catalogue.
+ *
+ * Runs BEFORE detectAction so that a catalogued change beats the generic
+ * update_wlan path: "hide the ssid on Skynet" matches both, and the catalogued
+ * reading is the one that can be previewed, applied and verified.
+ */
+function parseModifyIntent(trimmed, meta) {
+  const hit = MODIFY_PHRASES.find(([re]) => re.test(trimmed));
+  if (!hit) return null;
+
+  const wlanName = lastNamedWlan(trimmed);
+  if (!wlanName) return null;
+
+  const numeric = trimmed.match(MODIFY_SET);
+  const on = MODIFY_ON.test(trimmed);
+  const off = MODIFY_OFF.test(trimmed);
+
+  let desired;
+  if (numeric) desired = Number(numeric[1]);
+  else if (on && !off) desired = true;
+  else if (off && !on) desired = false;
+  // Ambiguous or absent direction falls through to the parser's safe default
+  // rather than picking one.
+  else return null;
+
+  return {
+    intent: {
+      action: 'modify_wlan',
+      wlanName,
+      changeId: hit[1],
+      desired,
+      requestedBy: meta.requestedBy ?? 'unknown',
+      source: meta.source ?? 'text',
+      rawInstruction: trimmed,
+    },
+    missingFields: [],
+    ambiguities: [],
+    riskLevel: 'low',
+    humanReadable: `Change ${hit[1]} on ${wlanName} to ${JSON.stringify(desired)}.`,
+    classification: 'mutating',
+  };
+}
+
 function detectAction(input) {
   if (DELETE_VERBS.test(input)) return 'delete_wlan';
   if (UPDATE_VERBS.test(input)) return 'update_wlan';
@@ -220,6 +300,13 @@ function classify(input) {
  */
 export function parseWirelessIntent(input, meta = {}) {
   const trimmed = (input ?? '').trim();
+
+  // A catalogued change is checked first: it is the only configuration request
+  // that can be previewed as a diff, applied and then proven by read-back, so
+  // it outranks the generic update path when both match.
+  const modify = parseModifyIntent(trimmed, meta);
+  if (modify) return modify;
+
   const classification = classify(trimmed);
   const action = classification === 'read_only' ? 'validate_only' : detectAction(trimmed);
 

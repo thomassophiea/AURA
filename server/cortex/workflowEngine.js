@@ -33,6 +33,7 @@
  */
 
 import * as store from './workflowStore.js';
+import { getCatalogEntry } from './changeCatalog.js';
 import {
   blockersFromMissingFields,
   blockerFromValidationFailure,
@@ -201,6 +202,34 @@ export async function applyAnswers(workflowId, answers = [], ctx = {}) {
  * depending on whether the operator asked for it or Cortex inferred it, and the
  * preview is the last point at which that distinction can still be corrected.
  */
+/**
+ * The diff an operator approves.
+ *
+ * A preview is a field, both values, and what will be checked afterwards.
+ * Prose is not a preview: approving "enable 802.11k" is approving a sentence,
+ * while approving `enabled11kSupport: false → true` is approving a change. The
+ * post-condition is stated up front so the operator knows what would count as
+ * this having failed BEFORE it runs, rather than learning it from the result.
+ */
+export function buildModifyDiff({ changeId, current, desired }) {
+  const entry = getCatalogEntry(changeId);
+  if (!entry) return null;
+
+  return {
+    path: entry.path,
+    label: entry.label,
+    from: current,
+    to: desired,
+    risk: entry.risk,
+    rationale: entry.rationale,
+    postCondition:
+      `After applying I will re-read the service and confirm ${entry.path} is ` +
+      `${JSON.stringify(desired)}. If it comes back ${JSON.stringify(current)}, the Gateway ` +
+      'accepted the write and discarded it, and I will report that as a failure rather than ' +
+      'a success.',
+  };
+}
+
 export async function buildPreview(workflowId) {
   const workflow = await store.load(workflowId);
   if (!workflow) return null;
@@ -229,11 +258,24 @@ export async function buildPreview(workflowId) {
     };
   });
 
+  // A modification is previewed as a diff rather than as a field list: the
+  // operator needs the CURRENT value to judge the change, and a list of
+  // requested values does not carry it.
+  const diff =
+    workflow.workflowType === 'modify_wlan'
+      ? buildModifyDiff({
+          changeId: merged.changeId,
+          current: merged.currentValue,
+          desired: merged.desired,
+        })
+      : null;
+
   return {
     workflowId,
     workflowType: workflow.workflowType,
     intent: workflow.userIntent,
     fields,
+    diff,
     // Surfaced deliberately: anything Cortex chose is the operator's to veto.
     assumptions: fields.filter((f) => f.source === 'default' || f.source === 'system'),
     warnings: workflow.warnings ?? [],
