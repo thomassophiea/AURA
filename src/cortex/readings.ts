@@ -59,3 +59,48 @@ export function keyReadingsFromLedger(
 function numberOrNull(v: unknown): number | null {
   return typeof v === 'number' && Number.isFinite(v) ? v : null;
 }
+
+/**
+ * Pull the device-health verdicts out of the ledger digest.
+ *
+ * Same rule as the readings above: the runtime computed the classification and
+ * the RMA position, so the UI renders the runtime's record. Parsing them out of
+ * the prose would let a confident paragraph overrule the assessment — and the
+ * whole reason both verdicts are computed is so that cannot happen.
+ */
+export function deviceVerdictFromLedger(
+  ledger: CortexLedgerEntry[] | undefined | null
+): import('./components/CortexDeviceVerdict').CortexDeviceVerdictData | null {
+  if (!Array.isArray(ledger) || ledger.length === 0) return null;
+
+  // A FAILED assessment carries no verdict, and showing one would present the
+  // absence of an assessment as an assessment.
+  const entry = ledger.find(
+    (l) => l.tool === 'getDeviceHealth' && l.ok
+  ) as { digest?: { deviceHealth?: { health?: string; rma?: string }; deviceHealthFleet?: Record<string, number> } } | undefined;
+  const digest = entry?.digest;
+  if (!digest) return null;
+
+  if (digest.deviceHealthFleet) {
+    const f = digest.deviceHealthFleet;
+    return {
+      fleet: {
+        apCount: numberOrNull(f.apCount),
+        healthy: Number(f.healthy) || 0,
+        degraded: Number(f.degraded) || 0,
+        unhealthy: Number(f.unhealthy) || 0,
+        unknown: Number(f.unknown) || 0,
+        rmaCandidates: Number(f.rmaCandidates) || 0,
+        rmaRecommended: Number(f.rmaRecommended) || 0,
+      },
+    };
+  }
+  if (digest.deviceHealth) {
+    return {
+      health: digest.deviceHealth.health ?? null,
+      rma: digest.deviceHealth.rma ?? null,
+      fleet: null,
+    };
+  }
+  return null;
+}

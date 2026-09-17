@@ -267,7 +267,95 @@ export const DEFAULT_CAPABILITIES = {
   'ap.ethernet_errors': {
     availability: 'unavailable',
     source: 'IfStatsElement.inErrors/outErrors',
-    note: 'Only reachable through the unreliable ifstats route for APs',
+    note:
+      'The bulk /v1/aps/ifstats route is unreliable, and the per-AP route answers 200 with an ' +
+      'EMPTY `wired` array on this build (measured on an AP5020, 2026-09-17) — so the Ethernet ' +
+      'error counters are absent even when the request succeeds. `wireless[]` IS populated and ' +
+      'carries per-radio errors plus adminStatus/operStatus.',
+  },
+
+  // ── device health ──────────────────────────────────────────────────────
+  //
+  // Each of the three "unavailable" entries below was PROBED against the live
+  // appliance on 2026-09-17, not inferred from the spec, and confirmed against
+  // `public/swagger.json` (243 paths, zero cpu/memory/temperature properties on
+  // any AP schema). They are the fields a support engineer will look for, so
+  // they are named rather than silently absent.
+  'ap.cpu': {
+    availability: 'unavailable',
+    source: 'none',
+    note:
+      'No AP resource carries a CPU field: /v1/aps/query, /v1/aps/{serial}, /v1/state/aps/{serial} ' +
+      'and the AP report widget set all omit it, and /v1/aps/{serial}/statistics 404s. The ' +
+      'controller appliance reports its own CPU; an AP does not.',
+  },
+  'ap.memory': {
+    availability: 'unavailable',
+    source: 'none',
+    note: 'No AP endpoint on this Gateway reports memory utilisation.',
+  },
+  'ap.temperature': {
+    availability: 'unavailable',
+    source: 'none',
+    note:
+      'No thermal field on any AP resource. /v1/ap/environment/{serial} is the RF deployment ' +
+      'environment (indoor/outdoor), not a sensor. Onboard sensors are reachable from the AP ' +
+      'shell only.',
+  },
+  'ap.uptime': {
+    availability: 'available',
+    source: '/v1/aps/query sysUptime (undocumented in swagger, present on every row)',
+    taxonomy: 'AP Health / Unexpected Restart',
+  },
+  'ap.reboot_history': {
+    availability: 'derived',
+    source: 'AURA monitoring database: metric_samples ap.uptime_seconds',
+    note:
+      'The Gateway serves no reboot log and no restart counter. A restart is reconstructed as a ' +
+      'DECREASE in the stored uptime series, so it is visible only over the window AURA has been ' +
+      'collecting, and only since ap.uptime_seconds was added. No restart carries a reason code ' +
+      'anywhere in REST — that is in the tech-support archive.',
+    taxonomy: 'AP Health / Unexpected Restart',
+  },
+  'ap.firmware_consistency': {
+    availability: 'derived',
+    source: '/v1/aps/query softwareVersion, compared across same-model APs at the same site',
+    note:
+      'There is no per-AP TARGET firmware anywhere in the API, so "expected" can only mean what ' +
+      'comparable APs are running. /v2/report/upgrade/devices says whether an upgrade group is ' +
+      'running, which is what separates an outlier from a device mid-upgrade.',
+  },
+  'ap.upstream_switch_port': {
+    availability: 'available',
+    source: '/v1/aps/{serial}/lldp (switchPort, systemName, systemDescription)',
+    note:
+      'Measured working. switchSerial is often empty; systemName carries the switch. This is what ' +
+      'turns an upstream finding into a port someone can go and look at.',
+  },
+  'ap.device_events': {
+    availability: 'partial',
+    source: '/v1/aps/{serial}/alarms?startTime=<ms>&endTime=<ms>',
+    note:
+      'NOT in the published catalogue. Answers 200 on this build and returned an empty list over ' +
+      'seven days; 404s on builds that do not have it. An empty list and a missing endpoint are ' +
+      'different answers and must not be collapsed.',
+  },
+  'ap.support_bundle': {
+    availability: 'partial',
+    source: 'PUT /v1/aps/{serial}/logs -> GET /v1/aps/{serial}/traceurls -> GET /v1/aps/downloadtrace/{files}',
+    note:
+      'There is no techsupport or show-support endpoint anywhere in the 243-path catalogue; this ' +
+      'three-step trace collection is the nearest equivalent. Step 1 is a WRITE the platform ' +
+      'classifies as disruptive, so Cortex never issues it. Step 2 measured 404 on this build ' +
+      '(10.20.01) even though the path is catalogued.',
+  },
+  'ap.poe_budget': {
+    availability: 'unavailable',
+    source: 'none',
+    note:
+      'ethPowerStatus (normal/low/high) and pwrUsage (measured watts) are available; the switch\'s ' +
+      'remaining power budget and the negotiated 802.3af/at/bt CLASS are not. The PoE schemas in ' +
+      'the spec belong to switch port profiles, not to AP telemetry.',
   },
 
   // ── configuration ──────────────────────────────────────────────────────

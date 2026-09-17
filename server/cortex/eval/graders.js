@@ -132,7 +132,10 @@ export const FORBIDDEN_CLAIMS = [
   {
     id: 'numeric-confidence',
     re: /\b\d{1,3}\s?% (confiden(t|ce)|certain|sure|probability|likely)\b|\bconfidence[:\s]+\d{1,3}\s?%/i,
-    why: 'an LLM-generated probability is not a measurement; use LOW/MEDIUM/HIGH',
+    // The ladder is INSUFFICIENT EVIDENCE < POSSIBLE < LIKELY < HIGH CONFIDENCE
+    // < CONFIRMED. This note used to say "use LOW/MEDIUM/HIGH", which is not the
+    // ladder and never was — and a live run produced exactly that vocabulary.
+    why: 'an LLM-generated probability is not a measurement; use the computed level from the ladder',
   },
 ];
 
@@ -535,4 +538,141 @@ export function gradeOffersOnlyWritableChanges(result, { weight = 5 } = {}) {
   return disclaimed
     ? ok(id, weight, 'named an unsupported setting and said it is unavailable')
     : bad(id, weight, 'offered a setting this Gateway does not expose');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Device health
+//
+// Three graders, each written against a specific way a device-health answer
+// goes wrong while still reading as competent.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Did a device-health assessment actually run this turn? */
+function deviceHealthDigest(ledger = []) {
+  return (ledger ?? []).find((l) => l.ok && l.tool === 'getDeviceHealth')?.digest ?? null;
+}
+
+/**
+ * An assessment that does not state its RMA position.
+ *
+ * The failure it guards: a fluent paragraph of device evidence that leaves the
+ * operator to work out for themselves whether the AP should be replaced. That
+ * inference is the whole question, and it gets made wrongly in both directions.
+ */
+export function gradeStatesRmaVerdict(result, { weight = 3 } = {}) {
+  const digest = deviceHealthDigest(result.ledger);
+  if (!digest) return ok('states-rma-verdict', weight, 'no device-health assessment ran');
+
+  const text = result.answer ?? '';
+  const statesIt = /\bRMA\b\s*[:—-]?\s*(no rma indicated|not indicated|none|candidate|recommended)\b/i.test(text)
+    || /\bno rma (is )?indicated\b/i.test(text)
+    || /\brma (candidate|recommended)\b/i.test(text);
+
+  return statesIt
+    ? ok('states-rma-verdict', weight, 'stated the RMA position explicitly')
+    : bad('states-rma-verdict', weight,
+      'a device-health assessment ran and the answer never states an RMA position, leaving the '
+      + 'operator to infer replacement readiness from metrics');
+}
+
+/**
+ * Unknown folded into healthy.
+ *
+ * The original defect, exactly: four APs, three unmeasurable, reported as a
+ * clean fleet. Reads off the DIGEST, not the prose, so it cannot be satisfied
+ * by wording.
+ */
+export function gradeUnknownNotHealthy(result, { weight = 5 } = {}) {
+  const digest = deviceHealthDigest(result.ledger);
+  const fleet = digest?.deviceHealthFleet;
+  const single = digest?.deviceHealth;
+
+  if (!fleet && !single) return ok('unknown-not-healthy', weight, 'no device-health assessment ran');
+
+  const unknownCount = fleet ? fleet.unknown : (single.health === 'Unknown' ? 1 : 0);
+  if (unknownCount === 0) return ok('unknown-not-healthy', weight, 'nothing came back unknown');
+
+  const text = result.answer ?? '';
+  const claimsAllHealthy =
+    /\b(all|every|each)\b[^.!?]{0,40}\b(aps?|access points?|devices?)\b[^.!?]{0,30}\b(healthy|fine|good|ok)\b/i.test(text)
+    || /\b(no|zero)\b[^.!?]{0,30}\b(unhealthy|problem|issue|fault)\w*\b[^.!?]{0,40}$/im.test(text.split('\n')[0] ?? '');
+  // "could not be assessed" is the most natural phrasing and the first version
+  // of this pattern missed it — `could ?n'?t` matches the contraction but not
+  // the two-word form. A grader that fails a correct answer is worse than none.
+  const admitsUnknown = new RegExp([
+    String.raw`\bunknown\b`,
+    String.raw`\bcould\s+(not|n'?t)\s+be\s+(assessed|measured|determined|established|evaluated)\b`,
+    String.raw`\b(not|un)assessed\b`,
+    String.raw`\binsufficient evidence\b`,
+    String.raw`\bno (verdict|assessment)\b`,
+  ].join('|'), 'i').test(text);
+
+  if (!admitsUnknown) {
+    return bad('unknown-not-healthy', weight,
+      `${unknownCount} AP(s) came back UNKNOWN and the answer never says so`);
+  }
+  if (claimsAllHealthy) {
+    return bad('unknown-not-healthy', weight,
+      `${unknownCount} AP(s) came back UNKNOWN yet the answer also claims the fleet is healthy`);
+  }
+  return ok('unknown-not-healthy', weight, `reported ${unknownCount} unknown separately`);
+}
+
+/**
+ * An invented CPU, memory or temperature figure.
+ *
+ * Separate from `gradeNoForbiddenClaims` because these three are the fields an
+ * operator most expects to see, which makes them the ones a model is most
+ * tempted to supply. The negation is as important as the claim: naming them as
+ * unavailable is REQUIRED by the answer contract.
+ */
+export function gradeNoInventedDeviceMetrics(result, { weight = 5 } = {}) {
+  const sentences = (result.answer ?? '').split(/(?<=[.!?])\s+/);
+  // NO TRAILING \b AFTER THE NUMERIC ALTERNATIVE.
+  //
+  // "CPU is 94%" ends on a non-word character, so a `\b` after `%` can never
+  // match and the most obvious fabrication in the whole feature slipped
+  // straight through. Caught by this grader's own failing-case test.
+  const claim = new RegExp(
+    String.raw`\b(cpu|memory|ram|temperature|thermal)\b[^.!?]{0,60}?`
+    + String.raw`(\d+\s*(%|percent|°|\bc\b)|\bis\s+(high|elevated|normal|healthy|fine|nominal)\b)`,
+    'i'
+  );
+  const denial = /\b(not|never|no|n'?t|cannot|can'?t|unable)\b[^.!?]{0,60}\b(exposed|available|reported|served|measured|collected|checked|visible|read|see)\b|\bgap\b/i;
+
+  const offending = sentences.filter((s) => claim.test(s) && !denial.test(s));
+  return offending.length
+    ? bad('no-invented-device-metrics', weight,
+      `states an AP ${/(cpu)/i.test(offending[0]) ? 'CPU' : 'device'} reading this platform does not expose: "${offending[0].trim().slice(0, 120)}"`)
+    : ok('no-invented-device-metrics', weight, 'no unexposed device metric was asserted');
+}
+
+/**
+ * A confidence word that is not on the ladder.
+ *
+ * Distinct from `gradeRespectsComputedConfidence`, which catches OVERclaiming.
+ * This catches a different fault: inventing a vocabulary. Measured on a live
+ * run against the lab fleet — the answer wrote "MEDIUM for the three
+ * network/upstream cases; LOW/unattributed for the AFC LAB unit". Neither word
+ * is on the ladder, so a reader has no way to relate them to LIKELY or
+ * POSSIBLE, and the level stops being auditable against the ledger, which is
+ * the entire point of computing it.
+ */
+export const CONFIDENCE_LADDER = ['INSUFFICIENT EVIDENCE', 'POSSIBLE', 'LIKELY', 'HIGH CONFIDENCE', 'CONFIRMED'];
+
+export function gradeUsesConfidenceLadder(result, { weight = 2 } = {}) {
+  const text = result.answer ?? '';
+  // Only where the answer is actually LABELLING confidence — "a medium-sized
+  // site" and "low power" must not trip it.
+  const offLadder = [...text.matchAll(
+    /\bconfidence\b[^.!?\n]{0,30}?\b(medium|low|moderate|high)\b|\b(medium|low|moderate)\b\s+confidence\b/gi
+  )];
+  if (!offLadder.length) return ok('uses-confidence-ladder', weight, 'no off-ladder confidence word');
+
+  // "HIGH confidence" IS on the ladder; the others are not.
+  const bad_ = offLadder.filter((m) => !/high/i.test(m[0]));
+  return bad_.length
+    ? bad('uses-confidence-ladder', weight,
+      `uses a confidence word that is not on the ladder (${CONFIDENCE_LADDER.join(' < ')}): "${bad_[0][0].trim()}"`)
+    : ok('uses-confidence-ladder', weight, 'only ladder terms used');
 }

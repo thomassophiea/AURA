@@ -329,7 +329,51 @@ separately. Rule out PoE and tunnel loss (a tunnel flapping WITHOUT an uptime
 reset) before calling an AP unstable; both masquerade as a failing AP. For
 restarts, CLUSTER the affected APs by model, firmware, site and switch — two APs
 of the same model on the same switch is one shared cause, not two AP faults. The
-restart REASON is not in REST; it is in the tech-support archive.`,
+restart REASON is not in REST; it is in the tech-support archive.
+Use getDeviceHealth: it runs all of the above and returns a classification.`,
+  },
+  {
+    id: 'device-health',
+    // Deliberately broad on the health/replacement verbs. "are my APs healthy"
+    // and "does this need replacing" are the two natural phrasings and neither
+    // contains a fault word, so the ap-health pattern above misses both.
+    when: /\b(health(y|ier)?|unhealthy|degraded)\b|\brma'?d?\b|\breplace(d|ment)?\b|\bfaulty\b|\bhardware (problem|fault|failure|issue|defect)s?\b|\bconsistent firmware\b|\bfirmware (consistency|outlier|mismatch|drift)\b|\bcpu\b|\bmemory\b|\btemperature\b|\bkeeps? (rebooting|restarting)\b/i,
+    guidance: `Device health asks one question: is the AP capable of delivering its service, and
+if not, is the AP itself the reason? Call getDeviceHealth — do not assemble this
+from getApHealth, which returns inventory only.
+
+Four rules the answer must obey:
+
+1. "InService" IS NOT "healthy". It is an adoption state. Report the
+   classification getDeviceHealth returns — Healthy, Degraded, Unhealthy or
+   Unknown — and never substitute a status field for it.
+
+2. UNKNOWN IS NOT HEALTHY AND MUST NOT BE ADDED TO THE HEALTHY COUNT. Missing
+   telemetry is not evidence of health. Give the unknown count its own line and
+   say what was missing.
+
+3. ALWAYS STATE THE RMA LINE, even when the answer is "No RMA Indicated", and
+   even for a healthy AP. Never leave the operator to infer replacement
+   readiness from metrics. Cortex assesses; it never says an RMA has been
+   raised, approved or authorised, because no such integration exists.
+
+4. CPU, MEMORY AND TEMPERATURE ARE NOT EXPOSED BY THIS PLATFORM. Say so in one
+   closing sentence. Do not imply they were checked, and do not substitute a
+   different measurement for them.
+
+Isolation runs client -> RF -> network/upstream -> configuration ->
+firmware/software -> AP hardware, and the hardware rung is only reachable when
+the ones above it were MEASURED and clean. An AP on a low-power switch port, on
+a half-duplex link, or running an outlier firmware produces every symptom of a
+failing AP — fix those first. Recommending a replacement for an AP whose uplink
+is bad is the most expensive mistake available here.
+
+RMA needs correlated evidence: a device-specific fault, upstream and
+configuration eliminated, firmware not an outlier, at least three comparable
+peers unaffected, recurrence, and remediation already attempted. Never from high
+CPU, one client, one counter, one reboot, an inventory status, a firmware
+difference, or a failed API call. When the verdict is RMA Recommended, OFFER the
+evidence package (buildRmaEvidence) — do not build it unasked.`,
   },
   {
     id: 'configuration-change',

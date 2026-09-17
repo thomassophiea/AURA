@@ -41,9 +41,18 @@ import {
   historyWindow,
   clientHistoryWindow,
   clientPseudonym,
+  uptimeSeries,
   findVanishedDevices as findVanished,
   CLIENT_HISTORY_UNAVAILABLE,
 } from './historyEvidence.js';
+import {
+  HEALTH, RMA, PLATFORM_GAPS,
+  checkOperational, checkFirmware, checkUptime, checkRadios, checkEthernet,
+  checkInterfaceErrors, checkUplink, checkPoe, checkTunnels, checkConfiguration,
+  checkEvents, checkPeers, checkImpact,
+  classifyDeviceHealth, summariseFleet, reconstructReboots, platformGapChecks,
+} from './deviceHealth.js';
+import { buildRmaBundle, renderBundleSummary } from './rmaBundle.js';
 import { normaliseSiteKey } from './scopeResolver.js';
 import {
   serviceLevels,
@@ -102,6 +111,9 @@ export const TOOL_ACTIVITY = {
   getClientTimeline: 'Reading the client event timeline…',
   getRfHealth: 'Reviewing AP radio health and airtime…',
   getApHealth: 'Checking access point health…',
+  getDeviceHealth: 'Assessing device health — firmware, restarts, radios, power and peers…',
+  getApRebootHistory: 'Reconstructing this AP\'s restart history…',
+  buildRmaEvidence: 'Assembling the hardware-case evidence package…',
   getWlanConfig: 'Reading WLAN configuration…',
   compareClientToPeers: 'Comparing against other clients on the same AP and WLAN…',
   checkBackendServices: 'Checking DHCP, DNS and VLAN plumbing…',
@@ -705,6 +717,328 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
     capabilityKey,
     reason: capabilities.explainGap(capabilityKey) ?? 'not available on this Gateway',
   });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // DEVICE HEALTH
+  //
+  // The fetch half. `deviceHealth.js` holds every judgement and is pure; this
+  // is the part that knows which endpoints exist, which of them are unreliable
+  // on this build, and how to keep going when one of them is not there.
+  //
+  // The ordering rule that matters: a read that fails NARROWS the assessment,
+  // it never ends it. The measured failure this was written against is the flex
+  // report service 500ing as a unit — under which every RF tool is dead and
+  // device health is entirely unaffected, because it touches none of them.
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * The capability keys a device-health assessment reaches for and does not get.
+   *
+   * Reported on every assessment, successful or not, so the gap catalogue
+   * accumulates them for product management. These are the three fields a
+   * support engineer asks for first and the platform has never served.
+   */
+  const DEVICE_HEALTH_GAP_KEYS = ['ap.cpu', 'ap.memory', 'ap.temperature'];
+
+  /**
+   * Resolve an AP by serial OR by name.
+   *
+   * Operators say "is AP5020-PVT-01 healthy?" — that is the hostname, not the
+   * serial, and it is what the model passes through. Matching only on
+   * `serialNumber` answered "not in inventory" for an AP sitting right there,
+   * which reads as an alarming finding rather than the lookup failure it is.
+   * Caught on the first live end-to-end run.
+   */
+  const findAp = (rows, needle) => {
+    if (!needle) return null;
+    const want = String(needle).trim().toLowerCase();
+    return rows.find((a) => String(a.serialNumber ?? '').toLowerCase() === want)
+      ?? rows.find((a) => String(a.apName ?? '').toLowerCase() === want)
+      ?? rows.find((a) => String(a.hostname ?? '').toLowerCase() === want)
+      ?? null;
+  };
+
+  const DEVICE_HEALTH_ALTERNATIVE =
+    'The AP inventory is the root of every device-health check, so nothing here can proceed ' +
+    'without it. AURA\'s stored fleet state may still answer a status question — call getApHealth, ' +
+    'which falls back to it — but it carries no firmware, uptime or Ethernet detail.';
+
+  /**
+   * APs that are genuinely comparable to this one: the SAME MODEL at the SAME
+   * SITE, excluding itself.
+   *
+   * Both halves are load-bearing. An AP5020 judged against an AP3000 differs for
+   * reasons that mean nothing, and an AP at one site judged against another site
+   * imports that site's switching, power and RF as if they were shared.
+   */
+  const comparablePeers = (target, allAps) =>
+    allAps.filter(
+      (a) => a.serialNumber !== target.serialNumber
+        && a.platformName === target.platformName
+        && normaliseSiteKey(a.hostSite) === normaliseSiteKey(target.hostSite)
+    );
+
+  /**
+   * A cheap fault signal for a PEER, from the inventory row alone.
+   *
+   * Deliberately not a full assessment: assessing every peer would multiply the
+   * per-AP state reads by the cohort size on every question. It reads only what
+   * `/v1/aps/query` already returned, and `checkPeers` describes the basis so
+   * the cohort verdict is not passed off as a deep one.
+   */
+  const peerFaultSignal = (ap) => {
+    let n = 0;
+    if (ap.status && ap.status !== 'InService') n += 1;
+    if (/low|reduced|insufficient/i.test(String(ap.ethPowerStatus ?? ''))) n += 1;
+    const radios = Array.isArray(ap.radios) ? ap.radios : [];
+    if (radios.length && radios.every((r) => !(r.opChannel && Number(r.txPower) > 0))) n += 1;
+    return n;
+  };
+
+  /** Is any upgrade group still running? `{inProgress}` or null if unreadable. */
+  const upgradeState = () =>
+    once('upgrade', async () => {
+      const r = await session.get('/v2/report/upgrade/devices');
+      if (!r.ok) return null;
+      const groups = r.data?.upgradeGroups ?? [];
+      return {
+        inProgress: Array.isArray(groups)
+          && groups.some((g) => !/complete|success|failed|cancelled/i.test(String(g?.status ?? ''))),
+        groupCount: Array.isArray(groups) ? groups.length : 0,
+      };
+    });
+
+  /**
+   * Reconstruct this AP's restarts from stored uptime.
+   *
+   * Three outcomes and they are all different: the query failed, the series is
+   * absent, or the series is present and shows what it shows. Collapsing the
+   * first two into "no restarts" would be the most dangerous bug in this
+   * feature — it reads as stability.
+   */
+  const apRebootHistory = async (apSerial, hours = 168) => {
+    const src = await historySources();
+    if (!src.ok || !src.sourceIds.length) {
+      return {
+        available: false,
+        reason:
+          `no monitoring source matches this Gateway${src.error ? ` (${src.error})` : ''}, so no ` +
+          'uptime series has been stored for it',
+      };
+    }
+    const series = await uptimeSeries({ sourceIds: src.sourceIds, apSerial, hours });
+    if (!series.ok) {
+      return {
+        available: false,
+        reason: `the stored uptime series could not be read (${series.error})`,
+      };
+    }
+    const reconstructed = reconstructReboots(series.points);
+    if (!reconstructed.available && series.meta.neverCollected) {
+      return { ...reconstructed, reason: 'AURA has never collected against this Gateway' };
+    }
+    if (!reconstructed.available) {
+      return {
+        ...reconstructed,
+        reason:
+          `${reconstructed.reason}. AP uptime collection is newer than the other metric families, ` +
+          'so a deployment can be collecting normally and still have no uptime series yet',
+      };
+    }
+    return { ...reconstructed, meta: series.meta };
+  };
+
+  /**
+   * Gather the evidence for one AP and run the assessment over it.
+   *
+   * `deep` adds the three reads that are worth a request for a single AP and
+   * are not worth one per AP across a fleet sweep: LLDP, interface counters and
+   * the device alarm history. None of them is required for a verdict — they
+   * enrich it, and their absence is recorded rather than assumed away.
+   */
+  const assessOneAp = async (apRow, allAps, { deep = false, remediation = null } = {}) => {
+    const serial = apRow.serialNumber;
+    const sources = ['/v1/aps/query'];
+
+    const stateRes = await session.get(`/v1/state/aps/${encodeURIComponent(serial)}`);
+    if (stateRes.ok) sources.push('/v1/state/aps/{serial}');
+    const state = stateRes.ok ? stateRes.data ?? {} : null;
+
+    let lldp = null;
+    let ifstats = null;
+    let ifstatsError = null;
+    let alarms = null;
+    let alarmsAvailable = null;
+    let activeAlerts = null;
+
+    if (deep) {
+      const now = Date.now();
+      const [lldpRes, ifRes, alarmRes, reportRes] = await Promise.all([
+        session.get(`/v1/aps/${encodeURIComponent(serial)}/lldp`),
+        session.get(`/v1/aps/ifstats/${encodeURIComponent(serial)}`),
+        // NOT in the Gateway's published catalogue — it answers on some builds
+        // and 404s on others. A 404 here means the endpoint is absent, which is
+        // a capability gap; anything else that fails is a failed read. The two
+        // produce different verdicts and `checkEvents` needs to be told which.
+        session.get(
+          `/v1/aps/${encodeURIComponent(serial)}/alarms`
+          + `?startTime=${now - 7 * 86_400_000}&endTime=${now}&noCache=${now}`
+        ),
+        session.get(`/v1/aps/${encodeURIComponent(serial)}/report?duration=3H`),
+      ]);
+      if (lldpRes.ok) { lldp = lldpRes.data; sources.push('/v1/aps/{serial}/lldp'); }
+      if (ifRes.ok) { ifstats = ifRes.data; sources.push('/v1/aps/ifstats/{serial}'); } else {
+        ifstatsError = ifRes.errorSummary ?? `HTTP ${ifRes.status}`;
+      }
+      if (alarmRes.ok) {
+        alarms = flattenApAlarms(alarmRes.data);
+        alarmsAvailable = true;
+        sources.push('/v1/aps/{serial}/alarms');
+      } else {
+        alarmsAvailable = alarmRes.status === 404 ? false : null;
+      }
+      if (reportRes.ok) {
+        activeAlerts = reportRes.data?.activeAlerts ?? [];
+        sources.push('/v1/aps/{serial}/report');
+      }
+    }
+
+    const [rebootHistory, upgrade] = await Promise.all([
+      apRebootHistory(serial).catch((err) => ({ available: false, reason: err?.message ?? 'unavailable' })),
+      upgradeState().catch(() => null),
+    ]);
+    if (rebootHistory?.available) sources.push('metric_samples: ap.uptime_seconds');
+
+    const peers = comparablePeers(apRow, allAps);
+    const peerFaults = new Map(peers.map((p) => [p.serialNumber, peerFaultSignal(p)]));
+
+    // VLAN gaps are only computable when the profile list read succeeds; a
+    // failed profile read must leave the check unmeasured rather than reporting
+    // no gaps.
+    let vlanGaps = null;
+    if (state) {
+      const gapsRes = await apVlanGaps(apRow, state);
+      vlanGaps = gapsRes;
+    }
+
+    const impact = await apClientImpact(apRow);
+
+    const checks = [
+      checkOperational({ apRow, state, stateReadFailed: !stateRes.ok }),
+      checkFirmware({ apRow, peers, upgrade }),
+      checkUptime({ apRow, rebootHistory }),
+      checkRadios({ apRow }),
+      // The tunnel state tells checkEthernet whether an AP with no wired link
+      // is mesh-backhauled or genuinely cut off. Both look identical in
+      // ethPorts, and only one of them is a fault.
+      checkEthernet({
+        apRow,
+        tunnelsUp: state
+          ? (state.controllerApTunnelStatus ?? []).some((t) => /^normal$/i.test(String(t?.status ?? '')))
+          : null,
+      }),
+      checkPoe({ apRow }),
+      checkTunnels({ state, stateReadFailed: !stateRes.ok }),
+      checkConfiguration({ apRow, state, stateReadFailed: !stateRes.ok, vlanGaps }),
+      checkPeers({ apRow, peers, peerFaults }),
+      checkImpact(impact),
+      ...platformGapChecks(),
+    ];
+    if (deep) {
+      checks.push(
+        checkUplink({ lldp, readFailed: lldp === null }),
+        checkInterfaceErrors({ ifstats, readFailed: ifstats === null, error: ifstatsError }),
+        checkEvents({ alarms, available: alarmsAvailable, activeAlerts })
+      );
+    }
+
+    const report = classifyDeviceHealth(checks, { remediation });
+
+    return {
+      checks,
+      sources,
+      raw: { state, lldp, ifstats, alarms, rebootHistory, peers, impact, upgrade },
+      report: {
+        ...report,
+        checks: checks.map((c) => ({
+          check: c.id,
+          state: c.state,
+          reason: c.reason ?? null,
+          summary: c.summary,
+        })),
+      },
+    };
+  };
+
+  /**
+   * Which of this AP's own profile's WLAN topologies it is NOT holding.
+   *
+   * Scoped to the AP's OWN profile, for the reason `perApBackendChecks` already
+   * records: an unscoped comparison flagged four of eight lab APs as broken for
+   * SSIDs they were never meant to carry.
+   */
+  const apVlanGaps = async (apRow, state) => {
+    const [svcRes, topoRes, profRes] = await Promise.all([serviceData(), topologyData(), profileData()]);
+    if (!svcRes.ok || !topoRes.ok || !profRes.ok) return null;
+    const topoIds = new Set(topoRes.rows.map((x) => x.id));
+    const svcById = new Map(svcRes.rows.map((s) => [s.id, s]));
+    const profile = profRes.rows.find((p) => (p.profileName ?? p.name) === apRow.profileName);
+    if (!profile) return null;
+    const have = new Set((state?.apVlanStatus ?? []).map((v) => v?.id).filter(Boolean));
+    const missing = [];
+    for (const ent of profile.radioIfList ?? []) {
+      const svc = svcById.get(ent?.serviceId);
+      if (!svc?.defaultTopology || !topoIds.has(svc.defaultTopology)) continue;
+      if (!have.has(svc.defaultTopology)) missing.push(svc.ssid ?? svc.serviceName);
+    }
+    return [...new Set(missing)];
+  };
+
+  /**
+   * How many clients this AP is carrying, and how many of them have findings.
+   *
+   * Uses the client table the rest of the tooling uses, so when that is down
+   * this returns `measured: false` WITH the reason — which `checkImpact` turns
+   * into "whether anyone is affected is unknown" rather than "nobody is".
+   */
+  const apClientImpact = async (apRow) => {
+    const res = await clientData();
+    if (!res.ok) {
+      return { measured: false, reason: res.error ?? 'client telemetry unavailable' };
+    }
+    const mine = res.rows.filter(
+      (r) => r.ApSerial === apRow.serialNumber || r.ApName === apRow.apName
+    );
+    const scorable = mine.filter(isScorableClientRow);
+    if (!scorable.length) {
+      return { measured: true, clientCount: mine.length ? 0 : 0, clientsWithFindings: null };
+    }
+    let withFindings = 0;
+    for (const row of scorable) {
+      if (scoreClient(row).length) withFindings += 1;
+    }
+    return { measured: true, clientCount: scorable.length, clientsWithFindings: withFindings };
+  };
+
+  /** Flatten the nested category → alarmType → alarms shape into a flat list. */
+  const flattenApAlarms = (data) => {
+    const out = [];
+    for (const category of Array.isArray(data) ? data : []) {
+      for (const type of category?.alarmTypes ?? []) {
+        for (const alarm of type?.alarms ?? []) {
+          out.push({
+            category: category?.category ?? category?.name ?? null,
+            type: type?.type ?? type?.name ?? null,
+            level: alarm?.level ?? alarm?.severity ?? null,
+            timestamp: alarm?.timestamp ?? null,
+            // Attacker-influencable free text.
+            log: untrusted(alarm?.log ?? alarm?.description ?? null),
+          });
+        }
+      }
+    }
+    return out;
+  };
 
   const tools = {
     // ────────────────────────────────────────────────────────────────────
@@ -1418,6 +1752,279 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
             vlansPresent: s.apVlanStatus ?? null,
           },
           '/v1/aps/{serial} + /v1/state/aps/{serial}'
+        );
+      },
+    },
+
+    // ────────────────────────────────────────────────────────────────────
+    getDeviceHealth: {
+      risk: RISK.READ,
+      spec: {
+        name: 'getDeviceHealth',
+        description:
+          'Is an AP capable of delivering its service, and if not, is the AP itself the reason? Runs the full device-health investigation — operational state, firmware consistency against comparable peers, uptime and restarts, radios, Ethernet, PoE, tunnels, configuration, device events, peer comparison and client impact — then classifies each AP Healthy / Degraded / Unhealthy / Unknown and states an explicit RMA verdict. Use for "are my APs healthy", "what is wrong with this AP", "does this need replacing", "do I have RMA candidates", "are my APs on consistent firmware", "is this an AP problem or a network problem". Prefer this over getApHealth, which returns inventory only. CPU, memory and temperature are not exposed by this platform and the result says so rather than omitting them.',
+        parameters: {
+          type: 'object',
+          properties: {
+            apSerial: {
+              type: 'string',
+              description:
+                'One AP for a deep assessment — its serial number OR its name, whichever the '
+                + 'operator used. Omit for a fleet sweep.',
+            },
+          },
+          additionalProperties: false,
+        },
+      },
+      handler: async ({ apSerial } = {}) => {
+        const apsRes = await apData();
+        if (!apsRes.ok) {
+          return fetchFailed('the AP inventory', apsRes, DEVICE_HEALTH_ALTERNATIVE);
+        }
+
+        // Scope BEFORE assessing: a fleet sweep presented as one site's own is
+        // the failure this whole layer exists to stop.
+        const scoped = applySiteScope(apsRes.rows, (r) => r.siteName ?? r.hostSite);
+        if (scoped.matchedNothing) return scopeMatchedNothing('access points', scoped);
+        const inScope = scoped.rows;
+
+        if (apSerial) {
+          const target = findAp(apsRes.rows, apSerial);
+          if (!target) {
+            return {
+              basis: 'unknown',
+              unavailable: true,
+              status: 'ap_not_in_inventory',
+              reason:
+                `No AP matching "${apSerial}" is in this Gateway's inventory, by serial or by name. ` +
+                'An AP that has been ' +
+                'removed, or has fully lost adoption, DISAPPEARS from inventory rather than ' +
+                'appearing as unhealthy — so this is not evidence that it is fine.',
+              instruction:
+                'Do NOT report this AP as healthy or as absent-therefore-fine. Say it is not in ' +
+                'inventory and that the Gateway gives no reason.',
+            };
+          }
+          const assessed = await assessOneAp(target, apsRes.rows, { deep: true });
+          return observed(
+            {
+              ap: untrusted(target.apName ?? target.serialNumber),
+              serial: target.serialNumber,
+              site: untrusted(target.hostSite),
+              model: target.platformName,
+              ...assessed.report,
+              capabilityGaps: [
+                ...DEVICE_HEALTH_GAP_KEYS,
+                ...(assessed.report.rebootHistoryAvailable ? [] : ['ap.reboot_history']),
+              ],
+              scopeApplied: scopeApplied(scoped),
+            },
+            assessed.sources.join(' + ')
+          );
+        }
+
+        // ── Fleet sweep. ────────────────────────────────────────────────────
+        //
+        // The per-AP state read is REQUIRED for a Healthy verdict (tunnels and
+        // configuration hang off it), so it is made for every AP up to the
+        // existing budget rather than skipped. APs past the budget come back
+        // Unknown WITH THE REASON, which is the honest outcome — not quietly
+        // assessed on thinner evidence than the ones above them.
+        const budgeted = inScope.slice(0, MAX_AP_STATE_READS);
+        const overBudget = inScope.slice(MAX_AP_STATE_READS);
+
+        const assessments = [];
+        // Aggregated so the evidence graph can see a fault DOMAIN for the fleet.
+        //
+        // Without this the sweep returned counts and no `findings[]`, so
+        // `classifyConfidence` found no classifier verdict and computed
+        // INSUFFICIENT EVIDENCE for a complete, successful assessment of eight
+        // APs — and a model told its confidence is "insufficient" reaches for a
+        // word of its own. Measured on a live run: it wrote "MEDIUM".
+        const fleetFindings = [];
+        for (const ap of budgeted) {
+          const a = await assessOneAp(ap, apsRes.rows, { deep: false });
+          fleetFindings.push(...(a.report.findings ?? []));
+          assessments.push({
+            ap: untrusted(ap.apName ?? ap.serialNumber),
+            serial: ap.serialNumber,
+            site: untrusted(ap.hostSite),
+            model: ap.platformName,
+            firmware: ap.softwareVersion,
+            health: a.report.health,
+            rma: a.report.rma,
+            attributedTo: a.report.isolation?.attributedTo ?? null,
+            faults: a.report.faults.map((f) => f.summary),
+            concerns: a.report.concerns.map((f) => f.summary),
+            blockedHealthyBy: a.report.blockedHealthyBy,
+          });
+        }
+        for (const ap of overBudget) {
+          assessments.push({
+            ap: untrusted(ap.apName ?? ap.serialNumber),
+            serial: ap.serialNumber,
+            site: untrusted(ap.hostSite),
+            model: ap.platformName,
+            firmware: ap.softwareVersion,
+            health: HEALTH.UNKNOWN,
+            rma: RMA.NONE,
+            faults: [],
+            concerns: [],
+            blockedHealthyBy: ['per-AP state read not attempted'],
+            note: `Beyond the ${MAX_AP_STATE_READS}-AP per-investigation read budget.`,
+          });
+        }
+
+        const summary = summariseFleet(assessments);
+        const exceptions = assessments.filter((a) => a.health !== HEALTH.HEALTHY);
+
+        return observed(
+          {
+            ...summary,
+            findings: fleetFindings,
+            exceptions,
+            // Named so a fleet answer can state consistency without a second call.
+            firmwareSpread: Object.entries(
+              inScope.reduce((acc, a) => {
+                const k = `${a.platformName ?? 'unknown'} ${a.softwareVersion ?? 'unknown'}`;
+                acc[k] = (acc[k] ?? 0) + 1;
+                return acc;
+              }, {})
+            ).map(([build, apCount]) => ({ build, apCount })),
+            platformGaps: Object.entries(PLATFORM_GAPS).map(([field, why]) => ({ field, why })),
+            capabilityGaps: DEVICE_HEALTH_GAP_KEYS,
+            scopeApplied: scopeApplied(scoped),
+            inventoryCaveat:
+              'This covers only APs the Gateway currently knows about. An AP that has been removed, ' +
+              'or has fully lost adoption, DISAPPEARS from inventory rather than appearing as ' +
+              'unhealthy, so a clean sweep is not proof that nothing is wrong. Use ' +
+              'findVanishedDevices to check for devices that have dropped out.',
+          },
+          '/v1/aps/query + /v1/state/aps/{serial}'
+        );
+      },
+    },
+
+    // ────────────────────────────────────────────────────────────────────
+    getApRebootHistory: {
+      risk: RISK.READ,
+      spec: {
+        name: 'getApRebootHistory',
+        description:
+          'Has this AP been restarting? Reconstructs restarts from AURA\'s stored uptime series — the Gateway serves no reboot log and no restart counter at all, so this is the only route to the question. Separates restarts that coincide with a firmware change (upgrades) from unexplained ones. No restart carries a reason code on this platform. Use for "why does this AP keep rebooting", "has it restarted", and before any RMA assessment.',
+        parameters: {
+          type: 'object',
+          properties: {
+            apSerial: { type: 'string', description: 'The AP serial number or name.' },
+            hours: { type: 'number', description: 'How far back to look. Default 168 (7 days).' },
+          },
+          required: ['apSerial'],
+          additionalProperties: false,
+        },
+      },
+      handler: async ({ apSerial, hours = 168 } = {}) => {
+        // The stored series is keyed by SERIAL, so a name has to be resolved
+        // first or the query silently matches nothing and reads as "no history".
+        const apsRes = await apData();
+        const resolved = apsRes.ok ? findAp(apsRes.rows, apSerial) : null;
+        const serial = resolved?.serialNumber ?? apSerial;
+        const history = await apRebootHistory(serial, hours);
+        if (history.fetchFailed) return history.fetchFailed;
+        if (!history.available) {
+          return {
+            basis: 'unknown',
+            unavailable: true,
+            status: 'no_history',
+            capabilityKey: 'ap.reboot_history',
+            reason: history.reason,
+            instruction:
+              'This is an ABSENCE OF HISTORY, not an absence of restarts. Do not report that the AP ' +
+              'has been stable. Say the restart record could not be reconstructed and why.',
+          };
+        }
+        return observed(
+          {
+            apSerial: serial,
+            apName: resolved ? untrusted(resolved.apName) : null,
+            ...history,
+            instruction:
+              'Restarts are reconstructed from stored uptime, so only the collected window is ' +
+              'visible. No restart carries a reason code on this platform — never state one.',
+          },
+          'AURA monitoring database (metric_samples: ap.uptime_seconds)'
+        );
+      },
+    },
+
+    // ────────────────────────────────────────────────────────────────────
+    buildRmaEvidence: {
+      risk: RISK.READ,
+      spec: {
+        name: 'buildRmaEvidence',
+        description:
+          'Assemble the evidence package for a hardware/RMA case on one AP: identity, firmware, restart record, radios, Ethernet and PoE, the upstream switch port, tunnels, device events, the comparable-peer cohort, service impact, the troubleshooting already performed, and — the part a reviewer needs most — which alternative causes were measured and eliminated. Read-only: it does NOT raise an RMA and does NOT trigger AP log collection, which is a write; it hands over the exact calls for that instead. Call only after getDeviceHealth has returned an RMA verdict, and only when the operator has asked for the package.',
+        parameters: {
+          type: 'object',
+          properties: {
+            apSerial: { type: 'string', description: 'The AP serial number or name.' },
+            remediationAttempted: {
+              type: 'array',
+              items: { type: 'string' },
+              description:
+                'Remediation the operator has already tried, in their words. Recorded verbatim; ' +
+                'never invented.',
+            },
+            remediationResolved: {
+              type: 'boolean',
+              description: 'Whether that remediation resolved the condition.',
+            },
+          },
+          required: ['apSerial'],
+          additionalProperties: false,
+        },
+      },
+      handler: async ({ apSerial, remediationAttempted = [], remediationResolved = null } = {}) => {
+        const apsRes = await apData();
+        if (!apsRes.ok) return fetchFailed('the AP inventory', apsRes, DEVICE_HEALTH_ALTERNATIVE);
+        const target = findAp(apsRes.rows, apSerial);
+        if (!target) {
+          return {
+            basis: 'unknown',
+            unavailable: true,
+            status: 'ap_not_in_inventory',
+            reason: `No AP matching "${apSerial}" is in this Gateway's inventory, by serial or by name.`,
+            instruction: 'A package cannot be built for an AP the Gateway does not list.',
+          };
+        }
+        const remediation = {
+          attempted: Array.isArray(remediationAttempted) ? remediationAttempted : [],
+          resolved: typeof remediationResolved === 'boolean' ? remediationResolved : null,
+        };
+        const assessed = await assessOneAp(target, apsRes.rows, { deep: true, remediation });
+
+        const bundle = buildRmaBundle({
+          assessment: assessed.report,
+          checks: assessed.checks,
+          apRow: target,
+          state: assessed.raw.state,
+          lldp: assessed.raw.lldp,
+          rebootHistory: assessed.raw.rebootHistory,
+          peers: assessed.raw.peers,
+          impact: assessed.raw.impact,
+          alarms: assessed.raw.alarms,
+          remediation,
+          gatewayUrl: session.baseUrl ?? scope.controllerUrl ?? null,
+        });
+
+        return observed(
+          {
+            bundle,
+            summary: renderBundleSummary(bundle),
+            instruction:
+              'Offer this package; do not describe it as a raised, approved or authorised RMA — no ' +
+              'such integration exists. State plainly which sections could not be collected.',
+          },
+          assessed.sources.join(' + ')
         );
       },
     },

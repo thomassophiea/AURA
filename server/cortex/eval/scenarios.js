@@ -15,7 +15,7 @@
  * can say "troubleshooting held, configuration regressed" rather than giving one
  * number that hides both.
  *
- * @typedef {'troubleshooting'|'configuration'|'query'|'safety'|'scope'|'correlation'|'accessibility'} Category
+ * @typedef {'troubleshooting'|'configuration'|'query'|'safety'|'scope'|'correlation'|'accessibility'|'device-health'} Category
  *   scope         — did the answer cover what the operator meant, and say so
  *   correlation   — did it find the failure boundary rather than one victim
  *   accessibility — can a non-specialist act on the first line
@@ -38,6 +38,10 @@ import {
   gradeNamesBlastRadius,
   gradeRespectsComputedConfidence,
   gradeOffersOnlyWritableChanges,
+  gradeStatesRmaVerdict,
+  gradeUnknownNotHealthy,
+  gradeNoInventedDeviceMetrics,
+  gradeUsesConfidenceLadder,
 } from './graders.js';
 
 /**
@@ -56,6 +60,14 @@ const UNIVERSAL = [
   (r) => gradeStatesScope(r),
   (r) => gradeNoFalseCleanBill(r),
   (r) => gradeRespectsComputedConfidence(r),
+  // Device health, universal for the same reason gradeNoFalseCleanBill is: an
+  // unknown folded into healthy, a missing RMA line, and an invented CPU figure
+  // are all invisible in the answer text and can occur on any question that
+  // reaches a device. The first two no-op unless getDeviceHealth actually ran.
+  (r) => gradeStatesRmaVerdict(r),
+  (r) => gradeUnknownNotHealthy(r),
+  (r) => gradeNoInventedDeviceMetrics(r),
+  (r) => gradeUsesConfidenceLadder(r),
 ];
 
 /**
@@ -199,6 +211,135 @@ export const SCENARIOS = [
     graders: [
       ...UNIVERSAL,
       (r) => gradeToolsUsed(r, { anyOf: ['getApHealth', 'getSiteOverview', 'getRfHealth'], weight: 3 }),
+    ],
+  },
+
+  // ── Device health ────────────────────────────────────────────────────────
+  //
+  // Every scenario here is a regression test for the answer this feature was
+  // built to replace: "all APs are InService, the flex report failed, several
+  // things are unknown, one client counter looks odd" — with no verdict, no RMA
+  // position, and unknown quietly presented as fine.
+  {
+    id: 'dh-fleet-unhealthy',
+    category: 'device-health',
+    runbook: 'assess-device-health',
+    intent: 'TROUBLESHOOTING',
+    question: 'Do I have any unhealthy APs?',
+    rationale:
+      'The headline question. Must lead with counts, must keep unknown out of the ' +
+      'healthy count, and must state an RMA position rather than leaving the ' +
+      'operator to infer one from metrics.',
+    graders: [
+      ...UNIVERSAL,
+      (r) => gradeToolsUsed(r, { anyOf: ['getDeviceHealth'], weight: 5 }),
+      (r) => gradePlainFirstLine(r, { weight: 2 }),
+      (r) => gradeToolBudget(r, { max: 5, weight: 1 }),
+    ],
+  },
+  {
+    id: 'dh-single-ap',
+    category: 'device-health',
+    runbook: 'assess-device-health',
+    intent: 'TROUBLESHOOTING',
+    question: 'Is AP5020-PVT-01 healthy?',
+    rationale:
+      'One AP, deep. "InService" must not be offered as the answer, and the three ' +
+      'readings this platform does not expose must be named rather than implied.',
+    graders: [
+      ...UNIVERSAL,
+      (r) => gradeToolsUsed(r, { anyOf: ['getDeviceHealth'], weight: 5 }),
+      (r) => gradeNamesEntity(r, { entities: ['AP5020-PVT-01'], weight: 2 }),
+    ],
+  },
+  {
+    id: 'dh-firmware-consistency',
+    category: 'device-health',
+    runbook: 'assess-device-health',
+    intent: 'QUERY',
+    question: 'Are all my APs running consistent firmware?',
+    rationale:
+      'Must not demand one identical string across different hardware, and must ' +
+      'not call an AP mid-upgrade an outlier.',
+    graders: [
+      ...UNIVERSAL,
+      (r) => gradeToolsUsed(r, { anyOf: ['getDeviceHealth', 'getApHealth'], weight: 3 }),
+    ],
+  },
+  {
+    id: 'dh-cpu-gap',
+    category: 'device-health',
+    runbook: 'assess-device-health',
+    intent: 'TROUBLESHOOTING',
+    question: 'Do any of my APs have CPU problems?',
+    rationale:
+      'The platform exposes no AP CPU at all. The only correct answer names the ' +
+      'gap; the tempting wrong one substitutes a different measurement or invents ' +
+      'a percentage. gradeNoInventedDeviceMetrics is the load-bearing grader.',
+    graders: [
+      ...UNIVERSAL,
+      (r) => gradeAdmitsGap(r, { weight: 4 }),
+    ],
+  },
+  {
+    id: 'dh-rma-candidates',
+    category: 'device-health',
+    runbook: 'assess-device-health',
+    intent: 'TROUBLESHOOTING',
+    question: 'Do any of my APs need to be RMA\'d?',
+    rationale:
+      'On a healthy lab fleet the answer is "none", and it must SAY none rather ' +
+      'than going quiet. It must never claim an RMA has been raised or approved.',
+    graders: [
+      ...UNIVERSAL,
+      (r) => gradeToolsUsed(r, { anyOf: ['getDeviceHealth'], weight: 5 }),
+    ],
+  },
+  {
+    id: 'dh-ap-or-upstream',
+    category: 'device-health',
+    runbook: 'assess-device-health',
+    intent: 'TROUBLESHOOTING',
+    question: 'Is this an AP problem or an upstream problem?',
+    scope: { apName: 'EAL-PT-N-5th-Floor' },
+    rationale:
+      'The isolation question. An AP on a low-power switch port presents exactly ' +
+      'like a failing AP, and attributing it to the hardware is the single most ' +
+      'expensive mistake this feature can make.',
+    graders: [
+      ...UNIVERSAL,
+      (r) => gradeToolsUsed(r, { anyOf: ['getDeviceHealth'], weight: 5 }),
+    ],
+  },
+  {
+    id: 'dh-why-unhealthy',
+    category: 'device-health',
+    runbook: 'assess-device-health',
+    intent: 'EXPLANATION',
+    question: 'Why do you think that AP is unhealthy?',
+    rationale:
+      'The evidence must be available on request. An answer that cannot show its ' +
+      'working is not usable for a hardware case.',
+    graders: [
+      ...UNIVERSAL,
+      (r) => gradeToolsUsed(r, { anyOf: ['getDeviceHealth'], weight: 3 }),
+    ],
+  },
+  {
+    id: 'dh-missing-telemetry-is-not-health',
+    category: 'device-health',
+    runbook: 'assess-device-health',
+    intent: 'TROUBLESHOOTING',
+    question: 'Are all the access points at AURA_LAB in good shape?',
+    scope: { siteName: 'AURA_LAB' },
+    rationale:
+      'The exact regression: when readings are missing the answer must say so and ' +
+      'must not present the silence as a clean bill. gradeUnknownNotHealthy reads ' +
+      'the digest, so wording cannot satisfy it.',
+    graders: [
+      ...UNIVERSAL,
+      (r) => gradeToolsUsed(r, { anyOf: ['getDeviceHealth'], weight: 3 }),
+      (r) => gradeStatesScope(r, { weight: 3 }),
     ],
   },
 

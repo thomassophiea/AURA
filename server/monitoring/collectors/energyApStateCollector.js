@@ -28,6 +28,22 @@ export const ENERGY_AP_STATE_FAMILY = METRIC_FAMILIES.ENERGY_AP_STATE;
 export const METRIC = Object.freeze({
   POWER_WATTS: 'ap.power_watts',
   CLIENT_COUNT: 'ap.client_count',
+  /**
+   * The AP's own `sysUptime`, in seconds.
+   *
+   * Added for device health, and it is the ONLY way this platform can answer
+   * "does this AP keep restarting". The Gateway serves no reboot log and no
+   * restart counter — probed, not assumed — so a reboot has to be recognised as
+   * a DECREASE in this series between consecutive samples.
+   *
+   * The series is forward-only: it answers nothing about the period before the
+   * collector first ran, and `reconstructReboots` reports its own window rather
+   * than implying otherwise.
+   *
+   * Cost: one extra series per AP per poll, against the ~6 this collector
+   * already writes, from the SAME `/v1/aps/query` response — no extra request.
+   */
+  UPTIME_SECONDS: 'ap.uptime_seconds',
   RADIO_ADMIN: 'radio.admin_enabled',
   RADIO_TX_POWER: 'radio.tx_power',
   RADIO_CLIENTS: 'radio.clients',
@@ -70,9 +86,31 @@ export function samplesForAp(ap, { monitoredSourceId, orgId, siteGroupId, siteId
     model: normalized.model ?? null,
     siteName: normalized.siteName ?? null,
     source: 'measured',
+    // Carried so a reboot reconstructed from the uptime series can be told apart
+    // from a firmware upgrade: a restart across a version change is planned
+    // work, and counting it as instability reports a well-run estate as failing.
+    firmware: ap?.softwareVersion ?? null,
   };
 
   const samples = [];
+
+  // Uptime rides on the AP-level sample only, never per radio.
+  //
+  // Written even when the AP is not InService, unlike power: a zero-watt reading
+  // during an outage would integrate a lie, but an uptime reading is a fact
+  // about the device whatever its adoption state, and dropping it would put a
+  // hole in the series exactly where a restart is most likely to have happened.
+  const uptime = Number(ap?.sysUptime);
+  if (Number.isFinite(uptime) && uptime >= 0) {
+    samples.push({
+      ...base,
+      metricName: METRIC.UPTIME_SECONDS,
+      numericValue: uptime,
+      unit: 's',
+      metricKind: 'gauge',
+      dimensions: { ...dims, status: normalized.status },
+    });
+  }
 
   // An offline AP reports no draw. Writing 0 would integrate a lie across the
   // outage; writing nothing leaves a gap, which is the truth.

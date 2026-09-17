@@ -131,3 +131,49 @@ describe('collectEnergyApState', () => {
     expect(result.notes.join(' ')).toMatch(/matches no site id/);
   });
 });
+
+describe('uptime, for reboot reconstruction', () => {
+  const ctx = {
+    monitoredSourceId: 'src-1',
+    orgId: null,
+    siteGroupId: null,
+    siteId: 'site-1',
+    collectedAt: new Date('2026-09-17T12:00:00Z'),
+    retentionDays: 7,
+  };
+
+  it('writes sysUptime with the firmware it was running at the time', () => {
+    const samples = samplesForAp(
+      { serialNumber: 'S1', hostSite: 'PrimarySite', status: 'InService', sysUptime: 271327, softwareVersion: '10.19.1.0-031R', radios: [] },
+      ctx
+    );
+    const uptime = samples.find((s) => s.metricName === METRIC.UPTIME_SECONDS);
+    expect(uptime).toBeTruthy();
+    expect(uptime.numericValue).toBe(271327);
+    expect(uptime.unit).toBe('s');
+    // Without this, a restart across an upgrade is indistinguishable from a fault.
+    expect(uptime.dimensions.firmware).toBe('10.19.1.0-031R');
+  });
+
+  it('still records uptime for an AP that is NOT InService', () => {
+    // Unlike power: a hole here would land exactly where a restart happened.
+    const samples = samplesForAp(
+      { serialNumber: 'S1', status: 'Offline', sysUptime: 42, radios: [] },
+      ctx
+    );
+    expect(samples.some((s) => s.metricName === METRIC.UPTIME_SECONDS)).toBe(true);
+    expect(samples.some((s) => s.metricName === METRIC.POWER_WATTS)).toBe(false);
+  });
+
+  it('writes nothing rather than a zero when the AP reports no uptime', () => {
+    const samples = samplesForAp({ serialNumber: 'S1', status: 'InService', radios: [] }, ctx);
+    expect(samples.some((s) => s.metricName === METRIC.UPTIME_SECONDS)).toBe(false);
+  });
+
+  it('adds exactly one series per AP per poll', () => {
+    const ap = { serialNumber: 'S1', status: 'InService', sysUptime: 100, radios: [] };
+    const withUptime = samplesForAp(ap, ctx);
+    const without = samplesForAp({ ...ap, sysUptime: undefined }, ctx);
+    expect(withUptime.length - without.length).toBe(1);
+  });
+});

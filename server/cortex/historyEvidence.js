@@ -301,3 +301,83 @@ export async function findVanishedDevices({ sourceIds, liveDeviceIds, days = 7 }
     return { ok: false, vanished: [], error: err?.message ?? String(err) };
   }
 }
+
+/**
+ * The raw, time-ordered uptime series for one AP.
+ *
+ * `historyWindow` summarises — min / median / p90 / max — which is the right
+ * shape for "was airtime worse yesterday" and exactly the wrong shape here. A
+ * reboot is a SHAPE in the series, not a statistic of it: uptime climbing,
+ * then dropping. Summarising it away is how "this AP restarted four times last
+ * night" becomes "median uptime 43,000 seconds", which answers nothing.
+ *
+ * Returns points ascending by time, each carrying the firmware string recorded
+ * at that moment, so `reconstructReboots` can tell a restart across an upgrade
+ * from an unexplained one.
+ *
+ * @param {object} args
+ * @param {string[]} args.sourceIds
+ * @param {string} args.apSerial
+ * @param {number} [args.hours]  how far back to look (default 7 days)
+ * @returns {Promise<{ok: boolean, points: Array<{at:number,uptimeSeconds:number,firmware:string|null}>,
+ *                     meta: object, error: string|null}>}
+ */
+export async function uptimeSeries({ sourceIds, apSerial, hours = 24 * 7, now = Date.now() }) {
+  if (!sourceIds?.length) {
+    return { ok: false, points: [], meta: {}, error: 'no monitoring source for this Gateway' };
+  }
+  if (!apSerial) {
+    return { ok: false, points: [], meta: {}, error: 'an AP serial is required' };
+  }
+  try {
+    const start = new Date(now - hours * 3600_000);
+    const end = new Date(now);
+    const [{ points, truncated, effectiveStart }, earliest] = await Promise.all([
+      queryHistory({
+        sourceIds,
+        start,
+        end,
+        deviceExternalId: apSerial,
+        // Named explicitly rather than filtered after the fact: at a 60-second
+        // cadence a week of every metric for one AP is tens of thousands of
+        // rows, and the point cap would silently trim the window.
+        metricNames: ['ap.uptime_seconds'],
+        maxPoints: 20_000,
+      }),
+      getEarliestObservedAt(sourceIds),
+    ]);
+
+    const series = points
+      .filter((p) => Number.isFinite(Number(p.numericValue)) && p.observedAt)
+      .map((p) => ({
+        at: new Date(p.observedAt).getTime(),
+        uptimeSeconds: Number(p.numericValue),
+        firmware: p.dimensions?.firmware ?? null,
+      }))
+      .sort((a, b) => a.at - b.at);
+
+    return {
+      ok: true,
+      points: series,
+      meta: {
+        requestedHours: hours,
+        pointCount: series.length,
+        truncated,
+        effectiveStart: effectiveStart ? new Date(effectiveStart).toISOString() : null,
+        earliestAvailable: earliest ? new Date(earliest).toISOString() : null,
+        // The load-bearing distinction, same as everywhere else in this file:
+        // an empty window inside a collecting system means the AP did not
+        // restart; an empty window in a system that never collected means we
+        // cannot know. `ap.uptime_seconds` is also NEWER than the rest of the
+        // families, so a deployment can be collecting happily and still have no
+        // uptime series yet — which is `neverCollected` for this metric, not
+        // for the database.
+        neverCollected: earliest === null,
+        metricIsNewerThanRetention: series.length === 0 && earliest !== null,
+      },
+      error: null,
+    };
+  } catch (err) {
+    return { ok: false, points: [], meta: {}, error: err?.message ?? String(err) };
+  }
+}

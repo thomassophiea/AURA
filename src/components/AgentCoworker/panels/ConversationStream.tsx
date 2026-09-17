@@ -19,7 +19,8 @@ import { CortexScopeBar } from '@/cortex/components/CortexScopeBar';
 import { CortexClarifyPrompt } from '@/cortex/components/CortexClarifyPrompt';
 import { CortexAnswerBody } from '@/cortex/components/CortexAnswerBody';
 import { CortexReadings } from '@/cortex/components/CortexReadings';
-import { keyReadingsFromLedger } from '@/cortex/readings';
+import { CortexDeviceVerdict } from '@/cortex/components/CortexDeviceVerdict';
+import { keyReadingsFromLedger, deviceVerdictFromLedger } from '@/cortex/readings';
 import { CortexApprovalCard } from '@/cortex/components/CortexApprovalCard';
 import { useCortexContext } from '@/contexts/CortexContext';
 
@@ -173,6 +174,16 @@ export function ConversationStream({
                       {(() => {
                         const readings = keyReadingsFromLedger(msg.cortexEvidence?.ledger);
                         return readings ? <CortexReadings readings={readings} /> : null;
+                      })()}
+                      {/*
+                        The two device verdicts, above the prose for the same
+                        reason the readings are: "RMA: No RMA Indicated" is the
+                        most skippable line in a wall of text and it is the one
+                        that stops an AP being swapped for nothing.
+                      */}
+                      {(() => {
+                        const verdict = deviceVerdictFromLedger(msg.cortexEvidence?.ledger);
+                        return verdict ? <CortexDeviceVerdict verdict={verdict} /> : null;
                       })()}
                       <CortexAnswerBody text={msg.content} />
                       {/*

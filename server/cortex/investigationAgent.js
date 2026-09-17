@@ -353,6 +353,12 @@ ANSWER SHAPE — in this order, and the first line matters most.
 2. THE EVIDENCE. Numbers with units, named sources. Here the technical vocabulary belongs.
 3. THE CAUSE AND CONFIDENCE. Use the COMPUTED CONFIDENCE the runtime gives you once tools
    have run. Never invent a numeric probability; never raise the computed level.
+   THE LADDER HAS EXACTLY FIVE RUNGS AND YOU MAY USE NO OTHER WORD FOR IT:
+   INSUFFICIENT EVIDENCE < POSSIBLE < LIKELY < HIGH CONFIDENCE < CONFIRMED.
+   "LOW", "MEDIUM" and "moderate" are not on it. A reader cannot relate an invented
+   word to the ladder, and the level then stops being checkable against the ledger —
+   which is the only reason it is computed rather than written. If no level was
+   computed because no tool returned a finding, say INSUFFICIENT EVIDENCE.
 4. WHAT TO DO, and who can do it.
 
 The first time you use a term of art (RFQI, SNR, RSSI, co-channel, Fast Transition, 802.1X),
@@ -379,6 +385,18 @@ LEAD WITH WHAT YOU ESTABLISHED. This is a customer-facing answer.
   reader sees.
 - When the verdict is "healthy", say so in the first line and stop. Do not pad a clean result
   with everything that might have been wrong but was not.
+
+DEVICE HEALTH ANSWERS have two extra obligations, and both were added because an answer
+that met every rule above still failed the operator:
+- LEAD WITH THE COUNTS, not with what you called. "No unhealthy APs. No RMA candidates.
+  Six of eight healthy; two could not be assessed." Then the exceptions, named. Never open
+  with which endpoints you tried.
+- STATE THE RMA LINE EXPLICITLY on every AP you assess, including a healthy one: "RMA: No
+  RMA Indicated", "RMA: Candidate" or "RMA: Recommended". You may say a package of evidence
+  is ready; you may NEVER say an RMA has been raised, approved or authorised — no system
+  behind you can grant one.
+Unknown is a real answer and gets its own count. It is never folded into healthy, and a
+device the runtime assessed Unknown must not be described as fine.
 
 WHAT A GOOD ANSWER ESTABLISHES: what is wrong, who is affected, when it started, how
 widespread it is, what evidence proves it, the root cause, the confidence, and what to do.
@@ -1145,7 +1163,85 @@ export function auditAnswer(answer, ledger) {
       finding: 'States whether a backend server is reachable.',
     },
     {
+      // CPU, MEMORY AND TEMPERATURE ARE NOT EXPOSED FOR AN AP ON THIS PLATFORM.
+      //
+      // Probed, not assumed: no AP resource carries them, `public/swagger.json`
+      // contains no cpu or memory property on any AP schema, and
+      // /v1/aps/{serial}/statistics does not exist. A figure for any of them is
+      // therefore invented, and `requires: []` makes this unconditional.
+      //
+      // The negation list is longer than the claim for a reason. "CPU and memory
+      // are not exposed by this Gateway" is the sentence the answer contract
+      // REQUIRES on every device-health answer — flagging the very disclosure we
+      // demand would train the operator to ignore the audit panel.
+      // No trailing \b after the numeric alternative: "CPU is 94%" ends on a
+      // non-word character, so a boundary there can never match and the most
+      // obvious fabrication in the feature would pass unflagged.
+      re: new RegExp(
+        String.raw`\b(cpu|memory|ram|temperature|thermal)\b[^.!?]{0,60}?`
+        + String.raw`(\d+\s*(%|percent|°|\bc\b)|\bis\s+(high|elevated|normal|healthy|fine|nominal)\b)`,
+        'i'
+      ),
+      negate: new RegExp(
+        [
+          String.raw`\b(not|never|no|n'?t)\b[^.!?]{0,60}\b(exposed|available|reported|served|measured|collected|checked|visible|carried|surfaced)\b`,
+          String.raw`\b(cannot|can'?t|unable to)\b[^.!?]{0,60}\b(read|see|measure|report|check|tell)\b`,
+          String.raw`\bthis (platform|gateway|build)\b[^.!?]{0,60}\b(does ?n'?t|do ?not)\b`,
+          String.raw`\bno (cpu|memory|ram|temperature|thermal|such)\b`,
+          String.raw`\bgap\b|\bunavailable\b|\bnot part of\b`,
+        ].join('|'),
+        'i'
+      ),
+      requires: [],
+      finding:
+        'States an AP CPU, memory or temperature reading. This Gateway exposes none of the three '
+        + 'on any AP endpoint.',
+    },
+    {
+      // An RMA assessment is Cortex's to make. An RMA DECISION is not: no
+      // authenticated Extreme support integration exists behind this product,
+      // so any claim that one has been raised, approved or authorised is
+      // unsupportable by construction.
+      re: /\b(rma|return|replacement)\b[^.!?]{0,60}\b(approved|authoris\w+|authoriz\w+|raised|submitted|accepted|issued|dispatched|shipped)\b/i,
+      negate: new RegExp(
+        [
+          String.raw`\b(not|never|no|cannot|can'?t|do ?n'?t)\b[^.!?]{0,60}\b(approv\w+|authoris\w+|authoriz\w+|rais\w+|submit\w+)\b`,
+          String.raw`\bevidence (package|bundle)\b`,
+          String.raw`\b(recommend\w*|candidate|indicated)\b`,
+          String.raw`\bseparate process\b|\bextreme support\b`,
+        ].join('|'),
+        'i'
+      ),
+      requires: [],
+      finding:
+        'Claims an RMA has been raised, approved or authorised. Cortex performs a technical '
+        + 'assessment only; no support-system integration exists to grant one.',
+    },
+    {
+      // A health VERDICT about a device must rest on the tool that computes one.
+      // getApHealth returns inventory and cannot produce a classification.
+      re: /\b(ap|access point)s?\b[^.!?]{0,60}\b(are|is|all)\b[^.!?]{0,30}\b(healthy|unhealthy|degraded)\b|\b(healthy|unhealthy|degraded)\b[^.!?]{0,30}\b(ap|access point)s?\b/i,
+      requires: ['getDeviceHealth'],
+      finding: 'States a device-health classification for an AP.',
+    },
+    {
       re: /\b(yesterday|last week|used to be|previously|trend)\b/i,
+      // A CONDITIONAL IS NOT A CLAIM ABOUT THE PAST.
+      //
+      // Measured on a live run: "If it was previously adopted and is now
+      // missing, someone should confirm whether it was decommissioned" was
+      // flagged as an unsupported historical claim. It asserts nothing — it is
+      // advice about what to go and check, which is exactly the behaviour the
+      // answer contract asks for when history is unreachable.
+      negate: new RegExp(
+        [
+          String.raw`\bif\b[^.!?]{0,80}\b(was|were|had|has been)\b`,
+          String.raw`\b(whether|could have|may have|might have|would have)\b`,
+          String.raw`\b(cannot|can'?t|unable to|no)\b[^.!?]{0,60}\b(history|historical|trend|record|trail|baseline)\b`,
+          String.raw`\bhistory (is |was )?(unavailable|unreachable|not )\b`,
+        ].join('|'),
+        'i'
+      ),
       // getClientHistory belongs here: it is the per-client history tool, and
       // omitting it flagged a correct, history-backed answer about one client
       // as unsupported — measured on Integration.

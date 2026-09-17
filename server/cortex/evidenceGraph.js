@@ -125,6 +125,17 @@ export const SOURCE_FAMILY = {
   // independent of the client table.
   getWlanHealth: 'site-inventory',
   getApHealth: 'ap-inventory',
+  // The SAME family as getApHealth, deliberately. Both read /v1/aps/query and
+  // /v1/state/aps, so a device-health verdict AGREEING with an AP-health read is
+  // one source seen twice. Giving device health its own family would let it
+  // corroborate itself through the older tool and lift every AP verdict to HIGH
+  // — which is exactly the mechanism SOURCE_FAMILY exists to prevent.
+  getDeviceHealth: 'ap-inventory',
+  // Re-reads the same inventory to assemble the package. It is a deliverable,
+  // not a measurement, and must add no weight to the verdict behind it.
+  buildRmaEvidence: 'ap-inventory',
+  // Reads metric_samples, exactly like getMetricHistory and getServiceLevels.
+  getApRebootHistory: 'stored-history',
   getWlanConfig: 'configuration',
   // Same table as getWlanConfig — both read GET /v1/services, so they are ONE
   // source. Giving it its own family would let a WLAN's configuration appear to
@@ -167,6 +178,17 @@ export function digestToolResult(tool, payload) {
   if (payload.basis) d.basis = payload.basis;
   if (payload.status) d.status = payload.status;
   if (payload.unavailable) d.unavailable = true;
+  // Carried so the gap catalogue records WHICH capability was reached for.
+  // Without it every gap was filed under `tool:<name>`, which tells product
+  // management which tool ran and nothing about what the platform could not do.
+  if (payload.capabilityKey) d.capabilityKey = payload.capabilityKey;
+  // Gaps reached inside a SUCCESSFUL result. A device-health assessment answers
+  // the question and still hits three permanent gaps on the way; filing those
+  // only when a tool fails outright would hide the most reliably missing fields
+  // on the platform, because the tool they belong to never fails.
+  if (Array.isArray(payload.capabilityGaps) && payload.capabilityGaps.length) {
+    d.capabilityGaps = payload.capabilityGaps.slice(0, 20);
+  }
   if (payload.scopeApplied) d.scopeApplied = payload.scopeApplied;
   // Provenance. A tool that fell back to AURA's database answered a question
   // the Gateway would not, and that answer describes the PAST — so it must not
@@ -337,6 +359,32 @@ export function digestToolResult(tool, payload) {
       ),
       dnsRttMs: rtt(payload.latency?.dnsMs ?? payload.latency?.dnsRttMs ?? payload.latency?.dnsRTT),
       hasIpv4: typeof payload.identity?.ipv4 === 'string' ? true : payload.identity?.hasIpv4 ?? null,
+    };
+  }
+
+  // Device health. The two verdicts travel to the graph so confidence can be
+  // capped on an UNKNOWN device — an assessment that could not read what it
+  // needed must not license a confident answer about the device it was about.
+  if (payload.health && payload.rma) {
+    d.deviceHealth = {
+      health: payload.health,
+      rma: payload.rma,
+      blockedHealthyBy: (payload.blockedHealthyBy ?? []).length,
+      platformGaps: (payload.limitations?.platformGaps ?? []).length,
+      failedReads: (payload.limitations?.failedReads ?? []).length,
+    };
+  }
+  // A fleet sweep. `unknown` is carried separately from `healthy` all the way
+  // through, because the whole point is that it must never be folded in.
+  if (Number.isFinite(payload.unknown) && Number.isFinite(payload.healthy)) {
+    d.deviceHealthFleet = {
+      apCount: payload.apCount ?? null,
+      healthy: payload.healthy,
+      degraded: payload.degraded ?? 0,
+      unhealthy: payload.unhealthy ?? 0,
+      unknown: payload.unknown,
+      rmaCandidates: payload.rmaCandidates ?? 0,
+      rmaRecommended: payload.rmaRecommended ?? 0,
     };
   }
 
@@ -575,6 +623,29 @@ export function classifyConfidence(graph) {
     );
     level = atMost(level, CONFIDENCE.LIKELY);
   }
+  // A DEVICE ASSESSED UNKNOWN CANNOT SUPPORT A CONFIDENT VERDICT ABOUT ITSELF.
+  //
+  // Device health already refuses to call an AP healthy when a required reading
+  // is missing. Without this clamp the surrounding answer could still arrive at
+  // HIGH from corroboration elsewhere and read as confident about the very
+  // device whose evidence was incomplete.
+  const unknownDevices = graph.digests.filter((d) => d.deviceHealth?.health === 'Unknown');
+  if (unknownDevices.length) {
+    ceilings.push(
+      `${unknownDevices.length} device assessment(s) came back UNKNOWN because a required reading `
+      + 'could not be obtained, so the device is neither cleared nor implicated.'
+    );
+    level = atMost(level, CONFIDENCE.POSSIBLE);
+  }
+  const fleet = graph.digests.find((d) => d.deviceHealthFleet);
+  if (fleet && fleet.deviceHealthFleet.unknown > 0) {
+    ceilings.push(
+      `${fleet.deviceHealthFleet.unknown} of ${fleet.deviceHealthFleet.apCount} APs could not be `
+      + 'assessed, so a fleet-wide statement covers only the ones that could.'
+    );
+    level = atMost(level, CONFIDENCE.LIKELY);
+  }
+
   // A cohort smaller than three peers returns "too few peers to judge", never a
   // verdict — "most peers affected" derived from one peer is how a coincidence
   // becomes a work order.

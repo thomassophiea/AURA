@@ -146,3 +146,49 @@ describe('gapReport', () => {
     expect(report.gaps[0].capabilityKey).toBe('common.thing');
   });
 });
+
+describe('gaps reached inside a successful result', () => {
+  it('records capabilityGaps from a tool that ANSWERED its question', async () => {
+    // These are the gaps most worth cataloguing precisely because the tool that
+    // reaches for them never fails — a recorder that only reads failed tools
+    // would never see the three fields this platform has never served.
+    await recordGapsFromInvestigation({
+      question: 'do I have any unhealthy APs?',
+      controllerKey: 'c1',
+      ledger: [
+        {
+          tool: 'getDeviceHealth',
+          ok: true,
+          digest: { tool: 'getDeviceHealth', capabilityGaps: ['ap.cpu', 'ap.memory', 'ap.temperature'] },
+        },
+      ],
+    });
+    const keys = (await gapReport()).gaps.map((g) => g.capabilityKey).sort();
+    expect(keys).toEqual(['ap.cpu', 'ap.memory', 'ap.temperature']);
+  });
+
+  it('still records nothing when a device-health tool reports no gaps', async () => {
+    await recordGapsFromInvestigation({
+      question: 'do I have any unhealthy APs?',
+      controllerKey: 'c1',
+      ledger: [{ tool: 'getDeviceHealth', ok: true, digest: { tool: 'getDeviceHealth', capabilityGaps: [] } }],
+    });
+    expect((await gapReport()).gaps).toHaveLength(0);
+  });
+
+  it('files a failed read under its capability key, not under the tool name', async () => {
+    await recordGapsFromInvestigation({
+      question: 'why does AP WM012243W-30032 keep rebooting?',
+      controllerKey: 'c1',
+      ledger: [
+        {
+          tool: 'getApRebootHistory',
+          ok: true,
+          digest: { tool: 'getApRebootHistory', unavailable: true, capabilityKey: 'ap.reboot_history' },
+        },
+      ],
+    });
+    const keys = (await gapReport()).gaps.map((g) => g.capabilityKey);
+    expect(keys).toEqual(['ap.reboot_history']);
+  });
+});

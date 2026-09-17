@@ -193,6 +193,11 @@ export async function recordGapsFromInvestigation({
   for (const entry of ledger) {
     const digest = entry?.digest;
     if (digest?.unavailable) hit.add(digest.capabilityKey ?? `tool:${entry.tool}`);
+    // A tool can answer its question AND still have reached for something the
+    // platform does not serve — device health returns a verdict while CPU,
+    // memory and temperature are all absent. Those are the gaps most worth
+    // reporting precisely because nothing fails when they are hit.
+    for (const key of digest?.capabilityGaps ?? []) hit.add(key);
   }
 
   const results = [];

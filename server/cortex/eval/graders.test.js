@@ -13,6 +13,10 @@ import {
   gradeToolBudget,
   gradeRespectsComputedConfidence,
   runGraders,
+  gradeStatesRmaVerdict,
+  gradeUnknownNotHealthy,
+  gradeNoInventedDeviceMetrics,
+  gradeUsesConfidenceLadder,
 } from './graders.js';
 import { SCENARIOS, CATEGORIES, containsSecret } from './scenarios.js';
 
@@ -450,5 +454,129 @@ describe('gradeOffersOnlyWritableChanges', () => {
     const r = grade('PrimarySite looks healthy; coverage is the weakest metric at 80.6%.');
     expect(r.passed).toBe(true);
     expect(r.detail).toMatch(/did not raise/i);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Device health.
+//
+// Every grader is proven against a PASSING and a FAILING result. A grader that
+// only ever passes turns a green report into evidence of nothing.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const dhLedger = (digest) => [{ tool: 'getDeviceHealth', ok: true, digest: { tool: 'getDeviceHealth', ...digest } }];
+
+describe('gradeStatesRmaVerdict', () => {
+  it('fails an assessment that never states an RMA position', () => {
+    const r = gradeStatesRmaVerdict({
+      answer: 'AP5020-PVT-03 is unhealthy. Radio 1 keeps failing to initialise and clients drop.',
+      ledger: dhLedger({ deviceHealth: { health: 'Unhealthy', rma: 'RMA Candidate' } }),
+    });
+    expect(r.passed).toBe(false);
+    expect(r.detail).toMatch(/never states an RMA position/);
+  });
+
+  it('passes each of the three verdicts', () => {
+    for (const line of [
+      'Health: Unhealthy\nRMA: Candidate',
+      'Health: Healthy\nRMA: No RMA Indicated',
+      'RMA: Recommended — the evidence package is ready.',
+      'No RMA is indicated for this AP.',
+    ]) {
+      const r = gradeStatesRmaVerdict({ answer: line, ledger: dhLedger({ deviceHealth: { health: 'Healthy', rma: 'No RMA Indicated' } }) });
+      expect(r.passed, line).toBe(true);
+    }
+  });
+
+  it('does not fire when no device-health assessment ran', () => {
+    expect(gradeStatesRmaVerdict({ answer: 'Your client has weak signal.', ledger: [] }).passed).toBe(true);
+  });
+});
+
+describe('gradeUnknownNotHealthy', () => {
+  it('fails the original defect: unknown folded into a clean bill', () => {
+    const r = gradeUnknownNotHealthy({
+      answer: 'All four access points are healthy and in service.',
+      ledger: dhLedger({ deviceHealthFleet: { apCount: 4, healthy: 1, degraded: 0, unhealthy: 0, unknown: 3 } }),
+    });
+    expect(r.passed).toBe(false);
+  });
+
+  it('fails an answer that simply never mentions the unknowns', () => {
+    const r = gradeUnknownNotHealthy({
+      answer: 'One AP is healthy. Nothing else to report.',
+      ledger: dhLedger({ deviceHealthFleet: { apCount: 4, healthy: 1, degraded: 0, unhealthy: 0, unknown: 3 } }),
+    });
+    expect(r.passed).toBe(false);
+    expect(r.detail).toMatch(/never says so/);
+  });
+
+  it('passes when unknown is reported as its own count', () => {
+    const r = gradeUnknownNotHealthy({
+      answer: 'One AP is healthy. Three could not be assessed — the per-AP state read failed on each.',
+      ledger: dhLedger({ deviceHealthFleet: { apCount: 4, healthy: 1, degraded: 0, unhealthy: 0, unknown: 3 } }),
+    });
+    expect(r.passed).toBe(true);
+  });
+
+  it('does not fire when nothing was unknown', () => {
+    const r = gradeUnknownNotHealthy({
+      answer: 'All four access points are healthy.',
+      ledger: dhLedger({ deviceHealthFleet: { apCount: 4, healthy: 4, degraded: 0, unhealthy: 0, unknown: 0 } }),
+    });
+    expect(r.passed).toBe(true);
+  });
+});
+
+describe('gradeNoInventedDeviceMetrics', () => {
+  it('fails an invented CPU percentage', () => {
+    const r = gradeNoInventedDeviceMetrics({ answer: 'AP CPU is 94% and has been for 40 minutes.', ledger: [] });
+    expect(r.passed).toBe(false);
+  });
+
+  it('fails an invented temperature', () => {
+    expect(gradeNoInventedDeviceMetrics({ answer: 'Its temperature is 71 C.', ledger: [] }).passed).toBe(false);
+  });
+
+  it('passes the disclosure the answer contract requires', () => {
+    for (const honest of [
+      'CPU, memory and temperature are not exposed by this Gateway.',
+      'I cannot read AP CPU — no endpoint serves it.',
+      'AP memory utilisation is not available on this platform; that is a gap, not a clean result.',
+    ]) {
+      expect(gradeNoInventedDeviceMetrics({ answer: honest, ledger: [] }).passed, honest).toBe(true);
+    }
+  });
+});
+
+describe('gradeUsesConfidenceLadder', () => {
+  it('fails an off-ladder word, which is what a live run actually produced', () => {
+    const r = gradeUsesConfidenceLadder({
+      answer: 'Cause and confidence: MEDIUM for the three upstream cases; LOW for the other.',
+      ledger: [],
+    });
+    expect(r.passed).toBe(false);
+    expect(r.detail).toMatch(/not on the ladder/);
+  });
+
+  it('passes the ladder\'s own terms', () => {
+    for (const s of [
+      'Cause and confidence: LIKELY — two independent sources agree.',
+      'Confidence: HIGH CONFIDENCE.',
+      'Confidence: POSSIBLE, because the plumbing preflight did not run.',
+      'INSUFFICIENT EVIDENCE to name a cause.',
+    ]) {
+      expect(gradeUsesConfidenceLadder({ answer: s, ledger: [] }).passed, s).toBe(true);
+    }
+  });
+
+  it('does not fire on ordinary uses of the same words', () => {
+    for (const s of [
+      'The switch port is supplying low power to this AP.',
+      'This is a medium-sized site with 40 access points.',
+      'Transmit power is high on radio 2.',
+    ]) {
+      expect(gradeUsesConfidenceLadder({ answer: s, ledger: [] }).passed, s).toBe(true);
+    }
   });
 });
