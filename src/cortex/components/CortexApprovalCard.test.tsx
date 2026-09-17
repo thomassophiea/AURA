@@ -97,3 +97,65 @@ describe('CortexApprovalCard', () => {
     expect(screen.getByRole('button', { name: /cancel/i })).toBeDisabled();
   });
 });
+
+const DEPLOY_EVENT = {
+  emit: 'preview' as const,
+  validationToken: 'tok-dep',
+  preview: {
+    workflowId: 'wf-9',
+    intent: 'deploy Skynet to EAL-PT-N',
+    diff: null,
+    deployment: {
+      status: 'ok',
+      site: 'EAL-PT-N',
+      serviceName: 'Skynet',
+      blastRadius: { sites: 1, aps: 1, profiles: 1, forks: 1, radios: 2 },
+      targets: [
+        {
+          profileName: '5022-N',
+          action: 'fork' as const,
+          forkName: '5022-N-EAL-PT-N',
+          protectedSites: ['EAL-PT-S'],
+          apNames: ['EAL-PT-N-5th'],
+          radios: [{ index: 1, band: '2.4' }, { index: 2, band: '5' }],
+          excluded: [{ index: 3, band: '6', reason: 'Wi-Fi 6E requires WPA3-SAE or OWE' }],
+        },
+      ],
+      warnings: ['This WLAN will not be broadcast on 6 GHz.'],
+    },
+  },
+};
+
+describe('CortexApprovalCard — site deployment', () => {
+  it('shows the blast radius rather than a bare confirmation', () => {
+    render(<CortexApprovalCard event={DEPLOY_EVENT} onApprove={noop} onDecline={noop} />);
+    // The site appears in the heading and again inside the fork name, which is
+    // correct — assert presence, not uniqueness.
+    expect(screen.getAllByText(/EAL-PT-N/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/5022-N/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/1 profile/)).toBeInTheDocument();
+    expect(screen.getByText(/2 radios/)).toBeInTheDocument();
+  });
+
+  it('names the site a fork is protecting, so the reasoning is visible', () => {
+    // The whole point of forking. If the operator cannot see that EAL-PT-S was
+    // protected, they cannot tell this apart from a plain bind.
+    render(<CortexApprovalCard event={DEPLOY_EVENT} onApprove={noop} onDecline={noop} />);
+    expect(screen.getByText(/EAL-PT-S/)).toBeInTheDocument();
+  });
+
+  it('states the 6 GHz exclusion instead of leaving it silent', () => {
+    render(<CortexApprovalCard event={DEPLOY_EVENT} onApprove={noop} onDecline={noop} />);
+    // Stated twice on purpose: once against the radio it affects, once as a
+    // warning about the WLAN as a whole.
+    expect(screen.getAllByText(/6 GHz/i).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText(/Radio 3 \(6 GHz\) excluded/i)).toBeInTheDocument();
+  });
+
+  it('binds approval to the deployment plan', () => {
+    const onApprove = vi.fn();
+    render(<CortexApprovalCard event={DEPLOY_EVENT} onApprove={onApprove} onDecline={noop} />);
+    fireEvent.click(screen.getByRole('button', { name: /deploy|apply/i }));
+    expect(onApprove).toHaveBeenCalledWith('wf-9', 'tok-dep');
+  });
+});

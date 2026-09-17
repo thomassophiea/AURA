@@ -8,7 +8,9 @@
  * which an LLM free-text parse cannot guarantee. The LLM layer (cortexOrchestrator)
  * is used only to narrate the result back to the operator, never to invent intent.
  *
- * Supported actions today: `create_wlan` and `create_vlan`. Other actions in
+ * Supported actions today: `create_wlan`, `create_vlan`, `modify_wlan` (a
+ * catalogued field change on an existing WLAN) and `deploy_wlan` (binding an
+ * existing WLAN across a site's device profiles). Other actions in
  * the WirelessConfigurationIntent union are recognized (so the operator gets
  * an honest "not yet supported" message) but do not produce a mutating plan —
  * see the migration matrix's deferred scope and
@@ -53,6 +55,7 @@ const SECURITY_PATTERNS = [
 const SUPPORTED_ACTIONS = new Set([
   'create_wlan',
   'modify_wlan',
+  'deploy_wlan',
   'update_wlan',
   'delete_wlan',
   'assign_wlan',
@@ -61,7 +64,13 @@ const SUPPORTED_ACTIONS = new Set([
   'validate_only',
 ]);
 
-const IMPLEMENTED_ACTIONS = new Set(['create_wlan', 'create_vlan', 'validate_only']);
+const IMPLEMENTED_ACTIONS = new Set([
+  'create_wlan',
+  'create_vlan',
+  'modify_wlan',
+  'deploy_wlan',
+  'validate_only',
+]);
 
 // The 30 non-WLAN configuration domains from the Ascend IQC Skills Catalog
 // audit — recognized honestly (name + real Local API it would use), never
@@ -267,6 +276,57 @@ function parseModifyIntent(trimmed, meta) {
   };
 }
 
+/**
+ * Deploying an EXISTING WLAN across a site.
+ *
+ * Runs before detectAction for the same reason the modify check does:
+ * "deploy X to Y" also matches ASSIGN_VERBS, and the generic assign path has no
+ * concept of a site — it cannot work out which APs are involved, which profiles
+ * they share with other buildings, or which radios the security type allows.
+ * The site reading is the one that can be planned, previewed and verified.
+ *
+ * A question is deliberately excluded: "where is Skynet deployed?" is an
+ * investigation, and turning it into a configuration task would answer a
+ * question nobody asked by changing the network.
+ */
+const DEPLOY_VERBS = /\b(deploy|roll ?out|push)\b/i;
+const DEPLOY_TARGET =
+  /\b(?:to|across|at|on)\s+(?:every\s+ap\s+(?:at|in)\s+|all\s+aps?\s+(?:at|in)\s+|the\s+)?([A-Za-z0-9_][A-Za-z0-9_\- ]*?)\s*$/i;
+
+function parseDeployIntent(trimmed, meta) {
+  if (!DEPLOY_VERBS.test(trimmed)) return null;
+  if (READ_ONLY_LEAD.test(trimmed) || trimmed.trim().endsWith('?')) return null;
+
+  // The WLAN is what sits between the verb and the destination.
+  const m = trimmed.match(
+    /\b(?:deploy|roll ?out|push)\s+(?:the\s+)?([A-Za-z0-9_][A-Za-z0-9_\-]*)\b([\s\S]*)$/i
+  );
+  if (!m) return null;
+
+  const wlanName = m[1];
+  const target = (m[2] ?? '').match(DEPLOY_TARGET);
+  if (!target) return null;
+
+  const siteName = target[1].trim();
+  if (!siteName || siteName.toLowerCase() === wlanName.toLowerCase()) return null;
+
+  return {
+    intent: {
+      action: 'deploy_wlan',
+      wlanName,
+      siteName,
+      requestedBy: meta.requestedBy ?? 'unknown',
+      source: meta.source ?? 'text',
+      rawInstruction: trimmed,
+    },
+    missingFields: [],
+    ambiguities: [],
+    riskLevel: 'medium',
+    humanReadable: `Deploy ${wlanName} across ${siteName}.`,
+    classification: 'mutating',
+  };
+}
+
 function detectAction(input) {
   if (DELETE_VERBS.test(input)) return 'delete_wlan';
   if (UPDATE_VERBS.test(input)) return 'update_wlan';
@@ -306,6 +366,11 @@ export function parseWirelessIntent(input, meta = {}) {
   // it outranks the generic update path when both match.
   const modify = parseModifyIntent(trimmed, meta);
   if (modify) return modify;
+
+  // Deploying an existing WLAN across a site, which the generic assign path
+  // cannot express.
+  const deploy = parseDeployIntent(trimmed, meta);
+  if (deploy) return deploy;
 
   const classification = classify(trimmed);
   const action = classification === 'read_only' ? 'validate_only' : detectAction(trimmed);
@@ -364,7 +429,10 @@ export function parseWirelessIntent(input, meta = {}) {
     return {
       intent: { action, requestedBy: meta.requestedBy ?? 'unknown', source: meta.source ?? 'text', rawInstruction: trimmed },
       missingFields: ['action'],
-      ambiguities: [`"${action}" is recognized but not yet implemented — only creating a new WLAN is supported today.`],
+      ambiguities: [
+        `"${action}" is recognized but not yet implemented. Today AURA can create a WLAN or ` +
+          'VLAN, change a catalogued setting on an existing WLAN, and deploy a WLAN across a site.',
+      ],
       riskLevel: 'medium',
       humanReadable: `Detected a "${action}" request, which AURA cannot provision yet.`,
       classification: 'mutating',

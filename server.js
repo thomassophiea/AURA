@@ -52,6 +52,9 @@ import {
   declineConfirmation,
 } from './server/cortex/workflowEngine.js';
 import { applyWlanChange, toWorkflowResult } from './server/cortex/wlanModifyEngine.js';
+import { requestXcc } from './server/validationEngine/xccClient.js';
+import { planSiteDeployment } from './server/cortex/siteDeploymentPlanner.js';
+import { deployWlanToSite } from './server/cortex/siteDeploymentEngine.js';
 import {
   computePlanHash,
   signValidationToken,
@@ -2583,8 +2586,81 @@ function modifyPlanIdentity(preview) {
   };
 }
 
-function signModifyPlan(preview) {
-  return signValidationToken(computePlanHash(modifyPlanIdentity(preview)));
+/** Sign whichever kind of plan this preview carries. */
+function signPreviewPlan(preview) {
+  const identity = preview.deployment
+    ? deploymentPlanIdentity(preview.deployment)
+    : modifyPlanIdentity(preview);
+  return signValidationToken(computePlanHash(identity));
+}
+
+/**
+ * Read the estate and work out what deploying this WLAN to this site would do.
+ *
+ * Three reads, all of which the planner needs together: the service (its
+ * security type decides whether 6 GHz is legal), every AP (to find the site's
+ * APs AND to discover which other sites share their profiles), and every
+ * profile (for the radios). The second is the one that is easy to get wrong —
+ * scoping the AP read to the target site would hide exactly the cross-site
+ * membership the fork rule exists to catch.
+ */
+async function planDeploymentFor({ session, controllerUrl, authToken, wlanName, siteName }) {
+  const opts = { authToken, controllerUrl, method: 'GET' };
+  const [svcRes, apRes, profRes] = await Promise.all([
+    requestXcc('/v1/services', opts),
+    requestXcc('/v1/aps/query', opts),
+    requestXcc('/v3/profiles', opts),
+  ]);
+
+  const failed = [svcRes, apRes, profRes].find((r) => !r.ok);
+  if (failed) {
+    return {
+      status: 'read_failed',
+      warnings: [
+        `The Gateway could not be read (${failed.errorText ?? `HTTP ${failed.status}`}), so this ` +
+          'deployment cannot be planned. Nothing was changed.',
+      ],
+    };
+  }
+
+  const list = (r, key) => (Array.isArray(r.data) ? r.data : (r.data?.[key] ?? []));
+  const services = list(svcRes, 'services');
+  const service = services.find(
+    (s) =>
+      String(s.serviceName ?? '').toLowerCase() === String(wlanName ?? '').toLowerCase() ||
+      String(s.ssid ?? '').toLowerCase() === String(wlanName ?? '').toLowerCase()
+  );
+
+  if (!service) {
+    return {
+      status: 'wlan_matched_nothing',
+      warnings: [
+        `No WLAN called "${wlanName}" exists on this Gateway. The WLANs that do: ` +
+          `${services.map((s) => s.serviceName).filter(Boolean).join(', ') || '(none)'}.`,
+      ],
+    };
+  }
+
+  return planSiteDeployment({
+    siteName,
+    service,
+    aps: list(apRes, 'aps'),
+    profiles: list(profRes, 'profiles'),
+  });
+}
+
+/** The identity of a previewed DEPLOYMENT — what the operator actually read. */
+function deploymentPlanIdentity(plan) {
+  return {
+    site: plan.site,
+    serviceId: plan.serviceId,
+    targets: (plan.targets ?? []).map((t) => ({
+      profile: t.profileName,
+      action: t.action,
+      fork: t.forkName,
+      radios: t.radios.map((r) => r.index),
+    })),
+  };
 }
 
 /**
@@ -2611,9 +2687,13 @@ app.post('/api/cortex/workflow/confirm', requireAuth, cortexRateLimit, jsonParse
   }
 
   const preview = await buildWorkflowPreview(workflowId);
-  if (!preview?.diff) {
+  if (!preview?.diff && !preview?.deployment) {
     return res.status(409).json({ error: 'That task is not a configuration change awaiting approval.' });
   }
+
+  const identity = preview.deployment
+    ? deploymentPlanIdentity(preview.deployment)
+    : modifyPlanIdentity(preview);
 
   const verified = verifyValidationToken(validationToken);
   if (!verified) {
@@ -2622,7 +2702,7 @@ app.post('/api/cortex/workflow/confirm', requireAuth, cortexRateLimit, jsonParse
       preview,
     });
   }
-  if (verified.planHash !== computePlanHash(modifyPlanIdentity(preview))) {
+  if (verified.planHash !== computePlanHash(identity)) {
     return res.status(409).json({
       error:
         'This change is not the one you reviewed — it changed in between. Here is the current ' +
@@ -2637,6 +2717,30 @@ app.post('/api/cortex/workflow/confirm', requireAuth, cortexRateLimit, jsonParse
   const result = await executeWorkflow(workflowId, {
     provision: async ({ requestedState, derivedState }) => {
       const merged = { ...derivedState, ...requestedState };
+
+      // A deployment re-plans nothing: it executes the plan that was approved.
+      // Re-planning here would mean applying something the operator never saw,
+      // and the plan hash exists precisely to make that impossible.
+      if (merged.deploymentPlan) {
+        const outcome = await deployWlanToSite({
+          plan: merged.deploymentPlan,
+          authToken: callerToken,
+          controllerUrl: sess.controllerUrl,
+        });
+        return {
+          status:
+            outcome.status === 'applied'
+              ? 'completed'
+              : outcome.status === 'partial'
+                ? 'partial'
+                : outcome.status === 'noop'
+                  ? 'completed'
+                  : 'failed',
+          reason: outcome.summary,
+          outcome,
+        };
+      }
+
       const outcome = await applyWlanChange({
         serviceId: merged.serviceId,
         changeId: merged.changeId,
@@ -2825,8 +2929,8 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
         // checked against the plan that was actually shown. Without this, a
         // click means "yes to whatever is current", which is not what the
         // operator read.
-        if (turn.emit === 'preview' && turn.preview?.diff) {
-          turn = { ...turn, validationToken: signModifyPlan(turn.preview).token };
+        if (turn.emit === 'preview' && (turn.preview?.diff || turn.preview?.deployment)) {
+          turn = { ...turn, validationToken: signPreviewPlan(turn.preview).token };
         }
 
         // Reported on every turn, not just the first: whether the task will
@@ -2875,7 +2979,10 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
     const action = parsed?.intent?.action;
     const startsWork =
       parsed?.classification === 'mutating' &&
-      (action === 'create_wlan' || action === 'create_vlan' || action === 'modify_wlan');
+      (action === 'create_wlan' ||
+        action === 'create_vlan' ||
+        action === 'modify_wlan' ||
+        action === 'deploy_wlan');
 
     if (startsWork) {
       if (activeWorkflow) {
@@ -2937,6 +3044,33 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
           intentFields.currentValue = offered.current;
         }
 
+        // A site deployment is PLANNED before it is previewed, because the
+        // interesting part is not what was asked for — it is what the estate
+        // makes of it. Which profiles the site's APs share with other sites,
+        // which radios the security type may legally reach, and whether there
+        // is anything left to do at all.
+        if (action === 'deploy_wlan') {
+          const plan = await planDeploymentFor({
+            session: sess.session,
+            controllerUrl: sess.controllerUrl,
+            authToken: req.headers['x-controller-auth'] || req.headers['authorization'],
+            wlanName: intentFields.wlanName,
+            siteName: intentFields.siteName,
+          });
+
+          if (plan.status !== 'ok') {
+            emit('workflow', {
+              rule: 'new-configuration-intent',
+              emit: 'blocked',
+              deadEnds: [{ reason: plan.warnings?.[0] ?? 'That deployment could not be planned.' }],
+            });
+            return res.end();
+          }
+
+          intentFields.deploymentPlan = plan;
+          intentFields.serviceId = plan.serviceId;
+        }
+
         const { workflow, store: backing } = await beginWorkflow({
           sessionId: workflowSessionId,
           userIntent: question,
@@ -2967,7 +3101,9 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
           // Signed here too, not only on the continuation path: a change most
           // often reaches preview on the very first turn, and an unsigned
           // preview cannot be approved by clicking.
-          ...(startPreview?.diff ? { validationToken: signModifyPlan(startPreview).token } : {}),
+          ...(startPreview?.diff || startPreview?.deployment
+            ? { validationToken: signPreviewPlan(startPreview).token }
+            : {}),
           // Said out loud: a memory-backed workflow does not survive a restart,
           // and the operator is about to be asked to confirm a network change.
           durable: backing === 'db',

@@ -270,12 +270,23 @@ export async function buildPreview(workflowId) {
         })
       : null;
 
+  // A deployment is previewed as its blast radius: which profiles, which
+  // radios, which APs, and — the part that is easy to leave implicit — which
+  // OTHER sites a fork is protecting. Carried as its own key rather than as a
+  // field, because it is a structure, and flattening it into the field list
+  // would turn the one thing worth reading into a JSON blob in a table row.
+  const deployment =
+    workflow.workflowType === 'deploy_wlan' && merged.deploymentPlan
+      ? merged.deploymentPlan
+      : null;
+
   return {
     workflowId,
     workflowType: workflow.workflowType,
     intent: workflow.userIntent,
     fields,
     diff,
+    deployment,
     // Surfaced deliberately: anything Cortex chose is the operator's to veto.
     assumptions: fields.filter((f) => f.source === 'default' || f.source === 'system'),
     warnings: workflow.warnings ?? [],
