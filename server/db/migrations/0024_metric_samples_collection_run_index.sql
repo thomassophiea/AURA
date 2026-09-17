@@ -1,0 +1,34 @@
+-- Index the foreign key that the retention sweep deletes through.
+--
+-- `metric_samples.collection_run_id` REFERENCES collection_runs(id) ON DELETE
+-- SET NULL, but the referencing column was never indexed. Postgres does not
+-- create one automatically for a foreign key -- only for the referenced side --
+-- so every `collection_runs` row deleted had to sequentially scan the whole of
+-- `metric_samples` to find the children whose FK it must null out.
+--
+-- `metric_samples` is the largest table in the system by an order of magnitude,
+-- so this is quadratic in exactly the place it hurts most: runRetentionCleanup()
+-- prunes collection_runs on every hourly tick, at RUN_RETENTION_MULTIPLIER (2)
+-- times the retention window.
+--
+-- Measured on Integration 2026-09-17 against 1.96M sample rows:
+--
+--   before   DELETE FROM collection_runs WHERE started_at < $1
+--            -> still running after 2m15s, never observed to finish;
+--               the sweep died as "[cleanup] FAILED: canceling statement"
+--   after    same DELETE -> 1.4s, and the whole sweep 30ms
+--
+-- The index itself costs 14 MB against a 1.4 GB table.
+--
+-- This matters beyond latency. runRetentionCleanup() wraps deleteExpiredSamples()
+-- and deleteOldCollectionRuns() in a single withAdvisoryLock() callback, so a
+-- hang in the collection_runs step takes the sample deletions down with it. An
+-- unindexed FK here does not merely make retention slow -- it can stop retention
+-- reclaiming anything at all, which on a capped volume ends as a disk-full
+-- outage rather than a slow query.
+--
+-- IF NOT EXISTS because this index was created by hand on Integration during
+-- that incident, ahead of this migration.
+
+CREATE INDEX IF NOT EXISTS idx_metric_samples_collection_run
+  ON public.metric_samples USING btree (collection_run_id);
