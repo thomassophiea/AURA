@@ -2874,7 +2874,8 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
 
     const action = parsed?.intent?.action;
     const startsWork =
-      parsed?.classification === 'mutating' && (action === 'create_wlan' || action === 'create_vlan');
+      parsed?.classification === 'mutating' &&
+      (action === 'create_wlan' || action === 'create_vlan' || action === 'modify_wlan');
 
     if (startsWork) {
       if (activeWorkflow) {
@@ -2895,6 +2896,47 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
         const { _ephemeralPassword, ...intentFields } = parsed.intent ?? {};
         void _ephemeralPassword;
 
+        // A change to an EXISTING WLAN needs its "before" from the Gateway:
+        // which service, and what the field currently reads. Resolved here, as
+        // a read, so the preview can show a real diff rather than only what was
+        // asked for — and so a field this Gateway does not expose is refused
+        // now, instead of becoming a 200 that changes nothing.
+        if (action === 'modify_wlan') {
+          const tools = createDiagnosticTools({
+            session: sess.session,
+            scope: {},
+            capabilities: getCapabilitiesFor({
+              key: sess.controllerUrl,
+              evidence: new GatewayEvidence(sess.session),
+              session: sess.session,
+            }).registry,
+          });
+          const surface = await tools.listAvailableChanges.handler({
+            wlanName: intentFields.wlanName,
+          });
+
+          const offered = (surface?.available ?? []).find((a) => a.id === intentFields.changeId);
+          if (!offered) {
+            emit('workflow', {
+              rule: 'new-configuration-intent',
+              emit: 'blocked',
+              deadEnds: [
+                {
+                  reason:
+                    surface?.status === 'scope_matched_nothing'
+                      ? surface.reason
+                      : `This Gateway does not expose ${intentFields.changeId} on ` +
+                        `${intentFields.wlanName}, so it cannot be changed, previewed or verified.`,
+                },
+              ],
+            });
+            return res.end();
+          }
+
+          intentFields.serviceId = surface.serviceId;
+          intentFields.currentValue = offered.current;
+        }
+
         const { workflow, store: backing } = await beginWorkflow({
           sessionId: workflowSessionId,
           userIntent: question,
@@ -2909,6 +2951,8 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
           pageContext: { siteName: scope?.siteName, pageName: scope?.pageName },
         });
 
+        const startPreview = outcome?.question ? null : await buildWorkflowPreview(workflow.id);
+
         emit('workflow', {
           rule: 'new-configuration-intent',
           emit: outcome?.question
@@ -2919,7 +2963,11 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
           workflow: outcome?.workflow ?? workflow,
           question: outcome?.question ?? null,
           deadEnds: outcome?.deadEnds ?? [],
-          preview: outcome?.question ? null : await buildWorkflowPreview(workflow.id),
+          preview: startPreview,
+          // Signed here too, not only on the continuation path: a change most
+          // often reaches preview on the very first turn, and an unsigned
+          // preview cannot be approved by clicking.
+          ...(startPreview?.diff ? { validationToken: signModifyPlan(startPreview).token } : {}),
           // Said out loud: a memory-backed workflow does not survive a restart,
           // and the operator is about to be asked to confirm a network change.
           durable: backing === 'db',
