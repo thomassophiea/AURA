@@ -46,8 +46,17 @@ import {
   advance as advanceWorkflow,
   seedFromIntent,
   buildPreview as buildWorkflowPreview,
+  buildModifyDiff,
   execute as executeWorkflow,
+  grantConfirmation,
+  declineConfirmation,
 } from './server/cortex/workflowEngine.js';
+import { applyWlanChange, toWorkflowResult } from './server/cortex/wlanModifyEngine.js';
+import {
+  computePlanHash,
+  signValidationToken,
+  verifyValidationToken,
+} from './server/cortex/validationToken.js';
 import { buildWorkflowSources } from './server/cortex/workflowSources.js';
 import { openSseStream } from './server/cortex/sseStream.js';
 import { readScopeInventory } from './server/cortex/scopeInventory.js';
@@ -2558,6 +2567,111 @@ app.post(
  * the existing auth/rate-limit middleware instead of a second transport with
  * its own authorisation story.
  */
+/**
+ * The identity of a previewed change.
+ *
+ * Only the things an operator actually read: which workflow, which field, and
+ * both values. Hashing the whole preview would invalidate consent on cosmetic
+ * churn; hashing less than this would let the change drift under a valid token.
+ */
+function modifyPlanIdentity(preview) {
+  return {
+    workflowId: preview.workflowId,
+    path: preview.diff.path,
+    from: preview.diff.from,
+    to: preview.diff.to,
+  };
+}
+
+function signModifyPlan(preview) {
+  return signValidationToken(computePlanHash(modifyPlanIdentity(preview)));
+}
+
+/**
+ * Apply a change the operator approved by clicking, rather than by typing.
+ *
+ * Two independent gates, and both are required. The persisted
+ * `confirmation_state` is the record that consent happened at all; the plan
+ * hash is the record of WHAT was consented to. A plan that changed between the
+ * preview and the click is a different plan, and the earlier approval does not
+ * cover it.
+ */
+app.post('/api/cortex/workflow/confirm', requireAuth, cortexRateLimit, jsonParser, async (req, res) => {
+  const { workflowId, validationToken, decision = 'approve' } = req.body ?? {};
+  if (!workflowId || typeof workflowId !== 'string') {
+    return res.status(400).json({ error: 'workflowId is required' });
+  }
+
+  const sess = sessionFromRequest(req, { defaultControllerUrl: DEFAULT_CONTROLLER_URL ?? '' });
+  if (!sess.ok) return res.status(sess.status).json({ error: sess.error });
+
+  if (decision === 'decline') {
+    await declineConfirmation(workflowId);
+    return res.json({ ok: true, status: 'DECLINED' });
+  }
+
+  const preview = await buildWorkflowPreview(workflowId);
+  if (!preview?.diff) {
+    return res.status(409).json({ error: 'That task is not a configuration change awaiting approval.' });
+  }
+
+  const verified = verifyValidationToken(validationToken);
+  if (!verified) {
+    return res.status(409).json({
+      error: 'That approval has expired. Here is the change again — review it and approve once more.',
+      preview,
+    });
+  }
+  if (verified.planHash !== computePlanHash(modifyPlanIdentity(preview))) {
+    return res.status(409).json({
+      error:
+        'This change is not the one you reviewed — it changed in between. Here is the current ' +
+        'version; approve it again if it is still what you want.',
+      preview,
+    });
+  }
+
+  await grantConfirmation(workflowId);
+
+  const callerToken = req.headers['x-controller-auth'] || req.headers['authorization'];
+  const result = await executeWorkflow(workflowId, {
+    provision: async ({ requestedState, derivedState }) => {
+      const merged = { ...derivedState, ...requestedState };
+      const outcome = await applyWlanChange({
+        serviceId: merged.serviceId,
+        changeId: merged.changeId,
+        desired: merged.desired,
+        authToken: callerToken,
+        controllerUrl: sess.controllerUrl,
+      });
+      // Carry the raw outcome alongside the mapped status so the transcript can
+      // say what the Gateway actually did, not just whether it worked.
+      return { ...toWorkflowResult(outcome), outcome };
+    },
+  });
+
+  audit('cortex.workflow.confirm', {
+    actor: req.auraActor,
+    source: req.auraActorSource,
+    target: preview.diff.path,
+    detail: {
+      workflowId,
+      from: preview.diff.from,
+      to: preview.diff.to,
+      status: result.status,
+      applied: result.result?.status ?? null,
+    },
+  });
+
+  return res.json({
+    ok: result.ok,
+    status: result.status,
+    diff: preview.diff,
+    outcome: result.result?.outcome ?? null,
+    reason: result.result?.reason ?? null,
+  });
+});
+
 app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, async (req, res) => {
   const {
     question,
@@ -2705,6 +2819,14 @@ app.post('/api/cortex/investigate', requireAuth, cortexRateLimit, jsonParser, as
             error: result.error ?? result.result?.error ?? null,
             httpStatus: result.result?.httpStatus ?? null,
           };
+        }
+
+        // A previewed CHANGE is signed, so the approval that comes back can be
+        // checked against the plan that was actually shown. Without this, a
+        // click means "yes to whatever is current", which is not what the
+        // operator read.
+        if (turn.emit === 'preview' && turn.preview?.diff) {
+          turn = { ...turn, validationToken: signModifyPlan(turn.preview).token };
         }
 
         // Reported on every turn, not just the first: whether the task will
