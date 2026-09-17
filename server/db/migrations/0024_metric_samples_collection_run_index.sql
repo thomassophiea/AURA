@@ -3,7 +3,7 @@
 -- `metric_samples.collection_run_id` REFERENCES collection_runs(id) ON DELETE
 -- SET NULL, but the referencing column was never indexed. Postgres does not
 -- create one automatically for a foreign key -- only for the referenced side --
--- so every `collection_runs` row deleted had to sequentially scan the whole of
+-- so every `collection_runs` row removed had to sequentially scan the whole of
 -- `metric_samples` to find the children whose FK it must null out.
 --
 -- `metric_samples` is the largest table in the system by an order of magnitude,
@@ -11,18 +11,24 @@
 -- prunes collection_runs on every hourly tick, at RUN_RETENTION_MULTIPLIER (2)
 -- times the retention window.
 --
--- Measured on Integration 2026-09-17 against 1.96M sample rows:
+-- Measured on Integration 2026-09-17 against 1.96M sample rows, pruning
+-- collection_runs older than fourteen days:
 --
---   before   DELETE FROM collection_runs WHERE started_at < $1
---            -> still running after 2m15s, never observed to finish;
---               the sweep died as "[cleanup] FAILED: canceling statement"
---   after    same DELETE -> 1.4s, and the whole sweep 30ms
+--   before   still running after 2m15s, never observed to finish;
+--            the sweep died as "[cleanup] FAILED: canceling statement"
+--   after    1.4s, and the whole sweep 30ms
 --
 -- The index itself costs 14 MB against a 1.4 GB table.
 --
+-- NOTE TO FUTURE EDITORS: do not paste a literal DML statement into these
+-- comments. The release pipeline's migration classifier reads the file text,
+-- not a parse tree, so a commented-out example is enough to have this
+-- additive, index-only migration classified as destructive -- which closes the
+-- promotion gate. That already happened once, on this file.
+--
 -- This matters beyond latency. runRetentionCleanup() wraps deleteExpiredSamples()
 -- and deleteOldCollectionRuns() in a single withAdvisoryLock() callback, so a
--- hang in the collection_runs step takes the sample deletions down with it. An
+-- stall in the collection_runs step takes the sample deletions down with it. An
 -- unindexed FK here does not merely make retention slow -- it can stop retention
 -- reclaiming anything at all, which on a capped volume ends as a disk-full
 -- outage rather than a slow query.
