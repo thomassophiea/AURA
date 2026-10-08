@@ -278,3 +278,41 @@ describe('useMonitoringHistory', () => {
     expect(result.current.loading).toBe(false);
   });
 });
+
+describe('useMonitoringHistory — deliberate refresh', () => {
+  it('re-reads a preset window ending at the moment of the refresh, not at mount', async () => {
+    getHistory.mockResolvedValue(response());
+    const { result } = renderHook(() => useMonitoringHistory({ preset: '24h' }));
+    await waitFor(() => expect(getHistory).toHaveBeenCalledTimes(1));
+    const firstEnd = new Date(getHistory.mock.calls[0][0].end).getTime();
+
+    await new Promise((resolve) => setTimeout(resolve, 15));
+    await result.current.refresh();
+
+    expect(getHistory).toHaveBeenCalledTimes(2);
+    expect(new Date(getHistory.mock.calls[1][0].end).getTime()).toBeGreaterThan(firstEnd);
+  });
+
+  it('refetches when a caller advances an explicit live window (Refresh / tab return)', async () => {
+    getHistory.mockResolvedValue(response());
+    const { rerender } = renderHook(
+      ({ end }: { end: string }) =>
+        useMonitoringHistory({ start: '2026-08-05T00:00:00.000Z', end }),
+      { initialProps: { end: '2026-08-05T12:00:00.000Z' } }
+    );
+    await waitFor(() => expect(getHistory).toHaveBeenCalledTimes(1));
+
+    rerender({ end: '2026-08-05T12:10:00.000Z' });
+
+    await waitFor(() => expect(getHistory).toHaveBeenCalledTimes(2));
+    expect(getHistory.mock.calls[1][0].end).toBe('2026-08-05T12:10:00.000Z');
+  });
+
+  it('does not refetch on its own while idle (no interval by default)', async () => {
+    getHistory.mockResolvedValue(response());
+    renderHook(() => useMonitoringHistory({ preset: '24h' }));
+    await waitFor(() => expect(getHistory).toHaveBeenCalledTimes(1));
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(getHistory).toHaveBeenCalledTimes(1);
+  });
+});

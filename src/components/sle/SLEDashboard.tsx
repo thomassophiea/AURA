@@ -4,9 +4,9 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiService } from '../../services/api';
-import { whenAutoRefresh } from '../../lib/autoRefresh';
+import { whenAutoRefresh, onReturnAfterHidden } from '../../lib/autoRefresh';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
@@ -33,7 +33,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { useGlobalFilters } from '../../hooks/useGlobalFilters';
-import { useSelectedTimeRange } from '../../hooks/useSelectedTimeRange';
+import { useSelectedTimeRange, advanceLiveTimeWindows } from '../../hooks/useSelectedTimeRange';
 import { TimeRangeSelector } from '../TimeRangeSelector';
 import { SelectedRangeLabel } from '../SelectedRangeLabel';
 import { useAppContext } from '@/contexts/AppContext';
@@ -454,11 +454,18 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
     [selectedSite, selectedRange, siteThresholds, navigationScope, siteGroups, siteGroup, xiqSites]
   );
 
+  // Set by a deliberate refresh that advanced the live window: the reload the
+  // new window triggers below is then a refresh (burst cache bypassed, data kept
+  // on screen) rather than a first load.
+  const pendingRefreshRef = useRef(false);
+
   // Initial load, plus auto-refresh only while the window tracks the present. A
   // finished calendar day does not change, so polling it would just re-fetch the
   // same answer and churn the controller.
   useEffect(() => {
-    loadData();
+    const isRefresh = pendingRefreshRef.current;
+    pendingRefreshRef.current = false;
+    loadData(isRefresh);
     if (!selectedRange.isLive) return undefined;
     const interval = setInterval(
       whenAutoRefresh(() => loadData(true)),
@@ -478,6 +485,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
     lastSuccessfulCollectionAt,
     neverCollected: historyNeverCollected,
     error: historyError,
+    refresh: refreshHistory,
   } = useMonitoringHistory({
     // Explicit bounds rather than the token: a calendar-day selection has to hit
     // that day's local midnights, which a duration token cannot express.
@@ -492,6 +500,30 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
     // time-series API through the proxy.
     enabled: source === 'controller',
   });
+
+  /**
+   * The one deliberate-refresh path: the Refresh buttons and returning to a
+   * long-hidden tab.
+   *
+   * For a live window it moves the window's end to now; the new bounds then
+   * reload the SLE model (effect above, as a refresh) and the stored history
+   * (its start/end changed). Without that, Refresh re-read the controller but
+   * kept the trend on the window resolved at mount. A finished day cannot move,
+   * so it re-reads both directly.
+   */
+  const refreshAll = useCallback(() => {
+    if (selectedRange.isLive) {
+      pendingRefreshRef.current = true;
+      advanceLiveTimeWindows();
+      return;
+    }
+    loadData(true);
+    void refreshHistory();
+  }, [selectedRange.isLive, loadData, refreshHistory]);
+
+  const refreshAllRef = useRef(refreshAll);
+  refreshAllRef.current = refreshAll;
+  useEffect(() => onReturnAfterHidden(() => refreshAllRef.current()), []);
 
   const { sles: slesWithHistory } = mergeSleHistory(wirelessSLEs, historySeries);
 
@@ -562,7 +594,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
             triggerClassName="w-52"
           />
 
-          <Button onClick={() => loadData(true)} variant="outline" disabled={refreshing}>
+          <Button onClick={refreshAll} variant="outline" disabled={refreshing}>
             <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
@@ -715,7 +747,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
                   : 'SLE metrics require connected clients and access points. Try selecting a different site or time range, or wait for data to be collected.'}
               </p>
               <button
-                onClick={() => loadData(true)}
+                onClick={refreshAll}
                 className="mt-4 flex items-center gap-2 text-sm text-primary hover:underline"
               >
                 <RefreshCw className="h-4 w-4" />

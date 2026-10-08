@@ -1,4 +1,4 @@
-import { useState, useEffect, memo, useCallback } from 'react';
+import { useState, useEffect, memo, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader } from './ui/card';
 import { Skeleton } from './ui/skeleton';
 import { EntityDetailView } from './dashboard/EntityDetailView';
@@ -15,6 +15,7 @@ import { useGlobalFilters } from '../hooks/useGlobalFilters';
 import { useOperationalContext } from '../hooks/useOperationalContext';
 import { useSelectedTimeRange } from '../hooks/useSelectedTimeRange';
 import { controllerDurationFor } from '../lib/timeRange';
+import { onReturnAfterHidden } from '../lib/autoRefresh';
 import { TimelineCursorControls } from './TimelineCursorControls';
 import { usePersonaContext } from '../contexts/PersonaContext';
 import {
@@ -44,6 +45,7 @@ function DashboardEnhancedComponent() {
     loading,
     refreshing,
     lastUpdate,
+    loadError,
     accessPoints,
     apStats,
     stations,
@@ -68,6 +70,14 @@ function DashboardEnhancedComponent() {
     unavailableForRange,
     reload,
   } = useDashboardData({ range: timeRange });
+
+  // Coming back to the tab after a minute or more away is a deliberate return,
+  // not an idle viewer: refresh exactly as the Refresh button does (controller
+  // snapshot, live window advanced to now, window history refetched). A ref
+  // keeps the listener from being re-registered on every render.
+  const reloadRef = useRef(reload);
+  reloadRef.current = reload;
+  useEffect(() => onReturnAfterHidden(() => reloadRef.current(true)), []);
 
   // UI-only dialog state
   const [selectedClient, setSelectedClient] = useState<Station | null>(null);
@@ -298,6 +308,7 @@ function DashboardEnhancedComponent() {
         onRefresh={() => reload(true)}
         timeRange={timeRange}
         timeRangeCoverage={selectedCoverage}
+        loadError={loadError}
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3">

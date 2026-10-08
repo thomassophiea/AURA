@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { cacheService, CACHE_TTL } from './cache';
 import { logger } from './logger';
 import { isSystemSiteKey } from './siteCatalog';
@@ -16,6 +17,36 @@ const BURST_TTL_MS = 2000;
 
 /** Hard ceiling on burst-cache entries, so a long session cannot grow it without bound. */
 const MAX_BURST_ENTRIES = 120;
+
+/**
+ * Timeout for the fleet-wide reads (`/v1/aps/query`, stations). Measured on the
+ * lab Gateway at 0.02–13s depending on load, so the generic 6s default failed
+ * them exactly when the network was busiest.
+ */
+export const READ_TIMEOUT_MS = 20_000;
+
+/** Backoff after a 429 that carries no usable Retry-After. */
+const DEFAULT_RATE_LIMIT_BACKOFF_MS = 10_000;
+/** Never lock the whole UI out for longer than this, whatever the server asks. */
+const MAX_RATE_LIMIT_BACKOFF_MS = 60_000;
+
+/**
+ * Turn a `Retry-After` header (delta-seconds or an HTTP date) into a backoff in
+ * ms, clamped to [1s, 60s]. Missing or unparseable → 10s.
+ */
+export function parseRetryAfterMs(header: string | null | undefined, nowMs = Date.now()): number {
+  if (!header || !header.trim()) return DEFAULT_RATE_LIMIT_BACKOFF_MS;
+  const value = header.trim();
+  let ms: number;
+  if (/^\d+(\.\d+)?$/.test(value)) {
+    ms = Number(value) * 1000;
+  } else {
+    const at = Date.parse(value);
+    if (Number.isNaN(at)) return DEFAULT_RATE_LIMIT_BACKOFF_MS;
+    ms = at - nowMs;
+  }
+  return Math.min(MAX_RATE_LIMIT_BACKOFF_MS, Math.max(1000, ms));
+}
 import {
   isNetworkError,
   isServerError,
@@ -101,6 +132,17 @@ export function getBaseUrl(): string {
   return BASE_URL;
 }
 
+/**
+ * A cache key scoped to the active controller.
+ *
+ * Every client-side cache of controller data must use this: in a
+ * multi-controller session an unscoped key serves one Gateway's roles,
+ * topologies or columns for another until the TTL runs out.
+ */
+export function controllerScopedKey(name: string): string {
+  return `${name}:${DYNAMIC_CONTROLLER_URL ?? 'default'}`;
+}
+
 // Type definitions moved to src/types/api.ts for maintainability
 export type {
   LoginCredentials,
@@ -170,6 +212,8 @@ class ApiService {
   private sessionExpiredHandler: (() => void) | null = null;
   private loginPromise: Promise<AuthResponse> | null = null; // Store ongoing login promise
   private rateLimitedUntil: number = 0;
+  /** The one token refresh in flight, shared by every concurrent 401. */
+  private refreshPromise: Promise<void> | null = null;
   private inflightRequests = new Map<string, Promise<Response>>();
 
   /**
@@ -220,12 +264,19 @@ class ApiService {
    * @param url The controller URL (e.g., https://controller.example.com)
    */
   setBaseUrl(url: string | null) {
+    const previous = DYNAMIC_CONTROLLER_URL;
     // In production, the X-Controller-URL header should be the controller origin
     // (without /management) because the proxy path already includes /management.
     if (url && isProduction) {
       DYNAMIC_CONTROLLER_URL = url.replace(/\/management\/?$/, '');
     } else {
       DYNAMIC_CONTROLLER_URL = url;
+    }
+    if (DYNAMIC_CONTROLLER_URL !== previous) {
+      // A different Gateway: nothing read from the previous one may be replayed,
+      // and its rate-limit lockout does not apply to this one.
+      this.clearClientCaches();
+      this.rateLimitedUntil = 0;
     }
     logger.log('[API Service] Dynamic controller URL set to:', DYNAMIC_CONTROLLER_URL || 'default');
   }
@@ -480,7 +531,7 @@ class ApiService {
     this.cancelAllRequests();
 
     // One session's responses must never be replayable into the next.
-    this.burstCache.clear();
+    this.clearClientCaches();
     this.inflightRequests.clear();
 
     if (this.accessToken) {
@@ -528,7 +579,8 @@ class ApiService {
       return this._executeAuthenticatedRequest(endpoint, options, timeoutMs);
     }
 
-    const key = endpoint;
+    // Scoped to the controller: the same path on two Gateways is two resources.
+    const key = controllerScopedKey(endpoint);
 
     // 1. Served from a just-completed identical GET, if one is fresh enough.
     const cached = this.burstCache.get(key);
@@ -605,13 +657,29 @@ class ApiService {
     this.burstCache.clear();
   }
 
+  /**
+   * Drop every client-side copy of controller data: the burst cache and the
+   * TTL cache (sites, roles, topologies, AP columns, …).
+   *
+   * Called on a controller switch and on logout, so neither another Gateway nor
+   * another session can be shown this one's data.
+   */
+  clearClientCaches(): void {
+    this.burstCache.clear();
+    cacheService.clearAll();
+  }
+
   private async _executeAuthenticatedRequest(
     endpoint: string,
     options: RequestInit = {},
-    timeoutMs: number = 6000
+    timeoutMs: number = 6000,
+    isAuthRetry: boolean = false
   ): Promise<Response> {
+    // The token this attempt is sent with. On a 401 it tells us whether a
+    // concurrent request has already refreshed it (so we only need to retry).
+    const tokenUsed = this.accessToken;
     const headers: Record<string, string> = {
-      Authorization: `Bearer ${this.accessToken}`,
+      Authorization: `Bearer ${tokenUsed}`,
       Accept: 'application/json',
       'Content-Type': 'application/json',
       ...(options.headers as Record<string, string>),
@@ -622,11 +690,22 @@ class ApiService {
       headers['X-Controller-URL'] = DYNAMIC_CONTROLLER_URL;
     }
 
+    // Controller reads are live state. Without `no-store` a browser or an
+    // intermediary may answer a GET from its HTTP cache, which is how a
+    // deliberate Refresh could still show the previous figures.
+    const isGetRequest = !options.method || options.method.toUpperCase() === 'GET';
+    const cacheMode: RequestInit['cache'] =
+      options.cache ?? (isGetRequest ? 'no-store' : undefined);
+
     // Create AbortController for timeout and cancellation
     const controller = new AbortController();
     this.pendingRequests.add(controller);
 
+    // Distinguishes our own timeout from a cancellation (logout, navigation):
+    // both surface as AbortError, but only one says anything about the Gateway.
+    let timedOut = false;
     const timeoutId = setTimeout(() => {
+      timedOut = true;
       controller.abort();
     }, timeoutMs);
 
@@ -664,9 +743,11 @@ class ApiService {
     };
     this.addApiLog(apiLog);
 
+    let response: Response;
     try {
-      const response = await fetch(`${getBaseUrl()}${endpoint}`, {
+      response = await fetch(`${getBaseUrl()}${endpoint}`, {
         ...options,
+        ...(cacheMode ? { cache: cacheMode } : {}),
         headers,
         signal: controller.signal,
       });
@@ -708,73 +789,6 @@ class ApiService {
 
       clearTimeout(timeoutId);
       this.pendingRequests.delete(controller);
-
-      if (response.status === 429) {
-        this.rateLimitedUntil = Date.now() + 60_000;
-        throw new Error('RATE_LIMITED: Controller is rate-limiting requests, backing off');
-      }
-
-      if (response.status === 401) {
-        // Define non-critical endpoints that should NOT trigger logout on 401
-        // These are typically analytics, reporting, or optional features
-        const isNonCriticalEndpoint =
-          endpoint.includes('/stations') ||
-          endpoint.includes('/services') ||
-          endpoint.includes('/notifications') ||
-          endpoint.includes('/alerts') ||
-          endpoint.includes('/events') ||
-          endpoint.includes('/report') ||
-          endpoint.includes('/reports') ||
-          endpoint.includes('/analytics');
-
-        // Token expired, try to refresh (unless it's a non-critical endpoint)
-        if (this.refreshToken && !isAnalyticsEndpoint && !isNonCriticalEndpoint) {
-          // Attempt refresh for critical endpoints
-          try {
-            await this.refreshAccessToken();
-            // Retry directly — bypass inflight dedup so we don't return the stale promise
-            return this._executeAuthenticatedRequest(endpoint, options, timeoutMs);
-          } catch (refreshError) {
-            const isRateLimited =
-              refreshError instanceof Error && refreshError.message.includes('RATE_LIMITED');
-            if (isRateLimited) {
-              throw new Error('RATE_LIMITED: Token refresh rate-limited');
-            }
-            // Refresh failed, user needs to login again
-            logger.log('Token refresh failed, clearing authentication state');
-            await this.logout();
-            // Notify the app about session expiration
-            if (this.sessionExpiredHandler) {
-              this.sessionExpiredHandler();
-            }
-            throw new Error('Session expired. Please login again.');
-          }
-        } else if (isNonCriticalEndpoint) {
-          // For non-critical endpoints, just throw an error without logging out
-          logger.warn(
-            `Authentication failed for ${endpoint}, but not logging out (non-critical endpoint)`
-          );
-          if (isAnalyticsEndpoint) {
-            throw new Error(`SUPPRESSED_ANALYTICS_ERROR: Authentication required for ${endpoint}`);
-          }
-          throw new Error(`SUPPRESSED_NON_CRITICAL_ERROR: Authentication required for ${endpoint}`);
-        } else {
-          // Critical endpoint with no refresh token - logout required
-          if (isAnalyticsEndpoint) {
-            // Silently suppress analytics authentication errors
-            throw new Error(`SUPPRESSED_ANALYTICS_ERROR: Authentication required for ${endpoint}`);
-          }
-          logger.log('Authentication required, clearing authentication state');
-          await this.logout();
-          // Notify the app about session expiration
-          if (this.sessionExpiredHandler) {
-            this.sessionExpiredHandler();
-          }
-          throw new Error('Session expired. Please login again.');
-        }
-      }
-
-      return response;
     } catch (error) {
       const duration = Date.now() - startTime;
       clearTimeout(timeoutId);
@@ -783,11 +797,17 @@ class ApiService {
       // Parse the error using centralized error handler
       const errorDetails = parseError(error);
 
+      // An abort we did not cause by timing out is a cancellation (logout,
+      // controller switch, navigation). It says nothing about Gateway health,
+      // so the connection indicator must not count it as a failure.
+      const cancelled = !timedOut && error instanceof Error && error.name === 'AbortError';
+
       // Update API log with error
       this.updateApiLog(requestId, {
         duration,
         error: errorDetails.message,
         isPending: false,
+        ...(cancelled ? { cancelled: true } : {}),
       });
 
       if (error instanceof Error) {
@@ -823,9 +843,132 @@ class ApiService {
       }
       throw new Error('An unexpected error occurred. Please try again.');
     }
+
+    // Status handling sits outside the try above on purpose: errors raised here
+    // (RATE_LIMITED, SUPPRESSED_*, Session expired) are machine-readable markers
+    // that callers and App.tsx match on. Inside the try they were rewritten by
+    // the catch into generic prose, which is also why makeRequestWithRetry kept
+    // retrying a rate-limited Gateway.
+    if (response.status === 429) {
+      this.enterRateLimit(response.headers.get('Retry-After'));
+      throw new Error('RATE_LIMITED: Controller is rate-limiting requests, backing off');
+    }
+
+    if (response.status === 401) {
+      // Endpoints whose 401 must never log the user out on its own. They still
+      // refresh-and-retry like everything else — skipping that is what left the
+      // dashboard's clients, WLANs and alerts silently stale after token expiry.
+      const isNonCriticalEndpoint =
+        endpoint.includes('/stations') ||
+        endpoint.includes('/services') ||
+        endpoint.includes('/notifications') ||
+        endpoint.includes('/alerts') ||
+        endpoint.includes('/events') ||
+        endpoint.includes('/report') ||
+        endpoint.includes('/reports') ||
+        endpoint.includes('/analytics');
+      const isOptional = isNonCriticalEndpoint || isAnalyticsEndpoint;
+      const suppressedAuthError = () =>
+        new Error(
+          `${isAnalyticsEndpoint ? 'SUPPRESSED_ANALYTICS_ERROR' : 'SUPPRESSED_NON_CRITICAL_ERROR'}: Authentication required for ${endpoint}`
+        );
+
+      // One refresh-and-retry per request. If another request already rotated
+      // the token while this one was in flight, just retry with the new one.
+      const alreadyRefreshed = !!this.accessToken && this.accessToken !== tokenUsed;
+      if (!isAuthRetry && (alreadyRefreshed || this.refreshToken)) {
+        let refreshFailure: unknown = null;
+        if (!alreadyRefreshed) {
+          try {
+            await this.refreshAccessToken();
+          } catch (refreshError) {
+            refreshFailure = refreshError ?? new Error('Token refresh failed');
+          }
+        }
+
+        if (refreshFailure === null) {
+          // Retry directly — bypass inflight dedup so we don't return the stale promise
+          return this._executeAuthenticatedRequest(endpoint, options, timeoutMs, true);
+        }
+
+        const isRateLimited =
+          refreshFailure instanceof Error && refreshFailure.message.includes('RATE_LIMITED');
+        if (isRateLimited) {
+          throw new Error('RATE_LIMITED: Token refresh rate-limited');
+        }
+        if (isOptional) {
+          // An optional endpoint does not get to end the session; the next
+          // critical request meets the same failed refresh and does that.
+          throw suppressedAuthError();
+        }
+        logger.log('Token refresh failed, clearing authentication state');
+        await this.logout();
+        if (this.sessionExpiredHandler) {
+          this.sessionExpiredHandler();
+        }
+        throw new Error('Session expired. Please login again.');
+      }
+
+      // Final failure: no way to refresh, or the retry with a fresh token was
+      // refused too. Only now is the console-noise suppression applied.
+      if (isOptional) {
+        logger.warn(
+          `Authentication failed for ${endpoint}, but not logging out (non-critical endpoint)`
+        );
+        throw suppressedAuthError();
+      }
+      logger.log('Authentication required, clearing authentication state');
+      await this.logout();
+      if (this.sessionExpiredHandler) {
+        this.sessionExpiredHandler();
+      }
+      throw new Error('Session expired. Please login again.');
+    }
+
+    return response;
   }
 
-  private async refreshAccessToken(): Promise<void> {
+  /**
+   * Back off from the controller after a 429.
+   *
+   * Honours `Retry-After` (seconds or an HTTP date), capped at 60s and
+   * defaulting to 10s. The viewer is told once per lockout — previously every
+   * request failed with RATE_LIMITED for a full minute and the page simply
+   * stopped updating with no explanation.
+   */
+  private enterRateLimit(retryAfter: string | null): void {
+    const wasLimited = Date.now() < this.rateLimitedUntil;
+    const backoffMs = parseRetryAfterMs(retryAfter);
+    this.rateLimitedUntil = Math.max(this.rateLimitedUntil, Date.now() + backoffMs);
+    if (wasLimited) return;
+    try {
+      toast.warning('The Gateway is rate-limiting requests', {
+        id: 'gateway-rate-limited',
+        description: `Pausing requests for ${Math.ceil(backoffMs / 1000)}s, then data will load again.`,
+      });
+    } catch {
+      // No toaster available (tests, early boot) — the backoff still applies.
+    }
+  }
+
+  /**
+   * Refresh the access token, single-flight.
+   *
+   * Concurrent 401s (a dashboard load fans out a dozen requests that all expire
+   * together) share one refresh. Without the lock each would POST the same
+   * refresh token; the first rotates it and every other one then fails, which
+   * logged the user out in the middle of a successful refresh.
+   */
+  private refreshAccessToken(): Promise<void> {
+    if (!this.refreshPromise) {
+      this.refreshPromise = this._performTokenRefresh().finally(() => {
+        this.refreshPromise = null;
+      });
+    }
+    return this.refreshPromise;
+  }
+
+  private async _performTokenRefresh(): Promise<void> {
     if (!this.refreshToken) {
       throw new Error('No refresh token available');
     }
@@ -840,6 +983,10 @@ class ApiService {
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
+          // The refresh must reach the same Gateway the token came from.
+          ...(DYNAMIC_CONTROLLER_URL && isProduction
+            ? { 'X-Controller-URL': DYNAMIC_CONTROLLER_URL }
+            : {}),
         },
         // XCC expects camelCase here even though the *response* is snake_case.
         // Sending `refresh_token` returns 404 NOT_FOUND with no further hint.
@@ -852,7 +999,7 @@ class ApiService {
       clearTimeout(timeoutId);
 
       if (response.status === 429) {
-        this.rateLimitedUntil = Date.now() + 60_000;
+        this.enterRateLimit(response.headers.get('Retry-After'));
         throw new Error('RATE_LIMITED: Token refresh rate-limited');
       }
 
@@ -1181,7 +1328,7 @@ class ApiService {
   // Roles API method - uses /v3/roles endpoint (network policy roles)
   async getRoles(): Promise<Role[]> {
     // Check cache first - roles rarely change, cache for 30 minutes
-    const cacheKey = 'roles';
+    const cacheKey = controllerScopedKey('roles');
     const cached = cacheService.get<Role[]>(cacheKey);
     if (cached) {
       logger.log(`✓ Returned ${cached.length} roles from cache`);
@@ -1330,7 +1477,13 @@ class ApiService {
       // Use /v1/aps/query instead of /v1/aps to get status information
       // Using GET method (not POST) to retrieve all APs with full details
       const queryString = this.buildQueryString(options);
-      const response = await this.makeAuthenticatedRequest('/v1/aps/query' + queryString);
+      // The Gateway answers this in 0.02s idle and up to ~13s under load; the 6s
+      // default turned a busy Gateway into an empty AP list.
+      const response = await this.makeAuthenticatedRequest(
+        '/v1/aps/query' + queryString,
+        {},
+        READ_TIMEOUT_MS
+      );
       if (!response.ok) {
         throw new Error(`Failed to fetch access points: ${response.status}`);
       }
@@ -1343,7 +1496,7 @@ class ApiService {
 
   async getAPQueryColumns(): Promise<APQueryColumn[]> {
     // Check cache first
-    const cacheKey = 'ap-query-columns';
+    const cacheKey = controllerScopedKey('ap-query-columns');
     const cached = cacheService.get<APQueryColumn[]>(cacheKey);
     if (cached) {
       return cached;
@@ -1927,7 +2080,9 @@ class ApiService {
       return this.getAccessPoints();
     }
 
-    return this.makeRequestWithRetry(async () => {
+    // Not wrapped in makeRequestWithRetry: getAccessPoints already retries, and
+    // nesting the two turned one failing Gateway call into up to nine.
+    const filterBySite = async (): Promise<AccessPoint[]> => {
       // First get the site name from the site ID
       const site = await this.getSiteById(siteId);
       const siteName = site?.name || site?.siteName || null;
@@ -2010,7 +2165,8 @@ class ApiService {
       }
 
       return filteredAPs;
-    });
+    };
+    return filterBySite();
   }
 
   async reauthenticateStation(macAddress: string): Promise<void> {
@@ -2421,7 +2577,7 @@ class ApiService {
   // Get Topologies (VLANs) options
   async getTopologies(): Promise<Topology[]> {
     // Check cache first - topologies rarely change, cache for 30 minutes
-    const cacheKey = 'topologies';
+    const cacheKey = controllerScopedKey('topologies');
     const cached = cacheService.get<Topology[]>(cacheKey);
     if (cached) {
       logger.log(`✓ Returned ${cached.length} topologies from cache`);
@@ -2454,7 +2610,7 @@ class ApiService {
   }
 
   async createTopology(topologyData: any): Promise<any> {
-    cacheService.clear('topologies');
+    cacheService.clear(controllerScopedKey('topologies'));
     const response = await this.makeAuthenticatedRequest('/v1/topologies', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2468,7 +2624,7 @@ class ApiService {
   }
 
   async updateTopology(topologyId: string, topologyData: any): Promise<any> {
-    cacheService.clear('topologies');
+    cacheService.clear(controllerScopedKey('topologies'));
     const response = await this.makeAuthenticatedRequest(
       `/v1/topologies/${encodeURIComponent(topologyId)}`,
       {
@@ -2485,7 +2641,7 @@ class ApiService {
   }
 
   async deleteTopology(topologyId: string): Promise<void> {
-    cacheService.clear('topologies');
+    cacheService.clear(controllerScopedKey('topologies'));
     const response = await this.makeAuthenticatedRequest(
       `/v1/topologies/${encodeURIComponent(topologyId)}`,
       {

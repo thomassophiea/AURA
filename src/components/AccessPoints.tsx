@@ -2,6 +2,7 @@
 // AP details and metrics from Campus Controller have no TypeScript interfaces
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { RelativeTime } from './ui/RelativeTime';
+import { whenAutoRefresh } from '../lib/autoRefresh';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -771,15 +772,18 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
     loadAccessPoints();
   }, [navigationScope, siteGroups.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-refresh polling — silent (cell-level updates only, no page skeleton)
+  // Timer refresh — silent (cell-level updates only, no page skeleton), and
+  // only when the per-browser auto-refresh policy is on. By default the table
+  // holds still under an idle viewer; Refresh reloads it on demand.
   useEffect(() => {
     const REFRESH_INTERVAL = 120000; // 2 minutes
-    const intervalId = setInterval(() => {
-      if (document.visibilityState === 'visible') {
+    const intervalId = setInterval(
+      whenAutoRefresh(() => {
         setIsAutoRefreshing(true);
         loadAccessPoints({ silent: true }).finally(() => setIsAutoRefreshing(false));
-      }
-    }, REFRESH_INTERVAL);
+      }),
+      REFRESH_INTERVAL
+    );
     return () => clearInterval(intervalId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
