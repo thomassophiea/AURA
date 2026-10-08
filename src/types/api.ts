@@ -755,6 +755,11 @@ export interface ApiCallLog {
   responseBody?: any;
   error?: string;
   isPending: boolean;
+  /**
+   * The request was aborted by the client (logout, controller switch,
+   * navigation) rather than failing. Says nothing about Gateway health.
+   */
+  cancelled?: boolean;
 }
 
 // ==================== OS ONE INTERFACES ====================
