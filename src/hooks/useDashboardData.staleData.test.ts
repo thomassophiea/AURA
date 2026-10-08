@@ -16,6 +16,13 @@ vi.mock('../services/api', () => ({
     clearBurstCache: vi.fn(),
     getAccessPointsBySite: mocks.getAccessPointsBySite,
     makeAuthenticatedRequest: mocks.makeAuthenticatedRequest,
+    // The estate read goes through the same stubbed transport as /v1/stations,
+    // so a scenario that fails stations fails this too.
+    fetchEstateStations: async () => {
+      const response = await mocks.makeAuthenticatedRequest('/v1/stations', {}, 30000);
+      if (!response.ok) throw new Error(`API returned ${response.status}`);
+      return response.json();
+    },
     getServicesBySite: vi.fn().mockResolvedValue([]),
     getSiteById: vi.fn().mockResolvedValue(null),
     getSites: vi.fn().mockResolvedValue([]),

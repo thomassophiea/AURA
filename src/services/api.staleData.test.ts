@@ -334,3 +334,74 @@ describe('in-flight GET deadlines', () => {
     }
   });
 });
+
+describe('fetchEstateStations — fast per-site read with safe fallback', () => {
+  function gateway(opts: {
+    sites?: unknown[];
+    aps?: unknown[];
+    perSite?: Record<string, unknown[] | number>;
+    global?: unknown[];
+  }) {
+    const asked: string[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = urlOf(input);
+      asked.push(url);
+      if (/\/v3\/sites\/[^/]+\/stations/.test(url)) {
+        const id = decodeURIComponent(url.split('/v3/sites/')[1].split('/')[0]);
+        const r = opts.perSite?.[id];
+        return typeof r === 'number' ? json({ error: 'x' }, r) : json(r ?? []);
+      }
+      if (url.includes('/v3/sites')) return json(opts.sites ?? []);
+      if (url.includes('/v1/aps/query')) return json(opts.aps ?? []);
+      if (url.includes('/v1/stations')) return json(opts.global ?? []);
+      return json({}, 404);
+    });
+    return asked;
+  }
+  const SITES = [
+    { id: 's1', siteName: 'HQ' },
+    { id: 's2', siteName: 'Branch' },
+  ];
+  const APS = [
+    { serialNumber: 'A', hostSite: 'HQ' },
+    { serialNumber: 'B', hostSite: 'Branch' },
+  ];
+
+  it('reads per site and never asks the slow global endpoint', async () => {
+    const asked = gateway({
+      sites: SITES,
+      aps: APS,
+      perSite: { s1: [{ macAddress: 'm1' }], s2: [{ macAddress: 'm2' }] },
+    });
+    const rows = await apiService.fetchEstateStations();
+    expect(rows.map((r) => (r as { macAddress: string }).macAddress).sort()).toEqual(['m1', 'm2']);
+    expect(asked.some((u) => /\/v1\/stations(\?|$)/.test(u))).toBe(false);
+  });
+
+  it('counts a client seen in two sites once', async () => {
+    gateway({ sites: SITES, aps: APS, perSite: { s1: [{ macAddress: 'm1' }], s2: [{ macAddress: 'm1' }] } });
+    expect(await apiService.fetchEstateStations()).toHaveLength(1);
+  });
+
+  it('falls back to /v1/stations when an AP has no site (its clients would be missed)', async () => {
+    const asked = gateway({
+      sites: SITES,
+      aps: [...APS, { serialNumber: 'C' }],
+      perSite: { s1: [], s2: [] },
+      global: [{ macAddress: 'orphan' }],
+    });
+    const rows = await apiService.fetchEstateStations();
+    expect(rows).toEqual([{ macAddress: 'orphan' }]);
+    expect(asked.some((u) => /\/v1\/stations(\?|$)/.test(u))).toBe(true);
+  });
+
+  it('falls back to /v1/stations when any site read fails rather than returning a partial estate', async () => {
+    gateway({
+      sites: SITES,
+      aps: APS,
+      perSite: { s1: [{ macAddress: 'm1' }], s2: 500 },
+      global: [{ macAddress: 'm1' }, { macAddress: 'm2' }],
+    });
+    expect(await apiService.fetchEstateStations()).toHaveLength(2);
+  });
+});

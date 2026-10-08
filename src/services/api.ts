@@ -1859,8 +1859,77 @@ class ApiService {
   }
 
   // Stations/Clients API methods
+
+  /**
+   * Every associated client on the Gateway, read the fast way.
+   *
+   * Measured on the lab Gateway 2026-10-08, same 32 clients, back to back:
+   *   GET /v1/stations                  16-30 s
+   *   GET /v3/sites/{id}/stations x 7    0.07-0.10 s in total
+   * Same values (rss, byte counters, status, siteId, AP), and the per-site rows
+   * carry a superset of fields except `deviceFamily`. The global read is the
+   * slowest thing AURA asks the Gateway for, and it sat on the critical path of
+   * every dashboard and of Operational Insights.
+   *
+   * Falls back to `/v1/stations` whenever the per-site read might be
+   * incomplete: an AP with no site (its clients belong to no site list), a
+   * failed site read, or an estate too large for a bounded fan-out.
+   */
+  async fetchEstateStations(): Promise<Station[]> {
+    const viaSites = await this.stationsBySite().catch(() => null);
+    if (viaSites) return viaSites;
+    const response = await this.makeAuthenticatedRequest('/v1/stations', {}, 30000);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch stations: ${response.status} ${response.statusText}`);
+    }
+    const data = await response.json();
+    return Array.isArray(data) ? data : data?.stations || data?.clients || data?.data || [];
+  }
+
+  private async stationsBySite(): Promise<Station[] | null> {
+    const MAX_SITES = 50;
+    const CONCURRENCY = 6;
+    const [sites, aps] = await Promise.all([this.getSites(), this.getAccessPoints()]);
+    const ids = (sites || [])
+      .map((site) => (site as { id?: string; siteId?: string }).id ?? (site as { siteId?: string }).siteId)
+      .filter((id): id is string => Boolean(id));
+    if (ids.length === 0 || ids.length > MAX_SITES) return null;
+    if ((aps || []).some((ap) => !ap.hostSite)) return null;
+
+    const rows: Station[][] = new Array(ids.length);
+    let next = 0;
+    let failed = false;
+    const worker = async () => {
+      while (!failed && next < ids.length) {
+        const index = next++;
+        const response = await this.makeAuthenticatedRequest(
+          `/v3/sites/${encodeURIComponent(ids[index])}/stations`,
+          {},
+          READ_TIMEOUT_MS
+        );
+        if (!response.ok) {
+          failed = true;
+          return;
+        }
+        const data = await response.json();
+        rows[index] = Array.isArray(data) ? data : data?.stations || data?.data || [];
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, ids.length) }, worker));
+    if (failed) return null;
+
+    // A client roaming between two sites' APs mid-read must be counted once.
+    const byMac = new Map<string, Station>();
+    for (const station of rows.flat()) {
+      const mac = (station as { macAddress?: string }).macAddress;
+      byMac.set(mac ?? `${byMac.size}`, station);
+    }
+    return [...byMac.values()];
+  }
+
   async getAllStations(options?: QueryOptions): Promise<Station[]> {
     try {
+      if (!options) return await this.fetchEstateStations();
       return await this.makeRequestWithRetry(async () => {
         const queryString = this.buildQueryString(options);
         // /v1/stations returns the controller's FULL station collection — there

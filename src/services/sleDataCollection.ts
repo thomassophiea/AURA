@@ -1,4 +1,4 @@
-import { READ_TIMEOUT_MS, apiService } from './api';
+import { apiService } from './api';
 import { whenAutoRefresh } from '../lib/autoRefresh';
 
 /**
@@ -128,24 +128,15 @@ class SLEDataCollectionService {
         return;
       }
 
-      // Fetch all clients/stations
-      // /v1/stations is unpaginated and takes 7-13 s on a loaded Gateway; the
-      // 6 s default aborted it (and every page that joined the same request).
-      const response = await apiService.makeAuthenticatedRequest(
-        '/v1/stations',
-        { method: 'GET' },
-        READ_TIMEOUT_MS
-      );
-
-      if (!response.ok) {
-        console.warn('[SLE Collection] Failed to fetch stations:', response.status);
+      // Fetch all clients/stations — per-site in parallel, falling back to the
+      // slow global /v1/stations read only when needed.
+      let clients: ClientData[];
+      try {
+        clients = (await apiService.fetchEstateStations()) as unknown as ClientData[];
+      } catch (error) {
+        console.warn('[SLE Collection] Failed to fetch stations:', error);
         return;
       }
-
-      const data = await response.json();
-      const clients: ClientData[] = Array.isArray(data)
-        ? data
-        : data.stations || data.clients || data.data || [];
 
       if (!Array.isArray(clients) || clients.length === 0) {
         return;

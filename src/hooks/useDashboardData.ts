@@ -462,16 +462,11 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
         throw new Error('Station fetch failed for site');
       }
 
-      const response = await apiService.makeAuthenticatedRequest(
-        '/v1/stations',
-        { method: 'GET' },
-        STATIONS_TIMEOUT_MS
-      );
-      if (!response.ok) throw new Error(`API returned ${response.status}`);
-      const data = await response.json();
-      const safe = data ?? {};
-      const stns = Array.isArray(data) ? data : safe.stations || safe.clients || safe.data || [];
-      return stns;
+      // Per-site reads in parallel (~0.1 s) instead of /v1/stations (16-30 s on
+      // the lab Gateway); falls back to the global read when that could be
+      // incomplete. See apiService.fetchEstateStations.
+      // Raw controller rows, as before — the hook narrows them itself.
+      return (await apiService.fetchEstateStations()) as unknown as Station[];
     } catch (error) {
       console.error('[Dashboard] Error fetching stations:', error);
       throw error;
