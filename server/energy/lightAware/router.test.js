@@ -78,3 +78,33 @@ describe('PUT /energy/light-aware/policy', () => {
     expect(res.status).toBe(400);
   });
 });
+
+describe('GET /energy/light-aware/aps naming and provenance', () => {
+  it('resolves serial-only rows to AP names and carries the power source', async () => {
+    const res = await request(
+      appWith({
+        listApLightStates: async () => [
+          { serial: 'SN1', apName: 'SN1', model: 'AP5020', siteId: 's1', siteName: 'North', watts: 12, source: 'measured_ap_state', openTransition: null },
+        ],
+        resolveApNames: async () => new Map([['SN1', 'EAL-North-01']]),
+      })
+    ).get('/api/energy/light-aware/aps');
+    expect(res.status).toBe(200);
+    expect(res.body.aps[0]).toMatchObject({
+      apName: 'EAL-North-01',
+      siteName: 'North',
+      source: 'measured_ap_state',
+    });
+  });
+
+  it('returns an error status, not an empty list, when the read fails', async () => {
+    const res = await request(
+      appWith({
+        listApLightStates: async () => {
+          throw new Error('db down');
+        },
+      })
+    ).get('/api/energy/light-aware/summary');
+    expect(res.status).toBe(500);
+  });
+});

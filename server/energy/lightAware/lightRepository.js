@@ -114,37 +114,83 @@ export async function upsertPolicy({ sourceId, siteId, enabled, policy }) {
 }
 
 /**
- * Returns one row per AP that has power data, LEFT JOINed to its open
- * light-state transition. `metric_samples` has no model column, so model is
- * read best-effort from the sample `dimensions` and falls back to the serial;
- * apName likewise falls back to the serial until controller inventory is
- * mirrored in Postgres.
+ * One row per AP with a RECENT power reading, LEFT JOINed to its open
+ * light-state transition.
  *
- * Bind order: $1 sourceId, $2 optional siteId.
+ * Power is measured-first: the latest `energy_ap_state` `ap.power_watts`
+ * sample (W, which also carries the AP model and site name) within
+ * `measuredSinceSeconds`; an AP with no recent measured sample falls back to the
+ * latest `ap_report` power sample (mW / 1000) within `reportSinceSeconds`.
+ *
+ * Both reads are time-bounded. This runs on the experiment page's poll, and the
+ * unbounded DISTINCT ON it replaced walked every power row ever retained. An AP
+ * with no recent reading is absent rather than shown at a stale wattage.
+ *
+ * `apName` is the serial here; the router resolves real names.
+ *
+ * Bind order: $1 sourceId, $2 optional siteId, $3 measuredSinceSeconds,
+ * $4 reportSinceSeconds.
  */
-export async function listApLightStates({ sourceId, siteId } = {}) {
+export const LIGHT_LIST_MEASURED_SINCE_SECONDS = 15 * 60;
+export const LIGHT_LIST_REPORT_SINCE_SECONDS = 2 * 60 * 60;
+
+export async function listApLightStates({
+  sourceId,
+  siteId,
+  measuredSinceSeconds = LIGHT_LIST_MEASURED_SINCE_SECONDS,
+  reportSinceSeconds = LIGHT_LIST_REPORT_SINCE_SECONDS,
+} = {}) {
   const { rows } = await query(
-    `SELECT
-       ms.device_external_id                        AS serial,
-       ms.device_external_id                        AS "apName",
-       COALESCE(ms.model, ms.device_external_id)    AS model,
-       ms.site_id                                   AS "siteId",
-       ms.watts,
-       row_to_json(lst)                             AS "openTransition"
-     FROM (
+    `WITH measured AS (
        SELECT DISTINCT ON (device_external_id)
          device_external_id,
          site_id,
-         numeric_value / 1000.0 AS watts,
-         dimensions->>'model'   AS model
+         numeric_value::float8      AS watts,
+         dimensions->>'model'       AS model,
+         dimensions->>'siteName'    AS site_name,
+         'measured_ap_state'::text  AS source
+       FROM metric_samples
+       WHERE monitored_source_id = $1
+         AND metric_family = 'energy_ap_state'
+         AND metric_name = 'ap.power_watts'
+         AND observed_at >= now() - ($3::int * interval '1 second')
+         AND numeric_value IS NOT NULL
+         AND device_external_id IS NOT NULL
+         AND ($2::text IS NULL OR site_id = $2)
+       ORDER BY device_external_id, observed_at DESC
+     ), report AS (
+       SELECT DISTINCT ON (device_external_id)
+         device_external_id,
+         site_id,
+         numeric_value / 1000.0     AS watts,
+         dimensions->>'model'       AS model,
+         NULL::text                 AS site_name,
+         'ap_report'::text          AS source
        FROM metric_samples
        WHERE monitored_source_id = $1
          AND metric_family = 'ap_report'
          AND metric_name = 'apPowerConsumptionTimeseries.power_consumption'
+         AND observed_at >= now() - ($4::int * interval '1 second')
          AND numeric_value IS NOT NULL
+         AND device_external_id IS NOT NULL
          AND ($2::text IS NULL OR site_id = $2)
+         AND device_external_id NOT IN (SELECT device_external_id FROM measured)
        ORDER BY device_external_id, observed_at DESC
-     ) ms
+     ), ms AS (
+       SELECT * FROM measured
+       UNION ALL
+       SELECT * FROM report
+     )
+     SELECT
+       ms.device_external_id                        AS serial,
+       ms.device_external_id                        AS "apName",
+       COALESCE(ms.model, ms.device_external_id)    AS model,
+       ms.site_id                                   AS "siteId",
+       ms.site_name                                 AS "siteName",
+       ms.watts,
+       ms.source,
+       row_to_json(lst)                             AS "openTransition"
+     FROM ms
      LEFT JOIN LATERAL (
        SELECT *
        FROM light_state_transitions lst
@@ -154,7 +200,7 @@ export async function listApLightStates({ sourceId, siteId } = {}) {
        ORDER BY lst.entered_at DESC
        LIMIT 1
      ) lst ON true`,
-    [sourceId, siteId ?? null]
+    [sourceId, siteId ?? null, measuredSinceSeconds, reportSinceSeconds]
   );
   return rows;
 }

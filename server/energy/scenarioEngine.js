@@ -14,8 +14,38 @@ import { resolveApState } from './powerModel.js';
 /** Modeled share of an AP's draw attributable to a single high-band radio. Kept for external consumers. */
 export const SIX_GHZ_BAND_SHARE = 0.25;
 
-function hourOfDayUTC(iso) {
-  return new Date(iso).getUTCHours();
+/** The operator's zone when the caller does not name one. */
+export const DEFAULT_SCENARIO_TIME_ZONE = 'America/New_York';
+
+const hourFormatters = new Map();
+
+/** True when `timeZone` is an IANA zone this runtime can resolve. */
+export function isValidTimeZone(timeZone) {
+  if (typeof timeZone !== 'string' || !timeZone || timeZone.length > 64) return false;
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Local wall-clock hour (0-23) of an instant in `timeZone`.
+ *
+ * "Disable 6 GHz from 22:00" means 22:00 where the APs are, not 22:00 UTC; a
+ * UTC hour put an overnight policy into the middle of an East-coast afternoon.
+ */
+export function hourOfDay(iso, timeZone = 'UTC') {
+  let fmt = hourFormatters.get(timeZone);
+  if (!fmt) {
+    fmt = new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', hourCycle: 'h23' });
+    hourFormatters.set(timeZone, fmt);
+  }
+  const part = fmt.formatToParts(new Date(iso)).find((p) => p.type === 'hour');
+  const hour = Number(part?.value);
+  // Some runtimes render midnight as 24 even with h23.
+  return Number.isFinite(hour) ? hour % 24 : new Date(iso).getUTCHours();
 }
 
 /** True when `hour` is in the after-hours window [start, end) that wraps midnight. */
@@ -26,10 +56,10 @@ function isAfterHours(hour, start, end) {
 }
 
 /** Translate a What-if policy into resolver optimization descriptors for one sample. */
-export function optimizationsForSample(sample, policy = {}) {
+export function optimizationsForSample(sample, policy = {}, timeZone = 'UTC') {
   const opts = [];
   if (!Number.isFinite(sample.watts)) return opts;
-  const hour = hourOfDayUTC(sample.observedAt);
+  const hour = hourOfDay(sample.observedAt, timeZone);
 
   if (Array.isArray(policy.disable6GhzHours) && policy.disable6GhzHours.includes(hour)) {
     opts.push({ kind: 'disableRadio', band: '6', source: 'whatif', reason: 'disable6GhzHours' });
@@ -66,9 +96,12 @@ function lightAwareOptsForSample(sample, policy = {}) {
   return actions.map((a) => ({ ...a, source: 'lightAware', reason: sample.lightState }));
 }
 
-export function simulatedWattsForSample(sample, policy = {}) {
+export function simulatedWattsForSample(sample, policy = {}, timeZone = 'UTC') {
   if (!Number.isFinite(sample.watts)) return 0;
-  const opts = [...optimizationsForSample(sample, policy), ...lightAwareOptsForSample(sample, policy)];
+  const opts = [
+    ...optimizationsForSample(sample, policy, timeZone),
+    ...lightAwareOptsForSample(sample, policy),
+  ];
   return resolveApState(sample.watts, opts);
 }
 
@@ -77,7 +110,7 @@ export function simulatedWattsForSample(sample, policy = {}) {
  * gap method as the repository: each sample weighted by the gap to the next
  * sample for the same AP; last-per-AP and gaps > maxGapSeconds excluded.
  */
-export function replayScenario({ samples, policy, maxGapSeconds }) {
+export function replayScenario({ samples, policy, maxGapSeconds, timeZone = 'UTC' }) {
   const byAp = new Map();
   for (const s of samples) {
     if (!byAp.has(s.deviceExternalId)) byAp.set(s.deviceExternalId, []);
@@ -102,7 +135,7 @@ export function replayScenario({ samples, policy, maxGapSeconds }) {
       apObservedSeconds += elapsed;
       apBaselineKwh += kwhFromWattSeconds(rows[i].watts, elapsed) ?? 0;
       apSimulatedKwh +=
-        kwhFromWattSeconds(simulatedWattsForSample(rows[i], policy), elapsed) ?? 0;
+        kwhFromWattSeconds(simulatedWattsForSample(rows[i], policy, timeZone), elapsed) ?? 0;
     }
     baselineKwh += apBaselineKwh;
     simulatedKwh += apSimulatedKwh;
