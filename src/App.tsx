@@ -1581,12 +1581,13 @@ export default function App() {
                     }}
                   />
                   <span
-                    className="text-sm font-semibold text-foreground"
-                    style={{ flexShrink: 0, letterSpacing: '-0.01em' }}
+                    className="text-sm font-semibold text-foreground whitespace-nowrap overflow-hidden text-ellipsis"
+                    style={{ flexShrink: 1, minWidth: 0, letterSpacing: '-0.01em' }}
+                    title="Extreme Platform ONE™ | API-Driven Network Migration & Automation"
                   >
                     <span style={{ fontWeight: 600 }}>Extreme</span>{' '}
                     <span className="text-muted-foreground" style={{ fontWeight: 400 }}>
-                      Platform ONE™ | Migration
+                      Platform ONE™ | API-Driven Network Migration &amp; Automation
                     </span>
                   </span>
                   <div style={{ flex: 1 }} />
@@ -1734,20 +1735,15 @@ export default function App() {
                 {renderDetailPanel()}
               </div>
 
-              {/* Floating shell bar + slideout.
+              {/* Floating Cortex bar + slideout.
 
-                  Gated on the ADMIN TOGGLE ONLY. It used to also require
-                  `theme === 'dev'`, which coupled a feature to a colour scheme:
-                  the dev theme is itself behind a hidden unlock, so an ordinary
-                  operator could not reach Cortex at all — not diagnosis, not
-                  configuration — no matter what an administrator had enabled.
-                  Every "Ask Cortex" entry point elsewhere in the app degraded
-                  silently as a result, because `markCortexAvailable` is only
-                  called when this mounts.
-
-                  Theme is a preference; availability is an entitlement. They
-                  are separate concerns and are now separately controlled. */}
-              {networkAssistantEnabled && (
+                  Shown only in dev mode (the hidden logo×7 + PIN unlock, which
+                  forces the dev theme) AND when an administrator has enabled
+                  it — the owner's call on 2026-10-08: Cortex is not part of the
+                  standard operator surface. Hidden here, the "Ask Cortex" entry
+                  points elsewhere degrade quietly because markCortexAvailable
+                  only runs when this mounts. */}
+              {networkAssistantEnabled && theme === 'dev' && (
                 <AgentCoworker
                   onShowClientDetail={handleShowClientDetail}
                   onShowAccessPointDetail={handleShowAccessPointDetail}
