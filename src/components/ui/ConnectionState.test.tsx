@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
+import type { ApiCallLog } from '../../types/api';
 
 // vi.mock factories are hoisted above any module-level `const`s, so the
 // mock fns must come from vi.hoisted() to be referenceable inside the
@@ -15,13 +16,36 @@ vi.mock('../../services/api', () => ({
   },
 }));
 
-import { ConnectionState } from './ConnectionState';
+import { ConnectionState, classifyConnection, outcomeOf } from './ConnectionState';
+
+let nextId = 1;
+function log(partial: Partial<ApiCallLog> & { msAgo?: number }): ApiCallLog {
+  const { msAgo = 1_000, ...rest } = partial;
+  return {
+    id: nextId++,
+    method: 'GET',
+    endpoint: '/v1/aps/query',
+    timestamp: new Date(Date.now() - msAgo),
+    duration: 50,
+    isPending: false,
+    ...rest,
+  };
+}
+const ok = (msAgo = 1_000) => log({ status: 200, msAgo });
+const netFail = (msAgo = 1_000) => log({ error: 'Unable to connect', msAgo });
+const serverError = (msAgo = 1_000) => log({ status: 503, msAgo });
+
+let push: ((entry: ApiCallLog) => void) | undefined;
 
 beforeEach(() => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date('2026-05-08T12:00:00Z'));
+  push = undefined;
   subscribeToApiLogs.mockReset();
-  subscribeToApiLogs.mockReturnValue(() => {});
+  subscribeToApiLogs.mockImplementation((cb: (entry: ApiCallLog) => void) => {
+    push = cb;
+    return () => {};
+  });
   getApiLogs.mockReset();
   getApiLogs.mockReturnValue([]);
 });
@@ -30,70 +54,114 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const ok = (msAgo: number) => ({
-  status: 200,
-  isPending: false,
-  timestamp: new Date(Date.now() - msAgo),
+describe('outcomeOf', () => {
+  it('ignores pending and cancelled requests', () => {
+    expect(outcomeOf(log({ isPending: true }))).toBeNull();
+    expect(outcomeOf(log({ error: 'aborted', cancelled: true }))).toBeNull();
+  });
+
+  it('treats any non-429, non-5xx answer as a reachable Gateway', () => {
+    expect(outcomeOf(log({ status: 200 }))).toBe('ok');
+    expect(outcomeOf(log({ status: 401 }))).toBe('ok');
+    expect(outcomeOf(log({ status: 404 }))).toBe('ok');
+  });
+
+  it('treats 429 and 5xx as degraded, and no status as a transport failure', () => {
+    expect(outcomeOf(log({ status: 429 }))).toBe('degraded');
+    expect(outcomeOf(log({ status: 502 }))).toBe('degraded');
+    expect(outcomeOf(log({ error: 'timed out' }))).toBe('failed');
+  });
+});
+
+describe('classifyConnection', () => {
+  it('is unknown with no outcomes', () => {
+    expect(classifyConnection([])).toBe('unknown');
+  });
+
+  it('is live when the latest request succeeded', () => {
+    expect(classifyConnection(['failed', 'failed', 'ok'])).toBe('live');
+  });
+
+  it('stays live when one endpoint in a healthy fan-out errors', () => {
+    expect(classifyConnection(['ok', 'ok', 'ok', 'degraded'])).toBe('live');
+    expect(classifyConnection(['ok', 'ok', 'ok', 'failed'])).toBe('live');
+  });
+
+  it('is degraded when most recent requests failed', () => {
+    expect(classifyConnection(['ok', 'degraded', 'degraded', 'degraded'])).toBe('degraded');
+    expect(classifyConnection(['ok', 'degraded', 'failed', 'failed'])).toBe('degraded');
+  });
+
+  it('is offline after three consecutive transport failures', () => {
+    expect(classifyConnection(['ok', 'ok', 'failed', 'failed', 'failed'])).toBe('offline');
+  });
 });
 
 describe('ConnectionState', () => {
-  it('shows Connecting… when no successful log has been seeded', () => {
+  it('shows Connecting… when nothing has completed yet', () => {
     render(<ConnectionState />);
     expect(screen.getByText('Connecting…')).toBeInTheDocument();
   });
 
-  it('shows Connected within the staleAfterSeconds window after a recent success', () => {
-    getApiLogs.mockReturnValue([ok(5_000)]); // 5s ago
+  it('shows Connected after a successful request', () => {
+    getApiLogs.mockReturnValue([ok()]);
     render(<ConnectionState />);
     expect(screen.getByText('Connected')).toBeInTheDocument();
   });
 
-  it('flips to Data stale between staleAfterSeconds and offlineAfterSeconds', () => {
-    getApiLogs.mockReturnValue([ok(45_000)]); // 45s ago — past 30s default
+  it('stays Connected on an idle page no matter how long it sits (no polling ⇒ no decay)', () => {
+    getApiLogs.mockReturnValue([ok(5_000)]);
     render(<ConnectionState />);
-    expect(screen.getByText('Data stale')).toBeInTheDocument();
-  });
-
-  it('flips to Disconnected past offlineAfterSeconds', () => {
-    getApiLogs.mockReturnValue([ok(180_000)]); // 3m ago — past 120s default
-    render(<ConnectionState />);
-    expect(screen.getByText('Disconnected')).toBeInTheDocument();
-  });
-
-  it('subscribes to apiService log updates and re-renders on a new success', () => {
-    let push: ((log: { status: number; isPending: boolean; timestamp: Date }) => void) | undefined;
-    subscribeToApiLogs.mockImplementation(
-      (cb: (log: { status: number; isPending: boolean; timestamp: Date }) => void) => {
-        push = cb;
-        return () => {};
-      }
-    );
-    render(<ConnectionState />);
-    expect(screen.getByText('Connecting…')).toBeInTheDocument();
     act(() => {
-      push?.({
-        status: 200,
-        isPending: false,
-        timestamp: new Date(Date.now()),
-      });
+      vi.setSystemTime(new Date('2026-05-08T12:30:00Z'));
+      vi.advanceTimersByTime(30 * 60_000);
     });
     expect(screen.getByText('Connected')).toBeInTheDocument();
+    expect(screen.queryByText('Data stale')).toBeNull();
+    expect(screen.queryByText('Disconnected')).toBeNull();
   });
 
-  it('honors a custom staleAfterSeconds threshold', () => {
-    getApiLogs.mockReturnValue([ok(20_000)]); // 20s ago
-    render(<ConnectionState staleAfterSeconds={10} />);
-    // 20s past a 10s threshold → STALE.
-    expect(screen.getByText('Data stale')).toBeInTheDocument();
-  });
-
-  it('does not seed lastSuccess from non-2xx logs', () => {
-    getApiLogs.mockReturnValue([
-      { status: 500, isPending: false, timestamp: new Date() },
-      { status: undefined, isPending: true, timestamp: new Date() },
-    ]);
+  it('turns Disconnected only when requests actually fail to reach the Gateway', () => {
+    getApiLogs.mockReturnValue([ok(10_000)]);
     render(<ConnectionState />);
-    expect(screen.getByText('Connecting…')).toBeInTheDocument();
+    act(() => {
+      push?.(netFail());
+      push?.(netFail());
+    });
+    expect(screen.queryByText('Disconnected')).toBeNull();
+    act(() => push?.(netFail()));
+    expect(screen.getByText('Disconnected')).toBeInTheDocument();
+    // …and recovers on the next success.
+    act(() => push?.(ok()));
+    expect(screen.getByText('Connected')).toBeInTheDocument();
+  });
+
+  it('shows Connection degraded when the Gateway answers mostly with server errors', () => {
+    getApiLogs.mockReturnValue([serverError(), serverError(), serverError()]);
+    render(<ConnectionState />);
+    expect(screen.getByText('Connection degraded')).toBeInTheDocument();
+  });
+
+  it('does not count a cancelled request or a re-delivered log entry', () => {
+    render(<ConnectionState />);
+    const success = ok();
+    act(() => push?.(success));
+    const failure = netFail();
+    act(() => {
+      push?.(log({ error: 'aborted', cancelled: true }));
+      push?.(failure);
+      push?.(failure);
+      push?.(failure);
+    });
+    // One real failure after a success is not a disconnect.
+    expect(screen.getByText('Connected')).toBeInTheDocument();
+  });
+
+  it('runs no timer of its own', () => {
+    const intervalSpy = vi.spyOn(globalThis, 'setInterval');
+    getApiLogs.mockReturnValue([ok()]);
+    render(<ConnectionState />);
+    expect(intervalSpy).not.toHaveBeenCalled();
   });
 
   it('exposes role=status and aria-live=polite for assistive tech', () => {
@@ -101,18 +169,5 @@ describe('ConnectionState', () => {
     const root = container.querySelector('[role="status"]');
     expect(root).not.toBeNull();
     expect(root?.getAttribute('aria-live')).toBe('polite');
-  });
-
-  it('re-classifies on its own 1Hz tick when no log update arrives', () => {
-    // Seed a log that's borderline LIVE, then advance system time so the
-    // computed elapsed exceeds the stale threshold.
-    getApiLogs.mockReturnValue([ok(28_000)]); // just below 30s
-    render(<ConnectionState />);
-    expect(screen.getByText('Connected')).toBeInTheDocument();
-    act(() => {
-      vi.setSystemTime(new Date('2026-05-08T12:00:05Z')); // +5s wall clock
-      vi.advanceTimersByTime(2_000);
-    });
-    expect(screen.getByText('Data stale')).toBeInTheDocument();
   });
 });
