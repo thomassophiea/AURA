@@ -1625,6 +1625,15 @@ export default function App() {
                     );
                   })()}
 
+                  {/* Distribution marking, shown in every environment. */}
+                  <span
+                    className="text-xs font-semibold rounded px-2 py-0.5 border bg-muted text-muted-foreground border-border whitespace-nowrap"
+                    style={{ letterSpacing: '0.04em', flexShrink: 0 }}
+                    title="Internal Use ONLY"
+                  >
+                    Internal Use ONLY
+                  </span>
+
                   {/* Right side — controls for all themes */}
                   <div className="flex items-center gap-1 ml-auto">
                     {!device.isMobile && theme === 'dev' && (
