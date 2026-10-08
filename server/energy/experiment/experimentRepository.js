@@ -25,6 +25,18 @@ export async function getConfig(sourceId) {
   return rows[0] ?? null;
 }
 
+/** Update only the cached display names of the configured pair (ids untouched). */
+export async function updateConfigSiteNames(sourceId, { treatmentSiteName, controlSiteName }) {
+  const { rows } = await query(
+    `UPDATE energy_experiment_config
+        SET treatment_site_name = $2, control_site_name = $3, updated_at = now()
+      WHERE monitored_source_id = $1
+      RETURNING *`,
+    [sourceId, treatmentSiteName ?? null, controlSiteName ?? null]
+  );
+  return rows[0] ?? null;
+}
+
 export async function upsertConfig({
   sourceId,
   treatmentSiteId,

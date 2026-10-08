@@ -18,6 +18,7 @@ import { ingestLightReport } from '../lightAware/lightIngest.js';
 import * as repo from './experimentRepository.js';
 import * as engine from './experimentEngine.js';
 import { discover } from './siteDiscovery.js';
+import { reconcileConfigSiteNames, siteNamesById } from './siteNameReconciler.js';
 import { runTriggerEvaluation, runExclusive } from './triggerGuard.js';
 import { assessReadiness } from './readiness.js';
 import { selectDisplayExperiment } from './displayScope.js';
@@ -55,6 +56,13 @@ export function createExperimentRouter(options = {}) {
 
   const sessionFor = deps.sessionFor ?? engine.sessionFor;
   const listSourcesFn = deps.listSources ?? listSources;
+  const updateNames = deps.updateConfigSiteNames ?? repo.updateConfigSiteNames;
+
+  /** The configured pair with its site names re-read from the Gateway by id. */
+  async function liveConfig(source, { force = false, namesById = null } = {}) {
+    const config = await repo.getConfig(source.id);
+    return reconcileConfigSiteNames({ source, config, sessionFor, updateNames, force, namesById });
+  }
 
   const router = Router();
   const jsonBody = expressJson({ limit: '64kb' });
@@ -217,7 +225,7 @@ export function createExperimentRouter(options = {}) {
 
   router.get(`${BASE}/discovery`, (req, res) =>
     withSource(req, res, async (source) => {
-      const config = await repo.getConfig(source.id);
+      let config = await repo.getConfig(source.id);
       const session = await sessionFor(source);
       const found = await discover({
         session,
@@ -227,6 +235,14 @@ export function createExperimentRouter(options = {}) {
         },
       });
       if (!found.ok) return fail(res, 502, found.error);
+      // Discovery has just read the live site list, so reconcile from it free.
+      config = await reconcileConfigSiteNames({
+        source,
+        config,
+        sessionFor,
+        updateNames,
+        namesById: siteNamesById(found.sites.map((s) => ({ id: s.siteId, siteName: s.siteName }))),
+      });
       res.json({
         sites: found.sites.map((s) => ({
           siteId: s.siteId,
@@ -285,7 +301,7 @@ export function createExperimentRouter(options = {}) {
   router.get(`${BASE}/state`, (req, res) =>
     withSource(req, res, async (source) => {
       const experimentId = req.query.experimentId;
-      const scopeConfig = await repo.getConfig(source.id);
+      const scopeConfig = await liveConfig(source);
       // An explicit id is an explicit request — honour it even if the pair has
       // moved on, because that is how /history drills into a past run.
       const experiment = experimentId
@@ -598,6 +614,9 @@ export function createExperimentRouter(options = {}) {
 
   router.post(`${BASE}/start`, requireOperator, jsonBody, (req, res) =>
     withSource(req, res, async (source) => {
+      // A new experiment copies the pair's names, and the scope guard compares
+      // live AP membership against them — so they must be current right now.
+      await liveConfig(source, { force: true });
       const session = await sessionFor(source);
       const result = await engine.startExperiment({
         source,

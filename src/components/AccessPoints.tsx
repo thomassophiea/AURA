@@ -94,6 +94,7 @@ import { DetailRow } from '@/components/ui/DetailRow';
 import type { ColDef, GridApi } from 'ag-grid-community';
 import { Server } from 'lucide-react';
 import { Sun, Moon } from 'lucide-react';
+import { buildMonitoringHeaders } from '../services/monitoringHistory';
 
 // Cable health detection utilities
 interface CableHealthResult {
@@ -880,7 +881,11 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
       // posts its state — so it rides in the AP payload with no controller change.
       let apsWithLight = enrichedAPs;
       try {
-        const lightResp = await fetch('/api/light-sensor/states');
+        // The feed requires an authenticated caller; without the header a
+        // session-less browser gets 401 and the sun/moon badges silently vanish.
+        const lightResp = await fetch('/api/light-sensor/states', {
+          headers: buildMonitoringHeaders(),
+        });
         if (lightResp.ok) {
           const states = (await lightResp.json()) as Record<
             string,
