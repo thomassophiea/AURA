@@ -22,7 +22,7 @@ import {
   Search,
   Filter,
 } from 'lucide-react';
-import { apiService } from '../services/api';
+import { apiService, READ_TIMEOUT_MS } from '../services/api';
 import { useAppContext } from '@/contexts/AppContext';
 import { toast } from 'sonner';
 
@@ -366,7 +366,7 @@ export function ReportWidgets() {
             // This is a composite heuristic. No real API analog exists.
             const [apsResp, stationsResp] = await Promise.all([
               apiService.makeAuthenticatedRequest('/v1/aps', { method: 'GET' }, 8000),
-              apiService.makeAuthenticatedRequest('/v1/stations', { method: 'GET' }, 8000),
+              apiService.makeAuthenticatedRequest('/v1/stations', { method: 'GET' }, READ_TIMEOUT_MS),
             ]);
 
             let apScore = 50;

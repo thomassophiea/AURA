@@ -215,6 +215,17 @@ class ApiService {
   /** The one token refresh in flight, shared by every concurrent 401. */
   private refreshPromise: Promise<void> | null = null;
   private inflightRequests = new Map<string, Promise<Response>>();
+  /**
+   * Deadline extenders for in-flight GETs, keyed like `inflightRequests`.
+   *
+   * A caller that joins an in-flight request must not inherit a SHORTER
+   * timeout than it asked for. Measured 2026-10-08: the SLE collection service
+   * fired `/v1/stations` with the 6 s default at login, the SLE provider's 30 s
+   * read joined it, and both were aborted at 6.0 s while the Gateway was 7.4 s
+   * into answering — then retried, doubling the Gateway's heaviest read and
+   * delaying Operational Insights to 15-30 s.
+   */
+  private inflightDeadlines = new Map<string, (timeoutMs: number) => void>();
 
   /**
    * Freshly-completed GET responses, kept for a very short window.
@@ -598,9 +609,14 @@ class ApiService {
     // second one throw "Body has already been read" — which surfaced as tables
     // that loaded or came up empty depending on component mount order.
     const existing = this.inflightRequests.get(key);
-    if (existing) return existing.then((r) => r.clone());
+    if (existing) {
+      this.inflightDeadlines.get(key)?.(timeoutMs);
+      return existing.then((r) => r.clone());
+    }
 
-    const promise = this._executeAuthenticatedRequest(endpoint, options, timeoutMs).then(
+    const promise = this._executeAuthenticatedRequest(endpoint, options, timeoutMs, false, (extend) =>
+      this.inflightDeadlines.set(key, extend)
+    ).then(
       async (response) => {
         // Only successful JSON responses are worth replaying; errors and
         // redirects must re-hit the controller so transient failures recover.
@@ -626,7 +642,12 @@ class ApiService {
     );
 
     this.inflightRequests.set(key, promise);
-    promise.finally(() => this.inflightRequests.delete(key)).catch(() => {});
+    promise
+      .finally(() => {
+        this.inflightRequests.delete(key);
+        this.inflightDeadlines.delete(key);
+      })
+      .catch(() => {});
     // The originating caller gets a clone too, so the cached copy above and
     // every joined caller read from independent streams.
     return promise.then((r) => r.clone());
@@ -673,7 +694,8 @@ class ApiService {
     endpoint: string,
     options: RequestInit = {},
     timeoutMs: number = 6000,
-    isAuthRetry: boolean = false
+    isAuthRetry: boolean = false,
+    exposeDeadline?: (extend: (timeoutMs: number) => void) => void
   ): Promise<Response> {
     // The token this attempt is sent with. On a 401 it tells us whether a
     // concurrent request has already refreshed it (so we only need to retry).
@@ -704,10 +726,22 @@ class ApiService {
     // Distinguishes our own timeout from a cancellation (logout, navigation):
     // both surface as AbortError, but only one says anything about the Gateway.
     let timedOut = false;
-    const timeoutId = setTimeout(() => {
+    const timerStart = Date.now();
+    let deadline = timerStart + timeoutMs;
+    const onTimeout = () => {
       timedOut = true;
       controller.abort();
-    }, timeoutMs);
+    };
+    let timeoutId = setTimeout(onTimeout, timeoutMs);
+    // Lets a caller joining this in-flight GET push the deadline out to its own
+    // budget. Never shortens it.
+    exposeDeadline?.((requestedMs: number) => {
+      const requested = timerStart + requestedMs;
+      if (timedOut || requested <= deadline) return;
+      clearTimeout(timeoutId);
+      deadline = requested;
+      timeoutId = setTimeout(onTimeout, Math.max(0, deadline - Date.now()));
+    });
 
     const requestId = ++this.requestCounter;
     const startTime = Date.now();

@@ -1,4 +1,4 @@
-import { apiService } from './api';
+import { READ_TIMEOUT_MS, apiService } from './api';
 import { whenAutoRefresh } from '../lib/autoRefresh';
 
 /**
@@ -129,9 +129,13 @@ class SLEDataCollectionService {
       }
 
       // Fetch all clients/stations
-      const response = await apiService.makeAuthenticatedRequest('/v1/stations', {
-        method: 'GET',
-      });
+      // /v1/stations is unpaginated and takes 7-13 s on a loaded Gateway; the
+      // 6 s default aborted it (and every page that joined the same request).
+      const response = await apiService.makeAuthenticatedRequest(
+        '/v1/stations',
+        { method: 'GET' },
+        READ_TIMEOUT_MS
+      );
 
       if (!response.ok) {
         console.warn('[SLE Collection] Failed to fetch stations:', response.status);

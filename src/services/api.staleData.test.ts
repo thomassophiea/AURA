@@ -286,3 +286,51 @@ describe('controller reads', () => {
     }
   });
 });
+
+describe('in-flight GET deadlines', () => {
+  function slowGateway(delayMs: number) {
+    let calls = 0;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_input, init) => {
+      calls++;
+      return new Promise<Response>((resolve, reject) => {
+        const t = setTimeout(() => resolve(json([{ mac: 'aa' }])), delayMs);
+        init?.signal?.addEventListener('abort', () => {
+          clearTimeout(t);
+          reject(new DOMException('Aborted', 'AbortError'));
+        });
+      });
+    });
+    return () => calls;
+  }
+
+  it('a caller joining a short-timeout request extends it to its own budget instead of inheriting the abort', async () => {
+    vi.useFakeTimers();
+    try {
+      const callCount = slowGateway(7_400); // measured /v1/stations on the lab Gateway
+      const short = apiService.makeAuthenticatedRequest('/v1/stations', { method: 'GET' }, 6_000);
+      const long = apiService.makeAuthenticatedRequest('/v1/stations', {}, 30_000);
+      await vi.advanceTimersByTimeAsync(8_000);
+      const [a, b] = await Promise.all([short, long]);
+      expect(a.status).toBe(200);
+      expect(b.status).toBe(200);
+      expect(callCount()).toBe(1); // one Gateway read, not an abort plus a retry
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a joining caller never shortens an in-flight deadline', async () => {
+    vi.useFakeTimers();
+    try {
+      slowGateway(7_400);
+      const long = apiService.makeAuthenticatedRequest('/v1/stations', {}, 30_000);
+      const short = apiService.makeAuthenticatedRequest('/v1/stations', {}, 1_000);
+      await vi.advanceTimersByTimeAsync(8_000);
+      const [a, b] = await Promise.all([long, short]);
+      expect(a.status).toBe(200);
+      expect(b.status).toBe(200);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
