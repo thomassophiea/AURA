@@ -1587,7 +1587,7 @@ export default function App() {
                   >
                     <span style={{ fontWeight: 600 }}>Extreme</span>{' '}
                     <span className="text-muted-foreground" style={{ fontWeight: 400 }}>
-                      Platform ONE™ | Integration
+                      Platform ONE™ | Migration
                     </span>
                   </span>
                   <div style={{ flex: 1 }} />
