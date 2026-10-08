@@ -8,7 +8,6 @@ import type { CortexPageContext } from './types/cortex';
 import { LoginForm } from './components/LoginForm';
 import { SharedReportViewer } from './components/SharedReportViewer';
 import { Sidebar } from './components/Sidebar';
-import { EnvironmentBadge } from './components/EnvironmentBadge';
 import { MobileApp } from './components/mobile/MobileApp';
 import { DetailSlideOut } from './components/DetailSlideOut';
 import { PlaceholderPage } from './components/PlaceholderPage';
@@ -1624,9 +1623,6 @@ export default function App() {
                       </span>
                     );
                   })()}
-
-                  {/* Which deployment this is — Integration vs Production Demo */}
-                  <EnvironmentBadge />
 
                   {/* Right side — controls for all themes */}
                   <div className="flex items-center gap-1 ml-auto">
