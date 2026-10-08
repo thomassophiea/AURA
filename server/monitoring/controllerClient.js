@@ -167,7 +167,7 @@ export class ControllerSession {
    * @returns {Promise<{ ok: boolean, status: number|null, data: any,
    *                     errorClass: string|null, errorSummary: string|null }>}
    */
-  async get(path, { retryOnAuthFailure = true } = {}) {
+  async get(path, { retryOnAuthFailure = true, timeoutMs = null } = {}) {
     let token;
     try {
       token = await this.getToken();
@@ -181,7 +181,10 @@ export class ControllerSession {
         authToken: `Bearer ${token}`,
         controllerUrl: this.#baseUrl,
         fetchFn: this.#fetchFn,
-        timeoutMs: this.#timeoutMs,
+        // Report endpoints legitimately take 15-30 s on the Gateway; a caller
+        // that knows it is asking for one passes a longer budget. Aborting
+        // early does not save the Gateway any work — it only discards it.
+        timeoutMs: timeoutMs ?? this.#timeoutMs,
         agent: httpsAgent(),
       });
 
@@ -191,7 +194,7 @@ export class ControllerSession {
 
       if (result.status === 401 && retryOnAuthFailure) {
         this.invalidate();
-        return this.get(path, { retryOnAuthFailure: false });
+        return this.get(path, { retryOnAuthFailure: false, timeoutMs });
       }
 
       const { errorClass, summary } = sanitizeError(new Error(result.errorText ?? 'request failed'), {

@@ -8,6 +8,7 @@ import {
   runCollectionTick,
 } from './collectorRunner.js';
 import { loadMonitoringConfig } from './config.js';
+import { ScopeBreaker } from './scopeBreaker.js';
 
 const NOW = new Date('2026-08-05T12:00:00.000Z');
 
@@ -99,6 +100,9 @@ function makeDeps(overrides = {}) {
     recordSuccessFn: async (...args) => calls.successes.push(args),
     recordFailureFn: async (id, payload) => calls.failures.push({ id, ...payload }),
     refreshCapabilitiesFn: async (_session, source) => source.capabilities,
+    // A fresh breaker per test: the shared one would carry a failure from one
+    // test into the next and make the suite order-dependent.
+    breaker: new ScopeBreaker(),
     ...overrides.deps,
   };
 
@@ -514,5 +518,73 @@ describe('runCollectionTick', () => {
     });
     expect(result.collected).toBe(1);
     expect(result.failed).toBe(1);
+  });
+});
+
+describe('collector families', () => {
+  const reportsOn = loadMonitoringConfig({
+    DATABASE_URL: 'postgres://localhost/aura',
+    MONITORING_AP_REPORTS_ENABLED: 'true',
+  });
+
+  it('the core family runs only the SLE collector — no report request reaches the Gateway', async () => {
+    const { deps, calls } = makeDeps({ routes: healthyRoutes });
+    let session;
+    deps.getSessionFn = () => (session = fakeSession(healthyRoutes));
+    await collectSource({ source: SOURCE, config: reportsOn, now: NOW, deps: { ...deps, collectorNames: ['sle'] } });
+    expect(calls.runs.map((r) => r.collectorName)).toEqual(['sle']);
+    expect(session.get.mock.calls.some(([p]) => p.includes('/report'))).toBe(false);
+  });
+
+  it('the core family records source success on its own, so freshness tracks the fast loop', async () => {
+    const { deps, calls } = makeDeps({ routes: healthyRoutes });
+    await collectSource({ source: SOURCE, config: reportsOn, now: NOW, deps: { ...deps, collectorNames: ['sle'] } });
+    expect(calls.successes).toHaveLength(1);
+  });
+
+  it('the reports family runs site and AP reports and never the SLE collector', async () => {
+    const { deps, calls } = makeDeps({ routes: healthyRoutes });
+    await collectSource({
+      source: SOURCE,
+      config: reportsOn,
+      now: NOW,
+      deps: { ...deps, collectorNames: ['site_report', 'ap_report'] },
+    });
+    expect(calls.runs.map((r) => r.collectorName)).toEqual(['site_report', 'ap_report']);
+  });
+
+  it('a family with nothing enabled is a skip that does not touch source health', async () => {
+    const { deps, calls } = makeDeps({ routes: healthyRoutes });
+    const result = await collectSource({
+      source: SOURCE,
+      config: CONFIG,
+      now: NOW,
+      deps: { ...deps, collectorNames: ['client'] },
+    });
+    expect(result.status).toBe('skipped');
+    expect(calls.attempts).toHaveLength(0);
+    expect(calls.successes).toHaveLength(0);
+    expect(calls.failures).toHaveLength(0);
+  });
+
+  it('takes a separate lock per family so families overlap but duplicates do not', async () => {
+    const keys = [];
+    await runCollectionTick({
+      config: CONFIG,
+      now: NOW,
+      family: 'reports',
+      deps: {
+        listSourcesFn: async () => [SOURCE],
+        withLockFn: async (key, fn) => {
+          keys.push(key);
+          return { acquired: true, result: await fn() };
+        },
+        collectSourceFn: async ({ deps }) => {
+          expect(deps.collectorNames).toEqual(['site_report', 'ap_report']);
+          return { status: 'succeeded' };
+        },
+      },
+    });
+    expect(keys).toEqual(['aura:monitoring:source:src-1:reports']);
   });
 });

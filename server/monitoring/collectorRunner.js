@@ -46,8 +46,26 @@ import {
   COLLECTOR_NAME as CLIENT_COLLECTOR,
 } from './collectors/clientCollector.js';
 import { probeDurations, capabilitiesAreStale } from './backfill.js';
+import { getSharedBreaker } from './scopeBreaker.js';
 
 const LOCK_PREFIX = 'aura:monitoring:source:';
+
+/**
+ * Collector families, each polled by its own loop.
+ *
+ * They used to run one after another inside a single tick, so the cheap SLE
+ * read waited behind every per-site and per-AP report. A report pass routinely
+ * took 3-6 minutes against a 60 s tick, the tick was skipped while it ran, and
+ * the source's last-success time lagged by that much — which is why the
+ * dashboard read "Stale" against a 180 s threshold while the Gateway was fine.
+ */
+export const COLLECTOR_FAMILIES = Object.freeze({
+  core: [SLE_COLLECTOR],
+  reports: [SITE_COLLECTOR, AP_COLLECTOR],
+  clients: [CLIENT_COLLECTOR],
+});
+
+const ALL_COLLECTORS = Object.values(COLLECTOR_FAMILIES).flat();
 
 /**
  * Bounded exponential backoff with full jitter.
@@ -147,7 +165,21 @@ export async function collectSource({ source, config, now = new Date(), deps = {
     recordSuccessFn = recordSuccess,
     recordFailureFn = recordFailure,
     refreshCapabilitiesFn = refreshCapabilities,
+    breaker = getSharedBreaker(),
   } = deps;
+  const only = new Set(deps.collectorNames ?? ALL_COLLECTORS);
+
+  const enabled = [
+    SLE_COLLECTOR,
+    SITE_COLLECTOR,
+    ...(config.apReportsEnabled ? [AP_COLLECTOR] : []),
+    ...(config.persistClientIdentifiers ? [CLIENT_COLLECTOR] : []),
+  ];
+  if (!enabled.some((name) => only.has(name))) {
+    // Nothing enabled for this family (e.g. client persistence off): not an
+    // attempt, so it must not touch source health either way.
+    return { sourceId: source.id, status: 'skipped', inserted: 0, updated: 0, partialFailures: 0 };
+  }
 
   const startedAt = Date.now();
   await recordAttemptFn(source.id, now);
@@ -188,10 +220,14 @@ export async function collectSource({ source, config, now = new Date(), deps = {
   });
 
   let capabilities = source.capabilities;
-  try {
-    capabilities = await refreshCapabilitiesFn(session, source, now);
-  } catch {
-    // Probing is best-effort; keep whatever we knew before.
+  // The probe issues venue-report requests, so it belongs to the loop that
+  // already pays for those — never to the fast SLE loop.
+  if (only.has(SITE_COLLECTOR)) {
+    try {
+      capabilities = await refreshCapabilitiesFn(session, source, now);
+    } catch {
+      // Probing is best-effort; keep whatever we knew before.
+    }
   }
   const sourceWithCapabilities = { ...source, capabilities };
 
@@ -208,6 +244,7 @@ export async function collectSource({ source, config, now = new Date(), deps = {
           config,
           now,
           getCursor: readCursor,
+          breaker,
         }),
     },
   ];
@@ -228,6 +265,7 @@ export async function collectSource({ source, config, now = new Date(), deps = {
           config,
           now,
           getCursor: readCursor,
+          breaker,
         }),
     });
   }
@@ -239,9 +277,11 @@ export async function collectSource({ source, config, now = new Date(), deps = {
     collectors.push({
       name: CLIENT_COLLECTOR,
       run: () =>
-        collectClients({ session, source: sourceWithCapabilities, config, now }),
+        collectClients({ session, source: sourceWithCapabilities, config, now, breaker }),
     });
   }
+
+  const selected = collectors.filter((collector) => only.has(collector.name));
 
   let totalInserted = 0;
   let totalUpdated = 0;
@@ -250,7 +290,7 @@ export async function collectSource({ source, config, now = new Date(), deps = {
   let anyFailed = false;
   let lastError = null;
 
-  for (const collector of collectors) {
+  for (const collector of selected) {
     const run = await startRunFn({ sourceId: source.id, collectorName: collector.name });
     const collectorStarted = Date.now();
 
@@ -377,7 +417,7 @@ export async function collectSource({ source, config, now = new Date(), deps = {
  *
  * @returns {Promise<{ sources: number, collected: number, skipped: number, failed: number }>}
  */
-export async function runCollectionTick({ config, now = new Date(), deps = {} }) {
+export async function runCollectionTick({ config, now = new Date(), deps = {}, family = null }) {
   const {
     listSourcesFn = listSources,
     collectSourceFn = collectSource,
@@ -415,8 +455,12 @@ export async function runCollectionTick({ config, now = new Date(), deps = {} })
 
     // Cross-instance mutual exclusion. A duplicate worker gets `acquired: false`
     // and records the skip instead of double-ingesting.
-    const outcome = await withLockFn(`${LOCK_PREFIX}${source.id}`, async () =>
-      collectSourceFn({ source, config, now })
+    // One lock per (source, family): the families are meant to overlap, a
+    // duplicate worker polling the SAME family is not.
+    const lockKey = family ? `${LOCK_PREFIX}${source.id}:${family}` : `${LOCK_PREFIX}${source.id}`;
+    const collectorNames = family ? COLLECTOR_FAMILIES[family] : undefined;
+    const outcome = await withLockFn(lockKey, async () =>
+      collectSourceFn({ source, config, now, deps: collectorNames ? { collectorNames } : {} })
     );
 
     if (!outcome.acquired) {
@@ -429,6 +473,7 @@ export async function runCollectionTick({ config, now = new Date(), deps = {} })
     }
 
     if (outcome.result?.status === 'failed') failed += 1;
+    else if (outcome.result?.status === 'skipped') skipped += 1;
     else collected += 1;
   });
 
@@ -445,6 +490,7 @@ export async function runCollectionTick({ config, now = new Date(), deps = {} })
   }
 
   log('info', 'monitoring.tick_complete', {
+    family: family ?? 'all',
     sources: sources.length,
     collected,
     skipped,
@@ -454,10 +500,9 @@ export async function runCollectionTick({ config, now = new Date(), deps = {} })
 }
 
 /**
- * Long-running collector loop. Used by worker.js and by the optional
- * in-process collector in server.js.
+ * One self-scheduling loop: never overlaps itself, survives anything.
  */
-export function startCollector({ config, deps = {}, unref = false }) {
+function startLoop({ name, intervalSeconds, initialDelaySeconds = 0, run, unref }) {
   let timer = null;
   let running = false;
   let stopped = false;
@@ -465,32 +510,83 @@ export function startCollector({ config, deps = {}, unref = false }) {
   async function tick() {
     if (running || stopped) return;
     running = true;
+    const started = Date.now();
     try {
-      await runCollectionTick({ config, now: new Date(), deps });
+      await run();
     } catch (error) {
       // The loop must survive anything, including the database being down.
       const sanitized = sanitizeError(error);
-      log('error', 'monitoring.tick_failed', { errorClass: sanitized.errorClass });
+      log('error', 'monitoring.tick_failed', { loop: name, errorClass: sanitized.errorClass });
     } finally {
       running = false;
+      const elapsedSeconds = Math.round((Date.now() - started) / 1000);
+      if (elapsedSeconds > intervalSeconds) {
+        // Visible, because an overrunning loop is exactly what made freshness
+        // lie before the families were split.
+        log('info', 'monitoring.loop_overran', { loop: name, elapsedSeconds, intervalSeconds });
+      }
     }
   }
 
-  tick();
-  timer = setInterval(tick, config.pollIntervalSeconds * 1000);
-  // The interval is deliberately NOT unref'd. worker.js runs no server, so this
-  // timer is the only thing holding its event loop open — unref'ing it made the
-  // worker exit 0 a few milliseconds after its first poll, which Railway's
-  // `on_failure` restart policy would not even retry. Callers that manage their
-  // own lifetime (server.js has an HTTP listener) can pass unref: true.
-  if (unref && typeof timer.unref === 'function') timer.unref();
+  const begin = () => {
+    if (stopped) return;
+    tick();
+    timer = setInterval(tick, intervalSeconds * 1000);
+    if (unref && typeof timer.unref === 'function') timer.unref();
+  };
+  const startTimer = initialDelaySeconds > 0 ? setTimeout(begin, initialDelaySeconds * 1000) : null;
+  if (startTimer && unref && typeof startTimer.unref === 'function') startTimer.unref();
+  if (!startTimer) begin();
 
   return {
-    async stop() {
+    name,
+    tick,
+    stop() {
       stopped = true;
+      if (startTimer) clearTimeout(startTimer);
       if (timer) clearInterval(timer);
       timer = null;
     },
-    triggerNow: tick,
+  };
+}
+
+/**
+ * Long-running collector loop. Used by worker.js and by the optional
+ * in-process collector in server.js.
+ */
+export function startCollector({ config, deps = {}, unref = false }) {
+  // The interval is deliberately NOT unref'd by default. worker.js runs no
+  // server, so these timers are the only thing holding its event loop open —
+  // unref'ing them made the worker exit 0 a few milliseconds after its first
+  // poll, which Railway's `on_failure` restart policy would not even retry.
+  // Callers that manage their own lifetime (server.js has an HTTP listener)
+  // can pass unref: true.
+  const plan = [
+    { family: 'core', intervalSeconds: config.pollIntervalSeconds, initialDelaySeconds: 0 },
+    // Staggered so the expensive reads never start in the same second as the
+    // inventory reads, and a restart does not land them all on the Gateway at once.
+    { family: 'clients', intervalSeconds: config.clientIntervalSeconds ?? 300, initialDelaySeconds: 20 },
+    { family: 'reports', intervalSeconds: config.reportIntervalSeconds ?? 900, initialDelaySeconds: 45 },
+  ];
+
+  const loops = plan.map(({ family, intervalSeconds, initialDelaySeconds }) =>
+    startLoop({
+      name: family,
+      intervalSeconds,
+      initialDelaySeconds,
+      unref,
+      run: () => runCollectionTick({ config, now: new Date(), deps, family }),
+    })
+  );
+
+  log('info', 'monitoring.loops_started', {
+    loops: plan.map(({ family, intervalSeconds }) => ({ family, intervalSeconds })),
+  });
+
+  return {
+    async stop() {
+      for (const loop of loops) loop.stop();
+    },
+    triggerNow: () => Promise.all(loops.map((loop) => loop.tick())),
   };
 }

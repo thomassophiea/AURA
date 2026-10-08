@@ -45,6 +45,7 @@ export function normalizeApList(payload) {
       // site_id the UI filters on — without it, per-site energy/SLE views on a
       // specific site read blank.
       hostSite: row?.hostSite ?? row?.site?.name ?? null,
+      status: row?.status ?? null,
     }))
     .filter((ap) => ap.serial);
 }
@@ -67,7 +68,9 @@ export async function collectApReports({
   now = new Date(),
   getCursor,
   maxAps = 500,
+  breaker = null,
 }) {
+  const reportTimeoutMs = (config.reportTimeoutSeconds ?? 45) * 1000;
   const partialFailures = [];
   const samples = [];
   const cursorAdvances = [];
@@ -103,15 +106,29 @@ export async function collectApReports({
     notes.push('Site list unavailable; AP report samples were not site-tagged this run.');
   }
 
-  const aps = allAps.slice(0, maxAps);
-  if (allAps.length > aps.length) {
+  // An AP the Gateway does not have in service is not reporting, so its report
+  // is an empty window that still costs the Gateway a full report pass. Its
+  // absence is visible elsewhere (ap_health, energy_ap_state), not here.
+  const reachable = allAps.filter((ap) => !ap.status || ap.status === 'InService');
+  if (reachable.length < allAps.length) {
+    notes.push(`${allAps.length - reachable.length} AP(s) not in service skipped.`);
+  }
+
+  const aps = reachable.slice(0, maxAps);
+  if (reachable.length > aps.length) {
     // Never let a cap look like full coverage.
     notes.push(
-      `AP report collection capped at ${maxAps} of ${allAps.length} APs; the remainder was not collected this run.`
+      `AP report collection capped at ${maxAps} of ${reachable.length} APs; the remainder was not collected this run.`
     );
   }
 
   for (const ap of aps) {
+    const scopeKey = `${source.id}:ap_report:${ap.serial}`;
+    if (breaker?.isOpen(scopeKey, now.getTime())) {
+      notes.push(`AP ${ap.serial} skipped: cooling down after repeated Gateway failures.`);
+      continue;
+    }
+
     const cursor = getCursor ? await getCursor(METRIC_FAMILIES.AP_REPORT, ap.serial) : null;
     const plan = planCollectionWindow({
       cursor: cursor?.lastObservedAt ?? null,
@@ -121,11 +138,13 @@ export async function collectApReports({
     });
 
     const response = await session.get(
-      buildApReportEndpoint(ap.serial, plan.duration, plan.resolution)
+      buildApReportEndpoint(ap.serial, plan.duration, plan.resolution),
+      { timeoutMs: reportTimeoutMs }
     );
     endpointsTried += 1;
 
     if (!response.ok) {
+      breaker?.recordFailure(scopeKey, now.getTime());
       partialFailures.push({
         scope: `ap:${ap.serial}`,
         errorClass: response.errorClass,
@@ -133,6 +152,7 @@ export async function collectApReports({
       });
       continue;
     }
+    breaker?.recordSuccess(scopeKey);
 
     const { samples: apSamples } = normalizeReportResponse(response.data, {
       monitoredSourceId: source.id,

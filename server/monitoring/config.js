@@ -65,6 +65,27 @@ export function loadMonitoringConfig(env = process.env) {
       min: 1,
       max: 300,
     }),
+    // Report endpoints (/v3/sites/{id}/report/venue, /v1/report/aps/{serial})
+    // take 15-30 s on the Gateway and its own internal ceiling is 31 s. A budget
+    // below that guarantees a timeout after the Gateway has already done the
+    // work — which is what kept per-AP and per-site history empty.
+    reportTimeoutSeconds: readInt(env, 'MONITORING_REPORT_TIMEOUT_SECONDS', 45, {
+      min: 5,
+      max: 300,
+    }),
+    // Cadences per collector family. The SLE loop is cheap (inventory reads)
+    // and drives freshness; the report loop is the Gateway's most expensive
+    // read and its series are 15-minute buckets anyway, so polling it every
+    // minute only re-reads the same buckets. Each family runs in its own loop
+    // so a slow report pass can never delay the SLE samples behind it.
+    reportIntervalSeconds: readInt(env, 'MONITORING_REPORT_INTERVAL_SECONDS', 900, {
+      min: 120,
+      max: 86_400,
+    }),
+    clientIntervalSeconds: readInt(env, 'MONITORING_CLIENT_INTERVAL_SECONDS', 300, {
+      min: 60,
+      max: 86_400,
+    }),
     maxConcurrency: readInt(env, 'MONITORING_MAX_CONCURRENCY', 4, { min: 1, max: 64 }),
     failureBackoffSeconds: readInt(env, 'MONITORING_FAILURE_BACKOFF_SECONDS', 60, {
       min: 5,
@@ -180,6 +201,9 @@ export function describeMonitoringConfig(config) {
     retentionDays: config.retentionDays,
     pollIntervalSeconds: config.pollIntervalSeconds,
     requestTimeoutSeconds: config.requestTimeoutSeconds,
+    reportTimeoutSeconds: config.reportTimeoutSeconds,
+    reportIntervalSeconds: config.reportIntervalSeconds,
+    clientIntervalSeconds: config.clientIntervalSeconds,
     maxConcurrency: config.maxConcurrency,
     staleAfterSeconds: config.staleAfterSeconds,
     authGraceSeconds: config.authGraceSeconds,

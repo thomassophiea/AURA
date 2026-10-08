@@ -13,7 +13,7 @@
 import { normalizeReportResponse } from '../normalizers/reportNormalizer.js';
 import { METRIC_FAMILIES } from '../metricRegistry.js';
 import { planCollectionWindow } from '../backfill.js';
-import { normalizeSiteList } from './sleCollector.js';
+import { normalizeSiteList, extractRows } from './sleCollector.js';
 
 export const COLLECTOR_NAME = 'site_report';
 
@@ -51,12 +51,35 @@ export function latestObservedAt(samples) {
  * @param {Date} params.now
  * @param {(family: string, scope: string) => Promise<{lastObservedAt: Date}|null>} params.getCursor
  */
-export async function collectSiteReports({ session, source, config, now = new Date(), getCursor }) {
+/**
+ * Names of sites that host at least one AP, from the controller-wide AP query
+ * (APs link to a site by NAME via `hostSite`). Null when the query failed — the
+ * caller then collects every site rather than guessing.
+ */
+export function sitesWithAps(apsPayload) {
+  const names = new Set();
+  for (const row of extractRows(apsPayload, ['aps', 'accessPoints'])) {
+    const name = row?.hostSite ?? row?.site?.name ?? null;
+    if (name) names.add(name);
+  }
+  return names;
+}
+
+export async function collectSiteReports({
+  session,
+  source,
+  config,
+  now = new Date(),
+  getCursor,
+  breaker = null,
+}) {
   const partialFailures = [];
   const samples = [];
   const cursorAdvances = [];
   const unrecoverableGaps = [];
+  const notes = [];
   let endpointsTried = 1;
+  const reportTimeoutMs = (config.reportTimeoutSeconds ?? 45) * 1000;
 
   const sitesResponse = await session.get('/v3/sites');
   if (!sitesResponse.ok) {
@@ -74,7 +97,28 @@ export async function collectSiteReports({ session, source, config, now = new Da
     };
   }
 
-  for (const site of normalizeSiteList(sitesResponse.data)) {
+  // A venue report costs the Gateway 15-30 s whether or not the site has any
+  // radios. A site with no AP can only ever answer NoData, so asking is pure
+  // load. The AP query is a 20 ms read, so the filter is nearly free.
+  const apsResponse = await session.get('/v1/aps/query');
+  endpointsTried += 1;
+  const populated = apsResponse.ok ? sitesWithAps(apsResponse.data) : null;
+
+  const allSites = normalizeSiteList(sitesResponse.data);
+  const sites = populated
+    ? allSites.filter((site) => populated.has(site.name) || populated.has(site.id))
+    : allSites;
+  if (sites.length < allSites.length) {
+    notes.push(`${allSites.length - sites.length} site(s) without APs skipped (venue report would be NoData).`);
+  }
+
+  for (const site of sites) {
+    const scopeKey = `${source.id}:site_report:${site.id}`;
+    if (breaker?.isOpen(scopeKey, now.getTime())) {
+      notes.push(`site ${site.name ?? site.id} skipped: cooling down after repeated Gateway failures.`);
+      continue;
+    }
+
     const cursor = getCursor ? await getCursor(METRIC_FAMILIES.SITE_REPORT, site.id) : null;
     const plan = planCollectionWindow({
       cursor: cursor?.lastObservedAt ?? null,
@@ -84,10 +128,11 @@ export async function collectSiteReports({ session, source, config, now = new Da
     });
 
     const endpoint = buildVenueEndpoint(site.id, plan.duration, plan.resolution);
-    const response = await session.get(endpoint);
+    const response = await session.get(endpoint, { timeoutMs: reportTimeoutMs });
     endpointsTried += 1;
 
     if (!response.ok) {
+      breaker?.recordFailure(scopeKey, now.getTime());
       partialFailures.push({
         scope: `site:${site.id}`,
         errorClass: response.errorClass,
@@ -95,6 +140,7 @@ export async function collectSiteReports({ session, source, config, now = new Da
       });
       continue;
     }
+    breaker?.recordSuccess(scopeKey);
 
     const { samples: siteSamples } = normalizeReportResponse(response.data, {
       monitoredSourceId: source.id,
@@ -129,5 +175,5 @@ export async function collectSiteReports({ session, source, config, now = new Da
     }
   }
 
-  return { samples, partialFailures, cursorAdvances, unrecoverableGaps, endpointsTried, fatal: null };
+  return { samples, partialFailures, cursorAdvances, unrecoverableGaps, notes, endpointsTried, fatal: null };
 }

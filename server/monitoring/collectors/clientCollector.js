@@ -92,7 +92,14 @@ function metricsForRow(row) {
  * it identically: { samples, partialFailures, cursorAdvances, notes,
  * endpointsTried, fatal }.
  */
-export async function collectClients({ session, source, config, now = new Date(), evidenceFn }) {
+export async function collectClients({
+  session,
+  source,
+  config,
+  now = new Date(),
+  evidenceFn,
+  breaker = null,
+}) {
   const notes = [];
 
   // The flag is the gate, and it fails CLOSED. Without it — or without a salt —
@@ -119,8 +126,30 @@ export async function collectClients({ session, source, config, now = new Date()
     };
   }
 
-  const evidence = evidenceFn ? evidenceFn(session) : new GatewayEvidence(session);
+  // MuTable is a flex table, and the flex subsystem fails as a UNIT at the
+  // Gateway's 31 s internal timeout when it is down. Re-asking every tick spent
+  // 31 s of Gateway time per minute for zero rows, so a failure cools the read
+  // down. A cooled-down tick is a skip, not a source failure.
+  const breakerKey = `${source.id}:client:flex`;
+  if (breaker?.isOpen(breakerKey, now.getTime())) {
+    return {
+      samples: [],
+      partialFailures: [],
+      cursorAdvances: [],
+      notes: ['client telemetry (flex MuTable) cooling down after a Gateway failure; skipped'],
+      endpointsTried: [],
+      fatal: null,
+    };
+  }
+
+  // Flex legitimately runs long; aborting early discards work the Gateway has
+  // already done and then repeats it next tick.
+  const reportTimeoutMs = (config.reportTimeoutSeconds ?? 45) * 1000;
+  const patientSession = { get: (path, opts = {}) => session.get(path, { timeoutMs: reportTimeoutMs, ...opts }) };
+  const evidence = evidenceFn ? evidenceFn(session) : new GatewayEvidence(patientSession);
   const read = await evidence.clients();
+  if (read.ok) breaker?.recordSuccess(breakerKey);
+  else breaker?.recordFailure(breakerKey, now.getTime());
   if (!read.ok) {
     return {
       samples: [],
