@@ -8,6 +8,7 @@ import { useLightAwareSummary, useLightAwareAps } from '@/hooks/useEnergyData';
 import { useApModels } from '@/hooks/useApModels';
 import { supportsLightSensor } from '@/lib/lightSensor';
 import { LightAwareWhatIf } from './LightAwareWhatIf';
+import { EnergyLoadError } from './EnergyEmptyState';
 
 interface LightAwareOptimizationProps {
   onConfigure: () => void;
@@ -27,6 +28,9 @@ function LightAwareOptimizationComponent({
   const { modelBySerial, loading: modelsLoading } = useApModels();
 
   const loading = summary.loading || apsState.loading || modelsLoading;
+  // A failed read is an error, not "no sensor-capable APs" — the latter is a
+  // claim about the fleet that a 500 cannot support.
+  const error = apsState.error ?? summary.error ?? null;
 
   // Sensor-capability derives from the AP MODEL (from controller inventory),
   // cross-referenced by serial against the light-aware power rows. The metric
@@ -34,7 +38,8 @@ function LightAwareOptimizationComponent({
   const sensorCapableAps = useMemo(() => {
     const rows = apsState.data ?? [];
     return rows
-      .filter((r) => supportsLightSensor(modelBySerial.get(r.serial)))
+      // Controller inventory first; the measured power series' own model next.
+      .filter((r) => supportsLightSensor(modelBySerial.get(r.serial) ?? r.model))
       .map((r) => ({ watts: r.currentWatts }));
   }, [apsState.data, modelBySerial]);
 
@@ -52,7 +57,17 @@ function LightAwareOptimizationComponent({
         </div>
       </CardHeader>
       <CardContent>
-        {loading ? (
+        {error && !loading ? (
+          <EnergyLoadError
+            what="Light-Aware data"
+            message={error}
+            onRetry={() => {
+              summary.refetch();
+              apsState.refetch();
+            }}
+            compact
+          />
+        ) : loading ? (
           <div className="space-y-2">
             {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className="h-8 w-full" />

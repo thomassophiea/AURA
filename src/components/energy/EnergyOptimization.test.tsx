@@ -42,8 +42,16 @@ const overviewWithData = {
   },
 };
 
-let overviewState = overviewEmpty;
+let overviewState: OverviewState = overviewEmpty;
 let recommendationState: unknown[] = [];
+let sitesState: { data: unknown[] | null; loading: boolean; error: string | null; refetch: () => void } = {
+  data: [],
+  loading: false,
+  error: null,
+  refetch: () => {},
+};
+let neverCollected = false;
+const coverageFamilies: Array<string | undefined> = [];
 
 const serviceMocks = vi.hoisted(() => ({
   getEnergyPreferences: vi.fn().mockResolvedValue({
@@ -65,9 +73,15 @@ vi.mock('@/services/environmentalReportPdf', () => pdfMocks);
 
 vi.mock('@/hooks/useEnergyData', () => ({
   useEnergyOverview: () => overviewState,
-  useEnergySites: () => ({ data: [], loading: false, error: null, refetch: () => {} }),
+  useEnergySites: () => sitesState,
   useEnergyAps: () => ({ data: [], loading: false, error: null, refetch: () => {} }),
   useEnergyRecommendations: () => ({ data: recommendationState, loading: false, error: null, refetch: () => {} }),
+  useEnergyRecommendationsDetail: () => ({
+    data: { recommendations: recommendationState, meta: {} },
+    loading: false,
+    error: null,
+    refetch: () => {},
+  }),
   useLightAwareSummary: () => ({ data: null, loading: false, error: null, refetch: () => {} }),
   useLightAwareAps: () => ({ data: [], loading: false, error: null, refetch: () => {} }),
   useLightAwarePolicy: () => ({ data: null, loading: false, error: null, save: () => {} }),
@@ -82,7 +96,9 @@ vi.mock('@/hooks/useSiteNames', () => ({
 }));
 
 vi.mock('@/hooks/useSelectedTimeRange', () => ({
-  useSelectedTimeRange: () => ({
+  useSelectedTimeRange: (opts: { metricFamily?: string } = {}) => {
+    coverageFamilies.push(opts.metricFamily);
+    return {
     token: '24h',
     range: {
       startIso: '2026-08-16T00:00:00.000Z',
@@ -93,8 +109,9 @@ vi.mock('@/hooks/useSelectedTimeRange', () => ({
     optionGroups: [],
     dayStatuses: new Map(),
     retentionDays: 7,
-    neverCollected: false,
-  }),
+    neverCollected,
+    };
+  },
 }));
 
 vi.mock('@/hooks/useSourceSites', () => ({
@@ -184,5 +201,53 @@ describe('EnergyOptimization', () => {
     expect(screen.getByText(/only for OS ONE Gateway APs/i)).toBeInTheDocument();
     // The data path must not render for an XIQ selection.
     expect(screen.queryByText(/No power data in this window/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('EnergyOptimization error and empty states', () => {
+  it('shows the overview error instead of an endless skeleton, and hides the fleet cards', () => {
+    siteFilter = 'all';
+    overviewState = { data: null as unknown as EnergyOverview, loading: false, error: 'Energy request failed: HTTP 500', refetch: () => {} };
+    render(<EnergyOptimization />);
+    expect(screen.getByText(/Energy overview could not be loaded/i)).toBeInTheDocument();
+    expect(screen.getByText(/HTTP 500/)).toBeInTheDocument();
+    expect(screen.queryByText(/Sites by energy use/i)).not.toBeInTheDocument();
+    expect(document.querySelectorAll('[data-slot="skeleton"]').length).toBe(0);
+  });
+
+  it('shows the site-rankings error when only that request failed', () => {
+    siteFilter = 'all';
+    overviewState = overviewWithData;
+    sitesState = { data: null, loading: false, error: 'Energy request failed: HTTP 502', refetch: () => {} };
+    render(<EnergyOptimization />);
+    expect(screen.getByText(/Site rankings could not be loaded/i)).toBeInTheDocument();
+    sitesState = { data: [], loading: false, error: null, refetch: () => {} };
+  });
+
+  it('uses the no-collection variant when neither power collector has ever stored a sample', () => {
+    siteFilter = 'all';
+    overviewState = overviewEmpty;
+    neverCollected = true;
+    render(<EnergyOptimization />);
+    expect(screen.getByText(/AP power data collection is not enabled/i)).toBeInTheDocument();
+    neverCollected = false;
+  });
+
+  it('derives range availability from both energy_ap_state and ap_report', () => {
+    siteFilter = 'all';
+    overviewState = overviewWithData;
+    coverageFamilies.length = 0;
+    render(<EnergyOptimization />);
+    expect(coverageFamilies).toEqual(expect.arrayContaining(['energy_ap_state', 'ap_report']));
+  });
+
+  it('labels the power source on the overview', () => {
+    siteFilter = 'all';
+    overviewState = {
+      ...overviewWithData,
+      data: { ...overviewWithData.data, source: 'measured_ap_state' } as EnergyOverview,
+    };
+    render(<EnergyOptimization />);
+    expect(screen.getByTestId('energy-power-source')).toHaveTextContent('Measured AP power');
   });
 });
