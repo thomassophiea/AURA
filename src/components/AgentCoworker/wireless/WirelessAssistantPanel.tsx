@@ -50,7 +50,7 @@ export function WirelessAssistantPanel() {
 
   // The UI scope (site / SSID / AP / client) is still passed to the agent for
   // client disambiguation — it is just no longer painted as a breadcrumb.
-  // "TSOPHIEA > SouthEast > No site selected" restated AURA's own navigation
+  // "<Org> > SouthEast > No site selected" restated AURA's own navigation
   // state inside the panel and told an operator nothing they could act on. The
   // scope that matters is reported in the answer ("I found one match at
   // Aura_Lab") and in the evidence panel, where it can be checked.

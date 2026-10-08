@@ -91,6 +91,14 @@ const STORAGE_KEYS = {
   USER_PROFILE: 'api_user_profile',
 };
 
+/**
+ * Name of the built-in organization used when no real one is configured.
+ * Neutral on purpose: it is shown in org-scoped views, and it used to carry an
+ * individual's name. Older names are migrated on load.
+ */
+export const DEFAULT_ORG_NAME = 'Default Organization';
+const LEGACY_DEFAULT_ORG_NAMES = new Set(['AURA Organization', 'TSOPHIEA']);
+
 // Default site group that is always present
 const DEFAULT_CONTROLLER: Controller = {
   id: 'default-southeast',
@@ -127,9 +135,9 @@ class TenantService {
       if (savedOrg) {
         this.currentOrg = JSON.parse(savedOrg);
         // Migrate stale org name from previous default
-        if (this.currentOrg && this.currentOrg.name === 'AURA Organization') {
-          this.currentOrg.name = 'TSOPHIEA';
-          this.currentOrg.slug = 'tsophiea';
+        if (this.currentOrg && LEGACY_DEFAULT_ORG_NAMES.has(this.currentOrg.name)) {
+          this.currentOrg.name = DEFAULT_ORG_NAME;
+          this.currentOrg.slug = 'default';
           this.saveToStorage();
         }
       }
@@ -425,8 +433,8 @@ class TenantService {
     if (controller && !this.currentOrg) {
       this.currentOrg = {
         id: controller.org_id || 'default-org',
-        name: 'TSOPHIEA',
-        slug: 'tsophiea',
+        name: DEFAULT_ORG_NAME,
+        slug: 'default',
       };
     }
 

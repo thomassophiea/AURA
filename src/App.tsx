@@ -186,7 +186,7 @@ import { UserMenu } from './components/UserMenu';
 import { DevModePinDialog } from './components/DevModePinDialog';
 import { useDevModeUnlock } from './hooks/useDevModeUnlock';
 import { NotificationsMenu } from './components/NotificationsMenu';
-import { tenantService } from './services/tenantService';
+import { DEFAULT_ORG_NAME, tenantService } from './services/tenantService';
 import { notificationService } from './services/notificationService';
 import { getAlerts as getSentinelAlerts } from './services/sentinelService';
 import { DevToolsPanel } from './components/DevToolsPanel';
@@ -1596,7 +1596,9 @@ export default function App() {
                     const controller = tenantService.getCurrentController();
                     const org = tenantService.getCurrentOrganization();
                     if (navigationScope === 'global') {
-                      const orgLabel = (org?.name || 'AURA').toUpperCase();
+                      // The built-in default org has no real name worth a badge.
+                      if (!org?.name || org.name === DEFAULT_ORG_NAME) return null;
+                      const orgLabel = org.name.toUpperCase();
                       return (
                         <span
                           className="text-muted-foreground text-xs font-semibold bg-background border border-border rounded px-2 py-0.5 truncate max-w-[220px]"
