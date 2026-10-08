@@ -450,6 +450,11 @@ export async function activateOptimization({
   const permitted = assertActionPermitted(action);
   if (!permitted.allowed) return { ok: false, error: permitted.detail };
 
+  // Remembered so a run that changes nothing can be put back exactly where it
+  // was, rather than left claiming an optimization is active.
+  const priorState = experiment.state;
+  const priorTriggerSource = experiment.trigger_source ?? null;
+
   experiment = await repo.updateExperiment(experimentId, {
     state: 'darkness_detected',
     trigger_source: triggerSource,
@@ -494,6 +499,12 @@ export async function activateOptimization({
     });
   }
 
+  // Every Treatment AP lands in exactly one of these, with a reason. The
+  // operator sees these counts; "applied" means a controller write was issued
+  // AND read back as stored.
+  const applied = [];
+  const skipped = refused.map((r) => ({ serial: r.serial, reason: r.reason, detail: r.detail }));
+  const failed = [];
   const results = [];
   if (applyWrites) {
     for (const target of allowed) {
@@ -512,6 +523,11 @@ export async function activateOptimization({
             detail: { reason: 'clients_present' },
           });
           results.push({ serial: target.serial, ok: false, skipped: 'clients_present' });
+          skipped.push({
+            serial: target.serial,
+            reason: 'clients_present',
+            detail: `Radio ${busy.map((b) => b.radioIndex).join(',')} has associated clients.`,
+          });
           continue;
         }
       }
@@ -534,6 +550,23 @@ export async function activateOptimization({
       if (!outcome.noop) {
         await repo.recordApplyResult({
           experimentId, serial: target.serial, verified: outcome.verified, error: outcome.error ?? null,
+        });
+      }
+
+      if (outcome.noop) {
+        // Nothing was written: the radio was already in the target state.
+        skipped.push({
+          serial: target.serial,
+          reason: 'already_in_target_state',
+          detail: `Radio ${action.radioIndexes.join(',')} was already disabled; nothing to write.`,
+        });
+      } else if (outcome.verified) {
+        applied.push({ serial: target.serial, effective: outcome.effective !== false });
+      } else {
+        failed.push({
+          serial: target.serial,
+          reason: outcome.stage ? `${outcome.stage}_failed` : 'write_failed',
+          detail: outcome.error ?? 'Change could not be verified.',
         });
       }
 
@@ -578,8 +611,51 @@ export async function activateOptimization({
     });
   }
 
-  const effectiveCount = results.filter((r) => r.ok).length;
-  const configuredCount = results.filter((r) => r.configVerified).length;
+  const effectiveCount = applied.filter((r) => r.effective).length;
+  const configuredCount = applied.length;
+  const counts = {
+    targetCount: treatmentSerials.length,
+    appliedCount: applied.length,
+    effectiveCount,
+    skippedCount: skipped.length,
+    failedCount: failed.length,
+  };
+
+  if (applyWrites && applied.length === 0) {
+    // Nothing changed on any AP. Reporting this as an active optimization would
+    // put a saving claim on top of hardware that was never touched, so the run
+    // goes back to where it was and says why.
+    const reverted = await repo.updateExperiment(experimentId, {
+      state: priorState,
+      trigger_source: priorTriggerSource,
+    });
+    const reasons = summarizeReasons([...skipped, ...failed]);
+    const error =
+      treatmentSerials.length === 0
+        ? 'No Treatment APs are enrolled; nothing was applied.'
+        : `No Treatment AP was changed (0/${treatmentSerials.length} applied)` +
+          (reasons ? `: ${reasons}.` : '.');
+    await event({
+      experimentId, sourceId: source.id, kind: 'optimization_not_applied', severity: 'warning',
+      side: 'treatment',
+      message: `${error} The experiment stays in '${priorState}'.`,
+      detail: { ...counts, applied, skipped, failed, action },
+      provenance: triggerSource === 'simulated' ? 'simulated' : 'live',
+    });
+    return {
+      ok: false,
+      action: 'not_applied',
+      error,
+      experiment: reverted,
+      ...counts,
+      applied,
+      skipped,
+      failed,
+      results,
+      refused,
+    };
+  }
+
   const updated = await repo.updateExperiment(experimentId, {
     state: 'optimization_active',
     treatment_start: now.toISOString(),
@@ -592,14 +668,36 @@ export async function activateOptimization({
 
   await event({
     experimentId, sourceId: source.id, kind: 'optimization_activated', side: 'treatment',
-    message:
-      `Energy Optimization applied to ${configuredCount}/${treatmentSerials.length} Treatment AP(s); ` +
-      `${effectiveCount} confirmed off the air so far.`,
-    detail: { results, refused, action },
+    message: applyWrites
+      ? `Energy Optimization applied to ${configuredCount}/${treatmentSerials.length} Treatment AP(s); ` +
+        `${effectiveCount} confirmed off the air so far` +
+        (skipped.length + failed.length > 0
+          ? `; ${skipped.length} skipped, ${failed.length} failed (${summarizeReasons([...skipped, ...failed])}).`
+          : '.')
+      : 'Simulation mode: optimization marked active with no controller writes.',
+    detail: { ...counts, applied, skipped, failed, results, refused, action },
     provenance: triggerSource === 'simulated' ? 'simulated' : 'live',
   });
 
-  return { ok: true, action: 'activated', experiment: updated, results, refused };
+  return {
+    ok: true,
+    action: 'activated',
+    simulated: !applyWrites,
+    experiment: updated,
+    ...counts,
+    applied,
+    skipped,
+    failed,
+    results,
+    refused,
+  };
+}
+
+/** "2 clients_present, 1 already_in_target_state" — for messages and toasts. */
+export function summarizeReasons(rows) {
+  const counts = new Map();
+  for (const r of rows ?? []) counts.set(r.reason, (counts.get(r.reason) ?? 0) + 1);
+  return [...counts.entries()].map(([reason, n]) => `${n} ${reason}`).join(', ');
 }
 
 /* ----------------------------------------------------------------- restore */
@@ -616,7 +714,10 @@ export async function restoreTreatment({ source, session, experimentId, reason =
   if (!experiment) return { ok: false, error: 'Experiment not found.' };
 
   const rollback = await repo.listRollback(experimentId);
-  const outstanding = rollback.filter((r) => r.appliedAt && !r.restoreVerified);
+  // Includes APs whose apply outcome is unknown (write issued, process died
+  // before the result was recorded). Restoring one the write never reached is a
+  // verified no-op, so this is always safe.
+  const outstanding = rollback.filter(repo.needsRestore);
 
   await event({
     experimentId, sourceId: source.id, kind: 'recovery_requested', side: 'treatment',
