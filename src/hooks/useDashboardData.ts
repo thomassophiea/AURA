@@ -1,16 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Dashboard API responses from Campus Controller are untyped JSON
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { whenAutoRefresh } from '../lib/autoRefresh';
 import { toast } from 'sonner';
-import { apiService } from '../services/api';
+import { apiService, READ_TIMEOUT_MS } from '../services/api';
 import { throughputService, ThroughputSnapshot } from '../services/throughput';
 import { getVendor, getVendorIcon } from '../services/oui-lookup';
 import { recordNetworkMetrics } from '../services/aiBaselineService';
 import { useGlobalFilters } from './useGlobalFilters';
 import { useOperationalContext } from './useOperationalContext';
 import { controllerDurationFor, type ResolvedTimeRange } from '../lib/timeRange';
-import { monitoringHistory } from '../services/monitoringHistory';
+import { monitoringHistory, buildMonitoringHeaders } from '../services/monitoringHistory';
+import { advanceLiveTimeWindows } from './useSelectedTimeRange';
 import {
   deriveRangedNetworkStats,
   EMPTY_RANGED_STATS,
@@ -18,6 +19,9 @@ import {
   type RangedNetworkStats,
 } from '../lib/rangedNetworkStats';
 import { BAND_COLORS, SNR_QUALITY_COLORS } from '../config/colorPalette';
+
+/** `/v1/stations` is unpaginated and slow on a loaded Gateway; see READ_TIMEOUT_MS. */
+const STATIONS_TIMEOUT_MS = READ_TIMEOUT_MS;
 
 /**
  * The one online/offline decision for an AP row. Extracted so widgets
@@ -199,7 +203,13 @@ export interface Notification {
 export interface DashboardData {
   loading: boolean;
   refreshing: boolean;
+  /** When the primary data (APs and clients) was last successfully read. */
   lastUpdate: Date | null;
+  /**
+   * Set when the most recent load could not read the primary data. The
+   * previous figures stay on screen; this says they are not current.
+   */
+  loadError: string | null;
   accessPoints: AccessPoint[];
   apStats: {
     total: number;
@@ -300,6 +310,14 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  // Bumped on every deliberate refresh so window-scoped history refetches even
+  // when the window itself did not move (a finished calendar day).
+  const [refreshNonce, setRefreshNonce] = useState(0);
+  // Read inside loadDashboardData without making it a dependency, which would
+  // re-run the mount effect (and reload the controller) on every range change.
+  const isLiveRef = useRef(range.isLive);
+  isLiveRef.current = range.isLive;
 
   const [accessPoints, setAccessPoints] = useState<AccessPoint[]>([]);
   const [apStats, setApStats] = useState({
@@ -379,14 +397,17 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
     return filters.site !== 'all' ? filters.site : undefined;
   }, [operationalCtx.mode, operationalCtx.siteId, filters.site]);
 
+  // The fetchers below REJECT on failure rather than resolving to []. An empty
+  // list is a real answer ("this site has no APs"); a failed request is not,
+  // and resolving it as [] is how a Gateway blip became a dashboard of zeros
+  // stamped "Updated just now".
   const fetchAccessPoints = useCallback(async (): Promise<AccessPoint[]> => {
     const siteFilter = getActiveSiteFilter();
     try {
-      const aps = await apiService.getAccessPointsBySite(siteFilter);
-      return aps;
+      return await apiService.getAccessPointsBySite(siteFilter);
     } catch (error) {
       console.error('[Dashboard] Error fetching APs:', error);
-      return [];
+      throw error;
     }
   }, [getActiveSiteFilter]);
 
@@ -398,7 +419,7 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
           const response = await apiService.makeAuthenticatedRequest(
             `/v3/sites/${siteFilter}/stations`,
             { method: 'GET' },
-            15000
+            STATIONS_TIMEOUT_MS
           );
           if (response.ok) {
             const data = await response.json();
@@ -418,7 +439,7 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
           const response = await apiService.makeAuthenticatedRequest(
             '/v1/stations',
             { method: 'GET' },
-            15000
+            STATIONS_TIMEOUT_MS
           );
           if (response.ok) {
             const data = await response.json();
@@ -436,14 +457,15 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
           /* fall through */
         }
 
-        console.warn('[Dashboard] Station fetch failed for site, returning empty (strict mode)');
-        return [];
+        // Strict mode: never fall back to the whole estate. But both lookups
+        // failing is a failure, not an empty site.
+        throw new Error('Station fetch failed for site');
       }
 
       const response = await apiService.makeAuthenticatedRequest(
         '/v1/stations',
         { method: 'GET' },
-        15000
+        STATIONS_TIMEOUT_MS
       );
       if (!response.ok) throw new Error(`API returned ${response.status}`);
       const data = await response.json();
@@ -452,7 +474,7 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
       return stns;
     } catch (error) {
       console.error('[Dashboard] Error fetching stations:', error);
-      return [];
+      throw error;
     }
   }, [getActiveSiteFilter]);
 
@@ -460,8 +482,12 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
     const siteFilter = getActiveSiteFilter();
     try {
       if (siteFilter) {
+        // A successful empty answer from the site-scoped lookup is a real
+        // answer; only when every lookup errored is this a failure.
+        let siteLookupAnswered = false;
         try {
           const svcs = await apiService.getServicesBySite(siteFilter);
+          siteLookupAnswered = true;
           if (svcs.length > 0) {
             return svcs;
           }
@@ -494,8 +520,8 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
           /* fall through */
         }
 
-        console.warn('[Dashboard] Service fetch failed for site, returning empty (strict mode)');
-        return [];
+        if (siteLookupAnswered) return [];
+        throw new Error('Service fetch failed for site');
       }
 
       const response = await apiService.makeAuthenticatedRequest(
@@ -510,7 +536,7 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
       return svcs;
     } catch (error) {
       console.error('[Dashboard] Error fetching services:', error);
-      return [];
+      throw error;
     }
   }, [getActiveSiteFilter]);
 
@@ -571,8 +597,11 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
         ? await filterNotificationsBySite(allNotifs, siteFilter)
         : allNotifs;
       return notifs;
-    } catch {
-      return [];
+    } catch (error) {
+      // Rejected, not []: the caller keeps the alert counts already on screen
+      // instead of replacing them with zero because one read failed.
+      console.warn('[Dashboard] Notifications unavailable:', error);
+      throw error;
     }
   }, [getActiveSiteFilter, filterNotificationsBySite]);
 
@@ -1153,8 +1182,12 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
    */
   const fetchServicesSummary = useCallback(async (): Promise<ServicesSummary | null> => {
     try {
+      // Same Authorization + X-Controller-URL as every other server route.
+      // Without the controller header the summary was assembled from the
+      // default Gateway while the rest of the page showed the selected one.
       const response = await fetch('/api/v1/services/summary', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('access_token') ?? ''}` },
+        headers: buildMonitoringHeaders(),
+        cache: 'no-store',
       });
       return response.ok ? ((await response.json()) as ServicesSummary) : null;
     } catch {
@@ -1285,6 +1318,12 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
           // A deliberate refresh must reach the controller rather than replay
           // the burst cache, which exists to collapse navigation storms.
           apiService.clearBurstCache();
+          // …and must move a live window's end to now, so the window-scoped
+          // headline tiles and history refetch too. Without this Refresh
+          // re-read the controller snapshot but left every tile on the window
+          // resolved when the page mounted. A finished day does not move.
+          if (isLiveRef.current) advanceLiveTimeWindows();
+          setRefreshNonce((n) => n + 1);
         } else {
           setLoading(true);
         }
@@ -1320,15 +1359,33 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
           processStations(stationsResult.value, servicesData);
         }
 
-        setLastUpdate(new Date());
+        // A failed fetch leaves the previous figures on screen (nothing above
+        // ran for it) and the timestamp where it was: "Updated" must mean the
+        // primary data really was re-read, not merely that we tried.
+        const failedParts = [
+          apsResult.status === 'rejected' ? 'access points' : null,
+          stationsResult.status === 'rejected' ? 'clients' : null,
+        ].filter((part): part is string => part !== null);
 
-        if (!isRefresh) {
-          fetchNotifications()
-            .then((notifs) => {
-              if (notifs) processNotifications(notifs);
-            })
-            .catch(() => {});
+        if (failedParts.length === 0) {
+          setLastUpdate(new Date());
+          setLoadError(null);
+        } else {
+          const message =
+            failedParts.length === 2
+              ? 'Could not reach the Gateway — showing the last data loaded'
+              : `Could not load ${failedParts[0]} — showing the last data loaded`;
+          setLoadError(message);
+          toast.error(message, { id: 'dashboard-load-error' });
         }
+
+        // Alerts are re-read on Refresh too; skipping them left the alert
+        // counts frozen at whatever they were when the page mounted.
+        fetchNotifications()
+          .then((notifs) => {
+            if (notifs) processNotifications(notifs);
+          })
+          .catch(() => {});
 
         fetchRFQIData().catch(() => {});
 
@@ -1338,7 +1395,7 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
           .then((s) => setSites((prev) => (prev.length > 0 ? prev : s)))
           .catch(() => {});
 
-        if (isRefresh) {
+        if (isRefresh && failedParts.length === 0) {
           toast.success('Dashboard refreshed');
         }
       } catch (error) {
@@ -1434,7 +1491,7 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
     return () => {
       active = false;
     };
-  }, [range.startIso, range.endIso, range.bucketMinutes, getActiveSiteFilter]);
+  }, [range.startIso, range.endIso, range.bucketMinutes, getActiveSiteFilter, refreshNonce]);
 
   useEffect(() => {
     if (apStats.total > 0 && clientStats.total > 0 && rfqiData.length > 0) {
@@ -1452,6 +1509,7 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
     loading,
     refreshing,
     lastUpdate,
+    loadError,
     accessPoints,
     apStats,
     stations,

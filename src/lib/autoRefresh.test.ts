@@ -20,7 +20,12 @@ Object.defineProperty(globalThis, 'localStorage', {
   configurable: true,
 });
 
-import { isAutoRefreshEnabled, setAutoRefreshEnabled, whenAutoRefresh } from './autoRefresh';
+import {
+  isAutoRefreshEnabled,
+  onReturnAfterHidden,
+  setAutoRefreshEnabled,
+  whenAutoRefresh,
+} from './autoRefresh';
 
 beforeEach(() => {
   localStorage.clear();
@@ -96,5 +101,75 @@ describe('whenAutoRefresh', () => {
   it('returns undefined when suppressed', () => {
     const guarded = whenAutoRefresh(() => 'refreshed');
     expect(guarded()).toBeUndefined();
+  });
+});
+
+describe('onReturnAfterHidden', () => {
+  function setHidden(hidden: boolean) {
+    Object.defineProperty(document, 'hidden', { value: hidden, configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-08T12:00:00Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('refreshes when the tab returns after being hidden for at least a minute', () => {
+    const refresh = vi.fn();
+    const stop = onReturnAfterHidden(refresh);
+    setHidden(true);
+    vi.setSystemTime(new Date('2026-10-08T12:01:05Z'));
+    setHidden(false);
+    expect(refresh).toHaveBeenCalledTimes(1);
+    stop();
+  });
+
+  it('does nothing for a brief switch away', () => {
+    const refresh = vi.fn();
+    const stop = onReturnAfterHidden(refresh);
+    setHidden(true);
+    vi.setSystemTime(new Date('2026-10-08T12:00:20Z'));
+    setHidden(false);
+    expect(refresh).not.toHaveBeenCalled();
+    stop();
+  });
+
+  it('is independent of the auto-refresh policy (which stays off) and never fires while idle', () => {
+    expect(isAutoRefreshEnabled()).toBe(false);
+    const refresh = vi.fn();
+    const stop = onReturnAfterHidden(refresh);
+    // A visible, idle page: time passes, nothing happens.
+    vi.advanceTimersByTime(10 * 60_000);
+    expect(refresh).not.toHaveBeenCalled();
+    setHidden(true);
+    vi.setSystemTime(new Date('2026-10-08T12:30:00Z'));
+    setHidden(false);
+    expect(refresh).toHaveBeenCalledTimes(1);
+    stop();
+  });
+
+  it('stops listening after unsubscribe', () => {
+    const refresh = vi.fn();
+    const stop = onReturnAfterHidden(refresh);
+    stop();
+    setHidden(true);
+    vi.setSystemTime(new Date('2026-10-08T12:05:00Z'));
+    setHidden(false);
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('honours a custom threshold', () => {
+    const refresh = vi.fn();
+    const stop = onReturnAfterHidden(refresh, 5_000);
+    setHidden(true);
+    vi.setSystemTime(new Date('2026-10-08T12:00:06Z'));
+    setHidden(false);
+    expect(refresh).toHaveBeenCalledTimes(1);
+    stop();
   });
 });

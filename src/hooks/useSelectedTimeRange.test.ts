@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 
-import { useSelectedTimeRange, clearCoverageCache } from './useSelectedTimeRange';
+import {
+  useSelectedTimeRange,
+  clearCoverageCache,
+  advanceLiveTimeWindows,
+} from './useSelectedTimeRange';
 import { setGlobalFilters } from './useGlobalFilters';
 import { localDateKey, localDayAtOffset } from '../lib/timeRange';
 import { monitoringHistory } from '../services/monitoringHistory';
@@ -200,6 +204,41 @@ describe('useSelectedTimeRange — the clock', () => {
 
     // Same object identity, not merely equal values: a new object would restart
     // every downstream fetch keyed on the range.
+    expect(result.current.range).toBe(before);
+  });
+});
+
+describe('useSelectedTimeRange — deliberate refresh', () => {
+  it('advances a held live window on every mounted instance when Refresh asks it to', () => {
+    setAutoRefreshEnabled(false);
+    const bar = renderHook(() => useSelectedTimeRange({ withCoverage: false }));
+    const page = renderHook(() => useSelectedTimeRange({ withCoverage: false }));
+    const before = page.result.current.range.endIso;
+
+    act(() => {
+      vi.setSystemTime(new Date(NOW.getTime() + 10 * 60_000));
+    });
+    // Idle: nothing moved.
+    expect(page.result.current.range.endIso).toBe(before);
+
+    act(() => advanceLiveTimeWindows());
+
+    expect(page.result.current.range.endIso).not.toBe(before);
+    expect(new Date(page.result.current.range.endIso).getTime()).toBeCloseTo(Date.now(), -3);
+    expect(bar.result.current.range.endIso).toBe(page.result.current.range.endIso);
+  });
+
+  it('leaves a finished calendar day untouched (same identity) on Refresh', () => {
+    setGlobalFilters({ timeRange: 'day-1' });
+    vi.advanceTimersByTime(400);
+    const { result } = renderHook(() => useSelectedTimeRange({ withCoverage: false }));
+    const before = result.current.range;
+
+    act(() => {
+      vi.setSystemTime(new Date(NOW.getTime() + 10 * 60_000));
+      advanceLiveTimeWindows();
+    });
+
     expect(result.current.range).toBe(before);
   });
 });

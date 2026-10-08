@@ -70,3 +70,41 @@ export function whenAutoRefresh<T extends (...args: never[]) => unknown>(
     return callback(...args) as ReturnType<T>;
   };
 }
+
+/** How long a tab must have been hidden before returning to it refreshes the data. */
+export const RETURN_REFRESH_MIN_HIDDEN_MS = 60_000;
+
+/**
+ * Run `callback` when the viewer comes back to a tab that has been hidden for
+ * at least `minHiddenMs`.
+ *
+ * This is deliberately NOT gated on `isAutoRefreshEnabled()`. The policy above
+ * forbids repainting under an idle viewer; a viewer switching back to the tab
+ * after a minute or more away is the opposite of idle — they are arriving, and
+ * a page still showing figures from before they left is the stale-data bug.
+ * A brief switch away (shorter than the threshold) does nothing, so flicking
+ * between windows mid-demo never reloads the page.
+ *
+ * Returns an unsubscribe function, suitable as a `useEffect` cleanup.
+ */
+export function onReturnAfterHidden(
+  callback: () => void,
+  minHiddenMs: number = RETURN_REFRESH_MIN_HIDDEN_MS
+): () => void {
+  if (typeof document === 'undefined') return () => undefined;
+
+  let hiddenAt: number | null = document.hidden ? Date.now() : null;
+
+  const handleVisibilityChange = () => {
+    if (document.hidden) {
+      hiddenAt = Date.now();
+      return;
+    }
+    const wasHiddenFor = hiddenAt === null ? 0 : Date.now() - hiddenAt;
+    hiddenAt = null;
+    if (wasHiddenFor >= minHiddenMs) callback();
+  };
+
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+  return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+}

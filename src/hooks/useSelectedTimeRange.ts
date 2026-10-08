@@ -44,6 +44,26 @@ import type { CoverageResponse } from '../types/monitoring';
 /** How often the clock is re-examined. Bounds only move on a calendar rollover, or under auto-refresh. */
 const LIVE_TICK_MS = 60_000;
 
+/** Fired to move every mounted live window's "now" to the present. */
+export const ADVANCE_TIME_WINDOW_EVENT = 'aura:advance-time-window';
+
+/**
+ * Move every mounted live window's `end` to the present.
+ *
+ * This is what an explicit Refresh (or returning to a long-hidden tab) calls.
+ * Without it the held-still clock below means "Refresh" re-reads the *same*
+ * window — the headline tiles keep the figures from whenever the page mounted.
+ *
+ * Every instance of the hook listens, so the filter bar's label and the page's
+ * fetches advance together. A finished calendar day resolves to the same bounds
+ * for any `now` on that day, so its range identity does not change and nothing
+ * refetches for it.
+ */
+export function advanceLiveTimeWindows(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(ADVANCE_TIME_WINDOW_EVENT));
+}
+
 /**
  * Coverage is shared, not per-component.
  *
@@ -158,6 +178,14 @@ export function useSelectedTimeRange(
       });
     }, LIVE_TICK_MS);
     return () => clearInterval(timer);
+  }, []);
+
+  // A deliberate refresh advances the clock unconditionally. Only a live window
+  // produces new bounds from it (see advanceLiveTimeWindows).
+  useEffect(() => {
+    const advance = () => setNow(new Date());
+    window.addEventListener(ADVANCE_TIME_WINDOW_EVENT, advance);
+    return () => window.removeEventListener(ADVANCE_TIME_WINDOW_EVENT, advance);
   }, []);
 
   const resolved = resolveTimeRange(token, now);

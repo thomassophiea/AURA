@@ -26,6 +26,8 @@ interface DashboardHeroProps {
   timeRange: ResolvedTimeRange;
   /** Completeness note for the selected window, when there is one. */
   timeRangeCoverage?: { severity: 'info' | 'warning'; message: string } | null;
+  /** Set when the last load failed; the figures shown are from `lastUpdate`. */
+  loadError?: string | null;
 }
 
 function DashboardHeroComponent({
@@ -36,6 +38,7 @@ function DashboardHeroComponent({
   onRefresh,
   timeRange,
   timeRangeCoverage = null,
+  loadError = null,
 }: DashboardHeroProps) {
   const isHistorical = !timeRange.isLive;
 
@@ -69,6 +72,14 @@ function DashboardHeroComponent({
         {lastUpdate && (
           <span className="whitespace-nowrap text-xs text-muted-foreground">
             Updated <RelativeTime date={lastUpdate} />
+          </span>
+        )}
+        {loadError && (
+          <span
+            className="whitespace-nowrap text-xs text-[color:var(--status-warning)]"
+            title={loadError}
+          >
+            {lastUpdate ? 'Last refresh failed' : 'Load failed'}
           </span>
         )}
         <Button onClick={onRefresh} variant="outline" size="sm" disabled={refreshing}>
