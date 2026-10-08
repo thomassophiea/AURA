@@ -250,17 +250,36 @@ export async function listDevices(experimentId) {
 
 /* ----------------------------------------------------------------- rollback */
 
+/**
+ * Marker written to `apply_error` when the rollback is captured — which is
+ * immediately BEFORE the controller PUT. `recordApplyResult` overwrites it.
+ *
+ * It closes a gap: `applied_at` is only set after the write has been verified,
+ * so a process that died between the PUT and that record left a row with
+ * `applied_at IS NULL`, and every restore path skipped an AP that may well have
+ * been changed. A row still carrying this marker is "apply outcome unknown" and
+ * is restored like an applied one. Restoring an AP the write never reached is a
+ * verified no-op (restoreRadioState compares against the captured original), so
+ * including it is always safe and restore stays idempotent.
+ *
+ * Stored in an existing column on purpose: no migration is needed.
+ */
+export const APPLY_PENDING_MARKER = 'apply_pending: controller write issued, outcome not yet recorded';
+
 export async function captureRollback({ experimentId, serial, original, intended }) {
   await query(
-    `INSERT INTO energy_experiment_rollback (experiment_id, ap_serial, original, intended)
-     VALUES ($1,$2,$3::jsonb,$4::jsonb)
+    `INSERT INTO energy_experiment_rollback (experiment_id, ap_serial, original, intended, apply_error)
+     VALUES ($1,$2,$3::jsonb,$4::jsonb,$5)
      ON CONFLICT (experiment_id, ap_serial) DO UPDATE
-       SET intended = EXCLUDED.intended
+       SET intended = EXCLUDED.intended,
+           apply_error = EXCLUDED.apply_error,
+           -- A fresh write supersedes any earlier restore of this AP.
+           restore_verified = false
      -- The ORIGINAL is never overwritten. A second apply within one experiment
      -- must still roll back to the pre-experiment state, not to the state the
      -- first apply left behind.
      `,
-    [experimentId, serial, JSON.stringify(original), JSON.stringify(intended ?? null)]
+    [experimentId, serial, JSON.stringify(original), JSON.stringify(intended ?? null), APPLY_PENDING_MARKER]
   );
 }
 
@@ -282,37 +301,45 @@ export async function recordRestoreResult({ experimentId, serial, verified, erro
   );
 }
 
+/** True for a rollback row that needs restoring: applied, or apply outcome unknown. */
+export function needsRestore(row) {
+  return Boolean((row?.appliedAt || row?.applyPending) && !row?.restoreVerified);
+}
+
 export async function listRollback(experimentId) {
   const { rows } = await query(
     `SELECT ap_serial AS "apSerial", captured_at AS "capturedAt", original, intended,
-            applied_at AS "appliedAt", apply_verified AS "applyVerified", apply_error AS "applyError",
+            applied_at AS "appliedAt", apply_verified AS "applyVerified",
+            CASE WHEN apply_error = $2 THEN NULL ELSE apply_error END AS "applyError",
+            (applied_at IS NULL AND apply_error = $2) AS "applyPending",
             restore_attempted_at AS "restoreAttemptedAt", restore_verified AS "restoreVerified",
             restore_error AS "restoreError"
      FROM energy_experiment_rollback WHERE experiment_id = $1 ORDER BY ap_serial`,
-    [experimentId]
+    [experimentId, APPLY_PENDING_MARKER]
   );
   return rows;
 }
 
 /**
- * APs anywhere in this source that were changed and are not confirmed restored,
- * across ALL experiments. This is the query that answers "is any lab AP still
- * left in a state we put it in?" after a restart, and it deliberately ignores
- * experiment state — a 'complete' experiment with an unrestored AP is worse,
- * not better.
+ * APs anywhere in this source that were changed — or whose change is in an
+ * unknown state — and are not confirmed restored, across ALL experiments. This
+ * is the query that answers "is any lab AP still left in a state we put it in?"
+ * after a restart, and it deliberately ignores experiment state — a 'complete'
+ * experiment with an unrestored AP is worse, not better.
  */
 export async function listOutstandingRestores(sourceId) {
   const { rows } = await query(
     `SELECT r.experiment_id AS "experimentId", r.ap_serial AS "apSerial", r.original,
             r.applied_at AS "appliedAt", r.restore_attempted_at AS "restoreAttemptedAt",
+            (r.applied_at IS NULL AND r.apply_error = $2) AS "applyPending",
             r.restore_error AS "restoreError", e.name AS "experimentName", e.state
      FROM energy_experiment_rollback r
      JOIN energy_experiments e ON e.id = r.experiment_id
      WHERE e.monitored_source_id = $1
-       AND r.applied_at IS NOT NULL
+       AND (r.applied_at IS NOT NULL OR r.apply_error = $2)
        AND r.restore_verified = false
-     ORDER BY r.applied_at DESC`,
-    [sourceId]
+     ORDER BY COALESCE(r.applied_at, r.captured_at) DESC`,
+    [sourceId, APPLY_PENDING_MARKER]
   );
   return rows;
 }
@@ -450,8 +477,17 @@ export async function fetchHistoryCoverage({ sourceId, siteIds }) {
   return rows;
 }
 
-/** Per-AP latest measured watts + radio tx power, for the drill-down. */
-export async function fetchApCurrentState({ sourceId, siteIds }) {
+/**
+ * Per-AP latest measured watts + radio tx power, for the drill-down.
+ *
+ * Bounded to the last `sinceSeconds` (default 15 min): this runs on the 15s
+ * experiment poll, and "current" state older than that is not current. Served
+ * by idx_metric_samples_source_site_family_observed
+ * (monitored_source_id, site_id, metric_family, observed_at DESC).
+ */
+export const CURRENT_STATE_SINCE_SECONDS = 15 * 60;
+
+export async function fetchApCurrentState({ sourceId, siteIds, sinceSeconds = CURRENT_STATE_SINCE_SECONDS }) {
   const { rows } = await query(
     `SELECT DISTINCT ON (device_external_id, metric_name, COALESCE(radio_external_id,''))
             device_external_id AS "apSerial", site_id AS "siteId", metric_name AS "metricName",
@@ -461,8 +497,9 @@ export async function fetchApCurrentState({ sourceId, siteIds }) {
      WHERE monitored_source_id = $1
        AND metric_family = '${FAMILY}'
        AND site_id = ANY($2::text[])
+       AND observed_at >= now() - ($3::int * interval '1 second')
      ORDER BY device_external_id, metric_name, COALESCE(radio_external_id,''), observed_at DESC`,
-    [sourceId, siteIds]
+    [sourceId, siteIds, sinceSeconds]
   );
   return rows;
 }
@@ -486,7 +523,15 @@ export async function fetchApCurrentState({ sourceId, siteIds }) {
  * then absent from the projection too — see `projectTreatmentRows`, which skips
  * APs with no baseline rather than inventing one.
  */
-export async function fetchApBaselineWatts({ sourceId, siteId, before, windowSeconds = 3600 }) {
+export const BASELINE_FALLBACK_LOOKBACK_SECONDS = 24 * 3600;
+
+export async function fetchApBaselineWatts({
+  sourceId,
+  siteId,
+  before,
+  windowSeconds = 3600,
+  fallbackLookbackSeconds = BASELINE_FALLBACK_LOOKBACK_SECONDS,
+}) {
   const { rows } = await query(
     `WITH windowed AS (
        SELECT device_external_id AS serial,
@@ -516,6 +561,10 @@ export async function fetchApBaselineWatts({ sourceId, siteId, before, windowSec
          AND metric_name = 'ap.power_watts'
          AND site_id = $2
          AND observed_at < $3::timestamptz
+         -- Bounded: a "most recent sample" from weeks ago is not a baseline,
+         -- and this runs on every poll while a demo projection is active.
+         -- Served by idx_metric_samples_energy_ap_state (site_id, metric_name, observed_at).
+         AND observed_at >= $3::timestamptz - ($5::int * interval '1 second')
        ORDER BY device_external_id, observed_at DESC
      )
      SELECT COALESCE(w.serial, f.serial)                   AS "apSerial",
@@ -525,7 +574,7 @@ export async function fetchApBaselineWatts({ sourceId, siteId, before, windowSec
             COALESCE(w.dims, f.dims)                       AS dimensions
      FROM windowed w
      FULL OUTER JOIN fallback f ON f.serial = w.serial`,
-    [sourceId, siteId, before, String(windowSeconds)]
+    [sourceId, siteId, before, String(windowSeconds), fallbackLookbackSeconds]
   );
   return rows.map((r) => ({
     apSerial: r.apSerial,

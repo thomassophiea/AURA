@@ -13,6 +13,7 @@ import { resolveApState } from '../powerModel.js';
 import * as repo from './lightRepository.js';
 import { getRatePreferences } from '../energyRepository.js';
 import { listApLightStates as realListApLightStates } from './lightRepository.js';
+import { createApNameResolver } from '../apNameResolver.js';
 
 const STATES = ['bright', 'dim', 'dark', 'unknown'];
 
@@ -27,6 +28,12 @@ export function createLightAwareRouter(options = {}) {
   const upsertPolicy = deps.upsertPolicy ?? repo.upsertPolicy;
   const getObservedDistribution = deps.getObservedDistribution ?? repo.getObservedDistribution;
   const getPrefs = deps.getRatePreferences ?? getRatePreferences;
+  const resolveApNames =
+    deps.resolveApNames ??
+    createApNameResolver({
+      sessionForFn: async (source) =>
+        (await import('../experiment/experimentEngine.js')).sessionFor(source),
+    });
 
   const router = Router();
   const jsonBody = expressJson({ limit: '32kb' });
@@ -46,6 +53,13 @@ export function createLightAwareRouter(options = {}) {
     const rows = await listApLightStates({ sourceId: sourceId(req), siteId });
     const policyRow = (await getPolicy({ sourceId: sourceId(req), siteId })) ?? { enabled: false, policy: {} };
     const now = nowFn();
+    // Only rows still named by serial need a lookup.
+    const unnamed = rows.filter((r) => !r.apName || r.apName === r.serial).map((r) => r.serial);
+    const names = unnamed.length
+      ? await resolveApNames({ sources: req.monitoringScope?.sources ?? [], serials: unnamed }).catch(
+          () => new Map()
+        )
+      : new Map();
     return rows.map((r) => {
       const sensorCapable = supportsLightSensor(r.model);
       const caps = capabilitiesForModel(r.model);
@@ -57,8 +71,11 @@ export function createLightAwareRouter(options = {}) {
       const optimizedWatts = resolveApState(r.watts, opts);
       return {
         serial: r.serial,
-        apName: r.apName,
+        apName: names.get(r.serial) ?? r.apName ?? r.serial,
         siteId: r.siteId,
+        siteName: r.siteName ?? null,
+        // Provenance of currentWatts: 'measured_ap_state' | 'ap_report'.
+        source: r.source ?? null,
         model: r.model,
         sensorCapable,
         lightState: trigger.state,

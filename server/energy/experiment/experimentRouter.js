@@ -18,6 +18,7 @@ import { ingestLightReport } from '../lightAware/lightIngest.js';
 import * as repo from './experimentRepository.js';
 import * as engine from './experimentEngine.js';
 import { discover } from './siteDiscovery.js';
+import { runTriggerEvaluation, runExclusive } from './triggerGuard.js';
 import { assessReadiness } from './readiness.js';
 import { selectDisplayExperiment } from './displayScope.js';
 import { fetchRecentLightSamples, evaluateSide } from './lightSignal.js';
@@ -638,17 +639,36 @@ export function createExperimentRouter(options = {}) {
       const experiment = await repo.getActiveExperiment(source.id);
       if (!experiment) return fail(res, 404, 'No experiment is in flight.');
       const session = await sessionFor(source);
-      const result = await engine.activateOptimization({
-        source,
-        session,
+      // Exclusive with trigger evaluation: an operator click and a sweep must
+      // not both write the same Treatment APs.
+      const result = await runExclusive(() =>
+        engine.activateOptimization({
+          source,
+          session,
+          experimentId: experiment.id,
+          triggerSource: 'manual',
+          provenance: 'live',
+          applyWrites: req.body?.applyWrites !== false,
+          now: nowFn(),
+        })
+      );
+      record(req, 'energy.experiment.activate', {
         experimentId: experiment.id,
-        triggerSource: 'manual',
-        provenance: 'live',
-        applyWrites: req.body?.applyWrites !== false,
-        now: nowFn(),
+        ok: result.ok,
+        appliedCount: result.appliedCount ?? null,
+        skippedCount: result.skippedCount ?? null,
+        failedCount: result.failedCount ?? null,
       });
-      record(req, 'energy.experiment.activate', { experimentId: experiment.id, ok: result.ok });
-      if (!result.ok) return fail(res, 409, result.error);
+      if (!result.ok) {
+        return fail(res, 409, result.error, {
+          appliedCount: result.appliedCount ?? 0,
+          skippedCount: result.skippedCount ?? 0,
+          failedCount: result.failedCount ?? 0,
+          targetCount: result.targetCount ?? null,
+          skipped: result.skipped ?? [],
+          failed: result.failed ?? [],
+        });
+      }
       await engine.finalize({ source, experimentId: experiment.id, now: nowFn() });
       res.json(result);
     })
@@ -662,13 +682,15 @@ export function createExperimentRouter(options = {}) {
         (await repo.listExperiments(source.id, 1))[0]?.id;
       if (!experimentId) return fail(res, 404, 'No experiment to restore.');
       const session = await sessionFor(source);
-      const result = await engine.restoreTreatment({
-        source,
-        session,
-        experimentId,
-        reason: req.body?.reason ?? 'operator_request',
-        now: nowFn(),
-      });
+      const result = await runExclusive(() =>
+        engine.restoreTreatment({
+          source,
+          session,
+          experimentId,
+          reason: req.body?.reason ?? 'operator_request',
+          now: nowFn(),
+        })
+      );
       record(req, 'energy.experiment.restore', {
         experimentId,
         ok: result.ok,
@@ -687,21 +709,26 @@ export function createExperimentRouter(options = {}) {
    */
   router.post(`${BASE}/restore-all`, requireOperator, jsonBody, (req, res) =>
     withSource(req, res, async (source) => {
-      const outstanding = await repo.listOutstandingRestores(source.id);
-      const byExperiment = [...new Set(outstanding.map((o) => o.experimentId))];
       const session = await sessionFor(source);
-      const results = [];
-      for (const experimentId of byExperiment) {
-        results.push(
-          await engine.restoreTreatment({
-            source,
-            session,
-            experimentId,
-            reason: 'emergency_restore_all',
-            now: nowFn(),
-          })
-        );
-      }
+      const { byExperiment, results } = await runExclusive(async () => {
+        // Read inside the guard so an apply that finishes while this waits is
+        // included. Covers applied rows AND rows whose apply outcome is unknown.
+        const outstanding = await repo.listOutstandingRestores(source.id);
+        const ids = [...new Set(outstanding.map((o) => o.experimentId))];
+        const out = [];
+        for (const experimentId of ids) {
+          out.push(
+            await engine.restoreTreatment({
+              source,
+              session,
+              experimentId,
+              reason: 'emergency_restore_all',
+              now: nowFn(),
+            })
+          );
+        }
+        return { byExperiment: ids, results: out };
+      });
       const unverified = results.flatMap((r) => r.unverified ?? []);
       record(req, 'energy.experiment.restore_all', {
         experiments: byExperiment.length,
@@ -866,8 +893,14 @@ export function createExperimentRouter(options = {}) {
         await emit();
         timer = setInterval(() => {
           emit()
-            .then(() => engine.sessionFor(source))
-            .then((session) => engine.evaluateTrigger({ source, session, now: nowFn() }))
+            // Through the SAME single-flight guard as the server's sweep, so a
+            // demo tick and a sweep can never both activate one experiment.
+            .then(() =>
+              runTriggerEvaluation(async () => {
+                const session = await engine.sessionFor(source);
+                return engine.evaluateTrigger({ source, session, now: nowFn() });
+              })
+            )
             .catch(() => undefined);
         }, 15_000);
         if (typeof timer.unref === 'function') timer.unref();

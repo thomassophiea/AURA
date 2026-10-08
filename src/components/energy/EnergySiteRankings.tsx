@@ -4,10 +4,14 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatKwh, formatWatts, formatCurrency } from '@/lib/energyCalc';
 import type { EnergySite } from '@/types/energy';
+import { EnergyLoadError } from './EnergyEmptyState';
 
 interface EnergySiteRankingsProps {
   sites: EnergySite[] | null;
   loading: boolean;
+  /** A failed request — rendered as an error, never as an endless skeleton. */
+  error?: string | null;
+  onRetry?: () => void;
   onSelectSite: (siteId: string) => void;
   /** Resolves a site id to its human-readable name (from the site catalog). */
   siteNameById?: Map<string, string>;
@@ -25,6 +29,8 @@ function siteLabel(site: EnergySite, siteNameById?: Map<string, string>): string
 function EnergySiteRankingsComponent({
   sites,
   loading,
+  error = null,
+  onRetry,
   onSelectSite,
   siteNameById,
   currencySymbol = '$',
@@ -35,13 +41,15 @@ function EnergySiteRankingsComponent({
         <h3 className="text-sm font-semibold text-foreground">Sites by energy use</h3>
       </CardHeader>
       <CardContent>
-        {loading || !sites ? (
+        {error && !loading ? (
+          <EnergyLoadError what="Site rankings" message={error} onRetry={onRetry} compact />
+        ) : loading ? (
           <div className="space-y-2">
             {Array.from({ length: 4 }).map((_, i) => (
               <Skeleton key={i} className="h-8 w-full" />
             ))}
           </div>
-        ) : sites.length === 0 ? (
+        ) : !sites || sites.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">No site data in range.</p>
         ) : (
           <table className="w-full text-sm">

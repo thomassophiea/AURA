@@ -55,6 +55,31 @@ describe('EnergyScenarioBuilder', () => {
     expect(postEnergyScenario).toHaveBeenCalledTimes(1);
   });
 
+  it("sends the page's window and the operator's time zone, and does not label hours UTC", async () => {
+    postEnergyScenario.mockRejectedValue(new Error('stop'));
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    render(
+      <EnergyScenarioBuilder
+        range={{
+          startIso: '2026-08-16T00:00:00.000Z',
+          endIso: '2026-08-17T00:00:00.000Z',
+          label: 'Last 24 hours',
+        }}
+      />
+    );
+    if (zone !== 'UTC' && zone !== 'Etc/UTC') {
+      expect(screen.queryByText(/UTC\)/)).not.toBeInTheDocument();
+    }
+    expect(screen.getByText(new RegExp(`Hours are local time \\(${zone.replace('/', '\\/')}\\)`))).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /run scenario/i }));
+    await waitFor(() => expect(postEnergyScenario).toHaveBeenCalled());
+    expect(postEnergyScenario.mock.calls[0][0]).toMatchObject({
+      windowStart: '2026-08-16T00:00:00.000Z',
+      windowEnd: '2026-08-17T00:00:00.000Z',
+      timeZone: zone,
+    });
+  });
+
   it('shows an error if the scenario fails', async () => {
     const err = new Error('nope');
     postEnergyScenario.mockRejectedValue(err);

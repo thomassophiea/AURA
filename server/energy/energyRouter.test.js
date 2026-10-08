@@ -123,6 +123,62 @@ describe('PUT /api/energy/preferences', () => {
   });
 });
 
+describe('POST /api/energy/scenarios — operator time zone', () => {
+  const samples = async () => [
+    // 02:00Z on 10 Aug is 22:00 the previous evening in New York (EDT).
+    { deviceExternalId: 'AP-1', watts: 2, observedAt: '2026-08-10T02:00:00Z', band: null, channelUtilization: null },
+    { deviceExternalId: 'AP-1', watts: 2, observedAt: '2026-08-10T03:00:00Z', band: null, channelUtilization: null },
+  ];
+
+  it('evaluates policy hours as wall-clock hours in the browser-supplied zone', async () => {
+    const res = await call(buildApp({ fetchPowerSamplesFn: samples }), 'post', '/api/energy/scenarios', {
+      name: 'evening',
+      policy: { disable6GhzHours: [22] },
+      timeZone: 'America/New_York',
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.timeZone).toBe('America/New_York');
+    expect(res.body.savings.percent).toBeCloseTo(25, 4);
+  });
+
+  it('defaults to America/New_York when no zone is sent', async () => {
+    const res = await call(buildApp({ fetchPowerSamplesFn: samples }), 'post', '/api/energy/scenarios', {
+      name: 'utc-hours',
+      policy: { disable6GhzHours: [2] },
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.timeZone).toBe('America/New_York');
+    // 02:00Z is 22:00 local, so a 02:00 policy does not apply.
+    expect(res.body.savings.kwh).toBe(0);
+  });
+
+  it('passes the selected window through and rejects an unknown zone', async () => {
+    let seen = null;
+    const app = buildApp({
+      fetchPowerSamplesFn: async (args) => {
+        seen = args;
+        return samples();
+      },
+    });
+    const ok = await call(app, 'post', '/api/energy/scenarios', {
+      name: 'window',
+      policy: {},
+      windowStart: '2026-08-10T00:00:00.000Z',
+      windowEnd: '2026-08-11T00:00:00.000Z',
+    });
+    expect(ok.status).toBe(200);
+    expect(seen.start).toBe('2026-08-10T00:00:00.000Z');
+    expect(seen.end).toBe('2026-08-11T00:00:00.000Z');
+
+    const bad = await call(app, 'post', '/api/energy/scenarios', {
+      name: 'bad',
+      policy: {},
+      timeZone: 'Mars/Olympus',
+    });
+    expect(bad.status).toBe(400);
+  });
+});
+
 describe('POST /api/energy/scenarios', () => {
   it('replays a policy and returns savings', async () => {
     const app = buildApp({
@@ -134,9 +190,11 @@ describe('POST /api/energy/scenarios', () => {
     const res = await call(app, 'post', '/api/energy/scenarios', {
       name: 'overnight 6ghz',
       policy: { disable6GhzHours: [0, 1, 2, 3, 4, 5] },
+      timeZone: 'UTC',
     });
     expect(res.status).toBe(200);
     expect(res.body.scenarioId).toBe('sc-1');
+    expect(res.body.timeZone).toBe('UTC');
     expect(res.body.savings.percent).toBeCloseTo(25, 4);
     expect(res.body.baseline.dailyProjected).toBeCloseTo(0.048, 6);
     expect(res.body.savings.dailyKwh).toBeCloseTo(0.012, 6);

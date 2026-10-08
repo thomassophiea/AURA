@@ -82,6 +82,8 @@ import { createEnergyRouter } from './server/energy/energyRouter.js';
 import { createLightAwareRouter } from './server/energy/lightAware/router.js';
 import { createExperimentRouter } from './server/energy/experiment/experimentRouter.js';
 import { evaluateTrigger as evaluateEnergyTrigger, sessionFor as energySessionFor } from './server/energy/experiment/experimentEngine.js';
+import { runTriggerEvaluation as runEnergyTriggerEvaluation } from './server/energy/experiment/triggerGuard.js';
+import { createLightSensorAuth } from './server/energy/lightAware/lightSensorAuth.js';
 import { closeOrphanedDemoEpisodes } from './server/energy/experiment/experimentRepository.js';
 import { createGuestsRouter } from './server/guests/guestsRouter.js';
 import { createPpskRouter } from './server/ppsk/ppskRouter.js';
@@ -979,54 +981,62 @@ async function resolveLightSourceId() {
 // lookup and a return.
 const ENERGY_TRIGGER_SWEEP_MS = 30_000;
 let energyTriggerSweep = null;
-let energyTriggerRunning = false;
 
+// One process-wide single-flight guard (server/energy/experiment/triggerGuard.js)
+// shared with the demo override timer and the operator activate/restore routes,
+// so no two evaluations can ever drive the same experiment concurrently.
 async function runEnergyTriggerSweep() {
-  if (energyTriggerRunning || !isDatabaseConfigured()) return;
-  energyTriggerRunning = true;
-  try {
-    const { listSources } = await import('./server/monitoring/sourceRepository.js');
-    const sources = await listSources({ enabledOnly: true });
-    for (const source of sources) {
-      const session = await energySessionFor(source);
-      await evaluateEnergyTrigger({ source, session });
+  if (!isDatabaseConfigured()) return;
+  await runEnergyTriggerEvaluation(async () => {
+    try {
+      const { listSources } = await import('./server/monitoring/sourceRepository.js');
+      const sources = await listSources({ enabledOnly: true });
+      for (const source of sources) {
+        const session = await energySessionFor(source);
+        await evaluateEnergyTrigger({ source, session });
+      }
+    } catch (error) {
+      // A trigger sweep that throws must not take the web process with it; the
+      // next sweep retries and the experiment stays exactly where it was.
+      console.warn('[energy-trigger] sweep skipped:', error?.message);
     }
-  } catch (error) {
-    // A trigger sweep that throws must not take the web process with it; the
-    // next sweep retries and the experiment stays exactly where it was.
-    console.warn('[energy-trigger] sweep skipped:', error?.message);
-  } finally {
-    energyTriggerRunning = false;
-  }
+  });
 }
 
-app.post('/api/light-sensor/report', express.json({ limit: '4kb' }), (req, res) => {
-  const token = process.env.LIGHT_SENSOR_TOKEN;
-  if (token && req.get('X-Light-Token') !== token) {
-    return res.status(401).json({ error: 'invalid token' });
+// Sensor POSTs can end in a real radio-disable write, so in production they
+// require LIGHT_SENSOR_TOKEN (sent by lightguard as X-Light-Token): 503 when the
+// server has none configured, 401 on a mismatch, constant-time compare. The
+// browser read requires a Bearer token or a signed AURA session cookie.
+const lightSensorAuth = createLightSensorAuth({ getSession: getAuraSession });
+
+app.post(
+  '/api/light-sensor/report',
+  lightSensorAuth.requireSensorToken,
+  express.json({ limit: '4kb' }),
+  (req, res) => {
+    const { serial, state, data } = req.body || {};
+    if (!serial) return res.status(400).json({ error: 'serial required' });
+    lightSensorStates.set(String(serial), {
+      state: state === 'light' || state === 'dark' ? state : 'unknown',
+      data: Number(data) || 0,
+      ts: Date.now(),
+    });
+    // Fire-and-forget: persist sample + transition; failures must never break the endpoint.
+    Promise.resolve()
+      .then(async () => {
+        const sourceId = await resolveLightSourceId();
+        if (sourceId) {
+          await ingestLightReport({ sourceId, serial: String(serial), state, data });
+          // React to the reading we just stored rather than waiting for the next
+          // sweep — the difference is what makes a live demonstration feel live.
+          await runEnergyTriggerSweep();
+        }
+      })
+      .catch((e) => console.warn('[light-ingest] skipped:', e?.message));
+    res.json({ ok: true });
   }
-  const { serial, state, data } = req.body || {};
-  if (!serial) return res.status(400).json({ error: 'serial required' });
-  lightSensorStates.set(String(serial), {
-    state: state === 'light' || state === 'dark' ? state : 'unknown',
-    data: Number(data) || 0,
-    ts: Date.now(),
-  });
-  // Fire-and-forget: persist sample + transition; failures must never break the endpoint.
-  Promise.resolve()
-    .then(async () => {
-      const sourceId = await resolveLightSourceId();
-      if (sourceId) {
-        await ingestLightReport({ sourceId, serial: String(serial), state, data });
-        // React to the reading we just stored rather than waiting for the next
-        // sweep — the difference is what makes a live demonstration feel live.
-        await runEnergyTriggerSweep();
-      }
-    })
-    .catch((e) => console.warn('[light-ingest] skipped:', e?.message));
-  res.json({ ok: true });
-});
-app.get('/api/light-sensor/states', (_req, res) => {
+);
+app.get('/api/light-sensor/states', lightSensorAuth.requireReader, (_req, res) => {
   const now = Date.now();
   const out = {};
   for (const [serial, v] of lightSensorStates) {

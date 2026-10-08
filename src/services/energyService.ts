@@ -25,6 +25,48 @@ import type {
 
 const BASE = '/api/energy';
 
+/**
+ * Which collector an energy figure came from. `measured_ap_state` is the AP's
+ * measured PoE draw from the AP inventory (primary); `ap_report` is the per-AP
+ * report timeseries, used only where no measured sample exists.
+ */
+export type PowerSource = 'measured_ap_state' | 'ap_report';
+
+export interface PowerProvenance {
+  source?: PowerSource | null;
+}
+
+export interface EnergyOverviewWithSource extends EnergyOverview, PowerProvenance {
+  sourceDetail?: {
+    mixed: boolean;
+    measuredApCount: number | null;
+    apReportOnlyApCount: number | null;
+    measuredSampleCount: number | null;
+    apReportSampleCount: number | null;
+  };
+}
+
+export type EnergySiteWithSource = EnergySite & PowerProvenance;
+
+export interface EnergyApWithSource extends EnergyAp, PowerProvenance {
+  model?: string | null;
+  siteName?: string | null;
+}
+
+export interface UnevaluatedRule {
+  type: string;
+  reason: string;
+}
+
+export interface EnergyRecommendationsResponse {
+  recommendations: EnergyRecommendation[];
+  meta?: {
+    currency?: string;
+    source?: PowerSource | null;
+    unevaluatedRules?: UnevaluatedRule[];
+  };
+}
+
 function buildQuery(params: Record<string, string | undefined>): string {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -61,9 +103,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export function getEnergyOverview(
   params: { site: string; timeRange: string },
   signal?: AbortSignal
-): Promise<EnergyOverview> {
+): Promise<EnergyOverviewWithSource> {
   const { start, end } = windowParams(params.timeRange);
-  return request<EnergyOverview>(
+  return request<EnergyOverviewWithSource>(
     `/overview${buildQuery({ start, end, siteId: params.site })}`,
     { signal }
   );
@@ -72,17 +114,17 @@ export function getEnergyOverview(
 export function getEnergySites(
   params: { timeRange: string },
   signal?: AbortSignal
-): Promise<{ sites: EnergySite[] }> {
+): Promise<{ sites: EnergySiteWithSource[] }> {
   const { start, end } = windowParams(params.timeRange);
-  return request<{ sites: EnergySite[] }>(`/sites${buildQuery({ start, end })}`, { signal });
+  return request<{ sites: EnergySiteWithSource[] }>(`/sites${buildQuery({ start, end })}`, { signal });
 }
 
 export function getEnergyAps(
   params: { site: string; timeRange: string },
   signal?: AbortSignal
-): Promise<{ aps: EnergyAp[] }> {
+): Promise<{ aps: EnergyApWithSource[] }> {
   const { start, end } = windowParams(params.timeRange);
-  return request<{ aps: EnergyAp[] }>(
+  return request<{ aps: EnergyApWithSource[] }>(
     `/aps${buildQuery({ start, end, siteId: params.site })}`,
     { signal }
   );
@@ -91,18 +133,27 @@ export function getEnergyAps(
 export function getEnergyRecommendations(
   params: { site: string; timeRange: string },
   signal?: AbortSignal
-): Promise<{ recommendations: EnergyRecommendation[] }> {
+): Promise<EnergyRecommendationsResponse> {
   const { start, end } = windowParams(params.timeRange);
-  return request<{ recommendations: EnergyRecommendation[] }>(
+  return request<EnergyRecommendationsResponse>(
     `/recommendations${buildQuery({ start, end, siteId: params.site })}`,
     { signal }
   );
 }
 
 export function postEnergyScenario(
-  body: { name: string; policy: EnergyScenarioPolicy; siteId?: string },
+  body: {
+    name: string;
+    policy: EnergyScenarioPolicy;
+    siteId?: string;
+    /** The page's selected window; the server defaults to retention when omitted. */
+    windowStart?: string;
+    windowEnd?: string;
+    /** IANA zone the policy hours are wall-clock hours in. */
+    timeZone?: string;
+  },
   signal?: AbortSignal
-): Promise<EnergyScenarioResult> {
+): Promise<EnergyScenarioResult & { timeZone?: string }> {
   return request<EnergyScenarioResult>('/scenarios', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

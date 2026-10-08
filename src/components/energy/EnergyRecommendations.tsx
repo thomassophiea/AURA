@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatKwh, formatPercent, formatCurrency } from '@/lib/energyCalc';
 import type { EnergyRecommendation, EnergyConfidence } from '@/types/energy';
+import type { UnevaluatedRule } from '@/services/energyService';
+import { EnergyLoadError } from './EnergyEmptyState';
 
 const CONFIDENCE_VARIANT: Record<EnergyConfidence, 'secondary' | 'outline'> = {
   high: 'secondary',
@@ -15,12 +17,19 @@ const CONFIDENCE_VARIANT: Record<EnergyConfidence, 'secondary' | 'outline'> = {
 interface EnergyRecommendationsProps {
   recommendations: EnergyRecommendation[] | null;
   loading: boolean;
+  error?: string | null;
+  onRetry?: () => void;
+  /** Rules the server could not evaluate (missing telemetry), and why. */
+  unevaluatedRules?: UnevaluatedRule[];
   currencySymbol?: string;
 }
 
 function EnergyRecommendationsComponent({
   recommendations,
   loading,
+  error = null,
+  onRetry,
+  unevaluatedRules = [],
   currencySymbol = '$',
 }: EnergyRecommendationsProps) {
   return (
@@ -29,17 +38,32 @@ function EnergyRecommendationsComponent({
         <h3 className="text-sm font-semibold text-foreground">Recommendations</h3>
       </CardHeader>
       <CardContent>
-        {loading || !recommendations ? (
+        {error && !loading ? (
+          <EnergyLoadError what="Recommendations" message={error} onRetry={onRetry} compact />
+        ) : loading ? (
           <div className="space-y-3">
             {Array.from({ length: 2 }).map((_, i) => (
               <Skeleton key={i} className="h-16 w-full" />
             ))}
           </div>
-        ) : recommendations.length === 0 ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">
-            No recommendations for this window — the fleet is already efficient, or there is not
-            enough data yet.
-          </p>
+        ) : !recommendations || recommendations.length === 0 ? (
+          unevaluatedRules.length > 0 ? (
+            <div className="space-y-2 py-2">
+              <p className="text-sm text-muted-foreground">
+                No recommendations for this window. Some checks could not run:
+              </p>
+              <ul className="list-disc space-y-1 pl-5 text-xs text-muted-foreground">
+                {unevaluatedRules.map((rule) => (
+                  <li key={rule.type}>{rule.reason}</li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p className="py-4 text-center text-sm text-muted-foreground">
+              No recommendations for this window — the fleet is already efficient, or there is not
+              enough data yet.
+            </p>
+          )
         ) : (
           <div className="divide-y divide-border/50">
             {recommendations.map((rec) => (

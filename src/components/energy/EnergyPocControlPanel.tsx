@@ -1,6 +1,17 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangle, Check, CircleAlert, Minus, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { describeActivation } from '@/lib/energyCalc';
 import { Card } from '@/components/ui/card';
 import {
   Select,
@@ -10,7 +21,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/components/ui/utils';
-import { energyExperimentService } from '@/services/energyExperimentService';
+import {
+  energyExperimentService,
+  type ActivationResult,
+} from '@/services/energyExperimentService';
 import type {
   DiscoveryResponse,
   ExperimentStateResponse,
@@ -54,6 +68,13 @@ export function EnergyPocControlPanel({ state, readiness, trigger, busy, run, er
   const [treatment, setTreatment] = useState<string>('');
   const [control, setControl] = useState<string>('');
   const [notice, setNotice] = useState<string | null>(null);
+  // Every button that reconfigures real access points goes through this.
+  const [pendingWrite, setPendingWrite] = useState<{
+    title: string;
+    description: string;
+    confirmLabel: string;
+    perform: () => void;
+  } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,11 +137,17 @@ export function EnergyPocControlPanel({ state, readiness, trigger, busy, run, er
             className="mt-2"
             disabled={disabled}
             onClick={() =>
-              act('restore-all', () => energyExperimentService.restoreAll(), (r) => {
-                const res = r as { unverified: unknown[]; restored: string[] };
-                return res.unverified.length === 0
-                  ? `Restored and verified ${res.restored.length} AP(s).`
-                  : `${res.unverified.length} AP(s) still unconfirmed — check the timeline.`;
+              setPendingWrite({
+                title: 'Restore every changed access point?',
+                description: `This writes the captured original radio configuration back to ${outstanding.length} access point(s) on the Gateway and verifies each by read-back.`,
+                confirmLabel: 'Restore all',
+                perform: () =>
+                  act('restore-all', () => energyExperimentService.restoreAll(), (r) => {
+                    const res = r as { unverified: unknown[]; restored: string[] };
+                    return res.unverified.length === 0
+                      ? `Restored and verified ${res.restored.length} AP(s).`
+                      : `${res.unverified.length} AP(s) still unconfirmed — check the timeline.`;
+                  }),
               })
             }
           >
@@ -227,7 +254,18 @@ export function EnergyPocControlPanel({ state, readiness, trigger, busy, run, er
           variant="outline"
           disabled={disabled || experiment?.state !== 'baseline_established'}
           onClick={() =>
-            act('activate', () => energyExperimentService.activate(true), () => 'Optimization applied and verified.')
+            setPendingWrite({
+              title: 'Disable radios on the Treatment site?',
+              description:
+                `This writes to the Gateway: the configured radio action is applied to every eligible Treatment AP` +
+                `${state?.devices ? ` (${state.devices.filter((d) => d.side === 'treatment').length} enrolled)` : ''}. ` +
+                'APs with connected clients, unverified models or a changed site are skipped. Use Restore to undo.',
+              confirmLabel: 'Activate',
+              perform: () =>
+                act('activate', () => energyExperimentService.activate(true), (r) =>
+                  describeActivation(r as ActivationResult)
+                ),
+            })
           }
         >
           Activate now (controller)
@@ -238,11 +276,18 @@ export function EnergyPocControlPanel({ state, readiness, trigger, busy, run, er
           variant="destructive"
           disabled={disabled || !experiment}
           onClick={() =>
-            act('restore', () => energyExperimentService.restore(experiment?.id), (r) => {
-              const res = r as { ok: boolean; restored: string[]; unverified: unknown[] };
-              return res.ok
-                ? `Treatment site restored: ${res.restored.length} AP(s) verified.`
-                : `${res.unverified.length} AP(s) NOT confirmed restored.`;
+            setPendingWrite({
+              title: 'Restore the Treatment site?',
+              description:
+                'This writes the captured original radio configuration back to every Treatment AP this experiment changed, and verifies each by read-back.',
+              confirmLabel: 'Restore',
+              perform: () =>
+                act('restore', () => energyExperimentService.restore(experiment?.id), (r) => {
+                  const res = r as { ok: boolean; restored: string[]; unverified: unknown[] };
+                  return res.ok
+                    ? `Treatment site restored: ${res.restored.length} AP(s) verified.`
+                    : `${res.unverified.length} AP(s) NOT confirmed restored.`;
+                }),
             })
           }
         >
@@ -324,7 +369,38 @@ export function EnergyPocControlPanel({ state, readiness, trigger, busy, run, er
         ) : null}
       </div>
 
-      {notice ? <p className="text-xs text-foreground">{notice}</p> : null}
+      <AlertDialog
+        open={pendingWrite !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingWrite(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{pendingWrite?.title}</AlertDialogTitle>
+            <AlertDialogDescription>{pendingWrite?.description}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const perform = pendingWrite?.perform;
+                setPendingWrite(null);
+                setNotice(null);
+                perform?.();
+              }}
+            >
+              {pendingWrite?.confirmLabel}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {notice ? (
+        <p className="text-xs text-foreground" role="status">
+          {notice}
+        </p>
+      ) : null}
       {error ? <p className="text-xs text-[color:var(--status-error)]">{error}</p> : null}
 
       {/* Readiness detail */}

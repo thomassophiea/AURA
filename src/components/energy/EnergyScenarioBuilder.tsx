@@ -2,7 +2,13 @@ import { useState } from 'react';
 
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { formatKwh, formatPercent, formatCurrency } from '@/lib/energyCalc';
+import {
+  formatKwh,
+  formatPercent,
+  formatCurrency,
+  operatorTimeZone,
+  timeZoneLabel,
+} from '@/lib/energyCalc';
 import { postEnergyScenario } from '@/services/energyService';
 import { useGlobalFilters } from '@/hooks/useGlobalFilters';
 import { useLightAwarePolicy } from '@/hooks/useEnergyData';
@@ -10,8 +16,16 @@ import type { EnergyScenarioPolicy, EnergyScenarioResult } from '@/types/energy'
 
 const OVERNIGHT_HOURS = [0, 1, 2, 3, 4, 5];
 
-export function EnergyScenarioBuilder() {
+interface EnergyScenarioBuilderProps {
+  /** The page's selected time range; the replay uses exactly this window. */
+  range?: { startIso: string; endIso: string; label?: string } | null;
+}
+
+export function EnergyScenarioBuilder({ range = null }: EnergyScenarioBuilderProps = {}) {
   const { filters } = useGlobalFilters();
+  // Policy hours are the operator's wall-clock hours, not UTC.
+  const timeZone = operatorTimeZone();
+  const zoneLabel = timeZoneLabel(timeZone);
   const { site } = filters;
   const [disable6Ghz, setDisable6Ghz] = useState(true);
   const [disableLowUtil, setDisableLowUtil] = useState(false);
@@ -52,6 +66,9 @@ export function EnergyScenarioBuilder() {
         name: 'Interactive scenario',
         policy,
         siteId: site === 'all' ? undefined : site,
+        windowStart: range?.startIso,
+        windowEnd: range?.endIso,
+        timeZone,
       });
       setResult(res);
     } catch (err) {
@@ -73,7 +90,7 @@ export function EnergyScenarioBuilder() {
         <div className="space-y-2 text-sm">
           <label className="flex items-center gap-2">
             <input type="checkbox" checked={disable6Ghz} onChange={(e) => setDisable6Ghz(e.target.checked)} />
-            Disable 6 GHz radios overnight (00:00–06:00 UTC)
+            Disable 6 GHz radios overnight (00:00–06:00 {zoneLabel})
           </label>
           <label className="flex items-center gap-2">
             <input type="checkbox" checked={disableLowUtil} onChange={(e) => setDisableLowUtil(e.target.checked)} />
@@ -81,7 +98,7 @@ export function EnergyScenarioBuilder() {
           </label>
           <label className="flex items-center gap-2">
             <input type="checkbox" checked={reduceTxPower} onChange={(e) => setReduceTxPower(e.target.checked)} />
-            Reduce Tx power 20% after hours (22:00–06:00 UTC)
+            Reduce Tx power 20% after hours (22:00–06:00 {zoneLabel})
           </label>
           <label className="flex items-center gap-2">
             <input
@@ -105,6 +122,11 @@ export function EnergyScenarioBuilder() {
         >
           {running ? 'Running…' : 'Run scenario'}
         </button>
+
+        <p className="text-xs text-muted-foreground">
+          Hours are local time ({timeZone})
+          {range?.label ? `; replayed over ${range.label.toLowerCase()}` : ''}.
+        </p>
 
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
 

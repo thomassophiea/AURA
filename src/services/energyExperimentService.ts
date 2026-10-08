@@ -22,6 +22,26 @@ import type {
 
 const BASE = '/api/energy/experiment';
 
+/** One Treatment AP the activation did not change, and why. */
+export interface ActivationSkip {
+  serial: string;
+  reason: string;
+  detail?: string;
+}
+
+/** What /activate actually did. `appliedCount` = writes issued AND read back. */
+export interface ActivationResult {
+  ok: boolean;
+  simulated?: boolean;
+  targetCount?: number;
+  appliedCount?: number;
+  effectiveCount?: number;
+  skippedCount?: number;
+  failedCount?: number;
+  skipped?: ActivationSkip[];
+  failed?: ActivationSkip[];
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE}${path}`, {
     ...init,
@@ -79,7 +99,7 @@ export const energyExperimentService = {
 
   start: (name?: string) => post<{ ok: boolean; experiment: unknown }>('/start', { name }),
   closeBaseline: () => post<{ ok: boolean }>('/baseline/close'),
-  activate: (applyWrites = true) => post<{ ok: boolean }>('/activate', { applyWrites }),
+  activate: (applyWrites = true) => post<ActivationResult>('/activate', { applyWrites }),
   restore: (experimentId?: string, reason?: string) =>
     post<{ ok: boolean; restored: string[]; unverified: Array<{ serial: string; error: string }> }>(
       '/restore',

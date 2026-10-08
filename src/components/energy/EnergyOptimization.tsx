@@ -1,6 +1,10 @@
 import { useMemo, useRef, useState } from 'react';
 
-import { useEnergyOverview, useEnergySites, useEnergyRecommendations } from '@/hooks/useEnergyData';
+import {
+  useEnergyOverview,
+  useEnergySites,
+  useEnergyRecommendationsDetail,
+} from '@/hooks/useEnergyData';
 import { useGlobalFilters } from '@/hooks/useGlobalFilters';
 import { useSiteNames } from '@/hooks/useSiteNames';
 import { useSelectedTimeRange } from '@/hooks/useSelectedTimeRange';
@@ -8,6 +12,7 @@ import { useSourceSites } from '@/hooks/useSourceSites';
 import { TimeRangeSelector } from '@/components/TimeRangeSelector';
 import { SourceSiteSelector } from '@/components/SourceSiteSelector';
 import { parseXiqSiteValue } from '@/services/siteContextService';
+import { mergeDayStatuses } from '@/lib/energyCalc';
 import type { EnergyPreferences } from '@/types/energy';
 import { EnergyOverviewCards } from './EnergyOverviewCards';
 import { EnergyEmptyState } from './EnergyEmptyState';
@@ -45,26 +50,43 @@ export function EnergyOptimization() {
     }
   };
 
+  // Range availability follows the data the page actually reads: measured AP
+  // state is primary, the AP report series is the per-AP fallback, so a day is
+  // as available as the better of the two.
+  const coverageSiteId = filters.site !== 'all' ? filters.site : undefined;
   const {
     token: timeRangeToken,
     range: selectedRange,
     setToken: setTimeRangeToken,
     optionGroups,
-    dayStatuses,
+    dayStatuses: measuredDayStatuses,
     retentionDays,
-    neverCollected,
-  } = useSelectedTimeRange({
-    siteId: filters.site !== 'all' ? filters.site : undefined,
-    metricFamily: 'ap_report',
-  });
+    neverCollected: measuredNeverCollected,
+  } = useSelectedTimeRange({ siteId: coverageSiteId, metricFamily: 'energy_ap_state' });
+  const { dayStatuses: reportDayStatuses, neverCollected: reportNeverCollected } =
+    useSelectedTimeRange({ siteId: coverageSiteId, metricFamily: 'ap_report' });
+  const dayStatuses = useMemo(
+    () => mergeDayStatuses(measuredDayStatuses, reportDayStatuses),
+    [measuredDayStatuses, reportDayStatuses]
+  );
+  const neverCollected = measuredNeverCollected && reportNeverCollected;
   const overview = useEnergyOverview();
   const sites = useEnergySites();
-  const recommendations = useEnergyRecommendations();
+  const recommendationsDetail = useEnergyRecommendationsDetail();
+  const recommendations = {
+    ...recommendationsDetail,
+    data: recommendationsDetail.data?.recommendations ?? null,
+  };
   const [apTableEnabled, setApTableEnabled] = useState(false);
   const [policyOpen, setPolicyOpen] = useState(false);
   const [apDrawerOpen, setApDrawerOpen] = useState(false);
 
-  const noData = overview.data !== null && overview.data.apWithDataCount === 0;
+  const noData =
+    !overview.error && overview.data !== null && overview.data.apWithDataCount === 0;
+  // The overview is the page's spine: if it failed, the fleet cards below would
+  // only repeat the same failure, so they wait for a successful retry.
+  const overviewFailed = Boolean(overview.error) && !overview.loading;
+  const hideFleet = noData || overviewFailed;
 
   const header = (
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -116,22 +138,29 @@ export function EnergyOptimization() {
         </div>
       ))}
 
-      <EnergyOverviewCards overview={overview.data} loading={overview.loading} />
+      <EnergyOverviewCards
+        overview={overview.data}
+        loading={overview.loading}
+        error={overview.error}
+        onRetry={overview.refetch}
+      />
 
       {/* The Treatment-vs-Control controlled experiment leads the page: it is the one
           view that answers "what did Aura actually save", with a control group
           behind it. Fleet rollups continue below it. */}
       <EnergyExperimentPanel />
 
-      {noData ? <EnergyEmptyState reason="no-data" /> : null}
+      {noData ? <EnergyEmptyState reason={neverCollected ? 'no-collection' : 'no-data'} /> : null}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="space-y-4">
-          {!noData ? (
+          {!hideFleet ? (
             <>
               <EnergySiteRankings
                 sites={sites.data ? sites.data.filter((s) => s.siteId) : null}
                 loading={sites.loading}
+                error={sites.error}
+                onRetry={sites.refetch}
                 siteNameById={siteNameById}
                 currencySymbol={overview.data?.currencySymbol}
                 onSelectSite={(siteId) => {
@@ -154,12 +183,15 @@ export function EnergyOptimization() {
           ) : null}
         </div>
         <div className="space-y-4">
-          {!noData ? (
+          {!hideFleet ? (
             <>
-              <EnergyScenarioBuilder />
+              <EnergyScenarioBuilder range={selectedRange} />
               <EnergyRecommendations
                 recommendations={recommendations.data}
                 loading={recommendations.loading}
+                error={recommendations.error}
+                onRetry={recommendations.refetch}
+                unevaluatedRules={recommendationsDetail.data?.meta?.unevaluatedRules ?? []}
                 currencySymbol={overview.data?.currencySymbol}
               />
             </>

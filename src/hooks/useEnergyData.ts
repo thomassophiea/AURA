@@ -18,11 +18,12 @@ import {
   getLightAwareObserved,
   getLightAwarePolicy,
   putLightAwarePolicy,
+  type EnergyOverviewWithSource,
+  type EnergySiteWithSource,
+  type EnergyApWithSource,
+  type EnergyRecommendationsResponse,
 } from '../services/energyService';
 import type {
-  EnergyOverview,
-  EnergySite,
-  EnergyAp,
   EnergyRecommendation,
   LightAwareSummary,
   LightAwareApRow,
@@ -87,19 +88,19 @@ function useEnergyResource<T>(
   return { data, loading, error, refetch };
 }
 
-export function useEnergyOverview(): AsyncState<EnergyOverview> {
+export function useEnergyOverview(): AsyncState<EnergyOverviewWithSource> {
   return useEnergyResource(
     (filters, signal) => getEnergyOverview(filters, signal)
   );
 }
 
-export function useEnergySites(): AsyncState<EnergySite[]> {
+export function useEnergySites(): AsyncState<EnergySiteWithSource[]> {
   return useEnergyResource(
     async (filters, signal) => (await getEnergySites(filters, signal)).sites
   );
 }
 
-export function useEnergyAps(enabled: boolean): AsyncState<EnergyAp[]> {
+export function useEnergyAps(enabled: boolean): AsyncState<EnergyApWithSource[]> {
   return useEnergyResource(
     async (filters, signal) => (await getEnergyAps(filters, signal)).aps,
     enabled
@@ -110,6 +111,11 @@ export function useEnergyRecommendations(): AsyncState<EnergyRecommendation[]> {
   return useEnergyResource(
     async (filters, signal) => (await getEnergyRecommendations(filters, signal)).recommendations
   );
+}
+
+/** Recommendations plus the rules the server could not evaluate, and why. */
+export function useEnergyRecommendationsDetail(): AsyncState<EnergyRecommendationsResponse> {
+  return useEnergyResource((filters, signal) => getEnergyRecommendations(filters, signal));
 }
 
 export function useLightAwareSummary(): AsyncState<LightAwareSummary> {

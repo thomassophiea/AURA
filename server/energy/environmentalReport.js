@@ -285,6 +285,11 @@ export function buildEnvironmentalReport({
       : null,
     provenance: {
       telemetrySource: 'Campus Controller AP power telemetry',
+      // Which collector the baseline rests on: 'measured_ap_state' (per-AP PoE
+      // draw from the AP inventory), 'ap_report' (per-AP report timeseries,
+      // used only where no measured sample exists), or null.
+      powerSource: aggregate.source ?? null,
+      powerSourceMixed: aggregate.mixed === true,
       samplingIntervalSeconds: coverage.samplingIntervalSeconds ?? null,
       baselineMethodology:
         'Measured AP power samples integrated by elapsed time; stale gaps above the configured maximum are excluded.',

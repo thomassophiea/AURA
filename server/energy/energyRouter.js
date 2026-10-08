@@ -28,11 +28,16 @@ import {
   getLatestEnvironmentalReport,
   getEnvironmentalReportById,
 } from './energyRepository.js';
-import { replayScenario } from './scenarioEngine.js';
+import {
+  replayScenario,
+  isValidTimeZone,
+  DEFAULT_SCENARIO_TIME_ZONE,
+} from './scenarioEngine.js';
 import { buildRecommendations } from './recommendationEngine.js';
 import { buildEnvironmentalReport } from './environmentalReport.js';
 import { loadExperimentEvidence } from './experiment/reportEvidence.js';
 import { supportsLightSensor } from './apCapabilities.js';
+import { createApNameResolver } from './apNameResolver.js';
 import {
   projectDaily,
   projectMonthly,
@@ -71,6 +76,11 @@ export function createEnergyRouter(options = {}) {
     getLatestEnvironmentalReportFn = getLatestEnvironmentalReport,
     getEnvironmentalReportByIdFn = getEnvironmentalReportById,
     buildRecommendationsFn = buildRecommendations,
+    resolveApNamesFn = createApNameResolver({
+      // Lazy, so importing the router does not pull in the experiment engine.
+      sessionForFn: async (source) =>
+        (await import('./experiment/experimentEngine.js')).sessionFor(source),
+    }),
     nowFn = () => new Date(),
   } = options;
 
@@ -182,6 +192,37 @@ export function createEnergyRouter(options = {}) {
     };
   }
 
+  /** One provenance label for a set of rows that each carry `source`. */
+  function overallSource(rows) {
+    const sources = new Set((rows ?? []).map((r) => r.source).filter(Boolean));
+    if (sources.has('measured_ap_state')) return 'measured_ap_state';
+    if (sources.has('ap_report')) return 'ap_report';
+    return null;
+  }
+
+  function sampleSource(samples) {
+    return overallSource(samples);
+  }
+
+  function unevaluatedRules(samples, lightRows) {
+    const out = [];
+    if ((samples ?? []).length > 0 && !samples.some((s) => Number.isFinite(s.channelUtilization))) {
+      out.push({
+        type: 'low_utilization_6ghz',
+        reason: 'No 6 GHz channel-utilization telemetry in this period, so idle 6 GHz radios cannot be identified.',
+      });
+    }
+    if ((lightRows ?? []).length > 0 && !lightRows.some((r) => supportsLightSensor(r.model))) {
+      out.push({
+        type: 'light_aware_opportunity',
+        reason: lightRows.some((r) => r.model)
+          ? 'No AP in scope has an ambient light sensor.'
+          : 'AP models are unknown for this period, so light-sensor capability cannot be checked.',
+      });
+    }
+    return out;
+  }
+
   // ---- Overview -----------------------------------------------------------
   router.get('/energy/overview', async (req, res) => {
     try {
@@ -215,6 +256,15 @@ export function createEnergyRouter(options = {}) {
 
       res.json({
         apWithDataCount: agg.apWithDataCount,
+        // Provenance: 'measured_ap_state' | 'ap_report' | null (no data).
+        source: agg.source ?? null,
+        sourceDetail: {
+          mixed: agg.mixed === true,
+          measuredApCount: agg.measuredApCount ?? null,
+          apReportOnlyApCount: agg.apReportOnlyApCount ?? null,
+          measuredSampleCount: agg.measuredSampleCount ?? null,
+          apReportSampleCount: agg.apReportSampleCount ?? null,
+        },
         currentWatts: agg.currentWatts,
         avgWatts: agg.avgWatts,
         peakWatts: agg.peakWatts,
@@ -245,6 +295,15 @@ export function createEnergyRouter(options = {}) {
             ...(temporalCoverage !== null && temporalCoverage < 80
               ? [`Temporal power coverage is ${temporalCoverage.toFixed(0)}% — projections annualize only usable observed intervals.`]
               : []),
+            ...(agg.source === 'ap_report'
+              ? [
+                  'Measured AP power (AP inventory) is not available for this scope and period — figures use the slower AP report series.',
+                ]
+              : agg.mixed && agg.apReportOnlyApCount > 0
+                ? [
+                    `${agg.apReportOnlyApCount} AP(s) have no measured power in this period; their figures come from the AP report series.`,
+                  ]
+                : []),
             ...(prefs.isDefault
               ? [`Annual cost uses the default ${prefs.currencySymbol}${prefs.ratePerKwh}/kWh rate — configure Electricity rate for accurate financial estimates.`]
               : []),
@@ -275,14 +334,17 @@ export function createEnergyRouter(options = {}) {
         const daily = Number.isFinite(r.dailyKwhProjected) ? r.dailyKwhProjected : null;
         return {
           siteId: r.siteId,
-          siteName: r.siteId,
+          // The measured series records the Gateway's site name; an ID is the
+          // last resort, and the page maps IDs through its site catalog too.
+          siteName: r.siteName ?? r.siteId,
           apWithDataCount: r.apWithDataCount,
           totalKwh: r.totalKwh,
           avgWattsPerAp: r.avgWattsPerAp,
           estimatedAnnualCost: estimateCost(projectAnnual(daily), prefs.ratePerKwh),
+          source: r.source ?? null,
         };
       });
-      res.json({ sites, meta: { currency: prefs.currencyCode } });
+      res.json({ sites, meta: { currency: prefs.currencyCode, source: overallSource(rows) } });
     } catch (error) {
       fail(res, error);
     }
@@ -308,17 +370,23 @@ export function createEnergyRouter(options = {}) {
         maxGapSeconds,
         authorizedSiteIds,
       });
+      const names = await resolveApNamesFn({
+        sources: req.monitoringScope?.sources ?? [],
+        serials: rows.map((r) => r.serial),
+      }).catch(() => new Map());
       const aps = rows.map((r) => {
         const daily = projectDaily(r.totalKwh, r.observedSeconds);
         const coverage = temporalCoveragePercent(r.observedSeconds, 1, seconds);
         return {
           ...r,
+          apName: names.get(r.serial) ?? r.apName ?? r.serial,
+          siteName: r.siteName ?? r.siteId ?? null,
           estimatedAnnualCost: estimateCost(projectAnnual(daily), prefs.ratePerKwh),
           dataQuality: coverage !== null && coverage >= 80 ? 'ok' : 'sparse',
           temporalCoveragePercent: coverage,
         };
       });
-      res.json({ aps, meta: { currency: prefs.currencyCode } });
+      res.json({ aps, meta: { currency: prefs.currencyCode, source: overallSource(rows) } });
     } catch (error) {
       fail(res, error);
     }
@@ -346,7 +414,16 @@ export function createEnergyRouter(options = {}) {
         maxGapSeconds,
         lightObserved: summarizeLightAwareEvidence(lightRows, days),
       });
-      res.json({ recommendations, meta: { currency: prefs.currencyCode } });
+      res.json({
+        recommendations,
+        meta: {
+          currency: prefs.currencyCode,
+          source: sampleSource(samples),
+          // Rules that could not be evaluated, said plainly rather than read as
+          // "nothing to recommend".
+          unevaluatedRules: unevaluatedRules(samples, lightRows),
+        },
+      });
     } catch (error) {
       fail(res, error);
     }
@@ -355,7 +432,11 @@ export function createEnergyRouter(options = {}) {
   // ---- Scenarios ----------------------------------------------------------
   router.post('/energy/scenarios', jsonBody, async (req, res) => {
     try {
-      const { name, policy, siteId, windowStart, windowEnd } = req.body ?? {};
+      const { name, policy, siteId, windowStart, windowEnd, timeZone: rawTimeZone } = req.body ?? {};
+      if (rawTimeZone != null && !isValidTimeZone(rawTimeZone)) {
+        return fail(res, new Error('invalid timeZone'), 400);
+      }
+      const timeZone = rawTimeZone ?? DEFAULT_SCENARIO_TIME_ZONE;
       if (typeof name !== 'string' || !name.trim()) {
         return fail(res, new Error('name required'), 400);
       }
@@ -380,7 +461,7 @@ export function createEnergyRouter(options = {}) {
       });
       // policy.lightAware (if present) rides through to replayScenario and is
       // modeled per-sample by the resolver — no signature change needed.
-      const replay = replayScenario({ samples, policy, maxGapSeconds });
+      const replay = replayScenario({ samples, policy, maxGapSeconds, timeZone });
       const projectBlock = (kwh, daily) => {
         const annual = projectAnnual(daily);
         return {
@@ -428,6 +509,11 @@ export function createEnergyRouter(options = {}) {
         },
         apCount: replay.apWithDataCount,
         apWithDataCount: replay.apWithDataCount,
+        // Policy hours were evaluated as wall-clock hours in this zone.
+        timeZone,
+        windowStart: win.start,
+        windowEnd: win.end,
+        source: sampleSource(samples),
         computedAt: nowFn().toISOString(),
       });
     } catch (error) {
