@@ -60,8 +60,8 @@ describe('EnergyOverviewCards — carbon', () => {
         loading={false}
       />
     );
-    expect(screen.getByText('3.52 kg CO₂e')).toBeInTheDocument();
-    expect(screen.getByText(/1\.28 t CO₂e\/yr · US avg grid \(default\)/)).toBeInTheDocument();
+    expect(screen.getByText('3.52 kg')).toBeInTheDocument();
+    expect(screen.getByText('1.28 t/yr · US avg (default)')).toBeInTheDocument();
   });
 
   it('names the configured eGRID region', () => {
@@ -82,7 +82,7 @@ describe('EnergyOverviewCards — carbon', () => {
         loading={false}
       />
     );
-    expect(screen.getByText('2.46 t CO₂e')).toBeInTheDocument();
-    expect(screen.getByText(/NPCC New England/)).toBeInTheDocument();
+    expect(screen.getByText('2.46 t')).toBeInTheDocument();
+    expect(screen.getByText('9.00 t/yr · NEWE')).toBeInTheDocument();
   });
 });

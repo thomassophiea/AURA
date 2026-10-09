@@ -63,16 +63,17 @@ function EnergyOverviewCardsComponent({
         />
         <MetricCard
           icon={Leaf}
-          title="Carbon"
+          title="Carbon (CO₂e)"
           loading={pending}
-          value={pending ? '' : formatKgCo2e(overview.emissions?.periodKgCo2e)}
+          value={pending ? '' : formatKgCo2e(overview.emissions?.periodKgCo2e, false)}
           subtitle={
             pending || !overview.emissions
               ? undefined
-              : `${formatKgCo2e(overview.emissions.annualKgCo2eProjected)}/yr · ${
+              : `${formatKgCo2e(overview.emissions.annualKgCo2eProjected, false)}/yr · ${
                   overview.emissions.factorIsDefault
-                    ? 'US avg grid (default)'
-                    : (overview.emissions.region ?? 'configured factor')
+                    ? 'US avg (default)'
+                    : (overview.emissions.region?.replace(/^eGRID /, '').split(' — ')[0] ??
+                      'configured')
                 }`
           }
         />
