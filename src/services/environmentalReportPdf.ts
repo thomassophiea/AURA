@@ -98,7 +98,9 @@ export async function createEnvironmentalReportPdf(
       ['Projected annual energy avoided', `${formatNumber(report.improvement.annualSavingsKwh)} kWh`, 'Modeled'],
       ['Projected annual cost avoided', report.improvement.annualCostSavings == null ? 'Not included' : `${symbol}${formatNumber(report.improvement.annualCostSavings, 2)}`, 'Modeled'],
       ['Projected reduction', `${formatNumber(report.improvement.annualSavingsPercent)}%`, 'Modeled'],
+      ['Annual carbon footprint (location-based)', report.carbon?.annualFootprintKgCo2e != null ? `${formatNumber(report.carbon.annualFootprintKgCo2e)} kg CO2e${report.carbon.factorIsDefault ? ' (US average factor)' : ''}` : 'Not calculated', 'Projected'],
       ['Projected CO2e avoided', report.carbon ? `${formatNumber(report.carbon.avoidedKgCo2e)} kg CO2e` : 'Not calculated', 'Modeled'],
+      ['EPEAT-registered APs', report.epeat ? `${report.epeat.registeredApCount} / ${report.epeat.apCount}` : 'Not available', 'Inventory'],
     ],
     headStyles: { fillColor: EVIDENCE_GREEN, textColor: [255, 255, 255] },
     styles: { fontSize: 8 },
@@ -150,7 +152,28 @@ export async function createEnvironmentalReportPdf(
   if (report.carbon) {
     y = addWrappedText(
       doc,
-      `CO2e calculation: ${formatNumber(report.improvement.annualSavingsKwh)} kWh x ${report.carbon.factor} ${report.carbon.factorUnit} = ${formatNumber(report.carbon.avoidedKgCo2e)} kg CO2e. Source: ${report.carbon.source}; geographic scope: ${report.carbon.geographicScope ?? 'not specified'}; source year: ${report.carbon.sourceYear ?? 'not specified'}.`,
+      `CO2e calculation: ${formatNumber(report.improvement.annualSavingsKwh)} kWh x ${report.carbon.factor} ${report.carbon.factorUnit} = ${formatNumber(report.carbon.avoidedKgCo2e)} kg CO2e. Source: ${report.carbon.source}; geographic scope: ${report.carbon.geographicScope ?? 'not specified'}; source year: ${report.carbon.sourceYear ?? 'not specified'}.${report.carbon.factorIsDefault ? ' No grid region was configured, so the US average factor was used.' : ''}`,
+      y
+    );
+    if (report.carbon.methodology) y = addWrappedText(doc, report.carbon.methodology, y);
+  }
+
+  if (report.epeat && report.epeat.apCount > 0) {
+    y = pageBreak(doc, y, 45);
+    y = addSectionHeader(doc, 'EPEAT-Registered Hardware', y);
+    autoTable(doc, {
+      startY: y,
+      head: [['AP model', 'APs in report', 'EPEAT registered']],
+      body: report.epeat.models.map((m) => [m.model, String(m.count), m.registered ? 'Yes' : 'No']),
+      headStyles: { fillColor: EVIDENCE_GREEN, textColor: [255, 255, 255] },
+      styles: { fontSize: 8 },
+      margin: { left: 14, right: 14 },
+    });
+    y = (doc as PdfWithTable).lastAutoTable.finalY + 5;
+    const src = report.epeat.source;
+    y = addWrappedText(
+      doc,
+      `Registration per ${src.publisher}, "${src.title}" (${src.date}), EPEAT category ${src.category}: 5420 Series switches and AP4020 Wi-Fi 7 access points. Tier ${src.tier} (${src.tierSource}). Only models named there are counted; variants are not assumed to be registered. Verify current status at epeat.net.`,
       y
     );
   }

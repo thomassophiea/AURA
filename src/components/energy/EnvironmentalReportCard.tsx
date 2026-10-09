@@ -70,6 +70,8 @@ export function EnvironmentalReportCard({
 
   const availableRecommendations = useMemo(() => recommendations ?? [], [recommendations]);
   const hasRecommendations = availableRecommendations.length > 0;
+  // A configured grid factor is preferred; without one the server uses the
+  // eGRID2023 US average and labels it as a default, so CO2e is always available.
   const carbonConfigured = Boolean(
     preferences?.emissionsFactorKgPerKwh && preferences.emissionsFactorSource
   );
@@ -135,7 +137,7 @@ export function EnvironmentalReportCard({
         siteName: siteId === 'all' ? undefined : siteName,
         ...period,
         includeFinancials,
-        includeCarbon: includeCarbon && carbonConfigured,
+        includeCarbon,
         recommendationTypes: selectedTypes,
       });
       setLatest(report);
@@ -300,7 +302,6 @@ export function EnvironmentalReportCard({
                   aria-label="Include CO2e estimate"
                   type="checkbox"
                   checked={includeCarbon}
-                  disabled={!carbonConfigured}
                   onChange={(event) => setIncludeCarbon(event.target.checked)}
                 />
                 <span>
@@ -314,7 +315,8 @@ export function EnvironmentalReportCard({
                       }}
                       className="block text-left text-xs font-medium text-primary underline underline-offset-2 hover:text-primary/80 focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                      Configure a documented emissions factor in Electricity rate first.
+                      Uses the eGRID US average (0.352 kg CO2e/kWh). Set your grid region
+                      in Electricity rate for a site-accurate figure.
                     </button>
                   ) : null}
                 </span>

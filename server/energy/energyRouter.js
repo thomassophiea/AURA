@@ -38,6 +38,9 @@ import { buildEnvironmentalReport } from './environmentalReport.js';
 import { loadExperimentEvidence } from './experiment/reportEvidence.js';
 import { supportsLightSensor } from './apCapabilities.js';
 import { createApNameResolver } from './apNameResolver.js';
+import { EGRID_SUBREGIONS, EGRID_SOURCE, EGRID_YEAR, presetPreferenceFields } from './emissionFactors.js';
+import { summarizeEpeat, EPEAT_SOURCE } from './epeat.js';
+import { resolveEmissionsFactor } from './environmentalReport.js';
 import {
   projectDaily,
   projectMonthly,
@@ -273,6 +276,19 @@ export function createEnergyRouter(options = {}) {
         monthlyKwhProjected: projectMonthly(dailyKwh),
         annualKwhProjected: projectAnnual(dailyKwh),
         estimatedAnnualCost: estimateCost(projectAnnual(dailyKwh) ?? 0, prefs.ratePerKwh),
+        emissions: (() => {
+          const factor = resolveEmissionsFactor(prefs);
+          const annual = projectAnnual(dailyKwh);
+          return {
+            periodKgCo2e: Number.isFinite(agg.periodKwh) ? agg.periodKwh * factor.kgPerKwh : null,
+            annualKgCo2eProjected: Number.isFinite(annual) ? annual * factor.kgPerKwh : null,
+            factorKgPerKwh: factor.kgPerKwh,
+            factorIsDefault: factor.isDefault,
+            source: factor.source,
+            region: factor.region,
+            year: factor.year,
+          };
+        })(),
         currency: prefs.currencyCode,
         currencySymbol: prefs.currencySymbol,
         ratePerKwh: prefs.ratePerKwh,
@@ -605,7 +621,15 @@ export function createEnergyRouter(options = {}) {
         sourceId: sourceIds[0],
         siteId,
       }).catch(() => null);
+      // EPEAT coverage from the models the measured series carries, one per AP.
+      const modelBySerial = new Map();
+      for (const sample of samples ?? []) {
+        const serial = sample?.deviceExternalId ?? sample?.serial ?? null;
+        if (serial && sample?.model && !modelBySerial.has(serial)) modelBySerial.set(serial, sample.model);
+      }
+      const epeat = modelBySerial.size > 0 ? summarizeEpeat([...modelBySerial.values()]) : null;
       const report = buildEnvironmentalReport({
+        epeat,
         aggregate,
         coverage,
         recommendations,
@@ -679,8 +703,28 @@ export function createEnergyRouter(options = {}) {
     }
   });
 
+  // Bundled grid factors for the preferences picker, plus the EPEAT source
+  // the environmental report cites. Static data, safe to cache.
+  router.get('/energy/emission-factors', (_req, res) => {
+    res.json({
+      source: EGRID_SOURCE,
+      year: EGRID_YEAR,
+      unit: 'kg CO2e/kWh',
+      subregions: EGRID_SUBREGIONS,
+      epeat: EPEAT_SOURCE,
+    });
+  });
+
   router.put('/energy/preferences', jsonBody, async (req, res) => {
     try {
+      const body = req.body ?? {};
+      // An eGRID preset fills factor, source, region and year from the bundled
+      // table, so they cannot be saved inconsistently with one another.
+      let presetFields = null;
+      if (body.emissionsFactorPreset != null) {
+        presetFields = presetPreferenceFields(body.emissionsFactorPreset);
+        if (!presetFields) return fail(res, new Error('unknown eGRID subregion'), 400);
+      }
       const {
         currencyCode,
         ratePerKwh,
@@ -688,7 +732,7 @@ export function createEnergyRouter(options = {}) {
         emissionsFactorSource = null,
         emissionsFactorRegion = null,
         emissionsFactorYear = null,
-      } = req.body ?? {};
+      } = { ...body, ...(presetFields ?? {}) };
       if (!CURRENCY_SYMBOLS[currencyCode]) {
         return fail(res, new Error('unsupported currency'), 400);
       }

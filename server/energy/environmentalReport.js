@@ -7,6 +7,7 @@ import {
   projectDaily,
   windowDays,
 } from './energyCalculator.js';
+import { US_AVERAGE, EGRID_SOURCE, EGRID_YEAR } from './emissionFactors.js';
 
 const DISCLAIMER =
   'This report provides environmental performance information that may support an organization’s Environmental Management System. It does not constitute ISO 14001 certification, an audit opinion, or a determination of conformity.';
@@ -99,6 +100,30 @@ export function buildControlledExperimentEvidence({
   };
 }
 
+/** The factor a report uses: the configured one, else the eGRID2023 US average. */
+export function resolveEmissionsFactor(preferences) {
+  const configured =
+    Number.isFinite(preferences?.emissionsFactorKgPerKwh) &&
+    preferences.emissionsFactorKgPerKwh > 0 &&
+    Boolean(preferences.emissionsFactorSource);
+  if (configured) {
+    return {
+      kgPerKwh: preferences.emissionsFactorKgPerKwh,
+      source: preferences.emissionsFactorSource,
+      region: preferences.emissionsFactorRegion ?? null,
+      year: preferences.emissionsFactorYear ?? null,
+      isDefault: false,
+    };
+  }
+  return {
+    kgPerKwh: US_AVERAGE.kgCo2ePerKwh,
+    source: EGRID_SOURCE,
+    region: 'eGRID US Average',
+    year: EGRID_YEAR,
+    isDefault: true,
+  };
+}
+
 export function buildEnvironmentalReport({
   aggregate,
   coverage,
@@ -115,6 +140,8 @@ export function buildEnvironmentalReport({
   generatedAt,
   generatedBy,
   auraVersion,
+  // Optional: EPEAT coverage of the fleet (epeat.js summarizeEpeat).
+  epeat = null,
   // Optional: a completed Treatment-vs-Control experiment. When present it is the
   // strongest evidence the report can carry — a controlled, measured result
   // with a concurrent control group — so it is listed ahead of the modeled
@@ -196,18 +223,24 @@ export function buildEnvironmentalReport({
   const annualCostSavings = includeFinancials
     ? estimateCost(annualSavingsKwh, preferences.ratePerKwh)
     : null;
-  const factorConfigured =
-    Number.isFinite(preferences.emissionsFactorKgPerKwh) &&
-    preferences.emissionsFactorKgPerKwh > 0 &&
-    Boolean(preferences.emissionsFactorSource);
-  const carbon = includeCarbon && factorConfigured
+  // A configured factor wins; otherwise the eGRID2023 US average, which has a
+  // citable source, so carbon can always be reported — flagged as a default.
+  const factor = resolveEmissionsFactor(preferences);
+  const carbon = includeCarbon
     ? {
-        avoidedKgCo2e: annualSavingsKwh * preferences.emissionsFactorKgPerKwh,
-        factor: preferences.emissionsFactorKgPerKwh,
+        // Scope 2 footprint of the measured AP fleet (location-based).
+        annualFootprintKgCo2e: Number.isFinite(annualKwh) ? annualKwh * factor.kgPerKwh : null,
+        avoidedKgCo2e: annualSavingsKwh * factor.kgPerKwh,
+        factor: factor.kgPerKwh,
         factorUnit: 'kg CO2e/kWh',
-        source: preferences.emissionsFactorSource,
-        geographicScope: preferences.emissionsFactorRegion ?? null,
-        sourceYear: preferences.emissionsFactorYear ?? null,
+        factorIsDefault: factor.isDefault,
+        source: factor.source,
+        geographicScope: factor.region,
+        sourceYear: factor.year,
+        methodology:
+          'Location-based Scope 2: kWh × grid emission factor (total output rate, CO2e). ' +
+          'EPA recommends non-baseload rates when estimating grid-level reductions; the ' +
+          'avoided figure here uses the total output rate for consistency with the footprint.',
       }
     : null;
   const totalApCount = Math.max(coverage.totalApCount ?? 0, aggregate.apWithDataCount ?? 0);
@@ -275,6 +308,7 @@ export function buildEnvironmentalReport({
       opportunities,
     },
     carbon,
+    epeat,
     controlledExperiment: controlledExperiment?.summary ?? null,
     financials: includeFinancials
       ? {

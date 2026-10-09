@@ -197,12 +197,33 @@ export interface EnvironmentalReport {
     opportunities: EnvironmentalReportOpportunity[];
   };
   carbon: {
+    /** Location-based Scope 2 footprint of the measured fleet, per year. */
+    annualFootprintKgCo2e?: number | null;
     avoidedKgCo2e: number;
     factor: number;
     factorUnit: string;
+    /** True when no factor was configured and the eGRID US average was used. */
+    factorIsDefault?: boolean;
     source: string;
     geographicScope: string | null;
     sourceYear: number | null;
+    methodology?: string;
+  } | null;
+  /** EPEAT coverage of the reporting APs (older reports omit it). */
+  epeat?: {
+    apCount: number;
+    registeredApCount: number;
+    registeredShare: number | null;
+    models: { model: string; count: number; registered: boolean }[];
+    source: {
+      title: string;
+      publisher: string;
+      date: string;
+      url: string;
+      category: string;
+      tier: string;
+      tierSource: string;
+    };
   } | null;
   financials: {
     electricityRate: number;

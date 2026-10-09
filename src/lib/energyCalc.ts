@@ -15,6 +15,13 @@ export function formatKwh(value: number | null | undefined, digits = 1): string 
   return `${value.toLocaleString('en-US', { maximumFractionDigits: digits, minimumFractionDigits: digits })} kWh`;
 }
 
+/** kg CO2e, switching to tonnes at 1,000 kg. */
+export function formatKgCo2e(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return '—';
+  if (Math.abs(value) >= 1000) return `${(value / 1000).toFixed(2)} t CO₂e`;
+  return `${value.toFixed(value < 10 ? 2 : 1)} kg CO₂e`;
+}
+
 export function formatWatts(value: number | null | undefined): string {
   if (nullish(value)) return DASH;
   return `${Math.round(value).toLocaleString('en-US')} W`;

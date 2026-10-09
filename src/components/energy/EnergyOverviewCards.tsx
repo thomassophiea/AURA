@@ -1,8 +1,14 @@
 import { memo } from 'react';
-import { Zap, DollarSign, TrendingDown, TrendingUp, Wifi, Gauge } from 'lucide-react';
+import { Zap, DollarSign, TrendingDown, TrendingUp, Wifi, Gauge, Leaf } from 'lucide-react';
 
 import { MetricCard } from '@/components/ui/MetricCard';
-import { formatKwh, formatWatts, formatCurrency, powerSourceLabel } from '@/lib/energyCalc';
+import {
+  formatKwh,
+  formatWatts,
+  formatCurrency,
+  formatKgCo2e,
+  powerSourceLabel,
+} from '@/lib/energyCalc';
 import type { EnergyOverviewWithSource } from '@/services/energyService';
 import { EnergyLoadError } from './EnergyEmptyState';
 
@@ -36,7 +42,7 @@ function EnergyOverviewCardsComponent({
             : ''}
         </p>
       ) : null}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-7">
         <MetricCard
           icon={Zap}
           title="Energy used"
@@ -54,6 +60,21 @@ function EnergyOverviewCardsComponent({
             pending ? '' : formatCurrency(overview.estimatedAnnualCost, overview.currencySymbol)
           }
           subtitle={pending ? undefined : `at ${overview.currencySymbol}${overview.ratePerKwh}/kWh`}
+        />
+        <MetricCard
+          icon={Leaf}
+          title="Carbon"
+          loading={pending}
+          value={pending ? '' : formatKgCo2e(overview.emissions?.periodKgCo2e)}
+          subtitle={
+            pending || !overview.emissions
+              ? undefined
+              : `${formatKgCo2e(overview.emissions.annualKgCo2eProjected)}/yr · ${
+                  overview.emissions.factorIsDefault
+                    ? 'US avg grid (default)'
+                    : (overview.emissions.region ?? 'configured factor')
+                }`
+          }
         />
         <MetricCard
           icon={Gauge}

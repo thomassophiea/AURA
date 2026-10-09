@@ -40,3 +40,49 @@ describe('EnergyOverviewCards', () => {
     expect(container.querySelectorAll('[data-slot="skeleton"]').length).toBeGreaterThan(0);
   });
 });
+
+describe('EnergyOverviewCards — carbon', () => {
+  it('shows CO2e and flags the US-average default factor', () => {
+    render(
+      <EnergyOverviewCards
+        overview={{
+          ...overview,
+          emissions: {
+            periodKgCo2e: 3.5164,
+            annualKgCo2eProjected: 1283.5,
+            factorKgPerKwh: 0.35164,
+            factorIsDefault: true,
+            source: 'EPA eGRID2023',
+            region: 'eGRID US Average',
+            year: 2023,
+          },
+        }}
+        loading={false}
+      />
+    );
+    expect(screen.getByText('3.52 kg CO₂e')).toBeInTheDocument();
+    expect(screen.getByText(/1\.28 t CO₂e\/yr · US avg grid \(default\)/)).toBeInTheDocument();
+  });
+
+  it('names the configured eGRID region', () => {
+    render(
+      <EnergyOverviewCards
+        overview={{
+          ...overview,
+          emissions: {
+            periodKgCo2e: 2459,
+            annualKgCo2eProjected: 9000,
+            factorKgPerKwh: 0.245,
+            factorIsDefault: false,
+            source: 'EPA eGRID2023',
+            region: 'eGRID NEWE — NPCC New England',
+            year: 2023,
+          },
+        }}
+        loading={false}
+      />
+    );
+    expect(screen.getByText('2.46 t CO₂e')).toBeInTheDocument();
+    expect(screen.getByText(/NPCC New England/)).toBeInTheDocument();
+  });
+});

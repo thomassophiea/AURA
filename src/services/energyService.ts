@@ -36,7 +36,40 @@ export interface PowerProvenance {
   source?: PowerSource | null;
 }
 
+/** Location-based CO2e for the window, from a grid emission factor. */
+export interface EnergyEmissions {
+  periodKgCo2e: number | null;
+  annualKgCo2eProjected: number | null;
+  factorKgPerKwh: number;
+  /** True when no factor is configured and the eGRID US average is used. */
+  factorIsDefault: boolean;
+  source: string;
+  region: string | null;
+  year: number | null;
+}
+
+export interface EgridSubregion {
+  code: string;
+  name: string;
+  totalLbCo2ePerMwh: number;
+  kgCo2ePerKwh: number;
+  nonBaseloadLbCo2ePerMwh: number;
+  nonBaseloadKgCo2ePerKwh: number;
+}
+
+export interface EmissionFactorCatalog {
+  source: string;
+  year: number;
+  unit: string;
+  subregions: EgridSubregion[];
+}
+
+export function getEmissionFactors(signal?: AbortSignal): Promise<EmissionFactorCatalog> {
+  return request<EmissionFactorCatalog>('/emission-factors', { signal });
+}
+
 export interface EnergyOverviewWithSource extends EnergyOverview, PowerProvenance {
+  emissions?: EnergyEmissions;
   sourceDetail?: {
     mixed: boolean;
     measuredApCount: number | null;
@@ -174,6 +207,8 @@ export function putEnergyPreferences(
     emissionsFactorSource?: string | null;
     emissionsFactorRegion?: string | null;
     emissionsFactorYear?: number | null;
+    /** eGRID subregion code; the server fills factor, source, region and year. */
+    emissionsFactorPreset?: string | null;
   },
   signal?: AbortSignal
 ): Promise<EnergyPreferences> {

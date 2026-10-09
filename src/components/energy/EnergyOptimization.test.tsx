@@ -54,6 +54,12 @@ let neverCollected = false;
 const coverageFamilies: Array<string | undefined> = [];
 
 const serviceMocks = vi.hoisted(() => ({
+  getEmissionFactors: vi.fn().mockResolvedValue({
+    source: 'EPA eGRID2023',
+    year: 2023,
+    unit: 'kg CO2e/kWh',
+    subregions: [],
+  }),
   getEnergyPreferences: vi.fn().mockResolvedValue({
     currencyCode: 'USD',
     currencySymbol: '$',
@@ -162,7 +168,7 @@ describe('EnergyOptimization', () => {
     expect(screen.getByText(/Partially Measured/i)).toBeInTheDocument();
     fireEvent.click(
       within(dialog).getByRole('button', {
-        name: /Configure a documented emissions factor in Electricity rate first/i,
+        name: /Set your grid region\s+in Electricity rate/i,
       })
     );
     await waitFor(() =>

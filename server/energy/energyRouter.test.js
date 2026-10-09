@@ -551,3 +551,81 @@ describe('environmental reports', () => {
     expect(res.body.improvement.annualSavingsPercent).toBe(100);
   });
 });
+
+describe('emissions (eGRID2023) and EPEAT', () => {
+  it('GET /energy/emission-factors lists the 28 eGRID rows and the EPEAT source', async () => {
+    const res = await call(buildApp(), 'get', '/api/energy/emission-factors');
+    expect(res.status).toBe(200);
+    expect(res.body.subregions).toHaveLength(28);
+    expect(res.body.unit).toBe('kg CO2e/kWh');
+    expect(res.body.epeat.date).toBe('2026-03-19');
+  });
+
+  it('a preset fills factor, source, region and year from the table', async () => {
+    let saved;
+    const app = buildApp({ upsertRatePreferencesFn: async (p) => (saved = p) });
+    const res = await call(app, 'put', '/api/energy/preferences', {
+      currencyCode: 'USD',
+      ratePerKwh: 0.14,
+      emissionsFactorPreset: 'NEWE',
+      emissionsFactorKgPerKwh: 9.99, // ignored: the preset wins
+    });
+    expect(res.status).toBe(200);
+    expect(saved.emissionsFactorKgPerKwh).toBeCloseTo((541.127 * 0.45359237) / 1000, 6);
+    expect(saved.emissionsFactorRegion).toBe('eGRID NEWE — NPCC New England');
+    expect(saved.emissionsFactorYear).toBe(2023);
+  });
+
+  it('rejects an unknown preset', async () => {
+    const res = await call(buildApp(), 'put', '/api/energy/preferences', {
+      currencyCode: 'USD',
+      ratePerKwh: 0.14,
+      emissionsFactorPreset: 'ZZZZ',
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it('overview reports CO2e at the US average, flagged as a default, when no factor is set', async () => {
+    const res = await call(buildApp(), 'get', '/api/energy/overview?start=2026-08-10T00:00:00Z&end=2026-08-17T00:00:00Z');
+    expect(res.body.emissions.factorIsDefault).toBe(true);
+    expect(res.body.emissions.factorKgPerKwh).toBeCloseTo(0.35164, 5);
+    expect(res.body.emissions.periodKgCo2e).toBeCloseTo(10 * 0.35164, 3);
+  });
+
+  it('overview uses a configured factor when one is saved', async () => {
+    const app = buildApp({
+      getRatePreferencesFn: async () => ({
+        currencyCode: 'USD',
+        currencySymbol: '$',
+        ratePerKwh: 0.14,
+        emissionsFactorKgPerKwh: 0.2,
+        emissionsFactorSource: 'custom',
+      }),
+    });
+    const res = await call(app, 'get', '/api/energy/overview?start=2026-08-10T00:00:00Z&end=2026-08-17T00:00:00Z');
+    expect(res.body.emissions.factorIsDefault).toBe(false);
+    expect(res.body.emissions.periodKgCo2e).toBeCloseTo(2, 6);
+  });
+
+  it('the environmental report carries the footprint and the fleet EPEAT coverage', async () => {
+    const app = buildApp({
+      fetchPowerSamplesFn: async () => [
+        { deviceExternalId: 'A', model: 'AP4020', watts: 10, observedAt: '2026-08-10T00:00:00Z' },
+        { deviceExternalId: 'A', model: 'AP4020', watts: 10, observedAt: '2026-08-10T00:05:00Z' },
+        { deviceExternalId: 'B', model: 'AP5022', watts: 14, observedAt: '2026-08-10T00:00:00Z' },
+      ],
+    });
+    const res = await call(app, 'post', '/api/energy/environmental-reports', {
+      siteId: 'site-A',
+      windowStart: '2026-08-10T00:00:00Z',
+      windowEnd: '2026-08-17T00:00:00Z',
+      includeFinancials: true,
+      includeCarbon: true,
+    });
+    expect(res.status).toBe(201);
+    expect(res.body.carbon.factorIsDefault).toBe(true);
+    expect(res.body.carbon.annualFootprintKgCo2e).toBeGreaterThan(0);
+    expect(res.body.epeat.apCount).toBe(2);
+    expect(res.body.epeat.registeredApCount).toBe(1);
+  });
+});

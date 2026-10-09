@@ -38,6 +38,7 @@ import {
   rangeSeconds,
   BASELINE_WINDOWS,
 } from './analysis.js';
+import { US_AVERAGE } from '../emissionFactors.js';
 
 const DEFAULT_ACTION = Object.freeze({
   kind: 'disableRadios',
@@ -48,7 +49,8 @@ const DEFAULT_ACTION = Object.freeze({
 /** How long to wait after the write before the first on-air verdict. */
 const APPLY_SETTLE_MS = 15_000;
 
-const DEFAULT_EMISSIONS_FACTOR_KG_PER_KWH = 0.371; // US eGRID national average, 2022.
+// eGRID2023 US average total-output CO2e (775.239 lb/MWh) — see emissionFactors.js.
+const DEFAULT_EMISSIONS_FACTOR_KG_PER_KWH = US_AVERAGE.kgCo2ePerKwh;
 
 /**
  * Controller session for a source, using the SAME durable credentials the
