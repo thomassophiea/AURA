@@ -37,10 +37,11 @@ on live AP5020 / AP4020X units. None of it is assumed.
 | Is the sensor value lux? | **No.** It is an uncalibrated 16-bit count | Dark radome ≈ 2, lit lab 6–52. Thresholds are expressed in raw counts |
 | Is the action safe on every model? | **No.** AP5020 and AP5022 only | See §6.1 — the AP4020X did not survive it |
 
-**`powerModel.js` assigns the 6 GHz band `BAND_SHARE = 0.25`. The measurement
-came out at 0.159.** The model is not wrong to exist — it lets the What-if tool
-answer questions with no experiment behind them — but it is a model, and this
-POC is what lets a measured number be quoted instead.
+**`powerModel.js` assigned the 6 GHz band `BAND_SHARE = 0.25`. The measurement
+came out at 0.159.** Since 2026-10-08 the model is calibrated to measurements:
+6 GHz 0.159 (this POC), all three radios 0.345 (AP5022 lab test, 33.5–35.1%
+across three channel plans), with 2.4/5 GHz split 0.081/0.105 from the lab's
+band comparison. Chains, profile, WLAN and Tx shares remain modeled.
 
 ---
 

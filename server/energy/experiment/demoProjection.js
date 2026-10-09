@@ -30,7 +30,8 @@
  *    curve starts.
  * 2. The reduction is the **measured** one: disabling the 6 GHz radio on an
  *    AP5020 moved it 14.112 W → 11.868 W, i.e. 15.9%. `powerModel.js` models
- *    that band at 25%; the measurement is what this uses, because a demo that
+ *    that band with this same measured share (it modelled 25% until
+ *    2026-10-08); the measurement is what this uses, because a demo that
  *    overstates the saving is worse than no demo.
  * 3. Power does not step. The PoE wattmeter takes tens of seconds to settle, so
  *    the curve eases in over `SETTLE_SECONDS` and the chart bends rather than

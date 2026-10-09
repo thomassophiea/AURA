@@ -17,8 +17,8 @@
  *
  * Measured effect of disabling the 6 GHz radio on an AP5020 (2026-09-11):
  * 14.112 W → 11.868 W, a 15.9% reduction, against an untouched control AP that
- * stayed at 14.3-14.5 W. The shipped powerModel.js assumes 25% for the same
- * band; that constant is a model, this is a measurement.
+ * stayed at 14.3-14.5 W. powerModel.js's 6 GHz share was 25% until 2026-10-08
+ * and now uses this measurement.
  */
 
 /** Deep clone via JSON — the AP object is pure JSON from the controller. */

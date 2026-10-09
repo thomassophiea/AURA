@@ -138,7 +138,7 @@ describe('POST /api/energy/scenarios — operator time zone', () => {
     });
     expect(res.status).toBe(200);
     expect(res.body.timeZone).toBe('America/New_York');
-    expect(res.body.savings.percent).toBeCloseTo(25, 4);
+    expect(res.body.savings.percent).toBeCloseTo(15.9, 4); // measured 6 GHz share
   });
 
   it('defaults to America/New_York when no zone is sent', async () => {
@@ -195,9 +195,9 @@ describe('POST /api/energy/scenarios', () => {
     expect(res.status).toBe(200);
     expect(res.body.scenarioId).toBe('sc-1');
     expect(res.body.timeZone).toBe('UTC');
-    expect(res.body.savings.percent).toBeCloseTo(25, 4);
+    expect(res.body.savings.percent).toBeCloseTo(15.9, 4); // measured 6 GHz share
     expect(res.body.baseline.dailyProjected).toBeCloseTo(0.048, 6);
-    expect(res.body.savings.dailyKwh).toBeCloseTo(0.012, 6);
+    expect(res.body.savings.dailyKwh).toBeCloseTo(0.048 * 0.159, 6);
   });
 
   it('preserves unknown projections as null instead of reporting zero cost', async () => {

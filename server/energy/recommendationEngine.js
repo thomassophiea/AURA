@@ -103,7 +103,7 @@ export function buildRecommendations({ samples, windowDays, ratePerKwh, maxGapSe
 
   // --- light_aware_opportunity ---------------------------------------------
   // Only surfaced when APs actually spent observed time dark (spec §15). Modeled
-  // savings = disabling the 6 GHz radio (band share 0.25) over that dark time.
+  // savings = disabling the 6 GHz radio (measured band share 0.159) over that dark time.
   if (lightObserved && lightObserved.darkApCount > 0 && lightObserved.darkAvgHours > 0) {
     const savingsKwh = (lightObserved.baselineKwhDark ?? 0) * SIX_GHZ_BAND_SHARE;
     const annualFactor = windowDays > 0 ? 365 / windowDays : 0;

@@ -30,10 +30,11 @@ describe('simulatedWattsForSample', () => {
   });
 
   it('applies after-hours reduction outside business hours', () => {
-    // 23:00 UTC is after-hours (start 22, end 6), reduce 20%
+    // 23:00 UTC is after-hours (start 22, end 6), reduce Tx 20% — of the radio
+    // share only (0.345), never of the platform draw.
     const s = at('2026-08-10T23:00:00Z', 10);
     const policy = { afterHoursStart: 22, afterHoursEnd: 6, reduceTxPower: true, reducePercent: 20 };
-    expect(simulatedWattsForSample(s, policy)).toBeCloseTo(8, 6);
+    expect(simulatedWattsForSample(s, policy)).toBeCloseTo(10 * (1 - 0.345 * 0.2), 6);
   });
 
   it('does not reduce during business hours', () => {
@@ -45,9 +46,8 @@ describe('simulatedWattsForSample', () => {
   it('zeroes low-utilization radio share below threshold', () => {
     const s = at('2026-08-10T03:00:00Z', 10, { channelUtilization: 2 });
     const policy = { disableLowUtilRadios: true, lowUtilThresholdPercent: 5 };
-    // low-util maps to disableRadio band '6' (idle high-band radio, share 0.25)
-    // resolveApState(10, [{kind:'disableRadio', band:'6'}]) = 10 * (1 - 0.25) = 7.5
-    expect(simulatedWattsForSample(s, policy)).toBeCloseTo(7.5, 6);
+    // low-util maps to disableRadio band '6' (measured share 0.159)
+    expect(simulatedWattsForSample(s, policy)).toBeCloseTo(10 * (1 - 0.159), 6);
   });
 
   it('does not apply a 6 GHz low-utilization action to an explicit non-6 GHz sample', () => {
@@ -69,14 +69,14 @@ describe('replayScenario', () => {
     ];
     const policy = { disable6GhzHours: [0, 1, 2, 3, 4, 5] };
     const out = replayScenario({ samples, policy, maxGapSeconds: 7200 });
-    // baseline: 2W * 3600s = 0.002 kWh; simulated: 1.5W * 3600s = 0.0015 kWh
+    // baseline: 2W * 3600s = 0.002 kWh; simulated: 2W * (1 - 0.159) * 3600s
     expect(out.baselineKwh).toBeCloseTo(0.002, 6);
-    expect(out.simulatedKwh).toBeCloseTo(0.0015, 6);
-    expect(out.savingsKwh).toBeCloseTo(0.0005, 6);
+    expect(out.simulatedKwh).toBeCloseTo(0.002 * (1 - 0.159), 6);
+    expect(out.savingsKwh).toBeCloseTo(0.002 * 0.159, 6);
     expect(out.baselineDailyKwh).toBeCloseTo(0.048, 6);
-    expect(out.simulatedDailyKwh).toBeCloseTo(0.036, 6);
-    expect(out.savingsDailyKwh).toBeCloseTo(0.012, 6);
-    expect(out.savingsPercent).toBeCloseTo(25, 6);
+    expect(out.simulatedDailyKwh).toBeCloseTo(0.048 * (1 - 0.159), 6);
+    expect(out.savingsDailyKwh).toBeCloseTo(0.048 * 0.159, 6);
+    expect(out.savingsPercent).toBeCloseTo(15.9, 6);
     expect(out.apWithDataCount).toBe(1);
   });
 
@@ -147,14 +147,14 @@ describe('optimizationsForSample', () => {
   it('does not double-count 6 GHz when both hour-disable and light-aware dark disable it', () => {
     const sample = { watts: 20, observedAt: '2026-08-19T02:00:00Z' };
     // simulatedWattsForSample only uses whatif opts; resolver deduplicates by band Set
-    expect(simulatedWattsForSample(sample, { disable6GhzHours: [2] })).toBeCloseTo(15, 6);
+    expect(simulatedWattsForSample(sample, { disable6GhzHours: [2] })).toBeCloseTo(20 * (1 - 0.159), 6);
     // manually verify resolver collapses duplicate band descriptors
     const opts = [
       { kind: 'disableRadio', band: '6', source: 'whatif', reason: 'disable6GhzHours' },
       { kind: 'disableRadio', band: '6', source: 'lightAware', reason: 'dark' },
     ];
-    // Set deduplication: band '6' added once → removed share = 0.25 → 20 * 0.75 = 15
-    expect(resolveApState(20, opts)).toBeCloseTo(15, 6);
+    // Set deduplication: band '6' added once → removed share = 0.159 (measured)
+    expect(resolveApState(20, opts)).toBeCloseTo(20 * (1 - 0.159), 6);
   });
 });
 
@@ -164,8 +164,8 @@ describe('simulatedWattsForSample with lightAware', () => {
     const policy = {
       lightAware: { enabled: true, actionsByState: { dark: [{ kind: 'disableRadio', band: '6' }] } },
     };
-    // 6 GHz disabled -> 20 * 0.75 = 15
-    expect(simulatedWattsForSample(sample, policy)).toBeCloseTo(15, 6);
+    // 6 GHz disabled -> 20 * (1 - 0.159)
+    expect(simulatedWattsForSample(sample, policy)).toBeCloseTo(20 * (1 - 0.159), 6);
   });
 
   it('ignores light-aware actions when disabled', () => {
@@ -193,7 +193,7 @@ describe('simulatedWattsForSample with lightAware', () => {
       disable6GhzHours: [2, 3],
       lightAware: { enabled: true, actionsByState: { dark: [{ kind: 'disableRadio', band: '6' }] } },
     };
-    // combined resolves to a single 6 GHz disable: 20 * 0.75 = 15
-    expect(simulatedWattsForSample(samples[0], policy)).toBeCloseTo(15, 6);
+    // combined resolves to a single 6 GHz disable
+    expect(simulatedWattsForSample(samples[0], policy)).toBeCloseTo(20 * (1 - 0.159), 6);
   });
 });

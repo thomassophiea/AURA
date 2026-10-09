@@ -5,10 +5,14 @@ import { Slider } from '@/components/ui/slider';
 import { formatKwh, formatCurrency } from '@/lib/energyCalc';
 import { projectLightAwareSavings } from '@/lib/lightSensor';
 
-/** Modeled power avoided per state (from the light-aware policy defaults:
- *  dark disables 6 GHz + cuts Tx, dim cuts Tx). Surfaced as visible assumptions. */
-const DARK_FACTOR = 0.35;
+/** Power avoided per light state, surfaced as visible assumptions.
+ *  Dark = the AP's LUX power save, all radios off: measured 33.5–35.1% on an
+ *  AP5022 (lab, 2026-10-08) — mirrors ALL_RADIOS_OFF_SHARE in powerModel.js.
+ *  Dim is still modeled; it relies on Tx-power reduction, which is unmeasured. */
+const DARK_FACTOR = 0.345;
 const DIM_FACTOR = 0.15;
+/** The lab's power-save assumption: 12 h of night with radios off. */
+const DEFAULT_DARK_HOURS = 12;
 
 interface LightAwareWhatIfProps {
   /** Sensor-capable APs with their current power draw (watts). */
@@ -53,7 +57,7 @@ function LightAwareWhatIfComponent({
   ratePerKwh,
   currencySymbol,
 }: LightAwareWhatIfProps) {
-  const [darkHours, setDarkHours] = useState(10);
+  const [darkHours, setDarkHours] = useState(DEFAULT_DARK_HOURS);
   const [dimHours, setDimHours] = useState(4);
 
   const savings = useMemo(

@@ -30,7 +30,7 @@ describe('buildRecommendations', () => {
     expect(rec).toBeTruthy();
     expect(rec.affectedApCount).toBe(1);
     expect(rec.savingsKwh).toBeGreaterThan(0);
-    expect(rec.savingsPercent).toBeCloseTo(25, 0);
+    expect(rec.savingsPercent).toBeCloseTo(15.9, 0); // measured 6 GHz share
     expect(rec.estimatedAnnualSaving).toBeGreaterThan(0);
     expect(rec.confidenceLevel).toBe('high');
     expect(rec.riskLevel).toBe('low');
@@ -107,10 +107,11 @@ describe('buildRecommendations', () => {
     });
     const rec = recs.find((item) => item.type === 'low_utilization_6ghz');
 
-    // AP-1 saves 2.5 W, AP-2 saves 5 W. Annualize each AP independently:
-    // (2.5 W + 5 W) * 8760 h / 1000 = 65.7 kWh/year.
-    expect(rec.annualSavingsKwh).toBeCloseTo(65.7, 1);
-    expect(rec.estimatedAnnualSaving).toBeCloseTo(65.7 * 0.14, 1);
+    // 6 GHz share 0.159 of each AP's draw; annualize each AP independently.
+    // Ratio to the old 0.25 model's 65.7 kWh/year is exact: 65.7 * 0.159/0.25.
+    const expected = 65.7 * (0.159 / 0.25);
+    expect(rec.annualSavingsKwh).toBeCloseTo(expected, 1);
+    expect(rec.estimatedAnnualSaving).toBeCloseTo(expected * 0.14, 1);
   });
 
   it('does not emit a recommendation when qualifying samples have no usable interval', () => {

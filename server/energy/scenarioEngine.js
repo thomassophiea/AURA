@@ -1,7 +1,8 @@
 /**
  * Replays optimization policies against stored power samples. Read-only: it
  * never touches live config. The controller does not expose per-radio power,
- * so radio-level effects use a band-ratio model (6 GHz ~ 25% of AP draw).
+ * so radio-level effects use the band shares in powerModel.js (6 GHz = 15.9%
+ * of AP draw, measured).
  * Results are labeled "modeled estimate" by the UI, not "measured".
  *
  * All per-sample math is delegated to resolveApState (powerModel.js) so each
@@ -9,10 +10,10 @@
  */
 
 import { kwhFromWattSeconds, savingsPercent } from './energyCalculator.js';
-import { resolveApState } from './powerModel.js';
+import { resolveApState, BAND_SHARE } from './powerModel.js';
 
 /** Modeled share of an AP's draw attributable to a single high-band radio. Kept for external consumers. */
-export const SIX_GHZ_BAND_SHARE = 0.25;
+export const SIX_GHZ_BAND_SHARE = BAND_SHARE['6'];
 
 /** The operator's zone when the caller does not name one. */
 export const DEFAULT_SCENARIO_TIME_ZONE = 'America/New_York';
@@ -164,9 +165,9 @@ export function replayScenario({ samples, policy, maxGapSeconds, timeZone = 'UTC
  *
  * This is the preferred basis for a "what if we did this everywhere" question,
  * because it starts from a watt figure that was actually observed on hardware
- * with a control group — not from BAND_SHARE, which is a model. The two can
- * disagree substantially: the shipped 6 GHz share is 0.25, and the first
- * controlled measurement on an AP5020 came out at 0.159.
+ * with a control group. BAND_SHARE is now calibrated to the lab (6 GHz 0.159
+ * measured on an AP5020; all radios 0.345 on an AP5022), but it is still a
+ * per-band average, and an observed saving on this estate beats it.
  *
  * Nothing here invents a number. If the observed saving is missing or
  * non-positive, every projection is null.
