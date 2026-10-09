@@ -63,7 +63,7 @@ function EnergyOverviewCardsComponent({
         />
         <MetricCard
           icon={Leaf}
-          title="Carbon (CO₂e)"
+          title="CO₂e"
           loading={pending}
           value={pending ? '' : formatKgCo2e(overview.emissions?.periodKgCo2e, false)}
           subtitle={
@@ -71,7 +71,7 @@ function EnergyOverviewCardsComponent({
               ? undefined
               : `${formatKgCo2e(overview.emissions.annualKgCo2eProjected, false)}/yr · ${
                   overview.emissions.factorIsDefault
-                    ? 'US avg (default)'
+                    ? 'US avg'
                     : (overview.emissions.region?.replace(/^eGRID /, '').split(' — ')[0] ??
                       'configured')
                 }`

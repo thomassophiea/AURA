@@ -61,7 +61,7 @@ describe('EnergyOverviewCards — carbon', () => {
       />
     );
     expect(screen.getByText('3.52 kg')).toBeInTheDocument();
-    expect(screen.getByText('1.28 t/yr · US avg (default)')).toBeInTheDocument();
+    expect(screen.getByText('1.28 t/yr · US avg')).toBeInTheDocument();
   });
 
   it('names the configured eGRID region', () => {
