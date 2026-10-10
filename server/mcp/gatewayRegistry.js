@@ -88,7 +88,10 @@ export function createGatewayRegistry({
     for (const s of sources) {
       const key = norm(s.baseUrl);
       const isDefault = Boolean(defaultKey && key === defaultKey);
-      const name = s.displayName ?? hostOf(s.baseUrl) ?? s.baseUrl;
+      // The seeded default source is labelled after its env variable, which
+      // means nothing to an operator; its host does.
+      const seededLabel = /CAMPUS_CONTROLLER_URL/.test(s.displayName ?? '');
+      const name = (!seededLabel && s.displayName) || hostOf(s.baseUrl) || s.baseUrl;
       const permitted =
         isDefault ||
         allowAll ||

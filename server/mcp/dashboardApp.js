@@ -73,7 +73,7 @@ th{font-size:12px;color:var(--muted);font-weight:600}td.num{font-variant-numeric
         var sc=el('td','num',s.overall===null?'not measured':s.overall+'%');
         if(s.overall!==null){ var bar=el('span','bar'); var fill=el('i'); fill.style.width=Math.max(0,Math.min(100,s.overall))+'%'; fill.style.background='var(--'+cls(s.status)+')'; bar.appendChild(fill); sc.appendChild(bar); }
         r.appendChild(sc);
-        var st=el('td'); st.appendChild(el('span','pill '+cls(s.status),s.status||'no data')); r.appendChild(st);
+        var st=el('td'); st.appendChild(el('span','pill '+cls(s.status),s.status?String(s.status).replace(/_/g,' '):'no data')); r.appendChild(st);
         r.appendChild(el('td','hide-sm',s.weakestMetric||'—'));
         r.appendChild(el('td','num hide-sm',s.apsOffline===null||s.apsOffline===undefined?'—':s.apsOffline));
         body.appendChild(r);
