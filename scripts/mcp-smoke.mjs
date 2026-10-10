@@ -4,8 +4,9 @@
  *
  *   MCP_URL=https://integration.up.railway.app/mcp MCP_TOKEN=... node scripts/mcp-smoke.mjs
  *
- * Connects, lists tools, and calls list_sites then get_site_health for the first
- * site. Prints a summary and timings, never the token.
+ * Exercises the whole surface — tools, resources, prompts — against the live
+ * Gateway behind the deployment, and prints one line per step with its timing.
+ * Never prints the token. Exits non-zero if any step fails.
  */
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
@@ -20,14 +21,8 @@ if (!url || !token) {
 const transport = new StreamableHTTPClientTransport(new URL(url), {
   requestInit: { headers: { Authorization: `Bearer ${token}` } },
 });
-const client = new Client({ name: 'aura-mcp-smoke', version: '1.0.0' });
-
-async function timed(label, fn) {
-  const t = Date.now();
-  const out = await fn();
-  console.log(`${label}: ${Date.now() - t} ms`);
-  return out;
-}
+const client = new Client({ name: 'aura-mcp-smoke', version: '2.0.0' });
+let failures = 0;
 
 function parse(result) {
   const text = result.content?.[0]?.text ?? '';
@@ -38,32 +33,153 @@ function parse(result) {
   }
 }
 
-await timed('connect', () => client.connect(transport));
-console.log('server:', client.getServerVersion());
+async function step(label, fn, summarise = () => '') {
+  const t = Date.now();
+  try {
+    const out = await fn();
+    const ms = Date.now() - t;
+    const bad = out?.isError || out?.unavailable;
+    if (bad) failures += 1;
+    console.log(
+      `${bad ? 'FAIL' : 'ok  '} ${label.padEnd(44)} ${String(ms).padStart(6)} ms  ${summarise(out)}`
+    );
+    return out;
+  } catch (err) {
+    failures += 1;
+    console.log(
+      `FAIL ${label.padEnd(44)} ${String(Date.now() - t).padStart(6)} ms  ${err.message}`
+    );
+    return null;
+  }
+}
 
-const { tools } = await timed('tools/list', () => client.listTools());
-console.log('tools:', tools.map((t) => t.name).join(', '));
+const tool =
+  (name, args = {}) =>
+  async () => {
+    const res = await client.callTool({ name, arguments: args }, undefined, { timeout: 120_000 });
+    if (res.isError) return { isError: true, text: res.content?.[0]?.text };
+    return parse(res);
+  };
 
-const sitesRes = await timed('list_sites', () =>
-  client.callTool({ name: 'list_sites', arguments: {} }, undefined, { timeout: 120_000 })
+await step(
+  'connect',
+  () => client.connect(transport),
+  () => JSON.stringify(client.getServerVersion())
 );
-const sites = parse(sitesRes);
-console.log('list_sites isError:', Boolean(sitesRes.isError));
-console.log(JSON.stringify(sites, null, 2).slice(0, 1500));
-
-const siteList = sites?.sites ?? sites?.catalogue ?? [];
-const first = siteList.find?.((s) => s.hasTelemetry) ?? siteList[0];
-const firstName = first?.siteName ?? first?.name;
-const siteName = typeof firstName === 'object' ? firstName?.value : firstName;
-
-const healthRes = await timed(`get_site_health(${siteName ?? 'fleet'})`, () =>
-  client.callTool(
-    { name: 'get_site_health', arguments: siteName ? { siteName, worst: 3 } : { worst: 3 } },
-    undefined,
-    { timeout: 120_000 }
-  )
+await step(
+  'tools/list',
+  () => client.listTools(),
+  (o) => `${o.tools.length} tools`
 );
-console.log('get_site_health isError:', Boolean(healthRes.isError));
-console.log(JSON.stringify(parse(healthRes), null, 2).slice(0, 1500));
+await step(
+  'resources/list',
+  () => client.listResources(),
+  (o) => o.resources.map((r) => r.uri).join(' ')
+);
+await step(
+  'prompts/list',
+  () => client.listPrompts(),
+  (o) => o.prompts.map((p) => p.name).join(' ')
+);
+
+const ctx = await step('get_aura_context', tool('get_aura_context'), (o) =>
+  JSON.stringify({
+    gateway: o.gateway,
+    estate: { sites: o.estate?.sites, aps: o.estate?.accessPoints, wlans: o.estate?.wlans },
+    flex: o.telemetry?.clientReportService?.state,
+  })
+);
+const firstSite = ctx?.estate?.siteNames?.[0]?.value ?? 'PrimarySite';
+
+await step(
+  'find_entity(Skynet)',
+  tool('find_entity', { query: 'Skynet' }),
+  (o) =>
+    `total ${o.total}: wlans ${o.wlans?.length} clients ${o.clients?.length} aps ${o.accessPoints?.length}`
+);
+await step(
+  `find_entity(${firstSite})`,
+  tool('find_entity', { query: firstSite }),
+  (o) => `site matches ${o.sites?.length}`
+);
+await step(
+  'list_devices(offline)',
+  tool('list_devices', { connected: false, includeRadios: false }),
+  (o) => `offline ${o.accessPoints?.total} ${JSON.stringify(o.accessPoints?.statusCounts)}`
+);
+await step(
+  'get_config(wlans index)',
+  tool('get_config', { objectType: 'wlans' }),
+  (o) => `${o.count} WLANs`
+);
+await step(
+  'get_config(wlans, full Skynet)',
+  tool('get_config', { objectType: 'wlans', name: 'Skynet' }),
+  (o) => {
+    const t = JSON.stringify(o);
+    return `matched ${o.matched}, redacted markers ${(t.match(/\[redacted\]/g) ?? []).length}`;
+  }
+);
+await step(
+  'search_gateway_api(smart rf)',
+  tool('search_gateway_api', { query: 'smart rf channel' }),
+  (o) =>
+    o.matches
+      ?.slice(0, 3)
+      .map((m) => m.path)
+      .join(' ')
+);
+await step(
+  'call_gateway_api(/v3/sites)',
+  tool('call_gateway_api', { path: '/v3/sites', fields: ['siteName', 'country'] }),
+  (o) => `total ${o.total}`
+);
+await step(
+  'call_gateway_api(/v1/appkeys) refused',
+  async () => {
+    const o = await tool('call_gateway_api', { path: '/v1/appkeys' })();
+    return o?.unavailable
+      ? { refused: true, reason: o.reason }
+      : { isError: true, text: 'NOT REFUSED' };
+  },
+  (o) => o.reason ?? ''
+);
+await step(
+  `get_site_health(${firstSite})`,
+  tool('get_site_health', { siteName: firstSite, worst: 3 }),
+  (o) => JSON.stringify(o.summary ?? o.status ?? '').slice(0, 120)
+);
+await step(
+  'get_service_levels',
+  tool('get_service_levels'),
+  (o) => `sites ${o.sites?.length ?? o.siteCount ?? '?'}`
+);
+await step(
+  'get_alerts',
+  tool('get_alerts'),
+  (o) => `alerts ${o.alerts?.length ?? o.alertCount ?? '?'}`
+);
+await step(
+  'get_recent_changes(24h)',
+  tool('get_recent_changes', { hours: 24 }),
+  (o) => `changes ${o.changes?.length ?? o.count ?? '?'}`
+);
+await step(
+  'resources/read aura://guide',
+  () => client.readResource({ uri: 'aura://guide' }),
+  (o) => `${o.contents[0].text.length} chars`
+);
+await step(
+  `resources/read site health`,
+  () => client.readResource({ uri: `aura://sites/${encodeURIComponent(firstSite)}/health` }),
+  (o) => `${o.contents[0].text.length} chars`
+);
+await step(
+  'prompts/get troubleshoot_client',
+  () => client.getPrompt({ name: 'troubleshoot_client', arguments: { client: 'laptop' } }),
+  (o) => `${o.messages.length} message(s)`
+);
 
 await client.close();
+console.log(failures ? `\n${failures} step(s) failed` : '\nall steps passed');
+process.exit(failures ? 1 : 0);

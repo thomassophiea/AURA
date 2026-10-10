@@ -272,11 +272,7 @@ export function widgetEvents(report, widget = 'muEvent') {
         // timestamp on the point, so prefer it when present.
         const inner = Number(msg.Timestamp);
         const bucket = Number(point?.timestamp);
-        const ts = Number.isFinite(inner)
-          ? inner
-          : Number.isFinite(bucket)
-            ? bucket
-            : null;
+        const ts = Number.isFinite(inner) ? inner : Number.isFinite(bucket) ? bucket : null;
         out.push({
           type: stat.statName,
           timestamp: ts,
@@ -346,32 +342,55 @@ export function percentile(values, p) {
  * misdiagnosis once the backend is ruled out.
  */
 export const APP_COLUMNS = [
-  'AppAdvertising', 'AppBusinessApplications', 'AppCertificateValidation',
-  'AppCloudComputing', 'AppCloudStorage', 'AppCorporateWebsite', 'AppDatabases',
-  'AppE-commerce', 'AppEducation', 'AppFinance', 'AppGames', 'AppHealth',
-  'AppLocationServices', 'AppMail', 'AppNewsandInformation', 'AppPeertoPeer',
-  'AppProtocols', 'AppRealTimeandCloudCommunications', 'AppRestrictedContent',
-  'AppSearchEngines', 'AppSocialNetworking', 'AppSoftwareUpdates', 'AppSports',
-  'AppStorage', 'AppStreaming', 'AppTravel', 'AppUnknownApps',
-  'AppVPNandSecurity', 'AppWebApplications', 'AppWebCollaboration',
-  'AppWebContentServices', 'AppWebFileSharing',
+  'AppAdvertising',
+  'AppBusinessApplications',
+  'AppCertificateValidation',
+  'AppCloudComputing',
+  'AppCloudStorage',
+  'AppCorporateWebsite',
+  'AppDatabases',
+  'AppE-commerce',
+  'AppEducation',
+  'AppFinance',
+  'AppGames',
+  'AppHealth',
+  'AppLocationServices',
+  'AppMail',
+  'AppNewsandInformation',
+  'AppPeertoPeer',
+  'AppProtocols',
+  'AppRealTimeandCloudCommunications',
+  'AppRestrictedContent',
+  'AppSearchEngines',
+  'AppSocialNetworking',
+  'AppSoftwareUpdates',
+  'AppSports',
+  'AppStorage',
+  'AppStreaming',
+  'AppTravel',
+  'AppUnknownApps',
+  'AppVPNandSecurity',
+  'AppWebApplications',
+  'AppWebCollaboration',
+  'AppWebContentServices',
+  'AppWebFileSharing',
 ];
 
 /** Categories that are a policy observation rather than a performance one. */
-export const POLICY_APP_COLUMNS = new Set([
-  'AppPeertoPeer', 'AppRestrictedContent', 'AppGames',
-]);
+export const POLICY_APP_COLUMNS = new Set(['AppPeertoPeer', 'AppRestrictedContent', 'AppGames']);
 
 /** 'AppRealTimeandCloudCommunications' -> 'RealTime and Cloud Communications' */
 export function appLabel(column) {
-  return String(column)
-    .replace(/^App/, '')
-    // Split camel boundaries, then rescue the run-together conjunction in
-    // names like RealTimeandCloudCommunications -> "RealTime and Cloud ...".
-    .replace(/and(?=[A-Z])/g, ' and ')
-    .replace(/(?<=[a-z])(?=[A-Z])/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return (
+    String(column)
+      .replace(/^App/, '')
+      // Split camel boundaries, then rescue the run-together conjunction in
+      // names like RealTimeandCloudCommunications -> "RealTime and Cloud ...".
+      .replace(/and(?=[A-Z])/g, ' and ')
+      .replace(/(?<=[a-z])(?=[A-Z])/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
 }
 
 /**
@@ -397,7 +416,10 @@ export function appDemand(row) {
   return {
     totalBytes,
     top: vals.slice(0, 5).map(([app, bytes]) => ({
-      app, label: appLabel(app), bytes, share: bytes / totalBytes,
+      app,
+      label: appLabel(app),
+      bytes,
+      share: bytes / totalBytes,
     })),
     policy: vals
       .filter(([app]) => POLICY_APP_COLUMNS.has(app))
@@ -445,8 +467,7 @@ export function airtimeSplit(row) {
   };
   const parts = [split.ownClients, split.coChannel, split.nonWifi, split.available];
   split.consistent =
-    parts.every((v) => v !== null) &&
-    Math.abs(parts.reduce((a, b) => a + b, 0) - 100) <= 2;
+    parts.every((v) => v !== null) && Math.abs(parts.reduce((a, b) => a + b, 0) - 100) <= 2;
   return split;
 }
 
@@ -467,6 +488,27 @@ const flexCircuit = new Map();
 /** Test hook. */
 export function resetFlexCircuit() {
   flexCircuit.clear();
+}
+
+/**
+ * The breaker as last observed for one Gateway — `unknown` until a flex read
+ * has been attempted in this process. Read-only; reporting it costs nothing.
+ */
+export function flexCircuitState(baseUrl, now = Date.now()) {
+  const open = baseUrl ? flexCircuit.get(baseUrl) : null;
+  if (!open) return { state: 'closed_or_untested' };
+  if (open.until <= now)
+    return {
+      state: 'half_open',
+      lastError: open.error,
+      failedAt: new Date(open.since).toISOString(),
+    };
+  return {
+    state: 'open',
+    lastError: open.error,
+    failedAt: new Date(open.since).toISOString(),
+    retryAfter: new Date(open.until).toISOString(),
+  };
 }
 
 /** Per-site station reads run at most this many at once. */
@@ -651,9 +693,12 @@ export class GatewayEvidence {
   async #stationsBySite() {
     const [sites, aps] = await Promise.all([this.sites(), this.#session.get('/v1/aps/query')]);
     if (!sites.ok || !aps.ok) return null;
-    const ids = sites.rows.map((x) => x?.id ?? x?.siteId).filter(Boolean).map(String);
+    const ids = sites.rows
+      .map((x) => x?.id ?? x?.siteId)
+      .filter(Boolean)
+      .map(String);
     if (!ids.length || ids.length > STATION_SITE_MAX) return null;
-    const apRows = Array.isArray(aps.data) ? aps.data : aps.data?.aps ?? [];
+    const apRows = Array.isArray(aps.data) ? aps.data : (aps.data?.aps ?? []);
     if (apRows.some((ap) => !ap?.hostSite)) return null;
 
     const perSite = new Array(ids.length);
@@ -667,7 +712,9 @@ export class GatewayEvidence {
           failed = true;
           return;
         }
-        const list = Array.isArray(res.data) ? res.data : res.data?.stations ?? res.data?.data ?? [];
+        const list = Array.isArray(res.data)
+          ? res.data
+          : (res.data?.stations ?? res.data?.data ?? []);
         perSite[index] = list.map((st) => ({ ...st, siteId: st?.siteId ?? ids[index] }));
       }
     };
@@ -777,7 +824,13 @@ export class GatewayEvidence {
   async clientPerformance(mac) {
     const res = await this.report('station', mac, ['averageTcpRoundTripTime', 'baseliningRetries']);
     if (!res.ok) {
-      return { ok: false, wirelessRttMs: null, networkRttMs: null, retries: null, error: res.error };
+      return {
+        ok: false,
+        wirelessRttMs: null,
+        networkRttMs: null,
+        retries: null,
+        error: res.error,
+      };
     }
 
     const pick = (widget, statName) => {
@@ -967,7 +1020,12 @@ export class GatewayEvidence {
 
     const result = await this.#session.get(path);
     if (!result.ok) {
-      return { ok: false, events: [], smartRf: [], error: result.errorSummary ?? `HTTP ${result.status}` };
+      return {
+        ok: false,
+        events: [],
+        smartRf: [],
+        error: result.errorSummary ?? `HTTP ${result.status}`,
+      };
     }
 
     const raw = Array.isArray(result.data?.stationEvents) ? result.data.stationEvents : [];
@@ -1016,7 +1074,8 @@ export class GatewayEvidence {
       // Stated so a caller can say what it actually looked at, rather than
       // assuming the window it asked for is the window it got.
       spanHours: events.length
-        ? Math.round(((events[events.length - 1].timestamp - events[0].timestamp) / 3600000) * 10) / 10
+        ? Math.round(((events[events.length - 1].timestamp - events[0].timestamp) / 3600000) * 10) /
+          10
         : 0,
       requestedHours: hours,
       error: null,

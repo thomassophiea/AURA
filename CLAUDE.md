@@ -173,6 +173,10 @@ src/
 - `MCP_BEARER_TOKEN` -- required bearer token; enabled without it answers 503 (fails closed)
 - `MCP_OAUTH_ISSUER` -- optional; publishes `/.well-known/oauth-protected-resource` pointing at this issuer
 - `MCP_PUBLIC_BASE_URL` -- optional; defaults to `https://$RAILWAY_PUBLIC_DOMAIN`
+- Surface: 31 read-only tools (25 Cortex tools mapped in `MCP_TOOLS` + 6 native in `server/mcp/auraTools.js`: `get_aura_context`, `find_entity`, `list_devices`, `get_config`, `search_gateway_api`, `call_gateway_api`), resources (`aura://guide`, `aura://gateway-api/catalog`, `aura://estate`, `aura://sites`, template `aura://sites/{siteName}/health`) and 6 guided prompts (`server/mcp/prompts.js`).
+- Every result passes `redactSecrets` (`server/mcp/redact.js`) — matched on field NAME because the swagger omits `sharedSecret`, `cpSharedKey`, `faAuthKey`, `cbPassword`. Network payloads are wrapped with `untrustedData`.
+- `call_gateway_api` serves only GET paths in `server/mcp/gatewayApiCatalog.js`; regenerate with `node scripts/build-mcp-api-catalog.mjs` after a swagger update. Credential/file paths are refused in `gatewayApi.js` `DENIED`.
+- E2E: `MCP_URL=… MCP_TOKEN=… node scripts/mcp-smoke.mjs` (non-zero exit on any failed step).
 - Gateway reads use the service account (`CAMPUS_CONTROLLER_USER`/`_PASSWORD`). Connect: `claude mcp add --transport http aura https://<host>/mcp --header "Authorization: Bearer <token>"`
 
 **Security rule:** NEVER use `VITE_` prefixed variables for credentials or secrets. Vite exposes these in the browser bundle.
