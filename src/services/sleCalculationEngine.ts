@@ -241,12 +241,22 @@ export function computeAPHealth(aps: any[], historicalData: SLEDataPoint[]): SLE
   // Disconnected APs
   const disconnected = aps.filter((ap) => {
     const status = (ap.status || ap.connectionState || ap.operationalState || '').toLowerCase();
-    return status.includes('disconnect') || status.includes('offline') || status === 'outofservice';
+    // `critical` is the Gateway's own word for an AP it has lost. Same rule as
+    // apHealthAffected in server/monitoring/normalizers/sleNormalizer.js.
+    return (
+      status.includes('disconnect') ||
+      status.includes('offline') ||
+      status === 'outofservice' ||
+      status === 'critical'
+    );
   });
 
-  // Low power APs
+  // Low power APs — the Gateway reports these as ethPowerStatus "low"
   const lowPower = aps.filter(
-    (ap) => ap.lowPower || (ap.powerMode || '').toLowerCase().includes('low')
+    (ap) =>
+      ap.lowPower ||
+      (ap.powerMode || '').toLowerCase().includes('low') ||
+      (ap.ethPowerStatus || '').toLowerCase() === 'low'
   );
 
   // Network issues (connectivity but degraded)

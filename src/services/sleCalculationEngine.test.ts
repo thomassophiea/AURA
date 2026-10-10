@@ -157,6 +157,18 @@ describe('sleCalculationEngine', () => {
       expect(disconnectedClassifier!.affectedClients).toBe(1);
     });
 
+    it("should count the Gateway's critical status and ethPowerStatus low as unhealthy", () => {
+      const aps = [
+        { serialNumber: 'AP001', status: 'critical' },
+        { serialNumber: 'AP002', status: 'InService', ethPowerStatus: 'low' },
+        { serialNumber: 'AP003', status: 'InService', ethPowerStatus: 'normal' },
+        { serialNumber: 'AP004', status: 'InService' },
+      ];
+
+      const result = computeAPHealth(aps, emptyHistoricalData);
+      expect(result.successRate).toBe(50);
+    });
+
     it('should detect offline APs', () => {
       const aps = [
         { serialNumber: 'AP001', connectionState: 'offline' },

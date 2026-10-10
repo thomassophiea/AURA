@@ -91,6 +91,19 @@ describe('normalizeSleSamples', () => {
     });
   });
 
+  it("counts the Gateway's own `critical` status and ethPowerStatus low as unhealthy", () => {
+    // Lab Gateway 2026-10-10: offline APs carry status `critical`, under-powered
+    // ports ethPowerStatus `low`. EAL-PT-A scored 100% with all five offline.
+    const aps = [
+      ap({ n: 1, status: 'InService' }),
+      ap({ n: 2, status: 'critical' }),
+      { ...ap({ n: 3, status: 'InService' }), ethPowerStatus: 'low' },
+      { ...ap({ n: 4, status: 'InService' }), ethPowerStatus: 'normal' },
+    ];
+    const { samples } = normalizeSleSamples([station()], aps, BASE);
+    expect(byName(samples, 'ap_health')).toMatchObject({ numerator: 2, denominator: 4, numericValue: 50 });
+  });
+
   it('treats an unauthenticated client as a failed connect', () => {
     const stations = [
       station({ n: 1, authenticated: true }),

@@ -89,12 +89,19 @@ function apHealthAffected(aps) {
     const status = String(
       apRow.status || apRow.connectionState || apRow.operationalState || ''
     ).toLowerCase();
+    // The Gateway's own vocabulary is `critical` for an AP it has lost and
+    // `ethPowerStatus: "low"` for an under-powered port. Neither was matched, so
+    // EAL-PT-A scored AP Health 100% with all five APs offline (2026-10-10).
+    // Same rule as computeAPHealth in src/services/sleCalculationEngine.ts.
     const lowPower =
-      Boolean(apRow.lowPower) || String(apRow.powerMode || '').toLowerCase().includes('low');
+      Boolean(apRow.lowPower) ||
+      String(apRow.powerMode || '').toLowerCase().includes('low') ||
+      String(apRow.ethPowerStatus || '').toLowerCase() === 'low';
     const bad =
       status.includes('disconnect') ||
       status.includes('offline') ||
       status === 'outofservice' ||
+      status === 'critical' ||
       status.includes('degraded') ||
       status.includes('warning') ||
       lowPower;
