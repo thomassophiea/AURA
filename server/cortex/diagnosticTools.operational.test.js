@@ -10,6 +10,10 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import zlib from 'node:zlib';
+import { resetFlexCircuit } from './gatewayEvidence.js';
+
+// The flex breaker is process-wide by Gateway URL; every case here shares one.
+beforeEach(() => resetFlexCircuit());
 
 const frame = (obj) => [
   { frame: zlib.deflateSync(Buffer.from(JSON.stringify(obj))).toString('base64') },

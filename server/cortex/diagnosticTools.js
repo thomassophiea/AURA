@@ -30,7 +30,7 @@
 
 import {
   GatewayEvidence, signal, rtt, airtimeSplit, percentile, isScorableClientRow,
-  appDemand, mtuMismatchReason,
+  appDemand, mtuMismatchReason, deriveSnrFromRadios,
 } from './gatewayEvidence.js';
 import { CapabilityRegistry } from './capabilityRegistry.js';
 import { resolveClient, dedupeByMac, summariseCandidate, macIdentityNote } from './clientResolver.js';
@@ -51,6 +51,7 @@ import {
   checkInterfaceErrors, checkUplink, checkPoe, checkTunnels, checkConfiguration,
   checkEvents, checkPeers, checkImpact,
   classifyDeviceHealth, summariseFleet, reconstructReboots, platformGapChecks,
+  withoutPlaceholderReadings,
 } from './deviceHealth.js';
 import { buildRmaBundle, renderBundleSummary } from './rmaBundle.js';
 import { normaliseSiteKey } from './scopeResolver.js';
@@ -61,6 +62,7 @@ import {
   infrastructureAnalytics,
   SLE_METRIC_ORDER,
   SLE_SERVER_DIVERGENT_METRICS,
+  SLE_STALE_AFTER_SECONDS,
 } from './operationalEvidence.js';
 import { expandBlastRadius, counterfactual, describeBlastRadius } from './correlationEngine.js';
 import { reconcileWlan, expectationFromPeer, configuredWlanState } from './stateReconciler.js';
@@ -216,25 +218,46 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
       const ssidByServiceId = new Map(
         (svcRes.rows ?? []).map((s) => [String(s?.id ?? ''), s?.ssid]).filter(([id, ssid]) => id && ssid)
       );
-      const rows = fallback.rows.map((r) => ({
+      const named = fallback.rows.map((r) => ({
         ...r,
         SiteName: r.SiteId ? siteNameById.get(String(r.SiteId)) ?? null : null,
         SSID: r.RFSUUID ? ssidByServiceId.get(String(r.RFSUUID)) ?? null : null,
       }));
+      // SNR = RSS − serving-radio noise floor, both measured. See
+      // deriveSnrFromRadios for why the result can only err low.
+      const apsRes = await apData().catch(() => ({ ok: false, rows: [] }));
+      const { rows, derived } = apsRes.ok
+        ? deriveSnrFromRadios(named, apsRes.rows)
+        : { rows: named, derived: 0 };
+      const snrDerived = derived > 0;
 
       return {
         ...fallback,
         rows,
         degraded: {
-          source: '/v1/stations',
+          source: fallback.via ?? '/v1/stations',
           instead_of: 'flex(MuTable)',
           flexError: flex.error,
-          missing: ['SNR', 'RFQI', 'WirelessRTT', 'NetworkRTT', 'DNSRTT'],
-          consequence:
-            'Signal (RSS) and packet loss are real and usable. SNR, RFQI and the latency split ' +
-            'are NOT AVAILABLE from this endpoint, so coverage cannot be told from contention ' +
-            'and no latency attribution is possible. Report what is measured, name the missing ' +
-            'readings, and do not attribute a cause that needs them.',
+          snr: snrDerived
+            ? {
+              basis: 'derived',
+              method: 'client RSS − serving-radio noise floor (/v1/aps/query radios[].noise)',
+              clientsWithSnr: derived,
+              clientsWithoutSnr: rows.length - derived,
+              bias: 'noise is clamped at -100 dBm, so derived SNR can only be lower than the true value',
+            }
+            : { basis: 'unknown', reason: apsRes.ok ? 'no serving radio reported a noise floor' : apsRes.error },
+          missing: [...(snrDerived ? [] : ['SNR']), 'RFQI', 'WirelessRTT', 'NetworkRTT', 'DNSRTT'],
+          consequence: snrDerived
+            ? 'Signal (RSS), SNR and packet loss are usable: SNR is DERIVED from RSS and the ' +
+              'serving radio\'s measured noise floor, and can only err low. Clients are scored on ' +
+              'coverage from those readings. RFQI and the latency split are NOT AVAILABLE in a ' +
+              'fleet read, so contention cannot be confirmed and no latency attribution is ' +
+              'possible — diagnoseClient reads RFQI live for one named client.'
+            : 'Signal (RSS) and packet loss are real and usable. SNR, RFQI and the latency split ' +
+              'are NOT AVAILABLE from this endpoint, so coverage cannot be told from contention ' +
+              'and no latency attribution is possible. Report what is measured, name the missing ' +
+              'readings, and do not attribute a cause that needs them.',
         },
       };
     });
@@ -923,7 +946,7 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
 
     const impact = await apClientImpact(apRow);
 
-    const checks = [
+    const checks = withoutPlaceholderReadings([
       checkOperational({ apRow, state, stateReadFailed: !stateRes.ok }),
       checkFirmware({ apRow, peers, upgrade }),
       checkUptime({ apRow, rebootHistory }),
@@ -943,14 +966,14 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
       checkPeers({ apRow, peers, peerFaults }),
       checkImpact(impact),
       ...platformGapChecks(),
-    ];
-    if (deep) {
-      checks.push(
-        checkUplink({ lldp, readFailed: lldp === null }),
-        checkInterfaceErrors({ ifstats, readFailed: ifstats === null, error: ifstatsError }),
-        checkEvents({ alarms, available: alarmsAvailable, activeAlerts })
-      );
-    }
+      ...(deep
+        ? [
+          checkUplink({ lldp, readFailed: lldp === null }),
+          checkInterfaceErrors({ ifstats, readFailed: ifstats === null, error: ifstatsError }),
+          checkEvents({ alarms, available: alarmsAvailable, activeAlerts }),
+        ]
+        : []),
+    ], apRow);
 
     const report = classifyDeviceHealth(checks, { remediation });
 
@@ -1854,6 +1877,7 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
             health: a.report.health,
             rma: a.report.rma,
             attributedTo: a.report.isolation?.attributedTo ?? null,
+            connected: a.report.connected,
             faults: a.report.faults.map((f) => f.summary),
             concerns: a.report.concerns.map((f) => f.summary),
             blockedHealthyBy: a.report.blockedHealthyBy,
@@ -2367,10 +2391,13 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
                 ? ' DEGRADED SOURCE: the flex report service is failing on this Gateway ' +
                   `(${clients.degraded.flexError}), so these rows came from ` +
                   `${clients.degraded.source} instead. ${clients.degraded.consequence} ` +
-                  'clientsWithFindings is 0 here because SNR is missing and scoring needs it — ' +
-                  'that is NOT a clean bill of health. Use clientCount and worstSignal, say the ' +
-                  'signal figures are real, and say plainly that you cannot classify the cause ' +
-                  'without SNR and RFQI.'
+                  (clients.degraded.missing.includes('SNR')
+                    ? 'clientsWithFindings is 0 here because SNR is missing and scoring needs it — ' +
+                      'that is NOT a clean bill of health. Use clientCount and worstSignal, say the ' +
+                      'signal figures are real, and say plainly that you cannot classify the cause ' +
+                      'without SNR and RFQI.'
+                    : 'Scoring ran on derived SNR, so clientsWithFindings IS a real result for ' +
+                      'coverage. Say SNR was derived, and that contention (RFQI) was not assessed.')
                 : ''),
           },
           'flex(MuTable) + /v1/aps/query'
@@ -3180,12 +3207,14 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
                 : null,
               measuredMetrics: s.metricsMeasured.length,
               notMeasured: s.metricsNotMeasured,
+              staleNotScored: s.metricsStale ?? [],
               sampleAgeSeconds: s.freshestSampleAgeSeconds,
               metrics: s.metrics.map((m) => ({
                 metric: m.label,
                 successRate: m.successRate,
                 measuredOver: m.sampleBasis,
                 ageSeconds: m.ageSeconds,
+                ...(m.stale ? { stale: true } : {}),
               })),
             })),
             contradictsLiveTelemetry: disagreements,
@@ -3201,6 +3230,10 @@ export function createDiagnosticTools({ session, scope = {}, capabilities = new 
             note:
               `Any of the seven metrics (${SLE_METRIC_ORDER.length} total) absent from a site's ` +
               'measuredMetrics was NOT MEASURED — report it as not measured, never as 100%. ' +
+              'Metrics in staleNotScored have no sample in the last ' +
+              `${SLE_STALE_AFTER_SECONDS / 3600} hours; they are excluded from overall and status — ` +
+              'report them as no current data (usually: the site has no clients now), never as a ' +
+              'current failure. ' +
               (comparison === 'unavailable'
                 ? 'THE SERVICE LEVELS BELOW ARE STILL VALID AND STILL ANSWER THE QUESTION. The ' +
                   'live Gateway client-telemetry read FAILED, so the cross-check against it ' +

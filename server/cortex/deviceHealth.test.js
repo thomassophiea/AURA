@@ -7,6 +7,7 @@ import {
   checkPeers, checkImpact,
   classifyDeviceHealth, isolate, assessRma, summariseFleet, reconstructReboots,
   platformGapChecks, humanDuration, pass, fault, concern, unmeasured,
+  isNotReporting, withoutPlaceholderReadings,
 } from './deviceHealth.js';
 
 // A live row from the lab Gateway (AP5020-PVT-01, 2026-09-17), trimmed.
@@ -717,5 +718,100 @@ describe('the management tunnel MTU is not the data tunnel MTU', () => {
   it('flags an AP that learned a smaller MTU than the Gateway configured', () => {
     const c = checkTunnels({ state: tun({ apLearnedMtu: 1400 }) });
     expect(c.state).toBe(CHECK_STATE.CONCERN);
+  });
+});
+
+describe('an AP that is not connected to the Gateway', () => {
+  // Measured 2026-10-10 on the lab Gateway: every `critical` AP carried
+  // sysUptime 0, radios "N/A" at 0 dBm and no draw, on BOTH members of the pair.
+  const offline = {
+    apName: 'EAL-PT-A-Floor4',
+    serialNumber: 'WF062632W-50900',
+    hostSite: 'EAL-PT-A',
+    status: 'critical',
+    adoptedBy: 'PRIMARY',
+    home: 'LOCAL',
+    ipAddress: '192.168.50.124',
+    sysUptime: 0,
+    ethPowerStatus: 'normal',
+    pwrUsage: 0,
+    radios: [
+      { radioIndex: 1, opChannel: 'N/A', txPower: 0 },
+      { radioIndex: 2, opChannel: 'N/A', txPower: 0 },
+    ],
+  };
+
+  it('is recognised only when BOTH not in service and uptime 0', () => {
+    expect(isNotReporting(offline)).toBe(true);
+    expect(isNotReporting({ ...offline, status: 'InService' })).toBe(false);
+    expect(isNotReporting({ ...offline, sysUptime: 1733501 })).toBe(false);
+    expect(isNotReporting(null)).toBe(false);
+  });
+
+  it('reports ONE operational fault naming the AP offline, attributed upstream', () => {
+    const c = checkOperational({ apRow: offline, state: null });
+    expect(c.state).toBe(CHECK_STATE.FAULT);
+    expect(c.deviceSpecific).toBe(false);
+    expect(c.summary).toMatch(/not connected to the Gateway/);
+    expect(c.summary).toMatch(/placeholders/);
+    expect(c.evidence.notReporting).toBe(true);
+  });
+
+  it('turns radio, power, uptime and tunnel readings into not-reporting holes, not findings', () => {
+    const checks = withoutPlaceholderReadings([
+      checkOperational({ apRow: offline, state: null }),
+      checkUptime({ apRow: offline }),
+      checkRadios({ apRow: offline }),
+      checkPoe({ apRow: offline }),
+    ], offline);
+    const byId = Object.fromEntries(checks.map((c) => [c.id, c]));
+    for (const id of [CHECK.UPTIME, CHECK.RADIO, CHECK.POE]) {
+      expect(byId[id].state).toBe(CHECK_STATE.UNMEASURED);
+      expect(byId[id].reason).toBe(UNMEASURED_REASON.NOT_REPORTING);
+    }
+    const report = classifyDeviceHealth(checks);
+    expect(report.connected).toBe(false);
+    expect(report.faults).toHaveLength(1);
+    expect(report.concerns).toHaveLength(0);
+    expect(report.limitations.notReporting).toEqual([CHECK.UPTIME, CHECK.RADIO, CHECK.POE]);
+    expect(report.rma).toBe(RMA.NONE);
+  });
+
+  it('leaves a connected AP untouched', () => {
+    const live = { ...offline, status: 'InService', sysUptime: 772236 };
+    const checks = [checkRadios({ apRow: live })];
+    expect(withoutPlaceholderReadings(checks, live)).toBe(checks);
+  });
+
+  it('counts offline APs in the fleet summary', () => {
+    const s = summariseFleet([
+      { health: HEALTH.DEGRADED, rma: RMA.NONE, connected: false },
+      { health: HEALTH.HEALTHY, rma: RMA.NONE, connected: true },
+    ]);
+    expect(s.offline).toBe(1);
+    expect(s.degraded).toBe(1);
+  });
+
+  it('does not reconstruct an outage as a restart', () => {
+    const t0 = Date.parse('2026-10-10T12:00:00Z');
+    const series = [
+      { at: t0, uptimeSeconds: 1000 },
+      { at: t0 + 60_000, uptimeSeconds: 1060 },
+      { at: t0 + 120_000, uptimeSeconds: 0 },
+      { at: t0 + 180_000, uptimeSeconds: 0 },
+    ];
+    const r = reconstructReboots(series, { now: t0 + 200_000 });
+    expect(r.reboots).toHaveLength(0);
+  });
+
+  it('still sees a real restart across an outage', () => {
+    const t0 = Date.parse('2026-10-10T12:00:00Z');
+    const series = [
+      { at: t0, uptimeSeconds: 5000 },
+      { at: t0 + 60_000, uptimeSeconds: 0 },
+      { at: t0 + 600_000, uptimeSeconds: 120 },
+    ];
+    const r = reconstructReboots(series, { now: t0 + 700_000 });
+    expect(r.reboots).toHaveLength(1);
   });
 });

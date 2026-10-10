@@ -88,13 +88,57 @@ export const CHECK_STATE = Object.freeze({
  *   no_history   — the reading exists live but no stored series covers the
  *                  window, so a TREND cannot be computed.
  *   not_applicable — the check does not apply to this device.
+ *   not_reporting — the AP is not connected to the Gateway, so the live fields
+ *                  the Gateway still returns for it are placeholders (uptime 0,
+ *                  radios "N/A" at 0 dBm, 0 W), not measurements.
  */
 export const UNMEASURED_REASON = Object.freeze({
   PLATFORM_GAP: 'platform_gap',
   READ_FAILED: 'read_failed',
   NO_HISTORY: 'no_history',
   NOT_APPLICABLE: 'not_applicable',
+  NOT_REPORTING: 'not_reporting',
 });
+
+/**
+ * Checks whose inputs are live telemetry the AP itself reports. When the AP is
+ * not connected, the Gateway keeps returning these fields with placeholder
+ * values, and each one used to become a finding of its own.
+ */
+export const LIVE_TELEMETRY_CHECKS = Object.freeze([
+  'uptime', 'radio', 'poe', 'ethernet', 'tunnel', 'interface_errors',
+]);
+
+/**
+ * Is the AP disconnected from the Gateway?
+ *
+ * MEASURED on the lab Gateway 2026-10-10: every AP the inventory marks
+ * `critical` carries `sysUptime: 0`, radios at opChannel "N/A" / 0 dBm and no
+ * power draw — on BOTH members of the availability pair (adoptedBy PRIMARY and
+ * BACKUP alike). An InService AP never reports uptime 0. Both conditions are
+ * required: a just-booted AP in service is reporting, and a critical AP with a
+ * real uptime is still reporting its readings.
+ */
+export function isNotReporting(apRow) {
+  if (!apRow) return false;
+  const status = apRow.status ?? null;
+  const uptime = num(apRow.sysUptime);
+  return Boolean(status && status !== 'InService' && uptime === 0);
+}
+
+/**
+ * Replace live-telemetry checks with an explicit "not reporting" hole when the
+ * AP is disconnected. Without this, one disconnected AP produced four findings —
+ * radios off the air, 0 W draw, a restart "0m ago", no tunnel — every one of
+ * them an artefact of the same missing connection.
+ */
+export function withoutPlaceholderReadings(checks, apRow) {
+  if (!isNotReporting(apRow)) return checks;
+  return checks.map((c) => (LIVE_TELEMETRY_CHECKS.includes(c.id)
+    ? unmeasured(c.id, UNMEASURED_REASON.NOT_REPORTING,
+      'Not measured: the AP is not connected to the Gateway, so this reading is a placeholder.')
+    : c));
+}
 
 /** The mandatory investigation categories. */
 export const CHECK = Object.freeze({
@@ -284,6 +328,16 @@ export function checkOperational({ apRow, state, stateReadFailed = false }) {
     return unmeasured(CHECK.OPERATIONAL, UNMEASURED_REASON.READ_FAILED,
       `Inventory reports ${status ?? 'an unknown status'}, but the per-AP state read failed, ` +
       'so operational status and trouble flags could not be confirmed.', evidence);
+  }
+  if (isNotReporting(apRow)) {
+    // Not device-specific: power, cabling, the switch port, routing to the
+    // Gateway and the AP itself all present exactly like this.
+    return fault(CHECK.OPERATIONAL,
+      `The AP is not connected to the Gateway (status ${status}, uptime 0) — it is offline. Its ` +
+      'radio, power, uptime and tunnel readings are placeholders, so none of them is evidence. ' +
+      'Causes, cheapest first: no PoE or a powered-down port, the uplink or switch, no route from ' +
+      `the AP's subnet${apRow.ipAddress ? ` (${apRow.ipAddress})` : ''} to the Gateway, then the AP itself.`,
+      { ...evidence, notReporting: true, home: apRow.home ?? null }, LAYER.UPSTREAM, false);
   }
   if (status && status !== 'InService') {
     return fault(CHECK.OPERATIONAL, `The Gateway reports this AP as ${status}.`, evidence,
@@ -1116,6 +1170,8 @@ export function classifyDeviceHealth(checks, { remediation = null } = {}) {
     (c) => c.state === CHECK_STATE.UNMEASURED && c.reason === UNMEASURED_REASON.READ_FAILED);
   const noHistory = checks.filter(
     (c) => c.state === CHECK_STATE.UNMEASURED && c.reason === UNMEASURED_REASON.NO_HISTORY);
+  const notReporting = checks.filter(
+    (c) => c.state === CHECK_STATE.UNMEASURED && c.reason === UNMEASURED_REASON.NOT_REPORTING);
 
   // A required check that is unmeasured for a RECOVERABLE reason blocks Healthy.
   // A permanent platform gap does not — it is disclosed instead.
@@ -1190,7 +1246,9 @@ export function classifyDeviceHealth(checks, { remediation = null } = {}) {
       platformGaps: platformGaps.map(describe),
       failedReads: failedReads.map(describe),
       noHistory: noHistory.map(describe),
+      notReporting: notReporting.map((c) => c.id),
     },
+    connected: byId.get(CHECK.OPERATIONAL)?.evidence?.notReporting !== true,
     blockedHealthyBy: blockingHoles.map((c) => c?.id ?? 'missing check'),
     suspectTelemetry: checks
       .filter((c) => c.evidence?.suspectReading)
@@ -1433,9 +1491,11 @@ export function summariseFleet(assessments = []) {
     [HEALTH.UNKNOWN]: 0,
   };
   const rmaCounts = { [RMA.NONE]: 0, [RMA.CANDIDATE]: 0, [RMA.RECOMMENDED]: 0 };
+  let offline = 0;
   for (const a of assessments) {
     if (counts[a.health] !== undefined) counts[a.health] += 1;
     if (rmaCounts[a.rma] !== undefined) rmaCounts[a.rma] += 1;
+    if (a.connected === false) offline += 1;
   }
   return {
     apCount: assessments.length,
@@ -1443,6 +1503,9 @@ export function summariseFleet(assessments = []) {
     degraded: counts[HEALTH.DEGRADED],
     unhealthy: counts[HEALTH.UNHEALTHY],
     unknown: counts[HEALTH.UNKNOWN],
+    // A subset of degraded/unhealthy, not a fifth bucket: APs not connected to
+    // the Gateway at all, whose live readings were therefore not assessed.
+    offline,
     rmaCandidates: rmaCounts[RMA.CANDIDATE],
     rmaRecommended: rmaCounts[RMA.RECOMMENDED],
     instruction:
@@ -1471,8 +1534,12 @@ export function summariseFleet(assessments = []) {
  *        ascending by `at` (epoch ms)
  */
 export function reconstructReboots(series = [], { now = Date.now() } = {}) {
+  // Uptime 0 is the placeholder a DISCONNECTED AP reports, not a boot. Keeping
+  // it turned every outage into a "restart" and every reconnection into a
+  // second one. A genuine reboot still shows: the first real sample after it is
+  // lower than the last real sample before it.
   const points = [...series]
-    .filter((p) => Number.isFinite(p?.at) && Number.isFinite(p?.uptimeSeconds))
+    .filter((p) => Number.isFinite(p?.at) && Number.isFinite(p?.uptimeSeconds) && p.uptimeSeconds > 0)
     .sort((a, b) => a.at - b.at);
 
   if (points.length < 2) {

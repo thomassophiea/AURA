@@ -102,6 +102,17 @@ export const SLE_METRIC_LABELS = {
  */
 export const SLE_SERVER_DIVERGENT_METRICS = ['capacity', 'time_to_connect', 'roaming'];
 
+/**
+ * A service-level sample older than this is history, not current state.
+ *
+ * `current_metric_state` keeps the newest value per series FOREVER, so a site
+ * that lost its clients kept its last client-derived scores indefinitely —
+ * measured 2026-10-10: AFC LAB's "Coverage 0%" was 45 days old and still pulled
+ * its overall score to 85.7 "warn". The collector refreshes service levels every
+ * few minutes, so two hours means the series has stopped, not that it is slow.
+ */
+export const SLE_STALE_AFTER_SECONDS = 2 * 60 * 60;
+
 /** The same banding the UI applies (`getSLEStatus` in src/types/sle.ts). */
 export function sleStatus(rate) {
   if (rate === null || rate === undefined || !Number.isFinite(rate)) return 'no_data';
@@ -161,11 +172,15 @@ export async function serviceLevels({ sourceIds, siteId = null, now = Date.now()
         ? Math.max(0, Math.round((now - new Date(row.observedAt).getTime()) / 1000))
         : null,
     });
+    const m = entry.metrics.get(row.metricName);
+    m.stale = m.ageSeconds !== null && m.ageSeconds > SLE_STALE_AFTER_SECONDS;
   }
 
   const sites = [...bySite.values()].map(({ siteId: id, metrics }) => {
     const present = SLE_METRIC_ORDER.filter((m) => metrics.has(m)).map((m) => metrics.get(m));
-    const scored = present.filter((m) => m.successRate !== null && m.sampleBasis > 0);
+    // Stale metrics are reported, never scored: an old sample is not today's service.
+    const scored = present.filter((m) => m.successRate !== null && m.sampleBasis > 0 && !m.stale);
+    const stale = present.filter((m) => m.stale);
     const overall = scored.length
       ? Number((scored.reduce((sum, m) => sum + m.successRate, 0) / scored.length).toFixed(1))
       : null;
@@ -189,8 +204,9 @@ export async function serviceLevels({ sourceIds, siteId = null, now = Date.now()
           : null,
       metrics: present,
       // The distinction that stops a collection gap reading as a pass.
-      metricsMeasured: present.map((m) => m.metricName),
+      metricsMeasured: present.filter((m) => !m.stale).map((m) => m.metricName),
       metricsNotMeasured: SLE_METRIC_ORDER.filter((m) => !metrics.has(m)),
+      metricsStale: stale.map((m) => m.metricName),
       freshestSampleAgeSeconds: newest,
     };
   });

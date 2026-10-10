@@ -112,6 +112,46 @@ export function isScorableClientRow(row) {
 }
 
 /**
+ * Give fallback client rows an SNR derived from measured values.
+ *
+ * SNR is RSS minus the noise floor of the radio that hears the client — the
+ * same definition flex uses. When flex is down, `/v3/sites/{id}/stations`
+ * still carries each client's RSS, serving AP serial and radio index, and
+ * `/v1/aps/query` carries each radio's live `noise`. Joining them restores the
+ * reading every client score depends on, from two measurements and no guess.
+ *
+ * Measured on the lab Gateway 2026-10-10: radio noise reads -94 to -100 dBm
+ * and never below -100, so it is a clamped floor. Where the true floor is
+ * quieter, the derived SNR is LOWER than the real one — it can raise a weak-
+ * signal finding that flex would not, but it cannot hide one.
+ *
+ * Rows whose radio is unknown or reports noise 0 (radio off) keep SNR absent.
+ *
+ * @returns {{rows: object[], derived: number}}
+ */
+export function deriveSnrFromRadios(rows, aps) {
+  const noiseByRadio = new Map();
+  for (const ap of aps ?? []) {
+    for (const r of Array.isArray(ap?.radios) ? ap.radios : []) {
+      const noise = noiseFloor(r?.noise);
+      if (ap?.serialNumber && r?.radioIndex != null && noise !== null) {
+        noiseByRadio.set(`${ap.serialNumber}:${r.radioIndex}`, noise);
+      }
+    }
+  }
+  let derived = 0;
+  const out = rows.map((row) => {
+    if (row?.SNR !== undefined && row?.SNR !== null) return row;
+    const rss = signal(row).rss;
+    const noise = noiseByRadio.get(`${row?.ApSerial}:${row?.RadioID}`);
+    if (rss === null || noise === undefined) return row;
+    derived += 1;
+    return { ...row, SNR: rss - noise, Noise: noise, SnrDerived: true };
+  });
+  return { rows: out, derived };
+}
+
+/**
  * Noise floor. `Noise === 0` means the radio is off, not that the band is quiet.
  * @returns {number|null}
  */
@@ -411,6 +451,30 @@ export function airtimeSplit(row) {
 }
 
 /**
+ * How long the flex report service is skipped after it fails.
+ *
+ * Measured on the lab Gateway (2026-09-16 and again 2026-10-10): when flex is
+ * broken it is broken as a unit — every table, any window, `500 "Exception:
+ * null"` after exactly 31 s, surviving a full reboot. Every Cortex and MCP call
+ * paid those 31 s before falling back, so one MCP tool call took 34–36 s. One
+ * real attempt per window keeps detecting recovery without charging every caller.
+ */
+export const FLEX_CIRCUIT_OPEN_MS = 5 * 60 * 1000;
+
+/** Per-Gateway breaker state, keyed by base URL. Process-wide on purpose. */
+const flexCircuit = new Map();
+
+/** Test hook. */
+export function resetFlexCircuit() {
+  flexCircuit.clear();
+}
+
+/** Per-site station reads run at most this many at once. */
+const STATION_SITE_CONCURRENCY = 6;
+/** Above this many sites the per-site fan-out stops being the cheap path. */
+const STATION_SITE_MAX = 50;
+
+/**
  * A GatewayEvidence reader bound to one controller session.
  *
  * Takes anything with `get(path) -> {ok, status, data, errorSummary}` — i.e.
@@ -433,11 +497,35 @@ export class GatewayEvidence {
    * Read a flex telemetry table.
    * @returns {Promise<{ok: boolean, rows: object[], error: string|null}>}
    */
-  async flex(key, options = {}) {
+  async flex(key, options = {}, { now = Date.now() } = {}) {
+    // Only a session that names its Gateway can share a breaker; an anonymous
+    // one (tests, ad-hoc readers) must never be tripped by another's failure.
+    const circuitKey = this.#session.baseUrl || null;
+    const open = circuitKey ? flexCircuit.get(circuitKey) : null;
+    if (open && open.until > now) {
+      return {
+        ok: false,
+        rows: [],
+        error: open.error,
+        circuitOpen: true,
+        note:
+          `The flex report service failed ${Math.round((now - open.since) / 1000)} s ago and is ` +
+          `skipped until ${new Date(open.until).toISOString()} rather than costing another 31 s.`,
+      };
+    }
+
     const result = await this.#session.get(flexPath(key, options));
     if (!result.ok) {
-      return { ok: false, rows: [], error: result.errorSummary ?? `HTTP ${result.status}` };
+      const error = result.errorSummary ?? `HTTP ${result.status}`;
+      // Only a SERVICE failure opens the breaker. A 4xx is this request's own
+      // problem (bad query, expired token) and says nothing about the next one.
+      const status = Number(result.status) || 0;
+      if (circuitKey && (status === 0 || status >= 500)) {
+        flexCircuit.set(circuitKey, { since: now, until: now + FLEX_CIRCUIT_OPEN_MS, error });
+      }
+      return { ok: false, rows: [], error };
     }
+    if (circuitKey) flexCircuit.delete(circuitKey);
     try {
       return { ok: true, rows: decodeFlexBody(result.data), error: null };
     } catch (err) {
@@ -492,12 +580,25 @@ export class GatewayEvidence {
    * scope filters unchanged.
    */
   async stations() {
-    const result = await this.#session.get('/v1/stations');
-    if (!result.ok) {
-      return { ok: false, rows: [], error: result.errorSummary ?? `HTTP ${result.status}` };
+    // PER SITE FIRST. Measured on the lab Gateway 2026-10-08: `/v1/stations`
+    // 16–30 s, the same 32 clients via `/v3/sites/{id}/stations` across all
+    // seven sites 0.07–0.10 s in total. Same rule as the browser's
+    // apiService.fetchEstateStations: the global read is only the fallback.
+    const bySite = await this.#stationsBySite().catch(() => null);
+    let raw;
+    let via;
+    if (bySite) {
+      raw = bySite;
+      via = '/v3/sites/{id}/stations';
+    } else {
+      const result = await this.#session.get('/v1/stations');
+      if (!result.ok) {
+        return { ok: false, rows: [], error: result.errorSummary ?? `HTTP ${result.status}` };
+      }
+      const data = result.data;
+      raw = Array.isArray(data) ? data : Array.isArray(data?.stations) ? data.stations : [];
+      via = '/v1/stations';
     }
-    const data = result.data;
-    const raw = Array.isArray(data) ? data : Array.isArray(data?.stations) ? data.stations : [];
     const rows = raw.map((s) => ({
       MAC: s.macAddress ?? null,
       IP: s.ipAddress ?? null,
@@ -538,7 +639,47 @@ export class GatewayEvidence {
       // `signal()` reads SNR and correctly returns null, which makes every row
       // unscorable by `isScorableClientRow` — the honest outcome, not a bug.
     }));
-    return { ok: true, rows, error: null };
+    return { ok: true, rows, error: null, via };
+  }
+
+  /**
+   * Every station, read one site at a time. Null whenever the fan-out cannot
+   * be trusted to be complete — no sites, too many sites, an AP with no site
+   * (its clients would belong to no site read), or any site read failing — so
+   * the caller falls back to the global read instead of under-counting.
+   */
+  async #stationsBySite() {
+    const [sites, aps] = await Promise.all([this.sites(), this.#session.get('/v1/aps/query')]);
+    if (!sites.ok || !aps.ok) return null;
+    const ids = sites.rows.map((x) => x?.id ?? x?.siteId).filter(Boolean).map(String);
+    if (!ids.length || ids.length > STATION_SITE_MAX) return null;
+    const apRows = Array.isArray(aps.data) ? aps.data : aps.data?.aps ?? [];
+    if (apRows.some((ap) => !ap?.hostSite)) return null;
+
+    const perSite = new Array(ids.length);
+    let next = 0;
+    let failed = false;
+    const worker = async () => {
+      while (!failed && next < ids.length) {
+        const index = next++;
+        const res = await this.#session.get(`/v3/sites/${encodeURIComponent(ids[index])}/stations`);
+        if (!res.ok) {
+          failed = true;
+          return;
+        }
+        const list = Array.isArray(res.data) ? res.data : res.data?.stations ?? res.data?.data ?? [];
+        perSite[index] = list.map((st) => ({ ...st, siteId: st?.siteId ?? ids[index] }));
+      }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(STATION_SITE_CONCURRENCY, ids.length) }, worker)
+    );
+    if (failed) return null;
+
+    // A client roaming between two sites mid-read is counted once.
+    const byMac = new Map();
+    for (const st of perSite.flat()) byMac.set(st?.macAddress ?? `row-${byMac.size}`, st);
+    return [...byMac.values()];
   }
 
   /** Per-radio RF rows (ApTable) — the working replacement for ifstats. */

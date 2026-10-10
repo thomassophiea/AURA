@@ -337,3 +337,46 @@ describe('storedFleetState — the fallback when the Gateway will not answer', (
     expect(res.error).toMatch(/pool exhausted/);
   });
 });
+
+describe('serviceLevels — stale samples are reported, never scored', () => {
+  // Measured 2026-10-10: current_metric_state kept AFC LAB's last client-derived
+  // samples for 45 days, and a 45-day-old "Coverage 0%" held its score at 85.7.
+  const aged = (siteId, metricName, value, ageSeconds) => ({
+    ...sample(siteId, metricName, value),
+    observedAt: new Date(NOW - ageSeconds * 1000).toISOString(),
+  });
+
+  it('excludes a metric older than the staleness window from overall and weakest', async () => {
+    const { SLE_STALE_AFTER_SECONDS } = await import('./operationalEvidence.js');
+    queryLatest.mockResolvedValue([
+      aged('afc', 'coverage', 0, 3_945_897),
+      aged('afc', 'capacity', 100, 14),
+      aged('afc', 'ap_health', 100, 14),
+    ]);
+    const res = await serviceLevels({ sourceIds: ['s1'], now: NOW });
+    const site = res.sites[0];
+    expect(SLE_STALE_AFTER_SECONDS).toBe(7200);
+    expect(site.overall).toBe(100);
+    expect(site.overallStatus).toBe('good');
+    expect(site.weakestMetric).toBeNull();
+    expect(site.metricsStale).toEqual(['coverage']);
+    expect(site.metricsMeasured).toEqual(['capacity', 'ap_health']);
+    // Still carried, flagged, so the answer can say "no current data".
+    expect(site.metrics.find((m) => m.metricName === 'coverage')).toMatchObject({ stale: true, successRate: 0 });
+  });
+
+  it('gives a site whose every sample is stale no score at all', async () => {
+    queryLatest.mockResolvedValue([aged('old', 'coverage', 0, 2_589_820), aged('old', 'roaming', 100, 2_589_820)]);
+    const res = await serviceLevels({ sourceIds: ['s1'], now: NOW });
+    expect(res.sites[0].overall).toBeNull();
+    expect(res.sites[0].overallStatus).toBe('no_data');
+    expect(res.sites[0].metricsStale).toEqual(['coverage', 'roaming']);
+  });
+
+  it('keeps a sample just inside the window', async () => {
+    queryLatest.mockResolvedValue([aged('s', 'coverage', 80, 7_000)]);
+    const res = await serviceLevels({ sourceIds: ['s1'], now: NOW });
+    expect(res.sites[0].overall).toBe(80);
+    expect(res.sites[0].metricsStale).toEqual([]);
+  });
+});

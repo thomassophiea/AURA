@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import zlib from 'node:zlib';
 import {
+  resetFlexCircuit,
+  FLEX_CIRCUIT_OPEN_MS,
+  deriveSnrFromRadios,
   rtt,
   signal,
   isScorableClientRow,
@@ -887,5 +890,145 @@ describe('reportPath knows the service resource', () => {
     expect(reportPath('service', 'svc-uuid', ['throughputReport'])).toContain(
       '/v1/report/services/svc-uuid'
     );
+  });
+});
+
+describe('flex circuit breaker', () => {
+
+  function session(baseUrl, responses) {
+    const calls = [];
+    return {
+      calls,
+      baseUrl,
+      get: async (path) => {
+        calls.push(path);
+        return responses.shift() ?? { ok: false, status: 500, errorSummary: 'Exception: null' };
+      },
+    };
+  }
+
+  it('skips flex after a 5xx instead of paying the timeout again, then retries after the window', async () => {
+    resetFlexCircuit();
+    const s = session('https://gw.breaker', [{ ok: false, status: 500, errorSummary: 'Exception: null' }]);
+    const ev = new GatewayEvidence(s);
+    const t0 = 1_000_000;
+    const first = await ev.flex('MuTable', {}, { now: t0 });
+    expect(first.ok).toBe(false);
+    const second = await ev.flex('ApTable', {}, { now: t0 + 1000 });
+    expect(second).toMatchObject({ ok: false, circuitOpen: true, error: 'Exception: null' });
+    expect(s.calls).toHaveLength(1);
+    await ev.flex('MuTable', {}, { now: t0 + FLEX_CIRCUIT_OPEN_MS + 1 });
+    expect(s.calls).toHaveLength(2);
+  });
+
+  it('is not opened by a 4xx, which is about the request rather than the service', async () => {
+    resetFlexCircuit();
+    const s = session('https://gw.4xx', [
+      { ok: false, status: 400, errorSummary: 'bad query' },
+      { ok: false, status: 400, errorSummary: 'bad query' },
+    ]);
+    const ev = new GatewayEvidence(s);
+    await ev.flex('MuTable');
+    await ev.flex('MuTable');
+    expect(s.calls).toHaveLength(2);
+  });
+
+  it('never shares a breaker with an anonymous session', async () => {
+    resetFlexCircuit();
+    const s = session(undefined, []);
+    const ev = new GatewayEvidence(s);
+    await ev.flex('MuTable');
+    await ev.flex('MuTable');
+    expect(s.calls).toHaveLength(2);
+  });
+});
+
+describe('stations — per site first, global as fallback', () => {
+  const SITES = [{ id: 's1', siteName: 'A' }, { id: 's2', siteName: 'B' }];
+  const APS = [{ serialNumber: 'X', hostSite: 'A' }, { serialNumber: 'Y', hostSite: 'B' }];
+
+  it('reads each site and dedupes by MAC', async () => {
+    const calls = [];
+    const ev = new GatewayEvidence({
+      get: async (path) => {
+        calls.push(path);
+        if (path === '/v3/sites') return { ok: true, status: 200, data: SITES };
+        if (path === '/v1/aps/query') return { ok: true, status: 200, data: APS };
+        if (path === '/v3/sites/s1/stations') return { ok: true, data: [{ macAddress: 'M1', rss: -60 }, { macAddress: 'M2', rss: -70 }] };
+        if (path === '/v3/sites/s2/stations') return { ok: true, data: [{ macAddress: 'M2', rss: -71 }] };
+        throw new Error(`unexpected ${path}`);
+      },
+    });
+    const r = await ev.stations();
+    expect(r.via).toBe('/v3/sites/{id}/stations');
+    expect(r.rows.map((x) => x.MAC).sort()).toEqual(['M1', 'M2']);
+    expect(r.rows.find((x) => x.MAC === 'M1').SiteId).toBe('s1');
+    expect(calls).not.toContain('/v1/stations');
+  });
+
+  it('falls back to /v1/stations when an AP has no site', async () => {
+    const ev = new GatewayEvidence({
+      get: async (path) => {
+        if (path === '/v3/sites') return { ok: true, data: SITES };
+        if (path === '/v1/aps/query') return { ok: true, data: [...APS, { serialNumber: 'Z', hostSite: null }] };
+        if (path === '/v1/stations') return { ok: true, data: [{ macAddress: 'G1', rss: -50 }] };
+        throw new Error(`unexpected ${path}`);
+      },
+    });
+    const r = await ev.stations();
+    expect(r.via).toBe('/v1/stations');
+    expect(r.rows.map((x) => x.MAC)).toEqual(['G1']);
+  });
+
+  it('falls back when any site read fails rather than under-counting', async () => {
+    const ev = new GatewayEvidence({
+      get: async (path) => {
+        if (path === '/v3/sites') return { ok: true, data: SITES };
+        if (path === '/v1/aps/query') return { ok: true, data: APS };
+        if (path === '/v3/sites/s1/stations') return { ok: true, data: [{ macAddress: 'M1' }] };
+        if (path === '/v3/sites/s2/stations') return { ok: false, status: 500 };
+        if (path === '/v1/stations') return { ok: true, data: [{ macAddress: 'M1' }, { macAddress: 'M9' }] };
+        throw new Error(`unexpected ${path}`);
+      },
+    });
+    const r = await ev.stations();
+    expect(r.via).toBe('/v1/stations');
+    expect(r.rows).toHaveLength(2);
+  });
+});
+
+describe('deriveSnrFromRadios', () => {
+  const APS = [{
+    serialNumber: 'CV012408S-C0044',
+    radios: [{ radioIndex: 1, noise: -99 }, { radioIndex: 2, noise: -100 }, { radioIndex: 3, noise: 0 }],
+  }];
+
+  it('computes SNR as RSS minus the serving radio noise floor and marks it derived', () => {
+    const { rows, derived } = deriveSnrFromRadios(
+      [{ MAC: 'a', Rss: -53, ApSerial: 'CV012408S-C0044', RadioID: 2 }],
+      APS
+    );
+    expect(derived).toBe(1);
+    expect(rows[0]).toMatchObject({ SNR: 47, Noise: -100, SnrDerived: true });
+    expect(isScorableClientRow(rows[0])).toBe(true);
+  });
+
+  it('leaves SNR absent when the radio is off (noise 0), unknown, or RSS is a placeholder', () => {
+    const { rows, derived } = deriveSnrFromRadios(
+      [
+        { MAC: 'off', Rss: -60, ApSerial: 'CV012408S-C0044', RadioID: 3 },
+        { MAC: 'unknown', Rss: -60, ApSerial: 'NOPE', RadioID: 1 },
+        { MAC: 'idle', Rss: 0, ApSerial: 'CV012408S-C0044', RadioID: 1 },
+      ],
+      APS
+    );
+    expect(derived).toBe(0);
+    for (const r of rows) expect(r.SNR).toBeUndefined();
+  });
+
+  it('never overwrites a measured SNR', () => {
+    const { rows } = deriveSnrFromRadios([{ MAC: 'f', Rss: -53, SNR: 40, ApSerial: 'CV012408S-C0044', RadioID: 2 }], APS);
+    expect(rows[0].SNR).toBe(40);
+    expect(rows[0].SnrDerived).toBeUndefined();
   });
 });
