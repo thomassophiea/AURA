@@ -38,7 +38,7 @@ async function step(label, fn, summarise = () => '') {
   try {
     const out = await fn();
     const ms = Date.now() - t;
-    const bad = out?.isError || out?.unavailable;
+    const bad = out?.isError || out?.unavailable === true;
     if (bad) failures += 1;
     console.log(
       `${bad ? 'FAIL' : 'ok  '} ${label.padEnd(44)} ${String(ms).padStart(6)} ms  ${summarise(out)}`
@@ -138,7 +138,7 @@ await step(
   'call_gateway_api(/v1/appkeys) refused',
   async () => {
     const o = await tool('call_gateway_api', { path: '/v1/appkeys' })();
-    return o?.unavailable
+    return o?.unavailable === true
       ? { refused: true, reason: o.reason }
       : { isError: true, text: 'NOT REFUSED' };
   },

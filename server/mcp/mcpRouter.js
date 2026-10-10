@@ -440,7 +440,7 @@ export function createMcpRouter({
         const { result, error, siteName } = await runTool(name, rawArgs);
         if (siteName) target = siteName;
         if (error) return { isError: true, content: [{ type: 'text', text: error }] };
-        ok = !result?.unavailable;
+        ok = result?.unavailable !== true; // some tools return an `unavailable` LIST on success
         return { content: [{ type: 'text', text: serialise(result) }] };
       } catch (err) {
         return {
@@ -496,7 +496,7 @@ export function createMcpRouter({
       try {
         const { result, error } = await runTool(tool, args);
         if (error) throw new Error(error);
-        ok = !result?.unavailable;
+        ok = result?.unavailable !== true; // some tools return an `unavailable` LIST on success
         return { contents: [{ uri, mimeType: 'application/json', text: serialise(result) }] };
       } finally {
         audit('mcp.resource', {

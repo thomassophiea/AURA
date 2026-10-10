@@ -519,3 +519,20 @@ describe('MCP resources and prompts', () => {
     expect(bad.body.error).toBeDefined();
   });
 });
+
+describe('MCP audit outcome', () => {
+  it('audits a result carrying an `unavailable` LIST as a success', async () => {
+    const { app, audit } = makeApp({
+      createTools: () => {
+        const t = fakeTools();
+        t.getCapabilities = {
+          ...t.getCapabilities,
+          handler: async () => ({ basis: 'observed', unavailable: [{ key: 'x' }] }),
+        };
+        return t;
+      },
+    });
+    await call(app, 'tools/call', { name: 'get_capabilities', arguments: {} });
+    expect(audit.mock.calls.at(-1)[1].detail.ok).toBe(true);
+  });
+});
