@@ -407,6 +407,35 @@ export async function close(workflowId, status, patch = {}) {
   return update(workflowId, { ...patch, status });
 }
 
+/**
+ * Every change waiting for a person's decision, across sessions, newest first.
+ *
+ * Sessions scope a CONVERSATION; approval is not a conversation. A change
+ * proposed over MCP has no browser session at all, so the approval queue has
+ * to be readable by status rather than by who started the work.
+ */
+export async function listPending({ limit = 50 } = {}) {
+  if (isDatabaseConfigured()) {
+    try {
+      const { rows } = await query(
+        `SELECT * FROM cortex_workflows
+          WHERE status = 'WAITING_FOR_CONFIRMATION' AND confirmation_state = 'requested'
+            AND (expires_at IS NULL OR expires_at > now())
+          ORDER BY updated_at DESC
+          LIMIT $1`,
+        [limit]
+      );
+      return rows.map((r) => hydrate(r));
+    } catch (err) {
+      console.warn('[Cortex] pending workflow read failed, using memory:', err.message);
+    }
+  }
+  return [...memory.values()]
+    .filter((w) => w.status === 'WAITING_FOR_CONFIRMATION' && w.confirmationState === 'requested')
+    .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))
+    .slice(0, limit);
+}
+
 /** Drop expired rows. Called by the same sweep that prunes metric_samples. */
 export async function sweepExpired() {
   if (!isDatabaseConfigured()) {

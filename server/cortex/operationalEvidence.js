@@ -44,7 +44,7 @@
  *    the same failure the doctrine already forbids for an empty poll table.
  */
 
-import { queryLatest } from '../monitoring/sampleRepository.js';
+import { queryAsOf, queryLatest } from '../monitoring/sampleRepository.js';
 import { METRIC_FAMILIES } from '../monitoring/metricRegistry.js';
 
 /**
@@ -131,7 +131,7 @@ export function sleStatus(rate) {
  * @param {{sourceIds: string[], siteId?: string|null, now?: number}} params
  * @returns {Promise<{ok: boolean, sites: object[], meta: object, error: string|null}>}
  */
-export async function serviceLevels({ sourceIds, siteId = null, now = Date.now() }) {
+export async function serviceLevels({ sourceIds, siteId = null, now = Date.now(), at = null }) {
   if (!Array.isArray(sourceIds) || sourceIds.length === 0) {
     return {
       ok: false,
@@ -145,7 +145,12 @@ export async function serviceLevels({ sourceIds, siteId = null, now = Date.now()
 
   let rows;
   try {
-    rows = await queryLatest({ sourceIds, siteId, metricFamily: METRIC_FAMILIES.SLE });
+    // `at` reads the stored state at a past instant; ages and staleness are then
+    // measured against that instant, so "stale" means stale as of then.
+    rows = at
+      ? await queryAsOf({ sourceIds, at, siteId, metricFamily: METRIC_FAMILIES.SLE })
+      : await queryLatest({ sourceIds, siteId, metricFamily: METRIC_FAMILIES.SLE });
+    if (at) now = new Date(at).getTime();
   } catch (err) {
     return { ok: false, sites: [], meta: {}, error: err?.message ?? 'history query failed' };
   }
@@ -252,7 +257,7 @@ export async function serviceLevels({ sourceIds, siteId = null, now = Date.now()
  * source supplies no per-field time, so the collector's own clock is the
  * timestamp. A caller must report the age and must never say "right now".
  */
-export async function storedFleetState({ sourceIds, siteId = null, now = Date.now() }) {
+export async function storedFleetState({ sourceIds, siteId = null, now = Date.now(), at = null }) {
   if (!Array.isArray(sourceIds) || sourceIds.length === 0) {
     return {
       ok: false,
@@ -264,11 +269,10 @@ export async function storedFleetState({ sourceIds, siteId = null, now = Date.no
 
   let rows;
   try {
-    rows = await queryLatest({
-      sourceIds,
-      siteId,
-      metricFamily: METRIC_FAMILIES.ENERGY_AP_STATE,
-    });
+    rows = at
+      ? await queryAsOf({ sourceIds, at, siteId, metricFamily: METRIC_FAMILIES.ENERGY_AP_STATE })
+      : await queryLatest({ sourceIds, siteId, metricFamily: METRIC_FAMILIES.ENERGY_AP_STATE });
+    if (at) now = new Date(at).getTime();
   } catch (err) {
     return { ok: false, aps: [], meta: {}, error: err?.message ?? 'stored state query failed' };
   }

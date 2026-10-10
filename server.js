@@ -39,6 +39,8 @@ import { resolveScope, buildClarification } from './server/cortex/scopeResolver.
 import { recordGapsFromInvestigation, gapReport } from './server/cortex/apiGapCatalog.js';
 import { sessionFromRequest, RequestScopedSession } from './server/cortex/requestScopedSession.js';
 import { createMcpRouter } from './server/mcp/mcpRouter.js';
+import { createGatewayRegistry } from './server/mcp/gatewayRegistry.js';
+import { createChangeProposals } from './server/cortex/changeProposals.js';
 import * as workflowStore from './server/cortex/workflowStore.js';
 import { routeUtterance } from './server/cortex/workflowRouter.js';
 import {
@@ -51,6 +53,7 @@ import {
   execute as executeWorkflow,
   grantConfirmation,
   declineConfirmation,
+  requestConfirmation,
 } from './server/cortex/workflowEngine.js';
 import { applyWlanChange, toWorkflowResult } from './server/cortex/wlanModifyEngine.js';
 import { requestXcc } from './server/validationEngine/xccClient.js';
@@ -2316,6 +2319,49 @@ console.log('[Proxy Server] ✓ System API mounted at /api/v1/system/*');
 // See server/mcp/mcpRouter.js.
 {
   const mcpEnabled = process.env.MCP_ENABLED === 'true';
+
+  // The primary Gateway: the deployment's service account, exactly as before.
+  const resolveDefaultGateway = async () => {
+    const service = getSentinelServiceSession(DEFAULT_CONTROLLER_URL);
+    if (!service?.hasCredentials()) return null;
+    const authToken = await service.getToken();
+    return {
+      controllerUrl: service.baseUrl,
+      session: new RequestScopedSession({ controllerUrl: service.baseUrl, authToken }),
+    };
+  };
+
+  // Further Gateways: AURA's monitoring sources, opted in by MCP_GATEWAYS. The
+  // source repository is imported lazily because the database is optional.
+  const gatewayRegistry = createGatewayRegistry({
+    resolveDefault: resolveDefaultGateway,
+    defaultUrl: DEFAULT_CONTROLLER_URL,
+    allow: process.env.MCP_GATEWAYS,
+    normalizeBaseUrl: (u) => String(u).trim().replace(/\/+$/, '').replace(/\/(api\/management|management|api)$/i, ''),
+    listSources: async () => {
+      const { listSources } = await import('./server/monitoring/sourceRepository.js');
+      return listSources({ enabledOnly: true });
+    },
+    getCredentials: async (sourceId) => {
+      const { getSourceCredentials } = await import('./server/monitoring/sourceRepository.js');
+      return getSourceCredentials(sourceId, monitoringConfig?.credentialKey);
+    },
+    openSession: async (source, creds) => {
+      const { getSession: getSourceSession } = await import('./server/monitoring/controllerClient.js');
+      const cs = getSourceSession(`mcp:${source.id}`, {
+        baseUrl: source.baseUrl,
+        username: creds.username,
+        password: creds.password,
+        timeoutMs: 15_000,
+      });
+      const authToken = await cs.getToken();
+      return {
+        controllerUrl: cs.baseUrl ?? source.baseUrl,
+        session: new RequestScopedSession({ controllerUrl: cs.baseUrl ?? source.baseUrl, authToken }),
+      };
+    },
+  });
+
   app.use(
     createMcpRouter({
       enabled: mcpEnabled,
@@ -2325,15 +2371,19 @@ console.log('[Proxy Server] ✓ System API mounted at /api/v1/system/*');
         process.env.MCP_PUBLIC_BASE_URL ||
         (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null),
       version: (process.env.RAILWAY_GIT_COMMIT_SHA || '').slice(0, 7) || '0.1.0',
-      resolveSession: async () => {
-        const service = getSentinelServiceSession(DEFAULT_CONTROLLER_URL);
-        if (!service?.hasCredentials()) return null;
-        const authToken = await service.getToken();
-        return {
-          controllerUrl: service.baseUrl,
-          session: new RequestScopedSession({ controllerUrl: service.baseUrl, authToken }),
-        };
-      },
+      resolveSession: (gateway) => gatewayRegistry.resolve(gateway),
+      gateways: gatewayRegistry,
+      warm: mcpEnabled,
+      changes: createChangeProposals({
+        engine: {
+          begin: beginWorkflow,
+          advance: advanceWorkflow,
+          requestConfirmation,
+          buildPreview: buildWorkflowPreview,
+        },
+        store: workflowStore,
+        audit,
+      }),
       createTools: ({ session, scope, controllerUrl }) => {
         const capabilities = controllerUrl
           ? getCapabilitiesFor({ key: controllerUrl, evidence: new GatewayEvidence(session), session }).registry
@@ -2721,7 +2771,49 @@ function deploymentPlanIdentity(plan) {
  * preview and the click is a different plan, and the earlier approval does not
  * cover it.
  */
-app.post('/api/cortex/workflow/confirm', requireAuth, cortexRateLimit, jsonParser, async (req, res) => {
+/** Same Gateway? Compared on the normalised base URL. */
+const sameGateway = (a, b) => {
+  const n = (u) => String(u ?? '').trim().replace(/\/+$/, '').replace(/\/(api\/management|management|api)$/i, '').toLowerCase();
+  return n(a) === n(b);
+};
+
+/**
+ * Changes waiting for a person — including ones drafted by an external agent
+ * over MCP, which have no browser conversation to appear in.
+ *
+ * Each comes with its preview and a FRESHLY signed validation token: signing at
+ * read time binds the approval to exactly what this operator is shown. Only
+ * changes for the Gateway this browser is pointed at are listed, so an approval
+ * can never apply a change to a different Gateway than the one it was drafted
+ * against.
+ */
+app.get('/api/cortex/workflow/pending', requireAuth, requireRole('operator'), cortexRateLimit, async (req, res) => {
+  const sess = sessionFromRequest(req, { defaultControllerUrl: DEFAULT_CONTROLLER_URL ?? '' });
+  if (!sess.ok) return res.status(sess.status).json({ error: sess.error });
+  const rows = await workflowStore.listPending({ limit: 25 });
+  const pending = [];
+  for (const w of rows) {
+    const rs = w.requestedState ?? {};
+    if (rs.controllerUrl && !sameGateway(rs.controllerUrl, sess.controllerUrl)) continue;
+    // Conversation-bound changes are approved in their own transcript; this
+    // queue is for drafts that have no transcript.
+    if (rs.origin !== 'mcp') continue;
+    const preview = await buildWorkflowPreview(w.id);
+    if (!preview?.diff && !preview?.deployment) continue;
+    pending.push({
+      workflowId: w.id,
+      intent: w.userIntent,
+      origin: rs.origin,
+      createdAt: w.createdAt,
+      blastRadius: rs.blastRadius ?? null,
+      preview,
+      validationToken: signPreviewPlan(preview).token,
+    });
+  }
+  res.json({ pending });
+});
+
+app.post('/api/cortex/workflow/confirm', requireAuth, requireRole('operator'), cortexRateLimit, jsonParser, async (req, res) => {
   const { workflowId, validationToken, decision = 'approve' } = req.body ?? {};
   if (!workflowId || typeof workflowId !== 'string') {
     return res.status(400).json({ error: 'workflowId is required' });
@@ -2729,6 +2821,16 @@ app.post('/api/cortex/workflow/confirm', requireAuth, cortexRateLimit, jsonParse
 
   const sess = sessionFromRequest(req, { defaultControllerUrl: DEFAULT_CONTROLLER_URL ?? '' });
   if (!sess.ok) return res.status(sess.status).json({ error: sess.error });
+
+  // A change drafted against one Gateway must never be applied to another: the
+  // serviceId it carries means nothing there, or worse, something else.
+  const pendingWorkflow = await workflowStore.load(workflowId);
+  const draftedFor = pendingWorkflow?.requestedState?.controllerUrl;
+  if (draftedFor && !sameGateway(draftedFor, sess.controllerUrl)) {
+    return res.status(409).json({
+      error: 'This change was drafted for a different Gateway than the one you are connected to. Switch Gateway to review it.',
+    });
+  }
 
   if (decision === 'decline') {
     await declineConfirmation(workflowId);
@@ -2806,11 +2908,14 @@ app.post('/api/cortex/workflow/confirm', requireAuth, cortexRateLimit, jsonParse
   audit('cortex.workflow.confirm', {
     actor: req.auraActor,
     source: req.auraActorSource,
-    target: preview.diff.path,
+    // A deployment carries no diff; reading .path off null threw AFTER the
+    // change was applied, so the operator saw an error for a change that landed.
+    target: preview.diff?.path ?? preview.deployment?.site ?? 'workflow',
     detail: {
       workflowId,
-      from: preview.diff.from,
-      to: preview.diff.to,
+      origin: pendingWorkflow?.requestedState?.origin ?? 'cortex',
+      from: preview.diff?.from ?? null,
+      to: preview.diff?.to ?? null,
       status: result.status,
       applied: result.result?.status ?? null,
     },

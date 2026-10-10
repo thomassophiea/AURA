@@ -234,7 +234,8 @@ describe('MCP protocol', () => {
     ]) {
       expect(names).toContain(n);
     }
-    for (const t of body.result.tools) expect(t.annotations.readOnlyHint).toBe(true);
+    for (const t of body.result.tools)
+      expect(t.annotations.readOnlyHint).toBe(t.name !== 'propose_change');
   });
 
   it('binds siteName into the Cortex scope and strips it from tools that do not declare it', async () => {
@@ -534,5 +535,119 @@ describe('MCP audit outcome', () => {
     });
     await call(app, 'tools/call', { name: 'get_capabilities', arguments: {} });
     expect(audit.mock.calls.at(-1)[1].detail.ok).toBe(true);
+  });
+});
+
+describe('MCP v3 surface', () => {
+  it('adds gateway to Gateway-bound tools and live to cacheable ones', async () => {
+    const { app } = makeApp();
+    const { body } = await call(app, 'tools/list');
+    const byName = Object.fromEntries(body.result.tools.map((t) => [t.name, t]));
+    expect(byName.get_device_health.inputSchema.properties.gateway).toBeDefined();
+    expect(byName.get_device_health.inputSchema.properties.live).toBeDefined();
+    expect(byName.diagnose_client.inputSchema.properties.live).toBeUndefined();
+    expect(byName.get_fleet_overview.inputSchema.properties.gateway).toBeUndefined();
+  });
+
+  it('marks propose_change as not read-only, and every other tool as read-only', async () => {
+    const { app } = makeApp();
+    const { body } = await call(app, 'tools/list');
+    for (const t of body.result.tools) {
+      expect(t.annotations.readOnlyHint).toBe(t.name !== 'propose_change');
+      expect(t.annotations.destructiveHint).toBe(false);
+    }
+  });
+
+  it('serves a cacheable tool from the warm cache on the second call, with freshness', async () => {
+    const { app, calls } = makeApp();
+    const a = await toolJson(app, 'get_device_health', { siteName: 'X' });
+    const b = await toolJson(app, 'get_device_health', { siteName: 'X' });
+    expect(a.freshness.servedFrom).toBe('live');
+    expect(b.freshness.servedFrom).toBe('cache');
+    expect(calls.filter((c) => c.name === 'getDeviceHealth')).toHaveLength(1);
+    const c = await toolJson(app, 'get_device_health', { siteName: 'X', live: true });
+    expect(c.freshness.servedFrom).toBe('live');
+    expect(calls.filter((x) => x.name === 'getDeviceHealth')).toHaveLength(2);
+    expect(calls.at(-1).args.live).toBeUndefined();
+  });
+
+  it('passes the gateway selector to resolveSession and strips it from the tool', async () => {
+    const seen = [];
+    const { app, calls } = makeApp({
+      resolveSession: async (gw) => {
+        seen.push(gw);
+        return { controllerUrl: 'https://gw.example', session: {} };
+      },
+    });
+    await toolJson(app, 'find_client', { query: 'aa', gateway: 'Boston' });
+    expect(seen).toContain('Boston');
+    expect(calls.at(-1).args.gateway).toBeUndefined();
+  });
+
+  it('returns structuredContent alongside text', async () => {
+    const { app } = makeApp();
+    const { body } = await call(app, 'tools/call', {
+      name: 'diagnose_client',
+      arguments: { mac: 'aa' },
+    });
+    expect(body.result.structuredContent).toEqual(JSON.parse(body.result.content[0].text));
+  });
+
+  it('declares the dashboard MCP App and serves its HTML with the app profile', async () => {
+    const { app } = makeApp();
+    const { body } = await call(app, 'tools/list');
+    const dash = body.result.tools.find((t) => t.name === 'show_dashboard');
+    expect(dash._meta.ui.resourceUri).toBe('ui://aura/dashboard');
+    expect(dash._meta['ui/resourceUri']).toBe('ui://aura/dashboard');
+    const r = await call(app, 'resources/read', { uri: 'ui://aura/dashboard' });
+    const content = r.body.result.contents[0];
+    expect(content.mimeType).toBe('text/html;profile=mcp-app');
+    expect(content.text).toContain('ui/initialize');
+    expect(content.text).not.toMatch(/<script[^>]+src=/);
+    expect(content._meta.ui.csp.resourceDomains).toEqual([]);
+  });
+
+  it('list_gateways reports the registry', async () => {
+    const { app } = makeApp({
+      gateways: {
+        list: async () => [
+          { id: 'default', name: 'lab', host: 'lab:443', isDefault: true },
+          { id: 's2', name: 'Boston', host: 'b' },
+        ],
+      },
+    });
+    const out = await toolJson(app, 'list_gateways');
+    expect(out.count).toBe(2);
+    expect(out.gateways[0].primary).toBe(true);
+  });
+
+  it('routes propose_change to the proposal service with this Gateway', async () => {
+    const propose = vi.fn(async (req) => ({
+      basis: 'observed',
+      status: 'awaiting_approval',
+      workflowId: 'wf',
+      controllerUrl: req.controllerUrl,
+    }));
+    const { app } = makeApp({
+      changes: { propose, status: vi.fn(), listPending: vi.fn(async () => []) },
+    });
+    const out = await toolJson(app, 'propose_change', {
+      wlanName: 'Skynet',
+      changeId: 'wlan.11k',
+      desired: true,
+    });
+    expect(out.status).toBe('awaiting_approval');
+    expect(propose.mock.calls[0][0]).toMatchObject({
+      wlanName: 'Skynet',
+      changeId: 'wlan.11k',
+      desired: true,
+      controllerUrl: 'https://gw.example',
+    });
+  });
+
+  it('says proposals are not enabled when no proposal service is wired', async () => {
+    const { app } = makeApp();
+    const out = await toolJson(app, 'list_pending_changes');
+    expect(out.unavailable).toBe(true);
   });
 });

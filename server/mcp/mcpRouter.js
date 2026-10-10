@@ -40,12 +40,19 @@ import {
 import { RISK } from '../cortex/diagnosticTools.js';
 import { GatewayEvidence } from '../cortex/gatewayEvidence.js';
 import { NATIVE_TOOLS } from './auraTools.js';
-import { PROMPTS, STATIC_RESOURCES } from './prompts.js';
+import { PROMPTS, STATIC_RESOURCES as BASE_RESOURCES } from './prompts.js';
+import { DASHBOARD_RESOURCE } from './dashboardApp.js';
+
+const STATIC_RESOURCES = [...BASE_RESOURCES, DASHBOARD_RESOURCE];
 import { redactSecrets } from './redact.js';
+import { cacheKey, createResultCache } from './resultCache.js';
+import { resolveSourceIds } from '../cortex/historyEvidence.js';
 
 export const MCP_SERVER_NAME = 'aura';
 export const KEEP_ALIVE_MS = 10_000;
 const MAX_RESULT_CHARS = 200_000;
+/** Above this, structuredContent is omitted: hosts choke on ~150k-char payloads. */
+const MAX_STRUCTURED_CHARS = 100_000;
 
 /**
  * The exposed catalogue. `cortex` names the diagnosticTools entry; `siteScoped`
@@ -214,17 +221,56 @@ export const SERVER_INSTRUCTIONS = [
   'Read the aura://guide resource or use a prompt (troubleshoot_client, site_health_review, ap_rma_assessment, wlan_audit, network_briefing, change_impact_review) for the full method.',
 ].join(' ');
 
-/** Input schema for the MCP surface: the Cortex spec plus an optional siteName. */
-function inputSchemaFor(entry, spec) {
-  const params = spec.parameters ?? { type: 'object', properties: {} };
+/**
+ * Tools whose Gateway reads are slow enough to serve from the warm cache
+ * (resultCache.js). Client-specific diagnosis stays live: a client's state is
+ * the question, and it changes by the second.
+ */
+export const CACHEABLE_TOOLS = new Set([
+  'get_site_health',
+  'get_service_levels',
+  'get_device_health',
+  'get_site_rf_health',
+  'get_wlan_health',
+  'list_sites',
+  'correlate_problem',
+  'check_backend_services',
+  'get_ap_status',
+  'show_dashboard',
+]);
+
+/** Tools that span Gateways or need none, so a `gateway` argument means nothing. */
+const GATEWAY_AGNOSTIC = new Set(['list_gateways', 'get_fleet_overview', 'search_gateway_api']);
+
+const GATEWAY_PARAM = {
+  type: 'string',
+  description:
+    'Optional: which Gateway to read (name, host or id from list_gateways). Default: the primary Gateway.',
+};
+const LIVE_PARAM = {
+  type: 'boolean',
+  description:
+    "Optional: force a fresh Gateway read. Otherwise AURA may answer from its warm cache (a few minutes old at most; the result's freshness says which).",
+};
+
+/** Add the cross-cutting parameters (siteName, gateway, live) to a tool schema. */
+function withCommonParams(name, schema, { siteScoped = false } = {}) {
+  const params = schema ?? { type: 'object', properties: {} };
   const properties = { ...(params.properties ?? {}) };
-  if (entry.siteScoped && !properties.siteName) {
+  if (siteScoped && !properties.siteName) {
     properties.siteName = {
       type: 'string',
       description: 'Optional: scope to one site (exact name from list_sites)',
     };
   }
+  if (!GATEWAY_AGNOSTIC.has(name) && !properties.gateway) properties.gateway = GATEWAY_PARAM;
+  if (CACHEABLE_TOOLS.has(name) && !properties.live) properties.live = LIVE_PARAM;
   return { ...params, type: 'object', properties };
+}
+
+/** Input schema for the MCP surface: the Cortex spec plus the common parameters. */
+function inputSchemaFor(entry, spec) {
+  return withCommonParams(entry.name, spec.parameters, { siteScoped: entry.siteScoped });
 }
 
 /**
@@ -260,6 +306,25 @@ function jsonRpcError(res, status, code, message) {
   res.status(status).json({ jsonrpc: '2.0', error: { code, message }, id: null });
 }
 
+/**
+ * A tool result as MCP content. Text always (every client reads it); the same
+ * object as `structuredContent` too when it is small enough, so clients that
+ * render data (tables, MCP Apps) get it without re-parsing.
+ */
+function toCallResult(result) {
+  const text = serialise(result);
+  const out = { content: [{ type: 'text', text }] };
+  if (
+    result &&
+    typeof result === 'object' &&
+    !Array.isArray(result) &&
+    text.length <= MAX_STRUCTURED_CHARS
+  ) {
+    out.structuredContent = redactSecrets(result);
+  }
+  return out;
+}
+
 function serialise(result) {
   // Defence in depth: every tool's output passes the redactor, not only the
   // raw passthrough — a Cortex tool that ever echoes a Gateway object must not
@@ -275,7 +340,11 @@ function serialise(result) {
  * @param {string|null} deps.token              MCP_BEARER_TOKEN
  * @param {string|null} [deps.oauthIssuer]      MCP_OAUTH_ISSUER
  * @param {string|null} [deps.publicBaseUrl]    e.g. https://integration.up.railway.app
- * @param {() => Promise<{controllerUrl: string, session: object}|null>} deps.resolveSession
+ * @param {(gateway?: string|null) => Promise<{controllerUrl: string, session: object, gateway?: object}|null>} deps.resolveSession
+ * @param {{list: () => Promise<object[]>}} [deps.gateways]    the Gateway registry (gatewayRegistry.js)
+ * @param {object} [deps.cache]                                a resultCache; one is created when omitted
+ * @param {boolean} [deps.warm]                                start the background cache warmer
+ * @param {object} [deps.changes]                              propose/status hooks for propose_change
  * @param {(args: {session: object, scope: object, controllerUrl: string}) => object} deps.createTools
  * @param {(action: string, entry: object) => void} [deps.audit]
  * @param {string} [deps.version]
@@ -289,9 +358,22 @@ export function createMcpRouter({
   createTools,
   audit = () => {},
   version = '0.1.0',
+  gateways = null,
+  cache = null,
+  warm = false,
+  changes = null,
 }) {
   const router = express.Router();
   if (!enabled) return router;
+
+  const resultCache =
+    cache ??
+    createResultCache({
+      onError: (err) => console.warn('[MCP] cache refresh failed:', err.message),
+    });
+  if (warm) resultCache.startWarmer();
+  const listGateways =
+    gateways?.list ?? (async () => [{ id: 'default', name: 'default', isDefault: true }]);
 
   const baseUrlOf = (req) =>
     (publicBaseUrl ?? `${req.protocol}://${req.get('host')}`).replace(/\/+$/, '');
@@ -349,8 +431,19 @@ export function createMcpRouter({
     name: t.name,
     title: t.title,
     description: t.description,
-    inputSchema: t.inputSchema,
-    annotations: { ...READ_ONLY_ANNOTATIONS, title: t.title },
+    inputSchema: withCommonParams(t.name, t.inputSchema),
+    // A proposing tool writes a DRAFT for human approval and nothing else; it is
+    // honest to say it is not read-only, and still true that it destroys nothing.
+    annotations: t.proposes
+      ? {
+          readOnlyHint: false,
+          destructiveHint: false,
+          idempotentHint: false,
+          openWorldHint: true,
+          title: t.title,
+        }
+      : { ...READ_ONLY_ANNOTATIONS, title: t.title },
+    ...(t._meta ? { _meta: t._meta } : {}),
   }));
   const catalogue = [...nativeCatalogue, ...cortexCatalogue];
   const names = catalogue.map((t) => t.name);
@@ -365,35 +458,71 @@ export function createMcpRouter({
   /** Run one tool by MCP name against a freshly resolved Gateway session. */
   async function runTool(name, rawArgs) {
     const args = { ...(rawArgs ?? {}) };
+    const gatewaySelector =
+      typeof args.gateway === 'string' && args.gateway.trim() ? args.gateway.trim() : null;
+    const live = args.live === true;
+    delete args.gateway;
+    delete args.live;
     const siteName =
       typeof args.siteName === 'string' && args.siteName.trim() ? args.siteName.trim() : null;
-    const resolved = await resolveSession();
-    if (!resolved) return { error: noGateway, siteName };
 
-    const native = nativeByName.get(name);
-    if (native) {
-      const ctx = {
+    const compute = async () => {
+      const resolved = await resolveSession(gatewaySelector);
+      if (!resolved) return { __noGateway: true };
+      const callArgs = { ...args };
+
+      const native = nativeByName.get(name);
+      if (native) {
+        const ctx = {
+          session: resolved.session,
+          controllerUrl: resolved.controllerUrl,
+          gateway: resolved.gateway ?? null,
+          // Built on first use: most native tools never need it.
+          get evidence() {
+            const value = new GatewayEvidence(resolved.session);
+            Object.defineProperty(this, 'evidence', { value });
+            return value;
+          },
+          version,
+          gateways: { list: listGateways, resolve: resolveSession },
+          sourceIdsFor: (url) => resolveSourceIds(url),
+          createTools,
+          changes,
+        };
+        return native.handler(callArgs, ctx);
+      }
+
+      const entry = entryByName.get(name);
+      const tools = createTools({
         session: resolved.session,
         controllerUrl: resolved.controllerUrl,
-        evidence: new GatewayEvidence(resolved.session),
-        version,
-      };
-      return { result: await native.handler(args, ctx), siteName };
-    }
+        scope: {
+          controllerUrl: resolved.controllerUrl,
+          siteNames: entry.siteScoped && siteName ? [siteName] : null,
+        },
+      });
+      const tool = tools[entry.cortex];
+      // siteName binds scope; pass it through only to tools that declare it.
+      if (!tool.spec.parameters?.properties?.siteName) delete callArgs.siteName;
+      return tool.handler(callArgs);
+    };
 
-    const entry = entryByName.get(name);
-    const tools = createTools({
-      session: resolved.session,
-      controllerUrl: resolved.controllerUrl,
-      scope: {
-        controllerUrl: resolved.controllerUrl,
-        siteNames: entry.siteScoped && siteName ? [siteName] : null,
-      },
-    });
-    const tool = tools[entry.cortex];
-    // siteName binds scope; pass it through only to tools that declare it.
-    if (!tool.spec.parameters?.properties?.siteName) delete args.siteName;
-    return { result: await tool.handler(args), siteName };
+    let result;
+    if (CACHEABLE_TOOLS.has(name)) {
+      const { value, freshness } = await resultCache.get(
+        cacheKey(gatewaySelector, name, args),
+        compute,
+        { live }
+      );
+      result =
+        value && typeof value === 'object' && !Array.isArray(value) && !value.__noGateway
+          ? { ...value, freshness }
+          : value;
+    } else {
+      result = await compute();
+    }
+    if (result?.__noGateway) return { error: noGateway, siteName, gatewaySelector };
+    return { result, siteName, gatewaySelector };
   }
 
   /** Live resources: estate context, site list, and per-site health. */
@@ -437,11 +566,11 @@ export function createMcpRouter({
       let ok = false;
       let target = 'gateway';
       try {
-        const { result, error, siteName } = await runTool(name, rawArgs);
-        if (siteName) target = siteName;
+        const { result, error, siteName, gatewaySelector } = await runTool(name, rawArgs);
+        target = [gatewaySelector, siteName].filter(Boolean).join('/') || 'gateway';
         if (error) return { isError: true, content: [{ type: 'text', text: error }] };
         ok = result?.unavailable !== true; // some tools return an `unavailable` LIST on success
-        return { content: [{ type: 'text', text: serialise(result) }] };
+        return toCallResult(result);
       } catch (err) {
         return {
           isError: true,
@@ -484,7 +613,18 @@ export function createMcpRouter({
     server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
       const { uri } = request.params;
       const fixed = STATIC_RESOURCES.find((r) => r.uri === uri);
-      if (fixed) return { contents: [{ uri, mimeType: fixed.mimeType, text: fixed.read() }] };
+      if (fixed) {
+        return {
+          contents: [
+            {
+              uri,
+              mimeType: fixed.mimeType,
+              text: fixed.read(),
+              ...(fixed.meta ? { _meta: fixed.meta } : {}),
+            },
+          ],
+        };
+      }
 
       const live = LIVE_RESOURCES.find((r) => r.uri === uri);
       const site = SITE_HEALTH_URI.exec(uri);

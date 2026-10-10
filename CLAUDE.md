@@ -177,6 +177,12 @@ src/
 - Every result passes `redactSecrets` (`server/mcp/redact.js`) — matched on field NAME because the swagger omits `sharedSecret`, `cpSharedKey`, `faAuthKey`, `cbPassword`. Network payloads are wrapped with `untrustedData`.
 - `call_gateway_api` serves only GET paths in `server/mcp/gatewayApiCatalog.js`; regenerate with `node scripts/build-mcp-api-catalog.mjs` after a swagger update. Credential/file paths are refused in `gatewayApi.js` `DENIED`.
 - E2E: `MCP_URL=… MCP_TOKEN=… node scripts/mcp-smoke.mjs` (non-zero exit on any failed step).
+- `MCP_GATEWAYS` -- which monitoring sources (registered Gateways) the MCP may read besides the primary: unset = primary only, `*` = every enabled source, or a comma list of source ids/names. Every Gateway-bound tool takes an optional `gateway` argument (`server/mcp/gatewayRegistry.js`); selectors only ever match registered sources.
+- Warm cache (`server/mcp/resultCache.js`): `CACHEABLE_TOOLS` are served stale-while-revalidate (fresh 4 min, max 15 min), refreshed every 4 min while used in the last hour; results carry `freshness`, `live: true` forces a Gateway read. Failed reads are never cached.
+- `get_state_at` reads stored samples as of a past instant (`queryAsOf` in sampleRepository; 2 h window per series, 30-day retention).
+- `show_dashboard` is an MCP App (`ui://aura/dashboard`, `server/mcp/dashboardApp.js`): self-contained HTML speaking the MCP Apps postMessage protocol (2026-01-26) by hand — no CDN.
+- `propose_change` drafts a `modify_wlan` workflow (origin `mcp`) parked at WAITING_FOR_CONFIRMATION; it never signs or executes. Operators approve it in Cortex → Pending changes (`GET /api/cortex/workflow/pending`, operator role, same-Gateway only); `/api/cortex/workflow/confirm` now requires the operator role and refuses a change drafted for another Gateway.
+- Answer-quality eval: `MCP_URL=… MCP_TOKEN=… ANTHROPIC_API_KEY=… node scripts/mcp-eval.mjs` — Claude via the Messages API MCP connector, graded deterministically against ground truth read live; report in `audit/mcp-eval-*.md`.
 - Gateway reads use the service account (`CAMPUS_CONTROLLER_USER`/`_PASSWORD`). Connect: `claude mcp add --transport http aura https://<host>/mcp --header "Authorization: Bearer <token>"`
 
 **Security rule:** NEVER use `VITE_` prefixed variables for credentials or secrets. Vite exposes these in the browser bundle.

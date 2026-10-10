@@ -19,6 +19,7 @@ const {
   listBlockers,
   resolveBlocker,
   close,
+  listPending,
   __clearMemory,
   ACTIVE_STATUSES,
   TERMINAL_STATUSES,
@@ -182,5 +183,17 @@ describe('close', () => {
   it('has no status in both the active and terminal lists', () => {
     const overlap = ACTIVE_STATUSES.filter((s) => TERMINAL_STATUSES.includes(s));
     expect(overlap).toEqual([]);
+  });
+});
+
+describe('listPending', () => {
+  it('lists only changes awaiting a decision, across sessions', async () => {
+    const a = (await claimActive({ sessionId: 'mcp:1', userIntent: 'a', workflowType: 'modify_wlan' })).workflow;
+    const b = (await claimActive({ sessionId: 'mcp:2', userIntent: 'b', workflowType: 'modify_wlan' })).workflow;
+    await claimActive({ sessionId: 'chat:3', userIntent: 'c', workflowType: 'modify_wlan' });
+    await update(a.id, { status: 'WAITING_FOR_CONFIRMATION', confirmationState: 'requested' });
+    await update(b.id, { status: 'WAITING_FOR_CONFIRMATION', confirmationState: 'granted' });
+    const pending = await listPending();
+    expect(pending.map((w) => w.id)).toEqual([a.id]);
   });
 });

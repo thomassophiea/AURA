@@ -23,6 +23,7 @@ import { CortexDeviceVerdict } from '@/cortex/components/CortexDeviceVerdict';
 import { keyReadingsFromLedger, deviceVerdictFromLedger } from '@/cortex/readings';
 import { CortexApprovalCard } from '@/cortex/components/CortexApprovalCard';
 import { useCortexContext } from '@/contexts/CortexContext';
+import { CortexPendingChanges } from '@/cortex/components/CortexPendingChanges';
 
 interface ConversationStreamProps {
   messages: AgentMessage[];
@@ -124,6 +125,11 @@ export function ConversationStream({
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
+        <CortexPendingChanges
+          decided={decidedWorkflows}
+          onApprove={(workflowId, token) => decideWorkflow(workflowId, token, 'approve')}
+          onDecline={(workflowId) => decideWorkflow(workflowId, '', 'decline')}
+        />
         {messages.length === 0 && !isThinking && (
           <div className="space-y-3 pt-2">
             <p className="text-xs text-white/30 font-medium uppercase tracking-wider">Suggested</p>

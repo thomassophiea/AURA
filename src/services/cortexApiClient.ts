@@ -83,6 +83,50 @@ export async function confirmCortexWorkflow(
   });
 }
 
+export interface PendingCortexChange {
+  workflowId: string;
+  intent: string;
+  origin: string;
+  createdAt?: string | null;
+  blastRadius?: { known: boolean; sites: string[]; accessPoints: number; profiles: string[] } | null;
+  preview: {
+    workflowId?: string;
+    intent?: string;
+    diff?: {
+      path: string;
+      label: string;
+      from: unknown;
+      to: unknown;
+      risk: string;
+      rationale?: string;
+      postCondition: string;
+    } | null;
+    deployment?: null;
+  };
+  validationToken: string;
+}
+
+/**
+ * Changes drafted outside this conversation (e.g. by an agent over MCP) that
+ * are waiting for an operator. Operator role required; a 403 means the queue
+ * is not this user's to act on.
+ */
+export async function fetchPendingCortexChanges(): Promise<{ pending: PendingCortexChange[] }> {
+  const resp = await fetch('/api/cortex/workflow/pending', { headers: buildHeaders() });
+  if (!resp.ok) {
+    const raw = await resp.text().catch(() => resp.statusText);
+    let msg = raw;
+    try {
+      const parsed = JSON.parse(raw);
+      if (typeof parsed?.error === 'string') msg = parsed.error;
+    } catch {
+      // not JSON
+    }
+    throw new Error(`Cortex API error ${resp.status}: ${msg}`);
+  }
+  return resp.json() as Promise<{ pending: PendingCortexChange[] }>;
+}
+
 /** Create a new Cortex conversation session on the backend. */
 export async function createCortexSession(
   context: CortexPageContext

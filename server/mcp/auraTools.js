@@ -23,6 +23,10 @@ import {
   listTags,
   searchOperations,
 } from './gatewayApi.js';
+import { FLEET_TOOLS } from './fleetTools.js';
+import { HISTORY_TOOLS } from './historyTools.js';
+import { DASHBOARD_TOOL } from './dashboardApp.js';
+import { CHANGE_TOOLS } from './changeTools.js';
 
 const fail = (what, res) => ({
   basis: 'unknown',
@@ -123,7 +127,7 @@ export const CONFIG_TYPES = {
   access_control: { path: '/v1/accesscontrol', label: 'access control (MAC allow/deny)' },
 };
 
-export const NATIVE_TOOLS = [
+const BASE_TOOLS = [
   // ──────────────────────────────────────────────────────────────────────────
   {
     name: 'get_aura_context',
@@ -150,8 +154,10 @@ export const NATIVE_TOOLS = [
         platform:
           'AURA — Extreme Networks wireless management, reading an Extreme Campus Controller (Gateway)',
         auraVersion: ctx.version,
-        gateway: host,
-        access: 'read-only (changes are made and approved inside AURA, never over this connection)',
+        gatewayHost: host,
+        access:
+          'read-only, plus propose_change: drafts a change that a person must approve in AURA before anything touches the Gateway',
+        gateway: ctx.gateway ? untrusted(ctx.gateway.name) : host,
         estate: {
           sites: sites.ok ? sites.rows.length : null,
           siteNames: sites.ok ? sites.rows.map((s) => untrusted(s.siteName ?? s.name)) : null,
@@ -199,6 +205,14 @@ export const NATIVE_TOOLS = [
           ],
           configuration: ['get_config', 'get_recent_changes', 'list_available_changes'],
           'history / trends': ['get_metric_history', 'find_vanished_devices'],
+          'several Gateways': [
+            'list_gateways',
+            'get_fleet_overview',
+            '(any tool) gateway argument',
+          ],
+          'the past': ['get_state_at', 'get_metric_history'],
+          'show me': ['show_dashboard'],
+          'make a change': ['list_available_changes', 'propose_change', 'get_change_status'],
           'anything else': ['search_gateway_api', 'call_gateway_api'],
         },
       };
@@ -620,4 +634,13 @@ export const NATIVE_TOOLS = [
     },
     handler: async (args, ctx) => callGatewayApi(ctx.session, args),
   },
+];
+
+/** Every MCP-native tool, in the order an agent should meet them. */
+export const NATIVE_TOOLS = [
+  ...BASE_TOOLS,
+  ...FLEET_TOOLS,
+  ...HISTORY_TOOLS,
+  DASHBOARD_TOOL,
+  ...CHANGE_TOOLS,
 ];

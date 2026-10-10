@@ -10,13 +10,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const queryLatest = vi.fn();
+const queryAsOf = vi.fn();
 const getAlertAnalytics = vi.fn();
 const engine = {
   getStatus: vi.fn(),
   getAllAlerts: vi.fn(),
 };
 
-vi.mock('../monitoring/sampleRepository.js', () => ({ queryLatest: (...a) => queryLatest(...a) }));
+vi.mock('../monitoring/sampleRepository.js', () => ({
+  queryLatest: (...a) => queryLatest(...a),
+  queryAsOf: (...a) => queryAsOf(...a),
+}));
 vi.mock('../monitoring/metricRegistry.js', () => ({ METRIC_FAMILIES: { SLE: 'sle' } }));
 vi.mock('../sentinel/sentinelEngine.js', () => ({
   sentinelEngine: {
@@ -378,5 +382,21 @@ describe('serviceLevels — stale samples are reported, never scored', () => {
     const res = await serviceLevels({ sourceIds: ['s1'], now: NOW });
     expect(res.sites[0].overall).toBe(80);
     expect(res.sites[0].metricsStale).toEqual([]);
+  });
+});
+
+describe('serviceLevels as of a past instant', () => {
+  it('reads queryAsOf and measures staleness against that instant, not now', async () => {
+    const at = new Date('2026-10-10T14:00:00Z');
+    queryAsOf.mockResolvedValueOnce([
+      { siteId: 's1', metricName: 'coverage', numericValue: 80, denominator: 10, observedAt: '2026-10-10T13:59:00Z' },
+    ]);
+    const res = await serviceLevels({ sourceIds: ['src'], at, now: Date.parse('2026-10-11T14:00:00Z') });
+    expect(queryAsOf).toHaveBeenCalledWith(expect.objectContaining({ sourceIds: ['src'], at }));
+    expect(res.ok).toBe(true);
+    const m = res.sites[0].metrics[0];
+    expect(m.ageSeconds).toBe(60);
+    expect(m.stale).toBe(false);
+    expect(res.sites[0].overall).toBe(80);
   });
 });
