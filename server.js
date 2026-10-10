@@ -37,7 +37,8 @@ import { selectModel, classifyInvestigationIntent } from './server/cortex/modelP
 import { proposeRemediation } from './server/cortex/remediationBridge.js';
 import { resolveScope, buildClarification } from './server/cortex/scopeResolver.js';
 import { recordGapsFromInvestigation, gapReport } from './server/cortex/apiGapCatalog.js';
-import { sessionFromRequest } from './server/cortex/requestScopedSession.js';
+import { sessionFromRequest, RequestScopedSession } from './server/cortex/requestScopedSession.js';
+import { createMcpRouter } from './server/mcp/mcpRouter.js';
 import * as workflowStore from './server/cortex/workflowStore.js';
 import { routeUtterance } from './server/cortex/workflowRouter.js';
 import {
@@ -2306,6 +2307,44 @@ if (monitoringConfig) {
 // reported as variable names and presence only, never values.
 app.use('/api', createSystemRouter({ config: monitoringConfig, dirname: __dirname }));
 console.log('[Proxy Server] ✓ System API mounted at /api/v1/system/*');
+
+// ==================== MCP (Model Context Protocol) ====================
+// Cortex's read-only diagnostic tools for external agents (Claude, Copilot,
+// Agent ONE) at POST /mcp. Off unless MCP_ENABLED=true; fails closed without
+// MCP_BEARER_TOKEN. Gateway reads use the deployment's service account through
+// a request-scoped session — the same path an SSO browser takes into Cortex.
+// See server/mcp/mcpRouter.js.
+{
+  const mcpEnabled = process.env.MCP_ENABLED === 'true';
+  app.use(
+    createMcpRouter({
+      enabled: mcpEnabled,
+      token: process.env.MCP_BEARER_TOKEN || null,
+      oauthIssuer: process.env.MCP_OAUTH_ISSUER || null,
+      publicBaseUrl:
+        process.env.MCP_PUBLIC_BASE_URL ||
+        (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null),
+      version: (process.env.RAILWAY_GIT_COMMIT_SHA || '').slice(0, 7) || '0.1.0',
+      resolveSession: async () => {
+        const service = getSentinelServiceSession(DEFAULT_CONTROLLER_URL);
+        if (!service?.hasCredentials()) return null;
+        const authToken = await service.getToken();
+        return {
+          controllerUrl: service.baseUrl,
+          session: new RequestScopedSession({ controllerUrl: service.baseUrl, authToken }),
+        };
+      },
+      createTools: ({ session, scope, controllerUrl }) => {
+        const capabilities = controllerUrl
+          ? getCapabilitiesFor({ key: controllerUrl, evidence: new GatewayEvidence(session), session }).registry
+          : undefined;
+        return createDiagnosticTools({ session, scope, capabilities });
+      },
+      audit,
+    })
+  );
+  console.log(`[Proxy Server] ${mcpEnabled ? '✓ MCP server mounted at /mcp' : '○ MCP disabled (MCP_ENABLED!=true)'}`);
+}
 
 // ==================== Aggregated resource routes ====================
 // Roll-ups that would otherwise be assembled by the browser out of many gateway

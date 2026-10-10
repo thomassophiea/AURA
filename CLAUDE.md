@@ -168,6 +168,13 @@ src/
 **Identity / session signing:**
 - `SESSION_SECRET` -- HMAC secret for signed session cookies and WLAN-provisioning validation tokens (`server/identity/sessionService.js`, `server/cortex/validationToken.js`). Without it a random per-boot secret is used, so sessions and any pending validation tokens don't survive a restart.
 
+**MCP server (`POST /mcp`, `server/mcp/mcpRouter.js`) — Cortex read-only tools for external agents:**
+- `MCP_ENABLED` -- `true` mounts `/mcp`; anything else mounts nothing
+- `MCP_BEARER_TOKEN` -- required bearer token; enabled without it answers 503 (fails closed)
+- `MCP_OAUTH_ISSUER` -- optional; publishes `/.well-known/oauth-protected-resource` pointing at this issuer
+- `MCP_PUBLIC_BASE_URL` -- optional; defaults to `https://$RAILWAY_PUBLIC_DOMAIN`
+- Gateway reads use the service account (`CAMPUS_CONTROLLER_USER`/`_PASSWORD`). Connect: `claude mcp add --transport http aura https://<host>/mcp --header "Authorization: Bearer <token>"`
+
 **Security rule:** NEVER use `VITE_` prefixed variables for credentials or secrets. Vite exposes these in the browser bundle.
 
 ## Security
