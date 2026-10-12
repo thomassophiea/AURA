@@ -37,6 +37,7 @@ import {
   mergeGuest,
   filterByStatus,
   filterBySearch,
+  splitByWindow,
   summarize,
   GUEST_STATUS,
 } from './guestView.js';
@@ -249,15 +250,21 @@ export function createGuestsRouter({
         ? [...new Set(statuses.statuses.flatMap((s) => LEDGER_STATUS_FOR[s] ?? []))]
         : [];
 
+    // The activity window is NOT pushed down to the portal. The portal can only
+    // filter on its own `lastSeen` (last portal visit), which says nothing about
+    // a device that has been associated for weeks; the window is applied after
+    // the Gateway merge instead (see splitByWindow). A windowed read therefore
+    // takes the largest ledger page, the same bound the summary uses, so the
+    // list and the counters are computed over the same rows.
+    const windowed = Boolean(start.value || end.value);
+
     let payload;
     try {
       payload = await cwp.list(
         {
           ...(pushDownStatuses.length > 0 ? { status: pushDownStatuses.join(',') } : {}),
-          ...(start.value ? { start_time: start.value.toISOString() } : {}),
-          ...(end.value ? { end_time: end.value.toISOString() } : {}),
           ...(req.query.cursor ? { cursor: req.query.cursor } : {}),
-          limit,
+          limit: windowed ? MAX_LIMIT : limit,
         },
         { config, fetchFn }
       );
@@ -276,13 +283,21 @@ export function createGuestsRouter({
     );
     guests = filterByStatus(guests, statuses.statuses);
     guests = filterBySearch(guests, req.query.search);
+    const { inWindow, outside } = splitByWindow(guests, { start: start.value, end: end.value });
 
     return res.json({
-      guests,
+      guests: inWindow,
       nextCursor: payload.nextCursor ?? null,
       // Total before the post-merge narrowing; the UI shows the filtered count
       // separately so the two are never conflated.
       ledgerTotal: payload.total ?? guests.length,
+      // Guests that match every other filter but were not active in the window.
+      // Lets the UI say "24 authorized guests were last active earlier" instead
+      // of "No guests yet" when the ledger is not empty.
+      outsideWindow: {
+        total: outside.length,
+        authorized: outside.filter((g) => g.authorizationStatus === 'ACTIVE').length,
+      },
       gateway: {
         reachable: live.gatewayReachable,
         baseUrl: req.gatewayAuth.baseUrl,

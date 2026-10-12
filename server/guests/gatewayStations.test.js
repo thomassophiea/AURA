@@ -46,43 +46,98 @@ describe('canonicalMac', () => {
   });
 });
 
+/**
+ * A fetch that answers by path, the way the Gateway does. Anything not listed
+ * is a 404, so a test that forgets a route fails loudly instead of passing on
+ * a default.
+ */
+function gatewayFetch(routes) {
+  return vi.fn(async (url) => {
+    const path = new URL(url).pathname.replace(/^\/management/, '');
+    if (!(path in routes)) return jsonResponse({ error: 'not found' }, 404);
+    const value = routes[path];
+    return typeof value === 'function' ? value() : jsonResponse(value);
+  });
+}
+
+const paths = (fetchFn) => fetchFn.mock.calls.map(([url]) => new URL(url).pathname);
+
 describe('fetchStations', () => {
-  it('asks the gateway once for every station, not once per guest', async () => {
-    const fetchFn = vi.fn().mockResolvedValue(
-      jsonResponse([{ macAddress: 'AA:BB:CC:DD:EE:FF' }, { macAddress: '11:22:33:44:55:66' }])
-    );
+  it('reads per site when every AP has a site, and never touches /v1/stations', async () => {
+    const fetchFn = gatewayFetch({
+      '/v3/sites': [{ id: 's1' }, { id: 's2' }],
+      '/v1/aps/query': [{ hostSite: 'One' }, { hostSite: 'Two' }],
+      '/v3/sites/s1/stations': [{ macAddress: 'AA:BB:CC:DD:EE:FF', status: 'ACTIVE' }],
+      '/v3/sites/s2/stations': [{ macAddress: '11:22:33:44:55:66', status: 'ACTIVE' }],
+      '/v1/stations': () => {
+        throw new Error('the slow global read must not be used');
+      },
+    });
     const stations = await fetchStations({ ...opts, fetchFn });
-    expect(fetchFn).toHaveBeenCalledTimes(1);
-    expect(fetchFn.mock.calls[0][0]).toContain('/management/v1/stations');
-    expect(stations.get('aa:bb:cc:dd:ee:ff')).toBeTruthy();
     expect(stations.size).toBe(2);
+    expect(stations.get('aa:bb:cc:dd:ee:ff').siteId).toBe('s1');
+    expect(paths(fetchFn)).not.toContain('/management/v1/stations');
+  });
+
+  it('falls back to the global read when an AP has no site', async () => {
+    const fetchFn = gatewayFetch({
+      '/v3/sites': [{ id: 's1' }],
+      '/v1/aps/query': [{ hostSite: 'One' }, { hostSite: null }],
+      '/v3/sites/s1/stations': [],
+      '/v1/stations': [{ macAddress: 'AA:BB:CC:DD:EE:FF' }, { macAddress: '11:22:33:44:55:66' }],
+    });
+    const stations = await fetchStations({ ...opts, fetchFn });
+    expect(stations.size).toBe(2);
+    expect(paths(fetchFn)).toContain('/management/v1/stations');
+  });
+
+  it('falls back to the global read when any site read fails, rather than under-counting', async () => {
+    const fetchFn = gatewayFetch({
+      '/v3/sites': [{ id: 's1' }, { id: 's2' }],
+      '/v1/aps/query': [{ hostSite: 'One' }],
+      '/v3/sites/s1/stations': [{ macAddress: 'AA:BB:CC:DD:EE:FF' }],
+      '/v1/stations': [{ macAddress: 'AA:BB:CC:DD:EE:FF' }, { macAddress: '11:22:33:44:55:66' }],
+    });
+    expect((await fetchStations({ ...opts, fetchFn })).size).toBe(2);
   });
 
   it('skips entries without a usable MAC instead of keying on undefined', async () => {
-    const fetchFn = vi
-      .fn()
-      .mockResolvedValue(jsonResponse([{ macAddress: null }, { macAddress: 'zz' }]));
+    const fetchFn = gatewayFetch({ '/v1/stations': [{ macAddress: null }, { macAddress: 'zz' }] });
     expect((await fetchStations({ ...opts, fetchFn })).size).toBe(0);
   });
 
+  it('shares one in-flight read between concurrent callers', async () => {
+    const fetchFn = gatewayFetch({ '/v1/stations': [{ macAddress: 'AA:BB:CC:DD:EE:FF' }] });
+    const [a, b] = await Promise.all([
+      fetchStations({ ...opts, fetchFn }),
+      fetchStations({ ...opts, fetchFn }),
+    ]);
+    expect(a).toBe(b);
+    expect(paths(fetchFn).filter((p) => p === '/management/v1/stations')).toHaveLength(1);
+  });
+
   it('reuses a snapshot within its TTL', async () => {
-    const fetchFn = vi.fn().mockResolvedValue(jsonResponse([]));
+    const fetchFn = gatewayFetch({ '/v1/stations': [] });
     const now = 1_000_000;
     await fetchStations({ ...opts, fetchFn, now });
+    const calls = fetchFn.mock.calls.length;
     await fetchStations({ ...opts, fetchFn, now: now + 1000 });
-    expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect(fetchFn.mock.calls.length).toBe(calls);
   });
 
   it('refetches once the snapshot has expired', async () => {
-    const fetchFn = vi.fn().mockResolvedValue(jsonResponse([]));
+    const fetchFn = gatewayFetch({ '/v1/stations': [] });
     const now = 1_000_000;
     await fetchStations({ ...opts, fetchFn, now });
+    const calls = fetchFn.mock.calls.length;
     await fetchStations({ ...opts, fetchFn, now: now + 60_000 });
-    expect(fetchFn).toHaveBeenCalledTimes(2);
+    expect(fetchFn.mock.calls.length).toBe(calls * 2);
   });
 
   it('throws a typed error when the gateway refuses', async () => {
-    const fetchFn = vi.fn().mockResolvedValue(jsonResponse({ error: 'nope' }, 500));
+    const fetchFn = gatewayFetch({
+      '/v1/stations': () => jsonResponse({ error: 'nope' }, 500),
+    });
     await expect(fetchStations({ ...opts, fetchFn })).rejects.toBeInstanceOf(
       GatewayUnavailableError
     );

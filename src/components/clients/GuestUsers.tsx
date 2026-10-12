@@ -25,10 +25,13 @@ import { GuestTable } from './GuestTable';
 import { AddGuestDialog } from './AddGuestDialog';
 import { RevokeGuestDialog } from './RevokeGuestDialog';
 import {
+  ALL_TIME_TOKEN,
   DEFAULT_TIME_TOKEN,
   STATUS_FILTERS,
   TIME_PRESETS,
 } from './guestPresentation';
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 /**
  * Guest Users — the management plane for the AURA captive web portal.
@@ -43,6 +46,7 @@ export function GuestUsers() {
   const [guests, setGuests] = useState<Guest[]>([]);
   const [summary, setSummary] = useState<GuestSummary | null>(null);
   const [gatewayReachable, setGatewayReachable] = useState(true);
+  const [outsideWindow, setOutsideWindow] = useState({ total: 0, authorized: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<GuestRequestError | Error | null>(null);
@@ -56,7 +60,14 @@ export function GuestUsers() {
 
   const abortRef = useRef<AbortController | null>(null);
 
-  const range = useMemo(() => resolveTimeRange(timeToken), [timeToken]);
+  const range = useMemo(() => {
+    if (timeToken === ALL_TIME_TOKEN) {
+      return { startIso: undefined, endIso: undefined, label: 'All Time' };
+    }
+    const resolved = resolveTimeRange(timeToken);
+    return { startIso: resolved.startIso, endIso: resolved.endIso, label: resolved.label };
+  }, [timeToken]);
+  const windowed = timeToken !== ALL_TIME_TOKEN;
   const statuses = useMemo(
     () => STATUS_FILTERS.find((f) => f.id === statusFilter)?.statuses ?? [],
     [statusFilter]
@@ -87,6 +98,7 @@ export function GuestUsers() {
         ]);
 
         setGuests(list.guests);
+        setOutsideWindow(list.outsideWindow ?? { total: 0, authorized: 0 });
         setSummary(summaryResponse.summary);
         setGatewayReachable(list.gateway.reachable);
         setError(null);
@@ -125,6 +137,13 @@ export function GuestUsers() {
       );
     });
   }, [guests, search]);
+
+  // Guests the window left out. Only meaningful without a search term: the
+  // server counted them before the client-side search narrowed anything.
+  const hiddenByWindow = windowed && !search.trim() && outsideWindow.total > 0;
+  const outsideWindowText = `${plural(outsideWindow.total, 'guest', 'guests')}${
+    outsideWindow.authorized > 0 ? ` (${outsideWindow.authorized} still authorized)` : ''
+  } had no activity in the selected range (${range.label}).`;
 
   const notConfigured = error instanceof GuestRequestError && error.isNotConfigured;
   const portalDown = error instanceof GuestRequestError && error.isPortalUnavailable;
@@ -264,16 +283,34 @@ export function GuestUsers() {
             emptyMessage={
               search.trim()
                 ? 'No guests match your search'
-                : statusFilter !== 'all'
-                  ? 'No guests in this state'
-                  : 'No guests yet'
+                : hiddenByWindow
+                  ? 'No guest activity in this time range'
+                  : statusFilter !== 'all'
+                    ? 'No guests in this state'
+                    : 'No guests yet'
             }
             emptyHint={
-              search.trim() || statusFilter !== 'all'
-                ? `Showing ${range.label.toLowerCase()}. Widen the time range or clear the filters to see more.`
-                : 'Guests appear here once they connect through the captive portal, or as soon as you add one by MAC address.'
+              hiddenByWindow
+                ? `${outsideWindowText} Choose All Time to see them.`
+                : search.trim() || statusFilter !== 'all'
+                  ? windowed
+                    ? `Showing ${range.label.toLowerCase()}. Widen the time range or clear the filters to see more.`
+                    : 'Clear the filters to see more.'
+                  : 'Guests appear here once they connect through the captive portal, or as soon as you add one by MAC address.'
             }
           />
+          {hiddenByWindow && visibleGuests.length > 0 && (
+            <p className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
+              {outsideWindowText}{' '}
+              <button
+                type="button"
+                className="underline underline-offset-2 hover:text-foreground"
+                onClick={() => setTimeToken(ALL_TIME_TOKEN)}
+              >
+                Show all time
+              </button>
+            </p>
+          )}
         </CardContent>
       </Card>
 

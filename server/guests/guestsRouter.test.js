@@ -141,6 +141,67 @@ describe('GET /api/v1/guests', () => {
     expect(res.body.guests[0].connectionStatus).toBe('unknown');
   });
 
+  it('applies the time window after the Gateway merge, so a connected guest is never hidden', async () => {
+    // Integration, 2026-10-11: the portal last saw both devices on 2026-08-14,
+    // the Gateway had them associated now. The ledger-side window dropped them
+    // and the page said "No guests yet" under "2 connected / 24 authorized".
+    const now = Date.now();
+    const list = vi.fn().mockResolvedValue({
+      guests: [
+        guestDto({ id: 'live', macAddress: 'aa:bb:cc:dd:ee:f1', lastSeen: '2026-08-14T23:21:06.242Z' }),
+        guestDto({ id: 'old', macAddress: 'aa:bb:cc:dd:ee:f2', lastSeen: '2026-08-14T23:20:00.000Z' }),
+        guestDto({
+          id: 'gone',
+          macAddress: 'aa:bb:cc:dd:ee:f3',
+          authorizationStatus: 'REVOKED',
+          lastSeen: '2026-08-14T15:53:32.446Z',
+        }),
+      ],
+      nextCursor: null,
+      total: 3,
+    });
+    const app = buildApp({
+      cwp: { list },
+      live: {
+        stations: stationsMap([
+          ['aa:bb:cc:dd:ee:f1', { macAddress: 'AA:BB:CC:DD:EE:F1', status: 'ACTIVE', lastSeen: now }],
+        ]),
+        services: new Map(),
+        gatewayReachable: true,
+        gatewayError: null,
+      },
+    });
+    const start = new Date(now - 7 * 864e5).toISOString();
+    const end = new Date(now + 1000).toISOString();
+    const res = await request(app, { path: `/api/v1/guests?start_time=${start}&end_time=${end}` });
+
+    expect(res.status).toBe(200);
+    expect(res.body.guests.map((g) => g.id)).toEqual(['live']);
+    expect(res.body.guests[0].status).toBe('connected');
+    expect(res.body.outsideWindow).toEqual({ total: 2, authorized: 1 });
+    // The portal's lastSeen is not the activity clock — the window must not reach it.
+    expect(list.mock.calls[0][0]).not.toHaveProperty('start_time');
+    expect(list.mock.calls[0][0]).not.toHaveProperty('end_time');
+  });
+
+  it('keeps a never-seen manual guest created inside the window', async () => {
+    const created = new Date(Date.now() - 3600_000).toISOString();
+    const app = buildApp({
+      cwp: {
+        list: vi.fn().mockResolvedValue({
+          guests: [guestDto({ source: 'MANUAL', lastSeen: null, createdAt: created })],
+          nextCursor: null,
+          total: 1,
+        }),
+      },
+    });
+    const start = new Date(Date.now() - 864e5).toISOString();
+    const res = await request(app, { path: `/api/v1/guests?start_time=${start}` });
+    expect(res.body.guests).toHaveLength(1);
+    expect(res.body.guests[0].status).toBe('manually_added');
+    expect(res.body.outsideWindow.total).toBe(0);
+  });
+
   it('returns 503 with a distinguishable message when the portal is down', async () => {
     const app = buildApp({
       cwp: { list: vi.fn().mockRejectedValue(new CwpUnavailableError('down')) },

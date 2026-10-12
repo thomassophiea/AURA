@@ -74,10 +74,28 @@ device skips it.
 
 ## Determining "Connected Now"
 
-Not "a recent row exists". The gateway's `GET /v1/stations` is fetched **once**
-for the whole controller — never once per guest — and memoised for 5 seconds, so
-a table of a hundred guests, the summary, and a detail view share one round-trip.
+Not "a recent row exists". Stations are read **per site** (`GET /v3/sites`,
+`/v1/aps/query`, then `/v3/sites/{id}/stations`) — never once per guest — with
+the global `GET /v1/stations` only as the fallback when the per-site read cannot
+be proven complete (an AP with no `hostSite`, a failed site read, >50 sites).
+`/v1/stations` measured 2–30 s on the lab Gateway, enough to blow the 10 s
+timeout and show a reachable Gateway as unavailable; the per-site read is well
+under a second. The snapshot is memoised for 5 seconds and concurrent callers
+share one in-flight read, so the list and the summary cost one round-trip.
 A station present and not `INACTIVE` is connected.
+
+## Time windows
+
+`start_time` / `end_time` mean **active in this period**, and they are applied
+*after* the Gateway merge — never pushed down to the portal. The portal's
+`lastSeen` is the last portal visit, so a guest associated for weeks has an old
+portal `lastSeen` and a live one from the Gateway; filtering the ledger first
+hid every such guest (Integration 2026-10-11: counters "2 connected / 24
+authorized", list "No guests yet"). A guest is in the window if its live-aware
+`lastSeen` falls in it, it is associated now and was before the window ended,
+or it was never seen and was created in it. The list response carries
+`outsideWindow: { total, authorized }` so the UI can say how many guests the
+window left out instead of claiming there are none.
 
 When the gateway cannot be reached, connection is reported as `unknown` and
 `connectedNow` is `null`. A zero would be a claim that nobody is on the network,

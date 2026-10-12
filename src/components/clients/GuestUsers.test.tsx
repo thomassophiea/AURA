@@ -170,6 +170,43 @@ describe('GuestUsers', () => {
     expect(await screen.findByText('No guests yet')).toBeInTheDocument();
   });
 
+  it('says the window hid guests instead of claiming there are none', async () => {
+    // Integration, 2026-10-11: counters read 2 connected / 24 authorized while
+    // the list said "No guests yet" — the ledger was full, the window was not.
+    list.mockResolvedValue({
+      guests: [],
+      nextCursor: null,
+      ledgerTotal: 26,
+      outsideWindow: { total: 26, authorized: 24 },
+      gateway: { reachable: true },
+    });
+    summary.mockResolvedValue(summaryPayload({ connectedNow: 0, authorized: 24, total: 26 }));
+    render(<GuestUsers />);
+    expect(await screen.findByText('No guest activity in this time range')).toBeInTheDocument();
+    expect(screen.queryByText('No guests yet')).not.toBeInTheDocument();
+    expect(screen.getByText(/26 guests \(24 still authorized\) had no activity/)).toBeInTheDocument();
+  });
+
+  it('notes guests outside the window under a non-empty list and can show all time', async () => {
+    list.mockResolvedValue({
+      guests: [guest()],
+      nextCursor: null,
+      ledgerTotal: 26,
+      outsideWindow: { total: 25, authorized: 23 },
+      gateway: { reachable: true },
+    });
+    render(<GuestUsers />);
+    await screen.findByText('aa:bb:cc:dd:ee:f1');
+    expect(screen.getByText(/25 guests \(23 still authorized\) had no activity/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show all time' }));
+    await waitFor(() => {
+      const lastCall = list.mock.calls.at(-1)?.[0];
+      expect(lastCall.startTime).toBeUndefined();
+      expect(lastCall.endTime).toBeUndefined();
+    });
+  });
+
   it('filters by search across MAC formats', async () => {
     list.mockResolvedValue({
       guests: [guest(), guest({ id: 'g2', macAddress: '92:b8:6a:71:ce:ae', displayName: '92:b8:6a:71:ce:ae' })],

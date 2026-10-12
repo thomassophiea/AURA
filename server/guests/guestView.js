@@ -192,6 +192,48 @@ export function filterBySearch(guests, term) {
 }
 
 /**
+ * Split a MERGED list by an activity window.
+ *
+ * The window must be applied after the Gateway merge, never pushed down to the
+ * portal. The portal's `lastSeen` is when the device last went through the
+ * portal — a guest who authorized weeks ago and has been associated ever since
+ * has an old portal `lastSeen` and a live one from the Gateway. Filtering the
+ * ledger first dropped exactly those guests: the summary (computed on merged
+ * rows) said "2 connected, 2 seen today" while the list said "No guests yet".
+ *
+ * A guest is in the window when:
+ *   - its live-aware `lastSeen` falls inside it, or
+ *   - it is associated right now and its association began before the window
+ *     ended (it was on the network for some of the window), or
+ *   - it has never been seen and was created inside it (a manually added MAC).
+ *
+ * @returns {{ inWindow: object[], outside: object[] }}
+ */
+export function splitByWindow(guests, { start = null, end = null } = {}) {
+  if (!start && !end) return { inWindow: guests, outside: [] };
+  const lo = start ? start.getTime() : -Infinity;
+  const hi = end ? end.getTime() : Infinity;
+  const within = (value) => {
+    if (!value) return false;
+    const t = new Date(value).getTime();
+    return Number.isFinite(t) && t >= lo && t <= hi;
+  };
+
+  const inWindow = [];
+  const outside = [];
+  for (const guest of guests) {
+    let hit = within(guest.lastSeen);
+    if (!hit && guest.connectionStatus === CONNECTION.CONNECTED) {
+      const since = guest.connectedSince ? new Date(guest.connectedSince).getTime() : null;
+      hit = since !== null && Number.isFinite(since) ? since <= hi : hi >= Date.now() - 60_000;
+    }
+    if (!hit && !guest.lastSeen) hit = within(guest.createdAt);
+    (hit ? inWindow : outside).push(guest);
+  }
+  return { inWindow, outside };
+}
+
+/**
  * Counts for the summary row.
  *
  * `connectedNow` is null when the gateway could not be reached — a zero would

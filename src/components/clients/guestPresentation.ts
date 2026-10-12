@@ -68,12 +68,22 @@ export const STATUS_FILTERS: ReadonlyArray<{
   { id: 'inactive', label: 'Expired / Revoked', statuses: ['expired', 'revoked'] },
 ];
 
-/** Time windows, in AURA's shared range vocabulary. */
+/**
+ * Time windows, in AURA's shared range vocabulary, plus `all` — no window.
+ *
+ * A window means "active in this period" (associated per the Gateway, or seen
+ * by the portal). Standing authorizations that have not been active for longer
+ * than any preset still exist and still count in Authorized Guests; `all` is
+ * how an operator lists them.
+ */
+export const ALL_TIME_TOKEN = 'all';
+
 export const TIME_PRESETS: ReadonlyArray<{ token: string; label: string }> = [
   { token: 'day-0', label: 'Today' },
   { token: 'day-1', label: 'Yesterday' },
   { token: '3d', label: 'Last 3 Days' },
   { token: '7d', label: 'Last 7 Days' },
+  { token: ALL_TIME_TOKEN, label: 'All Time' },
 ];
 
 export const DEFAULT_TIME_TOKEN = '7d';

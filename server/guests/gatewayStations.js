@@ -3,11 +3,14 @@
  *
  * "Connected now" cannot be answered from PostgresCWP: a portal row says a
  * device was authorized, not that it is still associated. The gateway knows,
- * and `/v1/stations` answers for the whole controller in one call — so this
- * module never issues a request per guest, however many there are.
+ * and it answers per site (or, as a fallback, for the whole controller in one
+ * call) — so this module never issues a request per guest, however many there
+ * are.
  *
- * Endpoints used (measured against XCC 192.168.100.12 on 2026-08-07):
- *   GET  /v1/stations                 every associated station
+ * Endpoints used (measured against XCC 192.168.100.12 on 2026-08-07 / 10-11):
+ *   GET  /v3/sites, /v1/aps/query     site list + AP hostSite completeness check
+ *   GET  /v3/sites/{id}/stations      stations per site — the cheap read
+ *   GET  /v1/stations                 every associated station — fallback only
  *   POST /v1/stations/assignrole      { mac, role }   — move a station's role
  *   POST /v1/stations/disassociate    { macList: [] } — force deauthentication
  */
@@ -37,6 +40,7 @@ const snapshotCache = new Map();
 
 export function clearStationCache() {
   snapshotCache.clear();
+  inFlight.clear();
 }
 
 /** `AA:BB:CC:DD:EE:FF` / `aabbccddeeff` → `aa:bb:cc:dd:ee:ff`. */
@@ -47,8 +51,93 @@ export function canonicalMac(value) {
   return hex.match(/.{2}/g).join(':');
 }
 
+/** More sites than this and the per-site fan-out stops being the cheap read. */
+const STATION_SITE_MAX = 50;
+const STATION_SITE_CONCURRENCY = 4;
+
+/** In-flight snapshot reads, so the list and the summary share one round-trip. */
+const inFlight = new Map();
+
+function asRows(data) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.stations)) return data.stations;
+  if (Array.isArray(data?.data)) return data.data;
+  return [];
+}
+
+/**
+ * Every station, read one site at a time.
+ *
+ * Measured on the lab Gateway (2026-10-08 and again 2026-10-11): `/v1/stations`
+ * takes 2-30 s depending on load — long enough to blow this module's timeout
+ * and report a reachable Gateway as unreachable — while `/v3/sites/{id}/stations`
+ * across every site returns the same rows in well under a second.
+ *
+ * Returns null whenever the fan-out cannot be trusted to be complete — no
+ * sites, too many sites, an AP without a `hostSite` (its clients would belong
+ * to no site read), or any site read failing — so the caller falls back to the
+ * global read instead of under-counting who is connected.
+ */
+async function stationsBySite({ authToken, controllerUrl, fetchFn, timeoutMs }) {
+  const get = (path) => requestXcc(path, { authToken, controllerUrl, fetchFn, timeoutMs });
+  const [sites, aps] = await Promise.all([get('/v3/sites'), get('/v1/aps/query')]);
+  if (!sites.ok || !aps.ok) return null;
+
+  const ids = asRows(sites.data)
+    .map((site) => site?.id ?? site?.siteId)
+    .filter(Boolean)
+    .map(String);
+  if (ids.length === 0 || ids.length > STATION_SITE_MAX) return null;
+  const apRows = Array.isArray(aps.data) ? aps.data : (aps.data?.aps ?? []);
+  if (apRows.some((ap) => !ap?.hostSite)) return null;
+
+  const perSite = new Array(ids.length);
+  let next = 0;
+  let failed = false;
+  const worker = async () => {
+    while (!failed && next < ids.length) {
+      const index = next++;
+      const result = await get(`/v3/sites/${encodeURIComponent(ids[index])}/stations`);
+      if (!result.ok) {
+        failed = true;
+        return;
+      }
+      perSite[index] = asRows(result.data).map((st) => ({
+        ...st,
+        siteId: st?.siteId ?? ids[index],
+      }));
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(STATION_SITE_CONCURRENCY, ids.length) }, worker));
+  return failed ? null : perSite.flat();
+}
+
+async function readStations({ authToken, controllerUrl, fetchFn, timeoutMs }) {
+  const bySite = await stationsBySite({ authToken, controllerUrl, fetchFn, timeoutMs }).catch(
+    () => null
+  );
+  if (bySite) return bySite;
+
+  const result = await requestXcc('/v1/stations', {
+    authToken,
+    controllerUrl,
+    fetchFn,
+    timeoutMs,
+  });
+  if (!result.ok) {
+    throw new GatewayUnavailableError(
+      `Gateway returned ${result.status}: ${sanitizeMessage(result.errorText)}`,
+      { status: result.status }
+    );
+  }
+  return asRows(result.data);
+}
+
 /**
  * Every associated station, keyed by canonical MAC.
+ *
+ * Read per site first (`/v3/sites/{id}/stations`), falling back to the global
+ * `/v1/stations` only when the per-site read cannot be proven complete.
  *
  * @returns {Promise<Map<string, object>>}
  */
@@ -65,28 +154,25 @@ export async function fetchStations({
   const cached = snapshotCache.get(controllerUrl);
   if (cached && cached.expiresAt > now) return cached.stations;
 
-  const result = await requestXcc('/v1/stations', {
-    authToken,
-    controllerUrl,
-    fetchFn,
-    timeoutMs,
-  });
+  const pending = inFlight.get(controllerUrl);
+  if (pending) return pending;
 
-  if (!result.ok) {
-    throw new GatewayUnavailableError(
-      `Gateway returned ${result.status}: ${sanitizeMessage(result.errorText)}`,
-      { status: result.status }
-    );
+  const read = (async () => {
+    const rows = await readStations({ authToken, controllerUrl, fetchFn, timeoutMs });
+    const stations = new Map();
+    for (const station of rows) {
+      const mac = canonicalMac(station?.macAddress);
+      if (mac) stations.set(mac, station);
+    }
+    snapshotCache.set(controllerUrl, { stations, expiresAt: now + SNAPSHOT_TTL_MS });
+    return stations;
+  })();
+  inFlight.set(controllerUrl, read);
+  try {
+    return await read;
+  } finally {
+    inFlight.delete(controllerUrl);
   }
-
-  const stations = new Map();
-  for (const station of Array.isArray(result.data) ? result.data : []) {
-    const mac = canonicalMac(station?.macAddress);
-    if (mac) stations.set(mac, station);
-  }
-
-  snapshotCache.set(controllerUrl, { stations, expiresAt: now + SNAPSHOT_TTL_MS });
-  return stations;
 }
 
 /** WLAN service id → { ssid, name }, so a station's serviceId can be named. */

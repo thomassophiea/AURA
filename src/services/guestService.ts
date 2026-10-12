@@ -99,6 +99,11 @@ export interface GuestListResponse {
   guests: Guest[];
   nextCursor: string | null;
   ledgerTotal: number;
+  /**
+   * Guests matching every other filter that were not active in the requested
+   * window. Absent from older servers, and zero when no window was sent.
+   */
+  outsideWindow?: { total: number; authorized: number };
   gateway: { reachable: boolean; baseUrl?: string; errorClass?: string };
 }
 
