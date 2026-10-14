@@ -179,7 +179,7 @@ import { Toaster } from './components/ui/sonner';
 import { CommandPalette } from './components/CommandPalette';
 import { PageSkeleton, getSkeletonVariant } from './components/ui/PageSkeleton';
 import { Button } from './components/ui/button';
-import { Braces, Github, FlaskConical } from 'lucide-react';
+import { Braces, FlaskConical } from 'lucide-react';
 import { AppsMenu } from './components/AppsMenu';
 import { UserMenu } from './components/UserMenu';
 import { DevModePinDialog } from './components/DevModePinDialog';
@@ -1671,20 +1671,6 @@ export default function App() {
                           title="API ONE — Gateway API explorer"
                         >
                           <FlaskConical className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            window.open(
-                              'https://github.com/thomassophiea/EDGE',
-                              '_blank',
-                              'noopener,noreferrer'
-                            )
-                          }
-                          title="GitHub"
-                        >
-                          <Github className="h-4 w-4" />
                         </Button>
                       </>
                     )}

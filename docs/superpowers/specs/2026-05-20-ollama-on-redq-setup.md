@@ -8,7 +8,7 @@
 ## 1. SSH in
 
 ```bash
-ssh redq@192.168.100.177   # password: Annabelladmin7 (lowercase user!)
+ssh redq@192.168.100.177   # password: <password> (lowercase user!)
 ```
 
 ## 2. Install Ollama

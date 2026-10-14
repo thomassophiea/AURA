@@ -58,8 +58,8 @@ describe.skipIf(!hasTestDatabase)('saeStore (PostgreSQL)', () => {
   });
 
   it('defaults SSID and AKM, and stores the passphrase encrypted, never in clear', async () => {
-    const created = await createCredential({ name: 'Thomas-Test', passphrase: PASS_A, role: 'Employee-Test' });
-    expect(created.keyid).toBe('Thomas-Test');
+    const created = await createCredential({ name: 'Sample-Test', passphrase: PASS_A, role: 'Employee-Test' });
+    expect(created.keyid).toBe('Sample-Test');
     expect(created.ssid).toBe('AURA_PSAE');
     expect(created.akm).toBe('wpa3-sae');
     expect(created).not.toHaveProperty('passphrase');

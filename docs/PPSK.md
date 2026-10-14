@@ -140,7 +140,7 @@ scripts/ppsk-provision-lab.sh --ap 192.168.100.141 --pass '<ap-pw>' \
 
 # 3. Join from a client with any key in the file; read the matched identity
 ssh admin@192.168.100.141 'grep AP-STA-CONNECTED /tmp/aura_ppsk.log'
-#   → AP-STA-CONNECTED <mac> keyid=Thomas-Test
+#   → AP-STA-CONNECTED <mac> keyid=Sample-Test
 
 # 4. Revoke: disable the key in AURA, re-render, re-push, reload
 ssh admin@192.168.100.141 'kill -HUP $(pgrep -f aura_ppsk.cfg)'

@@ -292,7 +292,7 @@
         "get_fleet_overview"
       ],
       "durationMs": 5019,
-      "answer": "AURA reads one Gateway, the primary controller at tsophiea.ddns.net, and it is reachable. It covers 7 sites, 18 APs and 9 WLANs. Only 6 of the 18 APs are connected, and 12 are offline. Service levels were scored for 5 of the 7 sites, with an average of 59.8. Four of those sites are rated poor. The worst is EAL-PT-B at 50, where AP Health is the weakest metric. The offline APs look like the main problem. I can break the offline APs down by site, or check the alerts, if you want to go further.",
+      "answer": "AURA reads one Gateway, the primary controller at gateway.example.net, and it is reachable. It covers 7 sites, 18 APs and 9 WLANs. Only 6 of the 18 APs are connected, and 12 are offline. Service levels were scored for 5 of the 7 sites, with an average of 59.8. Four of those sites are rated poor. The worst is EAL-PT-B at 50, where AP Health is the weakest metric. The offline APs look like the main problem. I can break the offline APs down by site, or check the alerts, if you want to go further.",
       "error": null
     },
     {

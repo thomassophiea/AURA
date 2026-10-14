@@ -89,18 +89,18 @@ describe('createPpskRouter', () => {
   it('creates a key and lists it, never exposing the passphrase', async () => {
     const created = await request(app({ store, audit }), {
       method: 'POST', path: '/api/v1/ppsk',
-      body: { name: 'Thomas-Test', ssid: 'Aura-PPSK-Lab', passphrase: 'Thomas-7284', role: 'Employee-Test' },
+      body: { name: 'Sample-Test', ssid: 'Aura-PPSK-Lab', passphrase: 'Sample-7284', role: 'Employee-Test' },
     });
     expect(created.status).toBe(201);
-    expect(created.body.keyid).toBe('Thomas-Test');
+    expect(created.body.keyid).toBe('Sample-Test');
     expect(created.body).not.toHaveProperty('passphrase');
     expect(created.body).not.toHaveProperty('passphrase_encrypted');
-    expect(audit).toHaveBeenCalledWith('ppsk.create', expect.objectContaining({ actor: 'tester', target: 'Thomas-Test' }));
+    expect(audit).toHaveBeenCalledWith('ppsk.create', expect.objectContaining({ actor: 'tester', target: 'Sample-Test' }));
 
     const list = await request(app({ store }), { path: '/api/v1/ppsk' });
     expect(list.status).toBe(200);
     expect(list.body.identities).toHaveLength(1);
-    expect(JSON.stringify(list.body)).not.toContain('Thomas-7284');
+    expect(JSON.stringify(list.body)).not.toContain('Sample-7284');
   });
 
   it('rejects an invalid passphrase with 400', async () => {

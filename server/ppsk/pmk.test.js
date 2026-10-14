@@ -19,8 +19,8 @@ describe('derivePmk — IEEE 802.11i reference vectors', () => {
   });
 
   it('binds the PMK to the SSID (same passphrase, different SSID ⇒ different PMK)', () => {
-    expect(derivePmk('Thomas-7284', 'Aura-PPSK-Lab')).not.toBe(
-      derivePmk('Thomas-7284', 'Other-SSID')
+    expect(derivePmk('Sample-7284', 'Aura-PPSK-Lab')).not.toBe(
+      derivePmk('Sample-7284', 'Other-SSID')
     );
   });
 
@@ -31,7 +31,7 @@ describe('derivePmk — IEEE 802.11i reference vectors', () => {
 
 describe('validatePassphrase', () => {
   it('accepts an 8–63 char printable-ASCII passphrase', () => {
-    expect(validatePassphrase('Thomas-7284')).toBeNull();
+    expect(validatePassphrase('Sample-7284')).toBeNull();
   });
   it('rejects too-short and too-long', () => {
     expect(validatePassphrase('short')).toMatch(/at least 8/);
@@ -57,7 +57,7 @@ describe('generatePassphrase', () => {
 
 describe('keyidFor', () => {
   it('strips whitespace and unsafe characters', () => {
-    expect(keyidFor('Thomas Test #1')).toBe('Thomas-Test-1');
+    expect(keyidFor('Sample Test #1')).toBe('Sample-Test-1');
   });
   it('never returns empty', () => {
     expect(keyidFor('   ')).toBe('identity');
@@ -72,10 +72,10 @@ describe('renderPskFile', () => {
   });
   it('omits vlanid when not set and includes every entry', () => {
     const body = renderPskFile([
-      { keyid: 'Thomas-Test', passphrase: 'Thomas-7284', vlanId: null },
+      { keyid: 'Sample-Test', passphrase: 'Sample-7284', vlanId: null },
       { keyid: 'Printer-Test', passphrase: 'Printer-3829', vlanId: 30 },
     ]);
-    expect(body).toContain(`keyid=Thomas-Test ${WILDCARD_MAC} Thomas-7284`);
+    expect(body).toContain(`keyid=Sample-Test ${WILDCARD_MAC} Sample-7284`);
     expect(body).toContain(`vlanid=30 keyid=Printer-Test ${WILDCARD_MAC} Printer-3829`);
     expect(body.trimEnd().split('\n').filter((l) => !l.startsWith('#'))).toHaveLength(2);
   });

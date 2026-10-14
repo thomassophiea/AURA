@@ -87,16 +87,16 @@ describe('gatewayRegistry naming', () => {
   it('names the seeded default source by its host, not its env-variable label', async () => {
     const reg = createGatewayRegistry({
       resolveDefault: async () => null,
-      defaultUrl: 'https://tsophiea.example:443',
+      defaultUrl: 'https://gateway.example:443',
       listSources: async () => [
         {
           id: 'd',
-          baseUrl: 'https://tsophiea.example:443',
+          baseUrl: 'https://gateway.example:443',
           displayName: 'Default controller (CAMPUS_CONTROLLER_URL)',
         },
       ],
       normalizeBaseUrl: (u) => String(u).replace(/\/+$/, ''),
     });
-    expect((await reg.list())[0].name).toBe('tsophiea.example');
+    expect((await reg.list())[0].name).toBe('gateway.example');
   });
 });

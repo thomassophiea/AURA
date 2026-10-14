@@ -97,7 +97,21 @@ const STORAGE_KEYS = {
  * individual's name. Older names are migrated on load.
  */
 export const DEFAULT_ORG_NAME = 'Default Organization';
-const LEGACY_DEFAULT_ORG_NAMES = new Set(['AURA Organization', 'TSOPHIEA']);
+const LEGACY_DEFAULT_ORG_NAMES = new Set(['AURA Organization']);
+
+/**
+ * An org that was auto-created for the default site group and named after the
+ * login host rather than chosen by anyone: it carries the local/default id and
+ * a slug that is just its lower-cased name. Recognised by shape, not by value,
+ * so no individual's name has to live in the source to migrate it.
+ */
+function isAutoNamedDefaultOrg(org: Organization): boolean {
+  return (
+    (org.id === 'local' || org.id === 'default-org') &&
+    org.slug !== 'default' &&
+    org.slug === org.name.toLowerCase()
+  );
+}
 
 // Default site group that is always present
 const DEFAULT_CONTROLLER: Controller = {
@@ -135,7 +149,11 @@ class TenantService {
       if (savedOrg) {
         this.currentOrg = JSON.parse(savedOrg);
         // Migrate stale org name from previous default
-        if (this.currentOrg && LEGACY_DEFAULT_ORG_NAMES.has(this.currentOrg.name)) {
+        if (
+          this.currentOrg &&
+          (LEGACY_DEFAULT_ORG_NAMES.has(this.currentOrg.name) ||
+            isAutoNamedDefaultOrg(this.currentOrg))
+        ) {
           this.currentOrg.name = DEFAULT_ORG_NAME;
           this.currentOrg.slug = 'default';
           this.saveToStorage();

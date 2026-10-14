@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-16
 **Status:** Approved (pending written-spec review)
-**Author:** thomassophiea + Claude
+**Author:** AURA team + Claude
 
 ## Problem
 

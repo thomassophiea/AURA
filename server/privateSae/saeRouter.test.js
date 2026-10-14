@@ -118,15 +118,15 @@ describe('createPrivateSaeRouter', () => {
   it('creates a credential and lists it, never exposing the passphrase', async () => {
     const created = await request(app({ store, audit }), {
       method: 'POST', path: '/api/v1/private-sae',
-      body: { name: 'Thomas-Test', passphrase: GOOD_PASS, role: 'Employee-Test' },
+      body: { name: 'Sample-Test', passphrase: GOOD_PASS, role: 'Employee-Test' },
     });
     expect(created.status).toBe(201);
-    expect(created.body.keyid).toBe('Thomas-Test');
+    expect(created.body.keyid).toBe('Sample-Test');
     expect(created.body.ssid).toBe('AURA_PSAE'); // default SSID
     expect(created.body.akm).toBe('wpa3-sae'); // default AKM
     expect(created.body.enforcement).toMatchObject({ attempted: false, applied: false });
     expect(created.body).not.toHaveProperty('passphrase');
-    expect(audit).toHaveBeenCalledWith('sae.create', expect.objectContaining({ actor: 'tester', target: 'Thomas-Test' }));
+    expect(audit).toHaveBeenCalledWith('sae.create', expect.objectContaining({ actor: 'tester', target: 'Sample-Test' }));
 
     const list = await request(app({ store }), { path: '/api/v1/private-sae' });
     expect(list.status).toBe(200);

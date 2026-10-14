@@ -62,7 +62,7 @@ const IFSTATS = {
   wirelessRf: null,
 };
 
-const LLDP = [{ switchPort: '46', portDescrition: '', systemName: 'Thomas-4220-01', systemDescription: 'Extreme 4220', switchSerial: '', managementAddress: '' }];
+const LLDP = [{ switchPort: '46', portDescrition: '', systemName: 'Switch-4220-01', systemDescription: 'Extreme 4220', switchSerial: '', managementAddress: '' }];
 
 function stubSession(overrides = {}, { onGet } = {}) {
   return {
@@ -174,7 +174,7 @@ describe('getDeviceHealth — one AP', () => {
   it('names the upstream switch port from LLDP', async () => {
     const r = await make().getDeviceHealth.handler({ apSerial: 'S1' });
     const uplink = r.checks.find((c) => c.check === 'uplink');
-    expect(uplink.summary).toContain('Thomas-4220-01');
+    expect(uplink.summary).toContain('Switch-4220-01');
   });
 
   it('reports the empty wired ifstats array as a gap, not as a clean error rate', async () => {

@@ -42,3 +42,6 @@ public/version.json
 ._*
 .DS_Store
 .playwright-mcp/
+
+# generated reports
+coverage/

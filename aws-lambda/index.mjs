@@ -18,7 +18,7 @@ import http from 'http';
 // Parse environment variables
 const CONFIG = {
   campusController: {
-    baseUrl: process.env.CAMPUS_CONTROLLER_URL || 'https://tsophiea.ddns.net:443/management',
+    baseUrl: process.env.CAMPUS_CONTROLLER_URL || 'https://gateway.example.net:443/management',
     userId: process.env.CAMPUS_CONTROLLER_USER,
     password: process.env.CAMPUS_CONTROLLER_PASSWORD
   },

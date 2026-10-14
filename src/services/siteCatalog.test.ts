@@ -343,8 +343,8 @@ describe('gatewayIdentity', () => {
   });
 
   it('falls back to the Gateway URL host — the org-scope case, where no identity is cached', () => {
-    expect(gatewayIdentity({ controller_url: 'https://tsophiea.ddns.net:443' })).toBe(
-      'tsophiea.ddns.net'
+    expect(gatewayIdentity({ controller_url: 'https://gateway.example.net:443' })).toBe(
+      'gateway.example.net'
     );
   });
 

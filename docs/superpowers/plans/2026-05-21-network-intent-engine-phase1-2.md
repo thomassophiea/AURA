@@ -925,9 +925,9 @@ git commit -m "feat(ai-first): add mandatory validation-first workflow to SKILL.
 In the Red Queen terminal in AURA, run:
 
 ```bash
-TOKEN=$(curl -sk -X POST "https://tsophiea.ddns.net/management/v1/oauth2/token" \
+TOKEN=$(curl -sk -X POST "https://gateway.example.net/management/v1/oauth2/token" \
   -H "Content-Type: application/json" \
-  -d '{"grantType":"password","userId":"admin","password":"Bronco3.0!"}' \
+  -d '{"grantType":"password","userId":"admin","password":"<password>"}' \
   | python3 -c 'import sys,json; print(json.load(sys.stdin)["access_token"])')
 echo "$TOKEN" > /tmp/xcc_token.txt && chmod 600 /tmp/xcc_token.txt
 echo "Auth OK: ${TOKEN:0:20}..."
@@ -1117,10 +1117,10 @@ git commit -m "feat(ai-first): add verify-post-provision closed-loop verificatio
 - [ ] **Step 1: Probe the lab controller for scheduler endpoints**
 
 ```bash
-BASE="https://tsophiea.ddns.net/management"
+BASE="https://gateway.example.net/management"
 TOKEN=$(curl -sk -X POST "$BASE/v1/oauth2/token" \
   -H "Content-Type: application/json" \
-  -d '{"grantType":"password","userId":"admin","password":"Bronco3.0!"}' \
+  -d '{"grantType":"password","userId":"admin","password":"<password>"}' \
   | python3 -c 'import sys,json; print(json.load(sys.stdin)["access_token"])')
 
 # Try common scheduler endpoint patterns on XCC
@@ -1525,10 +1525,10 @@ Expected pipeline:
 - [ ] **Step 2: Confirm SSID created and broadcasting**
 
 ```bash
-BASE="https://tsophiea.ddns.net/management"
+BASE="https://gateway.example.net/management"
 TOKEN=$(curl -sk -X POST "$BASE/v1/oauth2/token" \
   -H "Content-Type: application/json" \
-  -d '{"grantType":"password","userId":"admin","password":"Bronco3.0!"}' \
+  -d '{"grantType":"password","userId":"admin","password":"<password>"}' \
   | python3 -c 'import sys,json; print(json.load(sys.stdin)["access_token"])')
 
 # Check service exists
@@ -1550,7 +1550,7 @@ Expected: `NIE-Test-WPA2` service exists, scheduler with `daysOfWeek: [0, 6]` at
 
 ```bash
 python3 ~/.claude/skills/ai-first/scripts/rollback_service.py \
-  --base "https://tsophiea.ddns.net/management" \
+  --base "https://gateway.example.net/management" \
   --service "NIE-Test-WPA2" --force
 ```
 

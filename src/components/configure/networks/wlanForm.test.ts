@@ -42,7 +42,7 @@ describe('buildWlanPayload — save synthesis (parity gap #32)', () => {
     expect(Object.keys(payload.privacy ?? {})).toEqual(['WpaPskElement']);
     expect(payload.privacy?.WpaPskElement).toMatchObject({
       mode: 'aesOnly',
-      presharedKey: 'Annabell7',
+      presharedKey: 'Sample-psk',
     });
   });
 
@@ -100,7 +100,7 @@ describe('withPrivacyField', () => {
       'NewSecret1'
     );
     expect((form.record.privacy?.WpaPskElement as { presharedKey: string }).presharedKey).toBe(
-      'Annabell7'
+      'Sample-psk'
     );
   });
 });

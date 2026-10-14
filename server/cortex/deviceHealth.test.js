@@ -30,7 +30,7 @@ const HEALTHY_AP = {
   profileName: 'AP5020-INDOOR',
   rfMgmtPolicyName: 'HQ Smart RF',
   ovr: true,
-  switchPorts: ['46:Thomas-4220-01', ''],
+  switchPorts: ['46:Switch-4220-01', ''],
   ethPorts: [
     { name: 'eth0', speed: 'speed5Gbps', mode: 'fullDuplex', power: 'Bt' },
     { name: 'eth1', speed: 'speedNA', mode: 'NA', power: 'None' },
@@ -339,9 +339,9 @@ describe('the upstream layer', () => {
   });
 
   it('names the upstream switch and port from LLDP', () => {
-    const c = checkUplink({ lldp: [{ switchPort: '46', systemName: 'Thomas-4220-01', switchSerial: '' }] });
+    const c = checkUplink({ lldp: [{ switchPort: '46', systemName: 'Switch-4220-01', switchSerial: '' }] });
     expect(c.state).toBe(CHECK_STATE.PASS);
-    expect(c.summary).toContain('Thomas-4220-01');
+    expect(c.summary).toContain('Switch-4220-01');
     expect(c.summary).toContain('46');
   });
 });

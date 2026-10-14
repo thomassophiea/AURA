@@ -35,7 +35,7 @@ a two-entry `wpa_psk_file`. The four live Skynet BSSes on the same radio were ne
 touched (verified before/after: `wl0.0 isup=1 sta=5` throughout). The key file:
 
 ```
-keyid=Thomas-Test   00:00:00:00:00:00  Thomas-7284
+keyid=Sample-Test   00:00:00:00:00:00  Sample-7284
 keyid=Printer-Test  00:00:00:00:00:00  Printer-3829
 ```
 
@@ -46,10 +46,10 @@ bound in advance; the key alone selects the identity.
 
 | # | Action | Key presented | AP result | Log evidence |
 |---|---|---|---|---|
-| 1 | Client joins | `Thomas-7284` | identity **Thomas-Test** | `AP-STA-CONNECTED b6:11:d3:dd:f7:ec keyid=Thomas-Test` |
+| 1 | Client joins | `Sample-7284` | identity **Sample-Test** | `AP-STA-CONNECTED b6:11:d3:dd:f7:ec keyid=Sample-Test` |
 | 2 | **Same device** forgets, rejoins | `Printer-3829` | identity **Printer-Test** | `AP-STA-CONNECTED b6:11:d3:dd:f7:ec keyid=Printer-Test` |
 | 3 | Key B revoked (removed from file, `SIGHUP` reload), client retries | `Printer-3829` | **rejected** | `wpa_verify_key_mic mic mis-match` → `WPA_PTK entering state DISCONNECT` |
-| 4 | Valid key after revocation | `Thomas-7284` | still connects | `AP-STA-CONNECTED b6:11:d3:dd:f7:ec keyid=Thomas-Test` |
+| 4 | Valid key after revocation | `Sample-7284` | still connects | `AP-STA-CONNECTED b6:11:d3:dd:f7:ec keyid=Sample-Test` |
 
 Row 2 is the definitive result: **identical physical device, identical (randomized) MAC,
 identity flipped purely because the key changed.** Row 4 confirms revoking one key does not
@@ -67,7 +67,7 @@ Searching a PSK for <mac> prev_psk=(nil)      ← try first key file entry
 ...
 Searching a PSK for <mac> prev_psk=0x16bd4d4  ← MIC didn't match, advance to next entry
 wl0.4: STA <mac> WPA: sending 3/4 msg of 4-Way Handshake   ← a PMK matched
-AP-STA-CONNECTED <mac> keyid=Thomas-Test                    ← matched entry's identity tag
+AP-STA-CONNECTED <mac> keyid=Sample-Test                    ← matched entry's identity tag
 ```
 
 The client never transmits its passphrase. The AP derives a PMK per candidate key

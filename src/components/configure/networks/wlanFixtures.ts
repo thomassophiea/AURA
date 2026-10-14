@@ -79,7 +79,7 @@ export const SKYNET: WlanService = {
     WpaPskElement: {
       mode: 'aesOnly',
       pmfMode: 'disabled',
-      presharedKey: 'Annabell7',
+      presharedKey: 'Sample-psk',
       keyHexEncoded: false,
     },
   },

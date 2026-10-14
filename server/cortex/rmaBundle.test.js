@@ -115,7 +115,7 @@ describe('what the bundle carries', () => {
   const { assessment, checks, remediation } = rmaCase();
   const bundle = buildRmaBundle({
     assessment, checks, apRow: AP, state: STATE,
-    lldp: [{ switchPort: '46', systemName: 'Thomas-4220-01', switchSerial: '', systemDescription: 'Extreme 4220' }],
+    lldp: [{ switchPort: '46', systemName: 'Switch-4220-01', switchSerial: '', systemDescription: 'Extreme 4220' }],
     rebootHistory: REBOOTS, peers, remediation,
     impact: { clientsOnAp: 12, clientsWithFindings: 9 },
     alarms: [], gatewayUrl: 'https://192.168.100.12:5825',
@@ -143,7 +143,7 @@ describe('what the bundle carries', () => {
   });
 
   it('names the upstream switch and port so the reviewer can check it', () => {
-    expect(bundle.upstream).toMatchObject({ switchName: 'Thomas-4220-01', switchPort: '46' });
+    expect(bundle.upstream).toMatchObject({ switchName: 'Switch-4220-01', switchPort: '46' });
   });
 
   it('carries the restart evidence with no invented reason codes', () => {

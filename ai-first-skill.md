@@ -95,14 +95,14 @@ This is the actual session that birthed the skill. Each step shows the user prom
 
 ### 1. Authenticate
 
-**User:** *"log into this controller and add an SSID — tsophiea.ddns.net admin Bronco3.0!"*
+**User:** *"log into this controller and add an SSID — gateway.example.net admin <password>"*
 
 **Skill action:**
 
 ```bash
-curl -sk -X POST "https://tsophiea.ddns.net/management/v1/oauth2/token" \
+curl -sk -X POST "https://gateway.example.net/management/v1/oauth2/token" \
   -H "Content-Type: application/json" \
-  -d '{"grantType":"password","userId":"admin","password":"Bronco3.0!"}'
+  -d '{"grantType":"password","userId":"admin","password":"<password>"}'
 ```
 
 Response: `HTTP 200`, bearer token captured (2-hour TTL).
@@ -368,7 +368,7 @@ instead; the two skills hand work to each other in both directions.
 
 ## Provenance
 
-Built 2026-05-15 from a live deployment on `tsophiea.ddns.net`. Mirrors patterns from:
+Built 2026-05-15 from a live deployment on `gateway.example.net`. Mirrors patterns from:
 
 - `xiqMigrationService.ts` (AURA's bulk SSID migration code) — corrected for the `index: 0` silent-drop bug
 - `api.ts` `createService()` and `radioIfList` merging logic

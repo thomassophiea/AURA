@@ -1720,16 +1720,16 @@ git commit -m "feat(server): mount validation engine routes + register getDriftA
 
 ### Task 10: Phase 3 smoke test against lab controller
 
-**Files:** No new files — this is a verification task using curl against `https://tsophiea.ddns.net`.
+**Files:** No new files — this is a verification task using curl against `https://gateway.example.net`.
 
-**Prerequisites:** The dev server is running with `CAMPUS_CONTROLLER_URL=https://tsophiea.ddns.net` (or Railway has the env set). An auth token is needed — log into AURA in the browser, open DevTools → Network → copy the `Authorization: Bearer` header from any `/api/management/` request.
+**Prerequisites:** The dev server is running with `CAMPUS_CONTROLLER_URL=https://gateway.example.net` (or Railway has the env set). An auth token is needed — log into AURA in the browser, open DevTools → Network → copy the `Authorization: Bearer` header from any `/api/management/` request.
 
 - [ ] **Step 1: Authenticate and get a token**
 
 ```bash
-curl -sk -X POST https://tsophiea.ddns.net/management/v1/oauth2/token \
+curl -sk -X POST https://gateway.example.net/management/v1/oauth2/token \
   -H 'Content-Type: application/json' \
-  -d '{"grantType":"password","userId":"admin","password":"Bronco3.0!"}' | jq -r '.access_token'
+  -d '{"grantType":"password","userId":"admin","password":"<password>"}' | jq -r '.access_token'
 ```
 Save the returned token as `TOKEN`.
 
@@ -1739,7 +1739,7 @@ Save the returned token as `TOKEN`.
 curl -s -X POST http://localhost:3000/api/validate/intent \
   -H 'Content-Type: application/json' \
   -H "Authorization: Bearer $TOKEN" \
-  -H 'X-Controller-URL: https://tsophiea.ddns.net' \
+  -H 'X-Controller-URL: https://gateway.example.net' \
   -d '{"intent":{"action":"create_ssid","ssid_name":"NIE-Phase3-Test","vlan":1,"security":"WPA2-PSK"}}' | jq .
 ```
 
@@ -1752,7 +1752,7 @@ Acceptable result: any confidence band. The goal is no 500 errors. Check evidenc
 ```bash
 curl -s http://localhost:3000/api/validate/vlan/1 \
   -H "Authorization: Bearer $TOKEN" \
-  -H 'X-Controller-URL: https://tsophiea.ddns.net' | jq .
+  -H 'X-Controller-URL: https://gateway.example.net' | jq .
 ```
 
 Expected: `{ result: "pass", topology: { name: "...", vlanid: 1, ... }, evidence: "...", dhcp: { ... } }`
@@ -1762,7 +1762,7 @@ Expected: `{ result: "pass", topology: { name: "...", vlanid: 1, ... }, evidence
 ```bash
 curl -s http://localhost:3000/api/validate/topology \
   -H "Authorization: Bearer $TOKEN" \
-  -H 'X-Controller-URL: https://tsophiea.ddns.net' | jq '.snapshot | length'
+  -H 'X-Controller-URL: https://gateway.example.net' | jq '.snapshot | length'
 ```
 
 Expected: a number (count of APs). Lab has 6 APs so expect 6.

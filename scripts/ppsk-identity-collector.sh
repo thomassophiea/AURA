@@ -18,7 +18,7 @@
 #     ppsk-identity-collector.sh --enable  --aps 192.168.100.128,192.168.100.142 --ap-pass '<pw>'
 #   Poll once and post to AURA:
 #     ppsk-identity-collector.sh --aura https://integration.up.railway.app \
-#       --token "$TOK" --controller https://tsophiea.ddns.net:443 \
+#       --token "$TOK" --controller https://gateway.example.net:443 \
 #       --aps 192.168.100.128,192.168.100.142 --ap-pass '<pw>'
 #   Loop every 20s:  add  --interval 20
 set -euo pipefail

@@ -104,7 +104,7 @@ an AP unassessable, only its longer-term pattern unknown.
 | **PoE budget and 802.3af/at/bt class** | **absent** | — | The PoE schemas in the spec belong to switch port profiles, not AP telemetry |
 | **Ethernet error / discard counters** | **partial → effectively absent** | `GET /v1/aps/ifstats/{serial}` → `wired[]` | The per-AP route answers **200**, and `wired` comes back as an **empty array** on this build (AP5020, measured). The counters exist in `IfStatsElement` and are not populated. The bulk `/v1/aps/ifstats` route 500s |
 | Per-radio error counters + admin/oper state | available | same resource → `wireless[]` | `inErrors`, `outErrors`, `adminStatus`, `operStatus`. **Previously unread by anything in the product** |
-| Upstream switch and port | available | `GET /v1/aps/{serial}/lldp` | `systemName: "Thomas-4220-01"`, `switchPort: "46"`. `switchSerial` is often empty. This is what turns an upstream finding into a port someone can go and check |
+| Upstream switch and port | available | `GET /v1/aps/{serial}/lldp` | `systemName: "Switch-4220-01"`, `switchPort: "46"`. `switchSerial` is often empty. This is what turns an upstream finding into a port someone can go and check |
 
 > **The MTU pair.** Every tunnel on the lab fleet reports
 > `configMtuTunnelStatus: "Normal"` alongside

@@ -49,7 +49,7 @@ describe('complexity detection', () => {
   });
 
   it('does not flag a single-client question', () => {
-    expect(looksComplex('why is Thomas-iPhone slow')).toBe(false);
+    expect(looksComplex('why is Sample-iPhone slow')).toBe(false);
   });
 });
 

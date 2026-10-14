@@ -10,7 +10,7 @@ Device grp  5010-LAB1
 AP profile  AP5010-LAB1
 RF policy   HQ Smart RF
 AP          AP5010-LAB   model AP5010U-WW   serial WM012243W-30032   mgmt 192.168.100.111
-Gateway     Campus Controller (VE6120) 192.168.100.12:5825 / tsophiea.ddns.net:443
+Gateway     Campus Controller (VE6120) 192.168.100.12:5825 / gateway.example.net:443
 ```
 
 SSH to the AP: `admin` / `Admin123` (confirmed enabled on the box, 2026-09-01).

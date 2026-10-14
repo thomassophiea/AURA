@@ -36,7 +36,7 @@ Generated: 2026-03-28 | Plan 4 — Task 1
 | Rate limiting | YES — 30 req/60s per IP on server-side endpoints | Applied to `/api/oui`, `/api/throughput`, etc. |
 | Auth guard on mock endpoints | YES — `requireAuth` checks Bearer presence | Prevents unauthenticated access to server-side tools |
 | Security headers | YES — CSP, X-Frame-Options, Referrer-Policy, Permissions-Policy | Applied globally before routes |
-| `CAMPUS_CONTROLLER_URL` default hardcoded | YES — falls back to `tsophiea.ddns.net` | Dev convenience; warned at startup |
+| `CAMPUS_CONTROLLER_URL` default hardcoded | YES — falls back to `gateway.example.net` | Dev convenience; warned at startup |
 
 **Assessment:** CORS configuration is well-designed. The open-origin fallback is appropriate for local dev and properly warned. Production deployments **must** set `ALLOWED_ORIGINS` — this is documented in startup logs. No critical fixes needed.
 
@@ -69,7 +69,7 @@ Search pattern: `password.*=.*['"]`, `apiKey`, `api_key`, `secret`
 | Hardcoded API keys | NONE FOUND |
 | Hardcoded passwords | NONE FOUND |
 | Hardcoded controller URLs in frontend | NONE (uses env var `VITE_DEV_CAMPUS_CONTROLLER_URL` in dev, proxy in prod) |
-| Hardcoded controller URL in server | `tsophiea.ddns.net` as fallback default — warned at startup, acceptable |
+| Hardcoded controller URL in server | `gateway.example.net` as fallback default — warned at startup, acceptable |
 
 ---
 

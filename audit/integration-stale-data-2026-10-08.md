@@ -1,6 +1,6 @@
 # AURA Integration — stale data, Gateway load, Energy readiness
 
-**Date:** 2026-10-08 · **Environment:** Integration (`integration.up.railway.app`) · **Gateway:** VE6120 `192.168.100.12` / `tsophiea.ddns.net`
+**Date:** 2026-10-08 · **Environment:** Integration (`integration.up.railway.app`) · **Gateway:** VE6120 `192.168.100.12` / `gateway.example.net`
 
 ## Verdict
 

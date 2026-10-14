@@ -52,12 +52,12 @@ describe.skipIf(!hasTestDatabase)('ppskStore (PostgreSQL)', () => {
 
   it('persists an identity and stores the passphrase encrypted, never in clear', async () => {
     const created = await createIdentity({
-      name: 'Thomas-Test',
+      name: 'Sample-Test',
       ssid: 'Aura-PPSK-Lab',
-      passphrase: 'Thomas-7284',
+      passphrase: 'Sample-7284',
       role: 'Employee-Test',
     });
-    expect(created.keyid).toBe('Thomas-Test');
+    expect(created.keyid).toBe('Sample-Test');
     expect(created).not.toHaveProperty('passphrase');
 
     // The column holds versioned ciphertext, and the plaintext appears nowhere.
@@ -65,10 +65,10 @@ describe.skipIf(!hasTestDatabase)('ppskStore (PostgreSQL)', () => {
       created.id,
     ]);
     expect(rows[0].passphrase_encrypted).toMatch(/^v1:/);
-    expect(rows[0].passphrase_encrypted).not.toContain('Thomas-7284');
+    expect(rows[0].passphrase_encrypted).not.toContain('Sample-7284');
 
     // …but it round-trips through the audited reveal path.
-    expect(await revealPassphrase(created.id)).toBe('Thomas-7284');
+    expect(await revealPassphrase(created.id)).toBe('Sample-7284');
   });
 
   it('enforces one keyid per SSID (unique constraint → 23505)', async () => {

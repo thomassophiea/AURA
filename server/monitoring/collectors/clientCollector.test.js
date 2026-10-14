@@ -15,8 +15,8 @@ const source = { id: 'src-1', orgId: 'org-1', siteGroupId: 'sg-1' };
 function healthyRow(overrides = {}) {
   return {
     MAC: 'AA:BB:CC:DD:EE:01',
-    Hostname: 'thomas-laptop',
-    Username: 'tsophiea',
+    Hostname: 'sample-laptop',
+    Username: 'jdoe',
     IP: '192.168.100.55',
     Rss: -62,
     SNR: 33,
@@ -82,8 +82,8 @@ describe('clientCollector', () => {
     const serialised = JSON.stringify(result.samples);
     expect(serialised).not.toContain('AA:BB:CC:DD:EE:01');
     expect(serialised.toLowerCase()).not.toContain('aabbccddee01');
-    expect(serialised).not.toContain('thomas-laptop');
-    expect(serialised).not.toContain('tsophiea');
+    expect(serialised).not.toContain('sample-laptop');
+    expect(serialised).not.toContain('jdoe');
     expect(serialised).not.toContain('192.168.100.55');
 
     // The pseudonym is there, and it is a 32-hex HMAC prefix.

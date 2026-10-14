@@ -701,7 +701,7 @@ Expected: all PASS.
 
 - [ ] **Step 2: Manual smoke (if a controller is reachable)**
 
-With the lab XCC (`https://tsophiea.ddns.net/management`, see project memory), enter a Site Group → confirm the Direct Config header shows hostname + Locking ID; at org scope with "All Site Groups" → confirm the empty-state prompt; pick one group → confirm grid + badge appear.
+With the lab XCC (`https://gateway.example.net/management`, see project memory), enter a Site Group → confirm the Direct Config header shows hostname + Locking ID; at org scope with "All Site Groups" → confirm the empty-state prompt; pick one group → confirm grid + badge appear.
 
 - [ ] **Step 3: Final commit (if any cleanup)**
 

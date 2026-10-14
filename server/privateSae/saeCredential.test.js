@@ -59,7 +59,7 @@ describe('generatePassphrase — invariants', () => {
 
 describe('keyidFor', () => {
   it('strips whitespace and separators', () => {
-    expect(keyidFor('Thomas Test #1')).toBe('Thomas-Test-1');
+    expect(keyidFor('Sample Test #1')).toBe('Sample-Test-1');
     expect(keyidFor('a|b=c')).toBe('a-b-c');
   });
   it('never returns empty', () => {
@@ -81,7 +81,7 @@ describe('canonicalMac', () => {
 
 describe('saePasswordLine — native-safe (no on-air id by default)', () => {
   it('renders a wildcard line (no mac, no id) by default', () => {
-    expect(saePasswordLine({ keyid: 'Thomas', passphrase: 'pass-word-value-1234' })).toBe(
+    expect(saePasswordLine({ keyid: 'Sample', passphrase: 'pass-word-value-1234' })).toBe(
       'sae_password=pass-word-value-1234'
     );
   });

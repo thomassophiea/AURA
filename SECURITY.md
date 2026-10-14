@@ -138,7 +138,7 @@ Use `HttpOnly; Secure; SameSite=Strict` cookies managed server-side instead.
 
 **Issue:**
 ```js
-const CAMPUS_CONTROLLER_URL = process.env.CAMPUS_CONTROLLER_URL || 'https://tsophiea.ddns.net';
+const CAMPUS_CONTROLLER_URL = process.env.CAMPUS_CONTROLLER_URL || 'https://gateway.example.net';
 ```
 
 Personal domain is hardcoded as fallback; code will fail to fail-fast in production.

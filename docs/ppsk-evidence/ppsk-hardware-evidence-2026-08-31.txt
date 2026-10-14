@@ -87,7 +87,7 @@ mfg_hardware_model_comp=AP5020-FCC
 1788211226.704566: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
 1788211226.710383: wpa_verify_key_mic2124 mic mis-match
 1788211226.710393: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=0x16bd4d4
-1788211226.728585: wl0.4: AP-STA-CONNECTED b6:11:d3:dd:f7:ec keyid=Thomas-Test
+1788211226.728585: wl0.4: AP-STA-CONNECTED b6:11:d3:dd:f7:ec keyid=Sample-Test
 1788211280.499527: WPA: b6:11:d3:dd:f7:ec WPA_PTK entering state DISCONNECTED
 1788211314.321899: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
 1788211314.321906: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
@@ -155,4 +155,4 @@ mfg_hardware_model_comp=AP5020-FCC
 1788211429.122187: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
 1788211429.122194: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
 1788211429.125561: Searching a PSK for b6:11:d3:dd:f7:ec prev_psk=(nil)
-1788211429.151846: wl0.4: AP-STA-CONNECTED b6:11:d3:dd:f7:ec keyid=Thomas-Test
+1788211429.151846: wl0.4: AP-STA-CONNECTED b6:11:d3:dd:f7:ec keyid=Sample-Test
