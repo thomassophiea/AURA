@@ -11,7 +11,7 @@ const CONFIG = loadMonitoringConfig({ DATABASE_URL: 'postgres://localhost/aura' 
  * The router runs several probes concurrently against one query function, so
  * the fake dispatches on the SQL text rather than on call order.
  */
-function makeQueryFn({ stamp = 'production', newestAgeSeconds = 30, oldestDays = 3 } = {}) {
+function makeQueryFn({ stamp = 'production', newestAgeSeconds = 30, oldestDays = 3, sizeMb = 500 } = {}) {
   return vi.fn(async (sql) => {
     if (sql.includes('environment_identity')) {
       return { rows: [{ environment: stamp, stamped_at: new Date('2026-08-07T00:00:00Z') }] };
@@ -29,6 +29,9 @@ function makeQueryFn({ stamp = 'production', newestAgeSeconds = 30, oldestDays =
       return {
         rows: [{ newest: new Date(Date.now() - newestAgeSeconds * 1000), total: '1200' }],
       };
+    }
+    if (sql.includes('pg_database_size')) {
+      return { rows: [{ size_bytes: String(sizeMb * 1_048_576) }] };
     }
     if (sql.includes('min(observed_at)')) {
       return {
@@ -245,5 +248,37 @@ describe('probeCwp', () => {
     const fetchFn = vi.fn();
     expect(await __testables.probeCwp(fetchFn)).toEqual({ status: 'not_configured' });
     expect(fetchFn).not.toHaveBeenCalled();
+  });
+});
+
+describe('probeStorage', () => {
+  const { probeStorage } = __testables;
+  const dbUp = () => {
+    process.env.DATABASE_URL = 'postgres://localhost/aura';
+  };
+
+  it('reports size without judging it when no budget is set', async () => {
+    dbUp();
+    const out = await probeStorage(makeQueryFn({ sizeMb: 4000 }), {});
+    expect(out).toEqual({ status: 'unbudgeted', sizeMb: 4000 });
+  });
+
+  it('is ok well inside the budget', async () => {
+    dbUp();
+    const out = await probeStorage(makeQueryFn({ sizeMb: 1000 }), { MONITORING_DB_BUDGET_MB: '4000' });
+    expect(out).toMatchObject({ status: 'ok', usedPct: 25 });
+  });
+
+  it('warns at 80% and goes critical at 90%', async () => {
+    dbUp();
+    const env = { MONITORING_DB_BUDGET_MB: '4000' };
+    expect((await probeStorage(makeQueryFn({ sizeMb: 3300 }), env)).status).toBe('warning');
+    expect((await probeStorage(makeQueryFn({ sizeMb: 3700 }), env)).status).toBe('critical');
+  });
+
+  it('degrades instead of throwing when the query fails', async () => {
+    dbUp();
+    const out = await probeStorage(vi.fn().mockRejectedValue(new Error('connection refused')), {});
+    expect(out.status).toBe('unreachable');
   });
 });

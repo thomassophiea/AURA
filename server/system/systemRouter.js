@@ -97,6 +97,49 @@ async function probeCleanup(config, queryFn = query) {
   }
 }
 
+/**
+ * Storage headroom.
+ *
+ * Production Demo's database once filled its volume: the collector wrote about
+ * 600 MB a day against a 7-day window on a 5 GB volume, and Postgres could no
+ * longer write WAL, so it crashed in recovery and took the whole environment
+ * with it. Nothing reported disk use, so the first symptom was the outage.
+ *
+ * `MONITORING_DB_BUDGET_MB` is the size the database may reach on its volume,
+ * leaving room for WAL. Without it the size is still reported but never judged.
+ * Deleting rows does not shrink the files, so this reads the real on-disk size:
+ * a rising figure that the retention sweep is not bending is the signal to
+ * lower MONITORING_RETENTION_DAYS or grow the volume. Warning is advisory;
+ * critical fails health.
+ */
+const STORAGE_WARN_PCT = 80;
+const STORAGE_CRITICAL_PCT = 90;
+
+async function probeStorage(queryFn = query, env = process.env) {
+  if (!isDatabaseConfigured()) return { status: 'not_configured' };
+  try {
+    const { rows } = await queryFn('SELECT pg_database_size(current_database()) AS size_bytes');
+    const sizeMb = Number(rows[0]?.size_bytes) / 1_048_576;
+    if (!Number.isFinite(sizeMb)) return { status: 'unknown' };
+    const budgetMb = Number(env.MONITORING_DB_BUDGET_MB);
+    if (!Number.isFinite(budgetMb) || budgetMb <= 0) {
+      return { status: 'unbudgeted', sizeMb: Math.round(sizeMb) };
+    }
+    const usedPct = (sizeMb / budgetMb) * 100;
+    let status = 'ok';
+    if (usedPct >= STORAGE_CRITICAL_PCT) status = 'critical';
+    else if (usedPct >= STORAGE_WARN_PCT) status = 'warning';
+    return {
+      status,
+      sizeMb: Math.round(sizeMb),
+      budgetMb: Math.round(budgetMb),
+      usedPct: Number(usedPct.toFixed(1)),
+    };
+  } catch (error) {
+    return { status: 'unreachable', message: sanitizeMessage(error.message) };
+  }
+}
+
 /** Schema state, so two environments' migration levels can be compared. */
 async function probeSchema(queryFn = query) {
   if (!isDatabaseConfigured()) return { status: 'not_configured' };
@@ -244,15 +287,16 @@ export function createSystemRouter({ config = null, dirname = process.cwd(), dep
    */
   router.get('/v1/system/health', async (_req, res) => {
     const env = describeEnvironment();
-    const [database, dbEnvironment, collector, cleanup, cwp] = await Promise.all([
+    const [database, dbEnvironment, collector, cleanup, storage, cwp] = await Promise.all([
       checkDatabaseHealth(),
       describeDatabaseEnvironment({ queryFn }),
       probeCollector(config, queryFn),
       probeCleanup(config, queryFn),
+      probeStorage(queryFn),
       probeCwpFn(fetchFn),
     ]);
 
-    const components = { database, collector, cleanup, cwp };
+    const components = { database, collector, cleanup, storage, cwp };
     const failing = [];
     if (isDatabaseConfigured() && !database.ok) failing.push('database');
     // A mismatched stamp is the most serious thing this endpoint can report:
@@ -260,6 +304,7 @@ export function createSystemRouter({ config = null, dirname = process.cwd(), dep
     if (dbEnvironment.matches === false) failing.push('databaseEnvironment');
     if (collector.status === 'unreachable' || collector.status === 'stale') failing.push('collector');
     if (cleanup.status === 'unreachable' || cleanup.status === 'behind') failing.push('cleanup');
+    if (storage.status === 'critical') failing.push('storage');
     if (cwp.status === 'unreachable') failing.push('cwp');
 
     const healthy = failing.length === 0;
@@ -279,12 +324,13 @@ export function createSystemRouter({ config = null, dirname = process.cwd(), dep
    */
   router.get('/v1/system/dependencies', async (_req, res) => {
     const env = describeEnvironment();
-    const [database, dbEnvironment, schema, collector, cleanup, cwp, gateway] = await Promise.all([
+    const [database, dbEnvironment, schema, collector, cleanup, storage, cwp, gateway] = await Promise.all([
       checkDatabaseHealth(),
       describeDatabaseEnvironment({ queryFn }),
       probeSchema(queryFn),
       probeCollector(config, queryFn),
       probeCleanup(config, queryFn),
+      probeStorage(queryFn),
       probeCwpFn(fetchFn),
       probeGatewayFn(fetchFn),
     ]);
@@ -296,6 +342,7 @@ export function createSystemRouter({ config = null, dirname = process.cwd(), dep
         database: { ...database, ...dbEnvironment, schema },
         collector,
         cleanup,
+        storage,
         cwp,
         gateway,
       },
@@ -313,4 +360,4 @@ export function createSystemRouter({ config = null, dirname = process.cwd(), dep
   return router;
 }
 
-export const __testables = { probeCollector, probeCleanup, probeSchema, probeGateway, probeCwp };
+export const __testables = { probeCollector, probeCleanup, probeStorage, probeSchema, probeGateway, probeCwp };
