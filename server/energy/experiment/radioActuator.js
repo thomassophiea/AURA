@@ -40,6 +40,16 @@ export function captureRadioState(ap) {
 }
 
 /**
+ * Indexes of the named radios that carry a mesh link (`radios[].mesh` is
+ * non-empty on `GET /v1/aps/{serial}` for a root or relay on that radio).
+ */
+export function radiosCarryingMesh(ap, radioIndexes) {
+  return (ap?.radios ?? [])
+    .filter((r) => radioIndexes.includes(r.radioIndex) && Array.isArray(r.mesh) && r.mesh.length > 0)
+    .map((r) => r.radioIndex);
+}
+
+/**
  * Apply the desired admin state to the named radios of an AP object.
  * Pure: returns a new object plus the diff it intends.
  */
@@ -158,6 +168,23 @@ export async function applyRadioChange({
   const read = await readAp(session, serial);
   if (!read.ok) {
     return { ok: false, serial, verified: false, intended: [], original: null, stage: 'read', error: read.error };
+  }
+
+  // A radio carrying a mesh link is backhaul, not client service: disabling it
+  // on a mesh root strands every relay behind it, and `requireZeroClients`
+  // cannot see that because mesh peers are not clients. Refused before any
+  // rollback capture or write, so there is nothing to undo.
+  const meshRadios = adminState === false ? radiosCarryingMesh(read.ap, radioIndexes) : [];
+  if (meshRadios.length > 0) {
+    return {
+      ok: false,
+      serial,
+      verified: false,
+      intended: [],
+      original: null,
+      refused: 'mesh_backhaul',
+      error: `Radio ${meshRadios.join(',')} on ${serial} carries a mesh link; disabling it would cut off the mesh.`,
+    };
   }
 
   const original = captureRadioState(read.ap);

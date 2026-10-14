@@ -133,6 +133,34 @@ const okRead = (radios) => ({ ok: true, status: 200, data: ap(radios) });
 describe('applyRadioChange', () => {
   const sleep = async () => {};
 
+  it('refuses to disable a radio carrying a mesh link, before capture or write', async () => {
+    const meshRadios = RADIOS.map((r) =>
+      r.radioIndex === 3 ? { ...r, mesh: [{ bssid: '18:49:F8:6C:1C:30', meshid: 'Meshpoint_1' }] } : { ...r, mesh: [] }
+    );
+    const session = fakeSession([okRead(meshRadios)]);
+    session.write = vi.fn();
+    const persistRollback = vi.fn();
+
+    const outcome = await applyRadioChange({
+      session, serial: 'N1', radioIndexes: [3], adminState: false, persistRollback, sleep,
+    });
+
+    expect(outcome).toMatchObject({ ok: false, verified: false, refused: 'mesh_backhaul' });
+    expect(persistRollback).not.toHaveBeenCalled();
+    expect(session.write).not.toHaveBeenCalled();
+  });
+
+  it('still allows the change when the mesh is on a radio outside the action', async () => {
+    const meshOn2 = RADIOS.map((r) => (r.radioIndex === 2 ? { ...r, mesh: [{ meshid: 'Meshpoint_1' }] } : r));
+    const session = fakeSession([okRead(meshOn2), okRead([{ radioIndex: 3, adminState: false, adminStateOvr: true }])]);
+    session.write = vi.fn(async () => ({ ok: true, status: 200 }));
+
+    const outcome = await applyRadioChange({ session, serial: 'N1', radioIndexes: [3], adminState: false, sleep });
+
+    expect(outcome.refused).toBeUndefined();
+    expect(session.write).toHaveBeenCalledTimes(1);
+  });
+
   it('captures rollback BEFORE issuing the write', async () => {
     const order = [];
     const session = fakeSession([

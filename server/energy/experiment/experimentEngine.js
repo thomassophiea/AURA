@@ -549,6 +549,19 @@ export async function activateOptimization({
         settleMs: APPLY_SETTLE_MS,
       });
 
+      // Refused by the actuator before any capture or write (mesh backhaul):
+      // a skip with a reason, like clients_present — not a failed write.
+      if (outcome.refused) {
+        await event({
+          experimentId, sourceId: source.id, kind: 'target_refused', severity: 'warning', side: 'treatment',
+          apSerial: target.serial, message: `${target.serial}: ${outcome.error} Skipped.`,
+          detail: { reason: outcome.refused },
+        });
+        results.push({ serial: target.serial, ok: false, skipped: outcome.refused });
+        skipped.push({ serial: target.serial, reason: outcome.refused, detail: outcome.error });
+        continue;
+      }
+
       if (!outcome.noop) {
         await repo.recordApplyResult({
           experimentId, serial: target.serial, verified: outcome.verified, error: outcome.error ?? null,
