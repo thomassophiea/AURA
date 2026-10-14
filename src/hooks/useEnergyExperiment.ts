@@ -8,16 +8,16 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { energyExperimentService } from '@/services/energyExperimentService';
-import type {
-  ExperimentApRow,
-  ExperimentSeriesResponse,
-  ExperimentStateResponse,
-  ReadinessResponse,
-  TriggerView,
+import {
+  isExperimentInFlight,
+  type ExperimentApRow,
+  type ExperimentSeriesResponse,
+  type ExperimentStateResponse,
+  type ReadinessResponse,
+  type TriggerView,
 } from '@/types/energyExperiment';
 
 /** Faster while something is happening; calmer when nothing is. */
-const ACTIVE_STATES = new Set(['collecting_baseline', 'baseline_established', 'darkness_detected', 'optimization_active', 'recovering']);
 const ACTIVE_POLL_MS = 15_000;
 const IDLE_POLL_MS = 60_000;
 
@@ -100,7 +100,7 @@ export function useEnergyExperiment(enabled = true): UseEnergyExperimentResult {
     if (!enabled) return undefined;
     void refresh();
     void refreshReadiness();
-    const active = state?.experiment && ACTIVE_STATES.has(state.experiment.state);
+    const active = isExperimentInFlight(state?.experiment?.state);
     const interval = setInterval(() => void refresh(), active ? ACTIVE_POLL_MS : IDLE_POLL_MS);
     return () => clearInterval(interval);
     // state?.experiment?.state is the cadence input, not the data — including

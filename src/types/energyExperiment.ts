@@ -16,6 +16,23 @@ export type ExperimentState =
   | 'complete'
   | 'error';
 
+/**
+ * States in which a run is in flight — mirrors `ACTIVE_STATES` in
+ * server/energy/experiment/experimentRepository.js. `/state` keeps returning a
+ * finished run for display, so "an experiment is present" is not "one is running".
+ */
+export const EXPERIMENT_IN_FLIGHT_STATES: ReadonlySet<ExperimentState> = new Set<ExperimentState>([
+  'collecting_baseline',
+  'baseline_established',
+  'darkness_detected',
+  'optimization_active',
+  'recovering',
+]);
+
+export function isExperimentInFlight(state: ExperimentState | null | undefined): boolean {
+  return state != null && EXPERIMENT_IN_FLIGHT_STATES.has(state);
+}
+
 export type ExperimentSide = 'treatment' | 'control';
 export type TriggerSource = 'pending' | 'live_sensor' | 'simulated' | 'manual';
 export type EventProvenance = 'live' | 'simulated' | 'calculated';

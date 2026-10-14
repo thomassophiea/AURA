@@ -87,3 +87,29 @@ describe('EnergyPocControlPanel controller writes', () => {
     await waitFor(() => expect(service.restore).toHaveBeenCalledWith('exp-1'));
   });
 });
+
+describe('EnergyPocControlPanel site pair lock', () => {
+  const renderWith = (experimentState: string) =>
+    render(
+      <EnergyPocControlPanel
+        state={{ ...state, experiment: { id: 'exp-1', state: experimentState } } as unknown as ExperimentStateResponse}
+        readiness={null}
+        trigger={null}
+        busy={null}
+        run={vi.fn()}
+        error={null}
+      />
+    );
+
+  it('unlocks the pair once the last run has finished', () => {
+    renderWith('complete');
+    expect(screen.getByRole('button', { name: /Start experiment/i })).toBeEnabled();
+    for (const select of screen.getAllByRole('combobox')) expect(select).toBeEnabled();
+  });
+
+  it('keeps the pair locked while a run is in flight', () => {
+    renderWith('collecting_baseline');
+    expect(screen.getByRole('button', { name: /Start experiment/i })).toBeDisabled();
+    for (const select of screen.getAllByRole('combobox')) expect(select).toBeDisabled();
+  });
+});

@@ -25,12 +25,13 @@ import {
   energyExperimentService,
   type ActivationResult,
 } from '@/services/energyExperimentService';
-import type {
-  DiscoveryResponse,
-  ExperimentStateResponse,
-  ReadinessCheck,
-  ReadinessResponse,
-  TriggerView,
+import {
+  isExperimentInFlight,
+  type DiscoveryResponse,
+  type ExperimentStateResponse,
+  type ReadinessCheck,
+  type ReadinessResponse,
+  type TriggerView,
 } from '@/types/energyExperiment';
 
 interface Props {
@@ -93,6 +94,8 @@ export function EnergyPocControlPanel({ state, readiness, trigger, busy, run, er
   }, [state?.experiment?.id]);
 
   const experiment = state?.experiment ?? null;
+  // A finished run stays on `state` for display; only a run in flight locks the pair.
+  const running = isExperimentInFlight(experiment?.state);
   const outstanding = state?.outstandingRestores ?? [];
   const demo = state?.demoOverride;
   const disabled = busy !== null;
@@ -161,7 +164,7 @@ export function EnergyPocControlPanel({ state, readiness, trigger, busy, run, er
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="space-y-1 text-xs">
           <span className="font-medium text-muted-foreground">Energy optimized site — the energy action is applied here</span>
-          <Select value={treatment} onValueChange={setTreatment} disabled={disabled || !!experiment}>
+          <Select value={treatment} onValueChange={setTreatment} disabled={disabled || running}>
             <SelectTrigger className="h-8 text-xs">
               <SelectValue placeholder="Select a site" />
             </SelectTrigger>
@@ -176,7 +179,7 @@ export function EnergyPocControlPanel({ state, readiness, trigger, busy, run, er
         </label>
         <label className="space-y-1 text-xs">
           <span className="font-medium text-muted-foreground">Control site — the baseline, deliberately left alone</span>
-          <Select value={control} onValueChange={setControl} disabled={disabled || !!experiment}>
+          <Select value={control} onValueChange={setControl} disabled={disabled || running}>
             <SelectTrigger className="h-8 text-xs">
               <SelectValue placeholder="Select a site" />
             </SelectTrigger>
@@ -216,7 +219,7 @@ export function EnergyPocControlPanel({ state, readiness, trigger, busy, run, er
         <Button
           size="sm"
           variant="outline"
-          disabled={disabled || !treatment || !control || treatment === control || !!experiment}
+          disabled={disabled || !treatment || !control || treatment === control || running}
           onClick={() =>
             act('config', () =>
               energyExperimentService.saveConfig({
@@ -234,7 +237,7 @@ export function EnergyPocControlPanel({ state, readiness, trigger, busy, run, er
 
         <Button
           size="sm"
-          disabled={disabled || !!experiment}
+          disabled={disabled || running}
           onClick={() => act('start', () => energyExperimentService.start(), () => 'Experiment started; baseline collecting.')}
         >
           Start experiment
